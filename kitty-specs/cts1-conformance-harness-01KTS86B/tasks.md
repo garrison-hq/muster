@@ -39,11 +39,11 @@
 | T029 | Fixtures: evaluation/ (@id resolution, unresolved reference) | WP08 | [D] |
 | T030 | cts/manifest.yaml covering all cases + §25.2 category map | WP08 | | [D] |
 | T031 | tests/cts/suite.test.ts — vitest entry running the full suite | WP08 | | [D] |
-| T032 | Behavioral types: Turn, TurnList, Transcript, BehavioralCase, verdicts | WP09 | |
-| T033 | OpenAI-compatible chat client (plain fetch, env-only keys) | WP09 | |
-| T034 | Behavioral runner: turn loop, fact injection, k-of-n | WP09 | |
-| T035 | Graders (verbosity/refusal/state-shift) + thresholds.ts (R9) | WP09 | |
-| T036 | Behavioral unit tests against a mocked client | WP09 | |
+| T032 | Behavioral types: Turn, TurnList, Transcript, BehavioralCase, verdicts | WP09 | | [D] |
+| T033 | OpenAI-compatible chat client (plain fetch, env-only keys) | WP09 | | [D] |
+| T034 | Behavioral runner: turn loop, fact injection, k-of-n | WP09 | | [D] |
+| T035 | Graders (verbosity/refusal/state-shift) + thresholds.ts (R9) | WP09 | | [D] |
+| T036 | Behavioral unit tests against a mocked client | WP09 | | [D] |
 | T037 | CLI program + `muster check` | WP10 | |
 | T038 | `muster resolve` + output formats incl. canonical-json | WP10 | |
 | T039 | `muster cts run` (+ --filter) | WP10 | |
@@ -145,11 +145,11 @@
 **Goal**: Turn-list→transcript runner (multi-turn, C-005), fetch-only BYOM client (C-006), k-of-n grading on the three locked axes with R9 thresholds.
 **Priority**: P1 | **Dependencies**: WP05 | **Estimated prompt**: ~480 lines
 **Independent test**: against a scripted mock client — verbosity over-limit fails with measured vs limit; fact injection at turn N shifts grading thresholds; 2-of-3 semantics incl. errored-run-counts-as-fail.
-- [ ] T032 Behavioral types (WP09)
-- [ ] T033 OpenAI-compatible client (WP09)
-- [ ] T034 Runner: turn loop, facts, k-of-n (WP09)
-- [ ] T035 Graders + thresholds.ts (WP09)
-- [ ] T036 Mock-client unit tests (WP09)
+- [x] T032 Behavioral types (WP09)
+- [x] T033 OpenAI-compatible client (WP09)
+- [x] T034 Runner: turn loop, facts, k-of-n (WP09)
+- [x] T035 Graders + thresholds.ts (WP09)
+- [x] T036 Mock-client unit tests (WP09)
 **Prompt**: [tasks/WP09-behavioral-core.md](tasks/WP09-behavioral-core.md)
 
 ## Phase 5 — CLI & Acceptance
