@@ -28,9 +28,9 @@
 | T018 | Static pipeline orchestrator (parse→validate→resolve→report) | WP05 | | [D] |
 | T019 | Rfc1Adapter assembly implementing SpecAdapter | WP05 | | [D] |
 | T020 | Pipeline tests incl. §25.1 report-shape conformance | WP05 | | [D] |
-| T021 | CTS manifest loader (F.1 + expect_effective_json extension) | WP06 | [P] |
-| T022 | CTS runner: per-case execution + canonical-JSON comparison (F.2) | WP06 | |
-| T023 | Runner unit tests with synthetic in-memory fixtures | WP06 | |
+| T021 | CTS manifest loader (F.1 + expect_effective_json extension) | WP06 | [D] |
+| T022 | CTS runner: per-case execution + canonical-JSON comparison (F.2) | WP06 | | [D] |
+| T023 | Runner unit tests with synthetic in-memory fixtures | WP06 | | [D] |
 | T024 | Fixtures: minimal/ (Appendix A valid, missing-key, forbidden-YAML) | WP07 | [P] |
 | T025 | Fixtures: merge/ (scalar/map/list/null/type-mismatch + expected.json) | WP07 | [P] |
 | T026 | Fixtures: composition/ (extends+mixins order, stripping, cycle) | WP07 | [P] |
@@ -114,9 +114,9 @@
 **Goal**: Appendix F.1 manifest loading and the fixture runner with F.2 canonical-JSON byte comparison.
 **Priority**: P1 | **Dependencies**: WP05 | **Estimated prompt**: ~300 lines
 **Independent test**: synthetic in-memory cases: expect_ok mismatch detected; expected-error matching (path exact, message substring); byte-difference reported.
-- [ ] T021 Manifest loader F.1 (WP06)
-- [ ] T022 Runner + comparisons F.2 (WP06)
-- [ ] T023 Runner unit tests (WP06)
+- [x] T021 Manifest loader F.1 (WP06)
+- [x] T022 Runner + comparisons F.2 (WP06)
+- [x] T023 Runner unit tests (WP06)
 **Prompt**: [tasks/WP06-cts-manifest-runner.md](tasks/WP06-cts-manifest-runner.md)
 
 ### WP07 — Fixtures A: minimal / merge / composition
