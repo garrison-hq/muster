@@ -17,6 +17,8 @@ subtasks:
 - T010
 - T011
 - T012
+agent: "claude"
+shell_pid: "921257"
 history:
 - timestamp: '2026-06-10T20:21:16Z'
   event: created
@@ -126,3 +128,7 @@ Cover every bullet above plus:
 ## Risks
 
 - Appendix E `required` includes `profile_overrides` for kind:soul, while §25's mandatory list omits it. Treat the schema as authoritative for presence (it's the spec's own artifact) and document the discrepancy in a code comment citing both sections — fixtures must include `profile_overrides: {}` in valid souls.
+
+## Activity Log
+
+- 2026-06-10T21:30:51Z – claude – shell_pid=921257 – Started implementation via action command
