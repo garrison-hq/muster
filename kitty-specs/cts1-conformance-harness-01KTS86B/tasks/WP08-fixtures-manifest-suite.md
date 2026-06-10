@@ -114,3 +114,4 @@ spec-kitty agent action implement WP08 --agent <name>
 - 2026-06-10T23:02:01Z – claude – shell_pid=1320448 – Started implementation via action command
 - 2026-06-10T23:13:38Z – claude – shell_pid=1320448 – Ready for review: 11 new fixtures (profiles/state/evaluation + supplementary keyspace unknown-key), cts/manifest.yaml with 28 cases and nine-category header map, tests/cts/suite.test.ts gate (per-case it.each, determinism + wall-clock guards); build green, 383 tests passing, no WP07 expectation drift
 - 2026-06-10T23:14:17Z – claude – shell_pid=1382608 – Started review via action command
+- 2026-06-10T23:17:32Z – claude – shell_pid=1382608 – Review passed: build+tests green in reviewer's own run (383 tests incl. 28-case CTS suite); header map 28/28 ids cross-checked; mutation test proved lexicographic-fallback discrimination; §4.2/§5.2.1/§9/§20.3.7/§21.1 spot-checked against vendored spec; no core->adapters imports; only owned files touched
