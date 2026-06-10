@@ -1,0 +1,160 @@
+{
+  "version": 1,
+  "mission_slug": "cts1-conformance-harness-01KTS86B",
+  "mission_id": "01KTS86BAC5H36TJX529ZKVT1J",
+  "mission_branch": "kitty/mission-cts1-conformance-harness-01KTS86B",
+  "target_branch": "main",
+  "lanes": [
+    {
+      "lane_id": "lane-a",
+      "wp_ids": [
+        "WP01",
+        "WP02",
+        "WP03",
+        "WP04",
+        "WP05",
+        "WP06",
+        "WP07",
+        "WP08",
+        "WP09",
+        "WP10",
+        "WP11"
+      ],
+      "write_scope": [
+        ".gitignore",
+        "README.md",
+        "behave/**",
+        "cts/fixtures/composition/**",
+        "cts/fixtures/evaluation/**",
+        "cts/fixtures/merge/**",
+        "cts/fixtures/minimal/**",
+        "cts/fixtures/profiles/**",
+        "cts/fixtures/state/**",
+        "cts/manifest.yaml",
+        "package.json",
+        "pnpm-lock.yaml",
+        "souls/**",
+        "src/adapters/rfc1/evaluation.ts",
+        "src/adapters/rfc1/frontmatter.ts",
+        "src/adapters/rfc1/index.ts",
+        "src/adapters/rfc1/keyspace.ts",
+        "src/adapters/rfc1/resolve.ts",
+        "src/adapters/rfc1/schema.json",
+        "src/adapters/rfc1/soul-yaml.ts",
+        "src/adapters/rfc1/state.ts",
+        "src/adapters/rfc1/thresholds.ts",
+        "src/cli/**",
+        "src/core/adapter.ts",
+        "src/core/behavioral/client.ts",
+        "src/core/behavioral/graders.ts",
+        "src/core/behavioral/manifest.ts",
+        "src/core/behavioral/runner.ts",
+        "src/core/behavioral/types.ts",
+        "src/core/canonical-json.ts",
+        "src/core/cts/manifest.ts",
+        "src/core/cts/runner.ts",
+        "src/core/merge.ts",
+        "src/core/pipeline.ts",
+        "src/core/report.ts",
+        "tests/behavioral/graders.test.ts",
+        "tests/behavioral/runner.test.ts",
+        "tests/cts/suite.test.ts",
+        "tests/unit/canonical-json.test.ts",
+        "tests/unit/cli.test.ts",
+        "tests/unit/cts-runner.test.ts",
+        "tests/unit/evaluation.test.ts",
+        "tests/unit/frontmatter.test.ts",
+        "tests/unit/keyspace.test.ts",
+        "tests/unit/merge.test.ts",
+        "tests/unit/pipeline.test.ts",
+        "tests/unit/resolve.test.ts",
+        "tests/unit/soul-yaml.test.ts",
+        "tests/unit/state.test.ts",
+        "tsconfig.json",
+        "vitest.config.ts"
+      ],
+      "predicted_surfaces": [
+        "api",
+        "app-shell",
+        "artifact-rendering",
+        "legacy-cleanup",
+        "tests",
+        "tracker-integration"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    }
+  ],
+  "computed_at": "2026-06-10T20:31:53.783569+00:00",
+  "computed_from": "dependency_graph+ownership",
+  "planning_artifact_wps": [],
+  "collapse_report": {
+    "events": [
+      {
+        "wp_a": "WP02",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP02 depends on WP01"
+      },
+      {
+        "wp_a": "WP03",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP03 depends on WP01"
+      },
+      {
+        "wp_a": "WP04",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP04 depends on WP01"
+      },
+      {
+        "wp_a": "WP05",
+        "wp_b": "WP02",
+        "rule": "dependency",
+        "evidence": "WP05 depends on WP02"
+      },
+      {
+        "wp_a": "WP06",
+        "wp_b": "WP05",
+        "rule": "dependency",
+        "evidence": "WP06 depends on WP05"
+      },
+      {
+        "wp_a": "WP08",
+        "wp_b": "WP06",
+        "rule": "dependency",
+        "evidence": "WP08 depends on WP06"
+      },
+      {
+        "wp_a": "WP08",
+        "wp_b": "WP07",
+        "rule": "dependency",
+        "evidence": "WP08 depends on WP07"
+      },
+      {
+        "wp_a": "WP09",
+        "wp_b": "WP05",
+        "rule": "dependency",
+        "evidence": "WP09 depends on WP05"
+      },
+      {
+        "wp_a": "WP10",
+        "wp_b": "WP05",
+        "rule": "dependency",
+        "evidence": "WP10 depends on WP05"
+      },
+      {
+        "wp_a": "WP11",
+        "wp_b": "WP09",
+        "rule": "dependency",
+        "evidence": "WP11 depends on WP09"
+      }
+    ],
+    "total_merges": 10,
+    "independent_wps_collapsed": 0,
+    "by_rule": {
+      "dependency": 10
+    }
+  }
+}
