@@ -34,11 +34,11 @@
 | T024 | Fixtures: minimal/ (Appendix A valid, missing-key, forbidden-YAML) | WP07 | [D] |
 | T025 | Fixtures: merge/ (scalar/map/list/null/type-mismatch + expected.json) | WP07 | [D] |
 | T026 | Fixtures: composition/ (extends+mixins order, stripping, cycle) | WP07 | [D] |
-| T027 | Fixtures: profiles/ (overlay, missing default, bad override key) | WP08 | [P] |
-| T028 | Fixtures: state/ (base fallback UTF-8 order, bad trigger, timed w/o ttl) | WP08 | [P] |
-| T029 | Fixtures: evaluation/ (@id resolution, unresolved reference) | WP08 | [P] |
-| T030 | cts/manifest.yaml covering all cases + §25.2 category map | WP08 | |
-| T031 | tests/cts/suite.test.ts — vitest entry running the full suite | WP08 | |
+| T027 | Fixtures: profiles/ (overlay, missing default, bad override key) | WP08 | [D] |
+| T028 | Fixtures: state/ (base fallback UTF-8 order, bad trigger, timed w/o ttl) | WP08 | [D] |
+| T029 | Fixtures: evaluation/ (@id resolution, unresolved reference) | WP08 | [D] |
+| T030 | cts/manifest.yaml covering all cases + §25.2 category map | WP08 | | [D] |
+| T031 | tests/cts/suite.test.ts — vitest entry running the full suite | WP08 | | [D] |
 | T032 | Behavioral types: Turn, TurnList, Transcript, BehavioralCase, verdicts | WP09 | |
 | T033 | OpenAI-compatible chat client (plain fetch, env-only keys) | WP09 | |
 | T034 | Behavioral runner: turn loop, fact injection, k-of-n | WP09 | |
@@ -132,11 +132,11 @@
 **Goal**: Second fixture half (profiles/state/evaluation), the unified cts/manifest.yaml mapping all nine §25.2 categories, and the vitest gate that runs the whole suite.
 **Priority**: P1 | **Dependencies**: WP06, WP07 | **Estimated prompt**: ~400 lines
 **Independent test**: `pnpm test` runs the full CTS suite green; every §25.2 category exercised by ≥1 valid + ≥1 broken case (SC-001/SC-002).
-- [ ] T027 profiles/ fixtures (WP08)
-- [ ] T028 state/ fixtures (WP08)
-- [ ] T029 evaluation/ fixtures (WP08)
-- [ ] T030 cts/manifest.yaml + category map (WP08)
-- [ ] T031 CTS suite vitest entry (WP08)
+- [x] T027 profiles/ fixtures (WP08)
+- [x] T028 state/ fixtures (WP08)
+- [x] T029 evaluation/ fixtures (WP08)
+- [x] T030 cts/manifest.yaml + category map (WP08)
+- [x] T031 CTS suite vitest entry (WP08)
 **Prompt**: [tasks/WP08-fixtures-manifest-suite.md](tasks/WP08-fixtures-manifest-suite.md)
 
 ## Phase 4 — Behavioral Slice
