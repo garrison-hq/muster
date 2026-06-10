@@ -20,6 +20,8 @@ subtasks:
 - T015
 - T016
 - T017
+agent: "claude"
+shell_pid: "984312"
 history:
 - timestamp: '2026-06-10T20:21:16Z'
   event: created
@@ -144,3 +146,7 @@ Every validation bullet above, plus:
 
 - Appendix G is dense; where G and §7.5 prose disagree in your reading, §7.5 + §9.4 normative constraints win, and the discrepancy gets a code comment citing both.
 - Deep-merge recursion on hostile fixtures: cap reference depth (e.g. 32) with a clear error to avoid stack overflow on adversarial cycles that evade path-identity (symlinks are out of scope).
+
+## Activity Log
+
+- 2026-06-10T21:44:18Z – claude – shell_pid=984312 – Started implementation via action command
