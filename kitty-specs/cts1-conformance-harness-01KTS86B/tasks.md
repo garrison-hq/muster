@@ -15,11 +15,11 @@
 | T005 | Front-matter extraction (§3.1.1) | WP02 | | [D] |
 | T006 | Soul-YAML forbidden-feature detection via AST (§4.2) | WP02 | | [D] |
 | T007 | Parse-layer unit tests (no-expansion guarantee, edge cases) | WP02 | | [D] |
-| T008 | Vendor Appendix E schema + Ajv 2020-12 wiring | WP03 | [P] |
-| T009 | §25 keyspace rules by mode (unknown vs known-optional keys) | WP03 | |
-| T010 | Scalar typing: percent/float01/enums/BCP-47 (§4.3) | WP03 | |
-| T011 | Profile rules: default required, overrides ⊆ profiles (§9) | WP03 | |
-| T012 | Validation-layer unit tests | WP03 | |
+| T008 | Vendor Appendix E schema + Ajv 2020-12 wiring | WP03 | [D] |
+| T009 | §25 keyspace rules by mode (unknown vs known-optional keys) | WP03 | | [D] |
+| T010 | Scalar typing: percent/float01/enums/BCP-47 (§4.3) | WP03 | | [D] |
+| T011 | Profile rules: default required, overrides ⊆ profiles (§9) | WP03 | | [D] |
+| T012 | Validation-layer unit tests | WP03 | | [D] |
 | T013 | Composition resolution §7.5/Appendix G (loadRef, stripping, ordering) | WP04 | |
 | T014 | State semantics §20 (base fallback, trigger validation, overlay) | WP04 | |
 | T015 | Evaluation rule references §21 (@id + literal code-point match) | WP04 | |
@@ -81,11 +81,11 @@
 **Goal**: Two-layer validation (R4): vendored Appendix E schema via Ajv + the §25 keyspace/semantic rules the permissive schema can't express.
 **Priority**: P0 | **Dependencies**: WP01 (parallel with WP02) | **Estimated prompt**: ~380 lines
 **Independent test**: minimal soul passes both modes; unknown top-level key rejected strict / warned permissive; `en_US` locale rejected strict; percent 101 rejected.
-- [ ] T008 Schema vendoring + Ajv wiring (WP03)
-- [ ] T009 §25 keyspace rules by mode (WP03)
-- [ ] T010 Scalar typing + BCP-47 (WP03)
-- [ ] T011 Profile rules §9 (WP03)
-- [ ] T012 Validation unit tests (WP03)
+- [x] T008 Schema vendoring + Ajv wiring (WP03)
+- [x] T009 §25 keyspace rules by mode (WP03)
+- [x] T010 Scalar typing + BCP-47 (WP03)
+- [x] T011 Profile rules §9 (WP03)
+- [x] T012 Validation unit tests (WP03)
 **Prompt**: [tasks/WP03-rfc1-validation-layer.md](tasks/WP03-rfc1-validation-layer.md)
 
 ### WP04 — Composition, State & Evaluation Resolution
