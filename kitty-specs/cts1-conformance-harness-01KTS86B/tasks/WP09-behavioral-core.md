@@ -21,6 +21,8 @@ subtasks:
 - T034
 - T035
 - T036
+agent: "claude"
+shell_pid: "1422983"
 history:
 - timestamp: '2026-06-10T20:21:16Z'
   event: created
@@ -132,3 +134,7 @@ export interface ChatClient {
 ## Risks
 
 - `personaPrompt` rendering quality directly affects whether a conforming model passes (SC-005/SC-006 in WP11). Keep it faithful to the soul's axes (verbosity instruction, refusal style, state description) and revisit ONLY with the discrimination case as the guardrail against over-prompting.
+
+## Activity Log
+
+- 2026-06-10T23:22:09Z – claude – shell_pid=1422983 – Started implementation via action command
