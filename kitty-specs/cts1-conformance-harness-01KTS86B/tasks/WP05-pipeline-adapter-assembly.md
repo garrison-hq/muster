@@ -15,6 +15,8 @@ subtasks:
 - T018
 - T019
 - T020
+agent: "claude"
+shell_pid: "1097442"
 history:
 - timestamp: '2026-06-10T20:21:16Z'
   event: created
@@ -110,3 +112,7 @@ spec-kitty agent action implement WP05 --agent <name>
 ## Risks
 
 - The thresholds forward-reference is the one awkward seam from ownership splitting. The dynamic-import-with-clear-error pattern keeps both WPs independently implementable; WP09's tests will exercise the real linkage.
+
+## Activity Log
+
+- 2026-06-10T22:10:02Z – claude – shell_pid=1097442 – Started implementation via action command
