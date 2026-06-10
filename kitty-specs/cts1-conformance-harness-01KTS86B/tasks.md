@@ -31,9 +31,9 @@
 | T021 | CTS manifest loader (F.1 + expect_effective_json extension) | WP06 | [D] |
 | T022 | CTS runner: per-case execution + canonical-JSON comparison (F.2) | WP06 | | [D] |
 | T023 | Runner unit tests with synthetic in-memory fixtures | WP06 | | [D] |
-| T024 | Fixtures: minimal/ (Appendix A valid, missing-key, forbidden-YAML) | WP07 | [P] |
-| T025 | Fixtures: merge/ (scalar/map/list/null/type-mismatch + expected.json) | WP07 | [P] |
-| T026 | Fixtures: composition/ (extends+mixins order, stripping, cycle) | WP07 | [P] |
+| T024 | Fixtures: minimal/ (Appendix A valid, missing-key, forbidden-YAML) | WP07 | [D] |
+| T025 | Fixtures: merge/ (scalar/map/list/null/type-mismatch + expected.json) | WP07 | [D] |
+| T026 | Fixtures: composition/ (extends+mixins order, stripping, cycle) | WP07 | [D] |
 | T027 | Fixtures: profiles/ (overlay, missing default, bad override key) | WP08 | [P] |
 | T028 | Fixtures: state/ (base fallback UTF-8 order, bad trigger, timed w/o ttl) | WP08 | [P] |
 | T029 | Fixtures: evaluation/ (@id resolution, unresolved reference) | WP08 | [P] |
@@ -123,9 +123,9 @@
 **Goal**: First half of the CTS-1 fixture contribution — data only, hand-computed expected.json files.
 **Priority**: P1 | **Dependencies**: none (data-only; verified by WP08 suite) | **Estimated prompt**: ~340 lines
 **Independent test**: each fixture is self-describing; expected.json files are valid canonical JSON (sorted keys, no trailing newline).
-- [ ] T024 minimal/ fixtures (WP07)
-- [ ] T025 merge/ fixtures (WP07)
-- [ ] T026 composition/ fixtures (WP07)
+- [x] T024 minimal/ fixtures (WP07)
+- [x] T025 merge/ fixtures (WP07)
+- [x] T026 composition/ fixtures (WP07)
 **Prompt**: [tasks/WP07-fixtures-minimal-merge-composition.md](tasks/WP07-fixtures-minimal-merge-composition.md)
 
 ### WP08 — Fixtures B + Manifest + Suite Gate
