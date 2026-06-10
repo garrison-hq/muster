@@ -12,6 +12,8 @@ subtasks:
 - T021
 - T022
 - T023
+agent: "claude"
+shell_pid: "1149926"
 history:
 - timestamp: '2026-06-10T20:21:16Z'
   event: created
@@ -97,3 +99,7 @@ Use tmp-dir fixtures written inline by the test (no dependence on WP07/08 fixtur
 ## Risks
 
 - Relative-path resolution differs between manifest location and process cwd — all resolution anchors to the manifest's directory (T021 step 3); tests must run from a different cwd to prove it.
+
+## Activity Log
+
+- 2026-06-10T22:25:40Z – claude – shell_pid=1149926 – Started implementation via action command
