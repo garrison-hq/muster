@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-06-10T17:10:01.811955+00:00",
+  "friendly_name": "cts1 conformance harness",
+  "mission_id": "01KTS86BAC5H36TJX529ZKVT1J",
+  "mission_number": null,
+  "mission_slug": "cts1-conformance-harness-01KTS86B",
+  "mission_type": "software-dev",
+  "slug": "cts1-conformance-harness-01KTS86B",
+  "target_branch": "main"
+}
