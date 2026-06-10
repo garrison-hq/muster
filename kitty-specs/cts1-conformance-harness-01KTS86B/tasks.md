@@ -8,7 +8,7 @@
 
 | ID | Description | WP | Parallel |
 |----|-------------|----|----------|
-| T001 | Project scaffold: package.json (@garrison-hq/muster), tsconfig strict, vitest config | WP01 | | [D] |
+| T001 | Project scaffold: package.json (@garrison-hq/muster), tsconfig strict, vitest config | WP01 | | [D] | [D] |
 | T002 | Core types: SpecAdapter interface, Mode, MergeStrategy, Violation, ConformanceReport | WP01 | | [D] |
 | T003 | RFC 8785 canonical JSON serializer + test vectors | WP01 | [D] |
 | T004 | Parameterized Standard Merge engine + §8.1 unit tests | WP01 | [D] |
