@@ -25,9 +25,9 @@
 | T015 | Evaluation rule references §21 (@id + literal code-point match) | WP04 | | [D] |
 | T016 | Trigger evaluation: RPP-1 subset (ident, !, &&), first-match-wins | WP04 | | [D] |
 | T017 | Resolution/state/evaluation unit tests | WP04 | | [D] |
-| T018 | Static pipeline orchestrator (parse→validate→resolve→report) | WP05 | |
-| T019 | Rfc1Adapter assembly implementing SpecAdapter | WP05 | |
-| T020 | Pipeline tests incl. §25.1 report-shape conformance | WP05 | |
+| T018 | Static pipeline orchestrator (parse→validate→resolve→report) | WP05 | | [D] |
+| T019 | Rfc1Adapter assembly implementing SpecAdapter | WP05 | | [D] |
+| T020 | Pipeline tests incl. §25.1 report-shape conformance | WP05 | | [D] |
 | T021 | CTS manifest loader (F.1 + expect_effective_json extension) | WP06 | [P] |
 | T022 | CTS runner: per-case execution + canonical-JSON comparison (F.2) | WP06 | |
 | T023 | Runner unit tests with synthetic in-memory fixtures | WP06 | |
@@ -103,9 +103,9 @@
 **Goal**: The spec-agnostic check pipeline (parse→validate→resolve→§25.1 report) and the Rfc1Adapter that plugs the WP02–04 pieces into the SpecAdapter contract.
 **Priority**: P0 | **Dependencies**: WP02, WP03, WP04 | **Estimated prompt**: ~260 lines
 **Independent test**: pipeline emits a report validating against contracts/conformance-report.schema.json; core compiles with zero imports from src/adapters/.
-- [ ] T018 Static pipeline orchestrator (WP05)
-- [ ] T019 Rfc1Adapter assembly (WP05)
-- [ ] T020 Pipeline + report-shape tests (WP05)
+- [x] T018 Static pipeline orchestrator (WP05)
+- [x] T019 Rfc1Adapter assembly (WP05)
+- [x] T020 Pipeline + report-shape tests (WP05)
 **Prompt**: [tasks/WP05-pipeline-adapter-assembly.md](tasks/WP05-pipeline-adapter-assembly.md)
 
 ## Phase 3 — CTS Suite
