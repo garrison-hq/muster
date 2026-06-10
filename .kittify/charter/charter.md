@@ -41,7 +41,7 @@ template_set: software-dev-default
 ## Policy Summary
 
 - Intent: Ship the reference CTS-1 conformance harness for Soul.md RFC-1 in a ~2-day spec-driven build. Static conformance spine must be complete end-to-end (parse, validate, composition-resolve, report); behavioral conformance is a thin slice limited to three objectively-gradable axes. The fixture set is shaped as an upstream contribution to the unbuilt CTS-1 fixture repository.
-- Languages/Frameworks: TypeScript on Node 22 LTS, npm, single package. Minimal dependencies (yaml for AST-level parsing, Ajv for JSON Schema Draft 2020-12, commander for CLI, Vitest for tests). No model-provider SDKs - models are reached via plain fetch against OpenAI-compatible endpoints only.
+- Languages/Frameworks: TypeScript on Node 22 LTS, pnpm, single package. Minimal dependencies (yaml for AST-level parsing, Ajv for JSON Schema Draft 2020-12, commander for CLI, Vitest for tests). No model-provider SDKs - models are reached via plain fetch against OpenAI-compatible endpoints only.
 - Testing: Vitest is the test runner. The CTS fixture suite is the primary acceptance suite and must pass fully; merge/resolution core logic gets focused unit tests. Every conformance test traces to an RFC-1 section cited in its name or description. No minimum coverage gate.
 - Quality Gates: Before merge - strict TypeScript type-check (tsc) passes, full Vitest suite green including the CTS fixture suite, no implementation code lands before spec, plan, and tasks are locked through the spec-kitty checklist.
 - Review Policy: Solo developer driving an AI pair. Each work package is self-reviewed via spec-kitty review before acceptance; one approval (the project owner) before merge.

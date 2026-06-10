@@ -8,7 +8,7 @@ answers:
     conformance is a thin slice limited to three objectively-gradable axes.
     The fixture set is shaped as an upstream contribution to the unbuilt CTS-1
     fixture repository.
-  languages_frameworks: TypeScript on Node 22 LTS, npm, single package. Minimal
+  languages_frameworks: TypeScript on Node 22 LTS, pnpm, single package. Minimal
     dependencies (yaml for AST-level parsing, Ajv for JSON Schema Draft 2020-12,
     commander for CLI, Vitest for tests). No model-provider SDKs - models are
     reached via plain fetch against OpenAI-compatible endpoints only.
