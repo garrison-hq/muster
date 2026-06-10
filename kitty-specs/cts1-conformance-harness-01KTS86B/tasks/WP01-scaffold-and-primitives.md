@@ -132,3 +132,4 @@ spec-kitty agent action implement WP01 --agent <name>
 ## Activity Log
 
 - 2026-06-10T21:06:06Z – claude – shell_pid=870022 – Assigned agent via action command
+- 2026-06-10T21:10:45Z – claude – shell_pid=870022 – Ready for review: scaffold + canonical JSON (RFC 8785) + Standard Merge engine; pnpm build and 44 tests green
