@@ -13,6 +13,8 @@ subtasks:
 - T005
 - T006
 - T007
+agent: "claude"
+shell_pid: "898937"
 history:
 - timestamp: '2026-06-10T20:21:16Z'
   event: created
@@ -106,3 +108,7 @@ spec-kitty agent action implement WP02 --agent <name>
 ## Risks
 
 - `yaml` package API surface differences across versions: pin to the version installed in WP01's lockfile; the AST property names used here (`anchor`, `Alias`, `tag`) are stable in yaml@2.x.
+
+## Activity Log
+
+- 2026-06-10T21:21:14Z – claude – shell_pid=898937 – Started implementation via action command
