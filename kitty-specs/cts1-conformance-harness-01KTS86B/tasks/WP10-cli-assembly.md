@@ -20,7 +20,7 @@ subtasks:
 - T040
 - T041
 agent: "claude"
-shell_pid: "1506028"
+shell_pid: "1549674"
 history:
 - timestamp: '2026-06-10T20:21:16Z'
   event: created
@@ -114,3 +114,4 @@ Invoke the program in-process (export a `runCli(argv): Promise<number>` from ind
 
 - 2026-06-10T23:42:56Z – claude – shell_pid=1506028 – Started implementation via action command
 - 2026-06-10T23:55:02Z – claude – shell_pid=1506028 – Ready for review: muster CLI (check/resolve/cts run/behave run) per contracts/cli.md; 29 new in-process tests; full suite 519 green; note package.json build-script postbuild schema.json copy (DoD-required, ownership flagged)
+- 2026-06-10T23:55:42Z – claude – shell_pid=1549674 – Started review via action command
