@@ -19,6 +19,8 @@ subtasks:
 - T039
 - T040
 - T041
+agent: "claude"
+shell_pid: "1506028"
 history:
 - timestamp: '2026-06-10T20:21:16Z'
   event: created
@@ -107,3 +109,7 @@ Invoke the program in-process (export a `runCli(argv): Promise<number>` from ind
 ## Risks
 
 - Commander's default exit behavior (process.exit on parse errors) fights testability — use `exitOverride()` and map to code 2 in runCli.
+
+## Activity Log
+
+- 2026-06-10T23:42:56Z – claude – shell_pid=1506028 – Started implementation via action command
