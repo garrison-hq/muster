@@ -114,3 +114,4 @@ spec-kitty agent action implement WP02 --agent <name>
 - 2026-06-10T21:21:14Z – claude – shell_pid=898937 – Started implementation via action command
 - 2026-06-10T21:25:23Z – claude – shell_pid=898937 – Ready for review: §3.1.1 front-matter extraction + §4.2 Soul-YAML AST-walk enforcement (no .toJS() before walk); 26 new tests, all 96 tests green, tsc strict clean
 - 2026-06-10T21:25:58Z – claude – shell_pid=905281 – Started review via action command
+- 2026-06-10T21:28:11Z – claude – shell_pid=905281 – Review passed: gates re-run independently (build clean, 96/96 tests green); .toJS() unreachable before AST walk; merge-key detection via plain-scalar type; §3.1.1/§4.2 conformance verified against vendored spec; core/adapter import boundary intact
