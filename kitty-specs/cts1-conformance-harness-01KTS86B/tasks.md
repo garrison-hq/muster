@@ -8,10 +8,10 @@
 
 | ID | Description | WP | Parallel |
 |----|-------------|----|----------|
-| T001 | Project scaffold: package.json (@garrison-hq/muster), tsconfig strict, vitest config | WP01 | |
-| T002 | Core types: SpecAdapter interface, Mode, MergeStrategy, Violation, ConformanceReport | WP01 | |
-| T003 | RFC 8785 canonical JSON serializer + test vectors | WP01 | [P] |
-| T004 | Parameterized Standard Merge engine + §8.1 unit tests | WP01 | [P] |
+| T001 | Project scaffold: package.json (@garrison-hq/muster), tsconfig strict, vitest config | WP01 | | [D] |
+| T002 | Core types: SpecAdapter interface, Mode, MergeStrategy, Violation, ConformanceReport | WP01 | | [D] |
+| T003 | RFC 8785 canonical JSON serializer + test vectors | WP01 | [D] |
+| T004 | Parameterized Standard Merge engine + §8.1 unit tests | WP01 | [D] |
 | T005 | Front-matter extraction (§3.1.1) | WP02 | |
 | T006 | Soul-YAML forbidden-feature detection via AST (§4.2) | WP02 | |
 | T007 | Parse-layer unit tests (no-expansion guarantee, edge cases) | WP02 | |
@@ -60,10 +60,10 @@
 **Goal**: Buildable strict-TS package with the two pure cores everything depends on: RFC 8785 serialization and the Standard Merge engine.
 **Priority**: P0 | **Dependencies**: none | **Estimated prompt**: ~300 lines
 **Independent test**: `pnpm test` green; canonical-JSON output matches RFC 8785 Appendix B vectors byte-for-byte; merge engine reproduces every §8.1 example.
-- [ ] T001 Project scaffold (WP01)
-- [ ] T002 Core types: SpecAdapter, Violation, ConformanceReport (WP01)
-- [ ] T003 RFC 8785 canonical JSON + vectors (WP01)
-- [ ] T004 Standard Merge engine + §8.1 tests (WP01)
+- [x] T001 Project scaffold (WP01)
+- [x] T002 Core types: SpecAdapter, Violation, ConformanceReport (WP01)
+- [x] T003 RFC 8785 canonical JSON + vectors (WP01)
+- [x] T004 Standard Merge engine + §8.1 tests (WP01)
 **Prompt**: [tasks/WP01-scaffold-and-primitives.md](tasks/WP01-scaffold-and-primitives.md)
 
 ## Phase 2 — Static Spine (foundational)
