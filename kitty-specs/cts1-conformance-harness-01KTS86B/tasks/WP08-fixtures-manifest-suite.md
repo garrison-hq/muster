@@ -16,6 +16,8 @@ subtasks:
 - T029
 - T030
 - T031
+agent: "claude"
+shell_pid: "1320448"
 history:
 - timestamp: '2026-06-10T20:21:16Z'
   event: created
@@ -106,3 +108,7 @@ spec-kitty agent action implement WP08 --agent <name>
 ## Risks
 
 - This WP integrates three earlier WPs' understanding of the spec; budget review time for expected.json arbitration. The vendored spec text is the referee — never "fix" a fixture to match the implementation without a section citation justifying it.
+
+## Activity Log
+
+- 2026-06-10T23:02:01Z – claude – shell_pid=1320448 – Started implementation via action command
