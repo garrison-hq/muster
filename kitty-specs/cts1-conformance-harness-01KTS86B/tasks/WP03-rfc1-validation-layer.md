@@ -134,3 +134,4 @@ Cover every bullet above plus:
 - 2026-06-10T21:30:51Z – claude – shell_pid=921257 – Started implementation via action command
 - 2026-06-10T21:38:22Z – claude – shell_pid=921257 – Ready for review: Appendix E schema layer (Ajv 2020-12, oneOf branch filtering) + §25 keyspace, §4.3/§4.3.1 scalar+BCP-47, §9 profile rules; 38 tests, all 172 suite tests green
 - 2026-06-10T21:38:59Z – claude – shell_pid=951678 – Started review via action command
+- 2026-06-10T21:41:22Z – claude – shell_pid=951678 – Review passed: build+tests green in reviewer's own run (172/172); schema.json byte-faithful to Appendix E (independently re-extracted and diffed); §25 keyspace lists, §4.3/§4.3.1 scalar+BCP-47, §9 profile rules verified against vendored spec; memory canary and oneOf-filter tests present and passing; core->adapters law clean
