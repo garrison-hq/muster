@@ -16,7 +16,8 @@ subtasks:
 - T002
 - T003
 - T004
-shell_pid: '870022'
+shell_pid: "870022"
+agent: "claude"
 history:
 - timestamp: '2026-06-10T20:21:16Z'
   event: created
@@ -127,3 +128,7 @@ spec-kitty agent action implement WP01 --agent <name>
 ## Risks
 
 - JCS subtleties live in number formatting; we deliberately ride on `JSON.stringify` (R2). Do not introduce a custom number formatter.
+
+## Activity Log
+
+- 2026-06-10T21:06:06Z – claude – shell_pid=870022 – Assigned agent via action command
