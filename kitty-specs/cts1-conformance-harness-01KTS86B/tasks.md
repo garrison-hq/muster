@@ -12,9 +12,9 @@
 | T002 | Core types: SpecAdapter interface, Mode, MergeStrategy, Violation, ConformanceReport | WP01 | | [D] |
 | T003 | RFC 8785 canonical JSON serializer + test vectors | WP01 | [D] |
 | T004 | Parameterized Standard Merge engine + §8.1 unit tests | WP01 | [D] |
-| T005 | Front-matter extraction (§3.1.1) | WP02 | |
-| T006 | Soul-YAML forbidden-feature detection via AST (§4.2) | WP02 | |
-| T007 | Parse-layer unit tests (no-expansion guarantee, edge cases) | WP02 | |
+| T005 | Front-matter extraction (§3.1.1) | WP02 | | [D] |
+| T006 | Soul-YAML forbidden-feature detection via AST (§4.2) | WP02 | | [D] |
+| T007 | Parse-layer unit tests (no-expansion guarantee, edge cases) | WP02 | | [D] |
 | T008 | Vendor Appendix E schema + Ajv 2020-12 wiring | WP03 | [P] |
 | T009 | §25 keyspace rules by mode (unknown vs known-optional keys) | WP03 | |
 | T010 | Scalar typing: percent/float01/enums/BCP-47 (§4.3) | WP03 | |
@@ -72,9 +72,9 @@
 **Goal**: §3.1.1 front-matter extraction and §4.2 forbidden-feature detection that never applies forbidden semantics.
 **Priority**: P0 | **Dependencies**: WP01 | **Estimated prompt**: ~280 lines
 **Independent test**: anchored/aliased/merge-key/tagged documents are refused in both modes with path+message+section; alias content is never expanded into parsed data.
-- [ ] T005 Front-matter extraction §3.1.1 (WP02)
-- [ ] T006 Soul-YAML AST detection §4.2 (WP02)
-- [ ] T007 Parse-layer unit tests (WP02)
+- [x] T005 Front-matter extraction §3.1.1 (WP02)
+- [x] T006 Soul-YAML AST detection §4.2 (WP02)
+- [x] T007 Parse-layer unit tests (WP02)
 **Prompt**: [tasks/WP02-rfc1-parse-layer.md](tasks/WP02-rfc1-parse-layer.md)
 
 ### WP03 — RFC-1 Validation Layer
