@@ -22,7 +22,7 @@ subtasks:
 - T035
 - T036
 agent: "claude"
-shell_pid: "1422983"
+shell_pid: "1483089"
 history:
 - timestamp: '2026-06-10T20:21:16Z'
   event: created
@@ -139,3 +139,4 @@ export interface ChatClient {
 
 - 2026-06-10T23:22:09Z – claude – shell_pid=1422983 – Started implementation via action command
 - 2026-06-10T23:35:48Z – claude – shell_pid=1422983 – Ready for review: behavioral core complete — runner (TEC-1 timing per §20.3.4/§20.3.5), fetch-only client (C-006/C-009), k-of-n grading (FR-022), three locked axes, R9 thresholds linked into rfc1Adapter; 461 tests green offline
+- 2026-06-10T23:36:27Z – claude – shell_pid=1483089 – Started review via action command
