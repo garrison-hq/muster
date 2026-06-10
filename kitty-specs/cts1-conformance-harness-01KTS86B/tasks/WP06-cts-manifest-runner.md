@@ -105,3 +105,4 @@ Use tmp-dir fixtures written inline by the test (no dependence on WP07/08 fixtur
 - 2026-06-10T22:25:40Z – claude – shell_pid=1149926 – Started implementation via action command
 - 2026-06-10T22:31:17Z – claude – shell_pid=1149926 – Ready for review: Appendix F.1 manifest loader (strict, manifest-dir path anchoring) + F.2 byte-for-byte canonical-JSON runner with symmetric discrimination; 16 mock-adapter tests, full suite 346 green
 - 2026-06-10T22:31:55Z – claude – shell_pid=1178042 – Started review via action command
+- 2026-06-10T22:33:50Z – claude – shell_pid=1178042 – Review passed: ran build+test myself (346 green, type-clean); F.1 field set + R8 extension exact; F.2 raw-byte canonical-JSON comparison verified non-re-canonicalizing with offset+context diagnostics; symmetric discrimination tested; manifest-dir path anchoring proven from foreign cwd; core imports no adapters
