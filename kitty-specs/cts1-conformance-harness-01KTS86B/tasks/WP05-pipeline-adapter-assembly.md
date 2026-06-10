@@ -116,3 +116,4 @@ spec-kitty agent action implement WP05 --agent <name>
 ## Activity Log
 
 - 2026-06-10T22:10:02Z – claude – shell_pid=1097442 – Started implementation via action command
+- 2026-06-10T22:18:13Z – claude – shell_pid=1097442 – Ready for review: checkSoul pipeline (core-only imports, makeFsLoadRef isolated fs touchpoint, DetailedSpecAdapter seam) + rfc1Adapter assembly with WP09 thresholds dynamic-linkage seam; 314 tests green incl. §25.1 contract-schema validation and C-004 grep gate
