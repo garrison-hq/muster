@@ -12,7 +12,7 @@ subtasks:
 - T025
 - T026
 agent: "claude"
-shell_pid: "1210846"
+shell_pid: "1262338"
 history:
 - timestamp: '2026-06-10T20:21:16Z'
   event: created
@@ -99,3 +99,4 @@ spec-kitty agent action implement WP07 --agent <name>
 
 - 2026-06-10T22:37:29Z – claude – shell_pid=1210846 – Started implementation via action command
 - 2026-06-10T22:50:14Z – claude – shell_pid=1210846 – Ready for review: 13 fixture soul documents + 9 canonical expected.json files across minimal/, merge/, composition/; all verified byte-for-byte against the live pipeline; build and 346 tests green
+- 2026-06-10T22:50:59Z – claude – shell_pid=1262338 – Started review via action command
