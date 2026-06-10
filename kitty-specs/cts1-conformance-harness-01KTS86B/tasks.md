@@ -20,11 +20,11 @@
 | T010 | Scalar typing: percent/float01/enums/BCP-47 (§4.3) | WP03 | | [D] |
 | T011 | Profile rules: default required, overrides ⊆ profiles (§9) | WP03 | | [D] |
 | T012 | Validation-layer unit tests | WP03 | | [D] |
-| T013 | Composition resolution §7.5/Appendix G (loadRef, stripping, ordering) | WP04 | |
-| T014 | State semantics §20 (base fallback, trigger validation, overlay) | WP04 | |
-| T015 | Evaluation rule references §21 (@id + literal code-point match) | WP04 | |
-| T016 | Trigger evaluation: RPP-1 subset (ident, !, &&), first-match-wins | WP04 | |
-| T017 | Resolution/state/evaluation unit tests | WP04 | |
+| T013 | Composition resolution §7.5/Appendix G (loadRef, stripping, ordering) | WP04 | | [D] |
+| T014 | State semantics §20 (base fallback, trigger validation, overlay) | WP04 | | [D] |
+| T015 | Evaluation rule references §21 (@id + literal code-point match) | WP04 | | [D] |
+| T016 | Trigger evaluation: RPP-1 subset (ident, !, &&), first-match-wins | WP04 | | [D] |
+| T017 | Resolution/state/evaluation unit tests | WP04 | | [D] |
 | T018 | Static pipeline orchestrator (parse→validate→resolve→report) | WP05 | |
 | T019 | Rfc1Adapter assembly implementing SpecAdapter | WP05 | |
 | T020 | Pipeline tests incl. §25.1 report-shape conformance | WP05 | |
@@ -92,11 +92,11 @@
 **Goal**: Deterministic §7.5/Appendix G resolution with root-owned stripping and cycle detection; §20 state semantics; §21 rule references; RPP-1-subset trigger evaluation.
 **Priority**: P0 | **Dependencies**: WP01, WP02, WP03 | **Estimated prompt**: ~450 lines
 **Independent test**: composition chain produces byte-stable canonical JSON matching hand-computed expectation; cycle fails strict; omitted state.base falls back to lexicographically smallest key by UTF-8 bytes.
-- [ ] T013 Composition resolution §7.5/G (WP04)
-- [ ] T014 State semantics §20 (WP04)
-- [ ] T015 Evaluation rule references §21 (WP04)
-- [ ] T016 Trigger evaluation RPP-1 subset (WP04)
-- [ ] T017 Resolution unit tests (WP04)
+- [x] T013 Composition resolution §7.5/G (WP04)
+- [x] T014 State semantics §20 (WP04)
+- [x] T015 Evaluation rule references §21 (WP04)
+- [x] T016 Trigger evaluation RPP-1 subset (WP04)
+- [x] T017 Resolution unit tests (WP04)
 **Prompt**: [tasks/WP04-composition-state-resolution.md](tasks/WP04-composition-state-resolution.md)
 
 ### WP05 — Pipeline & Adapter Assembly
