@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://garrison-hq.dev/muster/conformance-report.schema.json",
+  "title": "muster conformance report (Soul.md RFC-1 §25.1 shape)",
+  "type": "object",
+  "required": ["spec", "soul_id", "mode", "profile", "state", "ok", "errors", "warnings"],
+  "properties": {
+    "spec": { "type": "string", "description": "Spec version, e.g. 1.0.0-rc1" },
+    "soul_id": { "type": "string" },
+    "mode": { "type": "string", "enum": ["strict", "permissive"] },
+    "profile": { "type": "string" },
+    "state": { "type": ["string", "null"] },
+    "ok": { "type": "boolean" },
+    "errors": { "$ref": "#/$defs/violations" },
+    "warnings": { "$ref": "#/$defs/violations" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "violations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "message"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "message": { "type": "string", "minLength": 1 },
+          "section": { "type": "string", "description": "muster extension: RFC-1 citation, e.g. §8.1" }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}
