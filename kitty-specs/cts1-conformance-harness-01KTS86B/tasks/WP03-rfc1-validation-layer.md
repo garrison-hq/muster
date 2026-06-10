@@ -18,7 +18,7 @@ subtasks:
 - T011
 - T012
 agent: "claude"
-shell_pid: "921257"
+shell_pid: "951678"
 history:
 - timestamp: '2026-06-10T20:21:16Z'
   event: created
@@ -133,3 +133,4 @@ Cover every bullet above plus:
 
 - 2026-06-10T21:30:51Z – claude – shell_pid=921257 – Started implementation via action command
 - 2026-06-10T21:38:22Z – claude – shell_pid=921257 – Ready for review: Appendix E schema layer (Ajv 2020-12, oneOf branch filtering) + §25 keyspace, §4.3/§4.3.1 scalar+BCP-47, §9 profile rules; 38 tests, all 172 suite tests green
+- 2026-06-10T21:38:59Z – claude – shell_pid=951678 – Started review via action command
