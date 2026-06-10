@@ -44,11 +44,11 @@
 | T034 | Behavioral runner: turn loop, fact injection, k-of-n | WP09 | | [D] |
 | T035 | Graders (verbosity/refusal/state-shift) + thresholds.ts (R9) | WP09 | | [D] |
 | T036 | Behavioral unit tests against a mocked client | WP09 | | [D] |
-| T037 | CLI program + `muster check` | WP10 | |
-| T038 | `muster resolve` + output formats incl. canonical-json | WP10 | |
-| T039 | `muster cts run` (+ --filter) | WP10 | |
-| T040 | `muster behave run` (+ endpoint flags) | WP10 | |
-| T041 | CLI tests: exit codes, report schema conformance | WP10 | |
+| T037 | CLI program + `muster check` | WP10 | | [D] |
+| T038 | `muster resolve` + output formats incl. canonical-json | WP10 | | [D] |
+| T039 | `muster cts run` (+ --filter) | WP10 | | [D] |
+| T040 | `muster behave run` (+ endpoint flags) | WP10 | | [D] |
+| T041 | CLI tests: exit codes, report schema conformance | WP10 | | [D] |
 | T042 | Voice-frontdesk Soul.md (cold_strict state, user.rude trigger) | WP11 | [P] |
 | T043 | Behavioral manifest: 3 axes + discrimination case | WP11 | |
 | T044 | README: quickstart, endpoint setup (Ollama/NIM), fixture contribution note | WP11 | |
@@ -158,11 +158,11 @@
 **Goal**: The `muster` binary: check / resolve / cts run / behave run, uniform exit codes, contracts/cli.md exactly.
 **Priority**: P1 | **Dependencies**: WP05, WP06, WP09 | **Estimated prompt**: ~380 lines
 **Independent test**: exit code 0/1/2 matrix; `resolve --output-format canonical-json` byte-stable across runs; `check --json` validates against report schema.
-- [ ] T037 CLI program + check (WP10)
-- [ ] T038 resolve + output formats (WP10)
-- [ ] T039 cts run (WP10)
-- [ ] T040 behave run (WP10)
-- [ ] T041 CLI tests (WP10)
+- [x] T037 CLI program + check (WP10)
+- [x] T038 resolve + output formats (WP10)
+- [x] T039 cts run (WP10)
+- [x] T040 behave run (WP10)
+- [x] T041 CLI tests (WP10)
 **Prompt**: [tasks/WP10-cli-assembly.md](tasks/WP10-cli-assembly.md)
 
 ### WP11 — Voice-Frontdesk Soul, Behavioral Manifest & Acceptance
