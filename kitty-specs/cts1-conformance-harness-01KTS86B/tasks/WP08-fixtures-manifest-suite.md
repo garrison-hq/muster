@@ -112,3 +112,4 @@ spec-kitty agent action implement WP08 --agent <name>
 ## Activity Log
 
 - 2026-06-10T23:02:01Z – claude – shell_pid=1320448 – Started implementation via action command
+- 2026-06-10T23:13:38Z – claude – shell_pid=1320448 – Ready for review: 11 new fixtures (profiles/state/evaluation + supplementary keyspace unknown-key), cts/manifest.yaml with 28 cases and nine-category header map, tests/cts/suite.test.ts gate (per-case it.each, determinism + wall-clock guards); build green, 383 tests passing, no WP07 expectation drift
