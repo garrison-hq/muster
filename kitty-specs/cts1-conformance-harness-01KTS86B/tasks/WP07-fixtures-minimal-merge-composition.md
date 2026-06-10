@@ -11,6 +11,8 @@ subtasks:
 - T024
 - T025
 - T026
+agent: "claude"
+shell_pid: "1210846"
 history:
 - timestamp: '2026-06-10T20:21:16Z'
   event: created
@@ -92,3 +94,7 @@ spec-kitty agent action implement WP07 --agent <name>
 ## Risks
 
 - The exact effective-output shape for materialized fields (`composition`, `extensions` defaults) depends on WP04's Appendix G reading. If WP08's suite shows systematic drift, fix EITHER fixtures or resolver per the spec text — the vendored spec §7.5/G.6 arbitrates, never convenience.
+
+## Activity Log
+
+- 2026-06-10T22:37:29Z – claude – shell_pid=1210846 – Started implementation via action command
