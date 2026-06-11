@@ -19,7 +19,7 @@ subtasks:
 - T003
 - T004
 - T005
-shell_pid: "1833431"
+shell_pid: "1912099"
 agent: "claude"
 history:
 - timestamp: '2026-06-11T02:00:00Z'
@@ -116,3 +116,4 @@ spec-kitty agent action implement WP01 --agent <name>
 
 - 2026-06-11T01:04:30Z – claude – shell_pid=1833431 – Assigned agent via action command
 - 2026-06-11T01:15:35Z – claude – shell_pid=1833431 – Ready for review: §7.2 URI rejection + opt-in --restrict-refs containment + referenced-doc sanitization; 555 tests green, CTS 28/28, NFR-001 byte-identity guarded
+- 2026-06-11T01:16:22Z – claude – shell_pid=1912099 – Started review via action command
