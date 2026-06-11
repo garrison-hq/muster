@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "mission_slug": "mission-review-remediation-01KTT2XH",
+  "mission_id": "01KTT2XH5GG4W74GKARXWX4901",
+  "mission_branch": "kitty/mission-mission-review-remediation-01KTT2XH",
+  "target_branch": "main",
+  "lanes": [
+    {
+      "lane_id": "lane-a",
+      "wp_ids": [
+        "WP01",
+        "WP03"
+      ],
+      "write_scope": [
+        "README.md",
+        "src/cli/index.ts",
+        "src/core/cts/runner.ts",
+        "src/core/pipeline.ts",
+        "tests/unit/cli.test.ts",
+        "tests/unit/pipeline.test.ts"
+      ],
+      "predicted_surfaces": [
+        "api"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    },
+    {
+      "lane_id": "lane-b",
+      "wp_ids": [
+        "WP02"
+      ],
+      "write_scope": [
+        "tests/unit/invariants.test.ts"
+      ],
+      "predicted_surfaces": [
+        "api",
+        "artifact-rendering",
+        "tracker-integration"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    }
+  ],
+  "computed_at": "2026-06-11T01:03:07.665639+00:00",
+  "computed_from": "dependency_graph+ownership",
+  "planning_artifact_wps": [],
+  "collapse_report": {
+    "events": [
+      {
+        "wp_a": "WP03",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP03 depends on WP01"
+      }
+    ],
+    "total_merges": 1,
+    "independent_wps_collapsed": 0,
+    "by_rule": {
+      "dependency": 1
+    }
+  }
+}
