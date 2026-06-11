@@ -16,6 +16,8 @@ subtasks:
 - T043
 - T044
 - T045
+agent: "claude"
+shell_pid: "1577219"
 history:
 - timestamp: '2026-06-10T20:21:16Z'
   event: created
@@ -111,3 +113,7 @@ spec-kitty agent action implement WP11 --agent <name>
 
 - 7B-model adherence on the state-shift axis is genuinely uncertain — that is the experiment. k-of-3 + session-duration trigger gives it a fair shot; an honest FAIL with analysis satisfies SC-006's spirit (the harness discriminates) and the brief's intent.
 - NIM model availability varies by account; T045 names the model actually used in the results README rather than hardcoding one here.
+
+## Activity Log
+
+- 2026-06-11T00:04:52Z – claude – shell_pid=1577219 – Started implementation via action command
