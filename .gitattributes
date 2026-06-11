@@ -1,1 +1,25 @@
+# spec-kitty event log uses a semantic merge driver (set up by the CLI).
 kitty-specs/**/status.events.jsonl merge=spec-kitty-event-log
+
+# Normalise line endings on checkout. Source is LF-only; enforce it so
+# Windows contributors don't silently rewrite files to CRLF.
+* text=auto eol=lf
+
+*.ts text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Canonical-JSON expectation fixtures are byte-exact: never let any tool
+# touch their bytes.
+cts/**/expected.json -text
+
+# Binary assets (none today; future-proofing).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary

@@ -1,0 +1,26 @@
+muster — reference CTS-1 conformance harness for Soul.md RFC-1
+Copyright 2026 Jeroen Nouws and muster contributors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+------------------------------------------------------------------------
+Third-party material
+------------------------------------------------------------------------
+
+This repository vendors a copy of the Soul.md RFC-1 specification text at
+`.kittify/reference/soul-spec.md` for use as the single normative reference
+during development and testing.
+
+  Soul.md Standard (RFC-1), spec version 1.0.0-rc1
+  Upstream: https://github.com/rokoss21/soul.md
+  Editor:   Emil Rokossovskiy
+
+The vendored specification is the property of its upstream author(s) and is
+included here under their terms; it is NOT covered by this project's Apache-2.0
+license. muster claims no ownership of the specification text. If you
+redistribute this repository, retain this attribution. Refer to the upstream
+repository for the specification's own license and canonical version.
+
+The fixture corpus under `cts/` and the example soul under `souls/` are original
+works authored for this project and are licensed under Apache-2.0 with the rest
+of the repository.

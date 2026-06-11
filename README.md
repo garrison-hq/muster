@@ -1,5 +1,11 @@
 # muster
 
+[![CI](https://github.com/garrison-hq/muster/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/garrison-hq/muster/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
+[![Node ≥ 22](https://img.shields.io/badge/node-%E2%89%A522-339933.svg)](https://nodejs.org/)
+[![Soul.md RFC-1](https://img.shields.io/badge/Soul.md-RFC--1%20(1.0.0--rc1)-8a2be2.svg)](https://github.com/rokoss21/soul.md)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
+
 **muster** (`@garrison-hq/muster`) is a reference **CTS-1 conformance harness**
 for [Soul.md RFC-1](https://github.com/rokoss21/soul.md) (`1.0.0-rc1`) — the
 portable persona-definition format. It validates Soul documents statically
@@ -196,3 +202,31 @@ mapping. The thresholds themselves are locked: overrides exist to express
 deliberate test design (including the intentionally-impossible
 `xfail_discrimination_overly_verbose` case), never to launder a failing
 result into a pass.
+
+## How it was built
+
+muster was built with a spec-driven workflow; the complete trail —
+specification, plan, work-package tasks, acceptance matrices, and a post-merge
+mission review — is preserved under [`kitty-specs/`](./kitty-specs). It doubles
+as a worked example of the methodology. The normative Soul.md RFC-1 text is
+vendored at `.kittify/reference/soul-spec.md` (see [`NOTICE`](./NOTICE) for its
+attribution; it remains the property of its upstream author).
+
+## Contributing
+
+Issues and PRs are welcome. The one rule that matters most: **every conformance
+behavior traces to a section of the vendored spec**, cited in the code and the
+test name. See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the architecture
+invariants (spec-agnostic core, determinism, no baked-in providers, minimal
+dependencies) and the PR checklist. By participating you agree to the
+[Code of Conduct](./CODE_OF_CONDUCT.md).
+
+Security-sensitive reports go through the private channel in
+[`SECURITY.md`](./SECURITY.md), not public issues — the reference-resolution and
+credential-handling trust boundaries are documented there.
+
+## License
+
+[Apache-2.0](./LICENSE) © 2026 Jeroen Nouws and muster contributors. The
+vendored Soul.md specification text is excluded from this license and remains
+the property of its upstream author(s); see [`NOTICE`](./NOTICE).

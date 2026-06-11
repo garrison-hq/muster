@@ -1,19 +1,58 @@
 {
   "name": "@garrison-hq/muster",
   "version": "0.1.0",
-  "description": "Reference CTS-1 conformance harness for Soul.md RFC-1",
+  "description": "Reference CTS-1 conformance harness for Soul.md RFC-1 — static validation, deterministic composition resolution, and behavioral conformance grading for the Soul.md persona format.",
   "type": "module",
-  "license": "MIT",
+  "license": "Apache-2.0",
+  "author": "Jeroen Nouws",
+  "homepage": "https://github.com/garrison-hq/muster#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/garrison-hq/muster.git"
+  },
+  "bugs": {
+    "url": "https://github.com/garrison-hq/muster/issues"
+  },
+  "keywords": [
+    "soul.md",
+    "soulmd",
+    "rfc-1",
+    "cts-1",
+    "conformance",
+    "conformance-testing",
+    "persona",
+    "ai-agents",
+    "json-schema",
+    "canonical-json",
+    "rfc8785",
+    "cli"
+  ],
   "bin": {
     "muster": "dist/cli/index.js"
   },
+  "files": [
+    "dist",
+    "src",
+    "cts",
+    "souls",
+    "behave/voice-frontdesk.yaml",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
   "engines": {
     "node": ">=22"
+  },
+  "packageManager": "pnpm@10.27.0",
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc && node -e \"require('node:fs').copyFileSync('src/adapters/rfc1/schema.json','dist/adapters/rfc1/schema.json')\"",
     "test": "vitest run",
-    "dev": "tsx src/cli/index.ts"
+    "typecheck": "tsc --noEmit",
+    "dev": "tsx src/cli/index.ts",
+    "prepublishOnly": "pnpm build && pnpm test"
   },
   "dependencies": {
     "ajv": "^8.17.1",
