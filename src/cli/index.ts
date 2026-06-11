@@ -24,7 +24,7 @@
 
 import { readFileSync, realpathSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { isAbsolute, resolve as resolvePath } from "node:path";
+import { dirname, isAbsolute, resolve as resolvePath } from "node:path";
 import { pathToFileURL } from "node:url";
 import { Command, CommanderError, InvalidArgumentError, Option } from "commander";
 import { stringify as stringifyYaml } from "yaml";
@@ -35,7 +35,7 @@ import {
   isManifestError,
   loadManifest,
 } from "../core/cts/manifest.js";
-import { runCts } from "../core/cts/runner.js";
+import { runCts, type RunCtsOptions } from "../core/cts/runner.js";
 import {
   isBehavioralManifestError,
   loadBehavioralManifest,
@@ -97,15 +97,44 @@ function violationLines(violations: readonly Violation[]): string {
   return violations.map((v) => `  ${v.path}: ${v.message}`).join("\n");
 }
 
+/**
+ * `--restrict-refs [dir]` as Commander delivers it: `undefined` (absent),
+ * `true` (bare flag), or a string value. `false` never occurs for an
+ * optional-value flag but the type keeps optsWithGlobals() honest.
+ */
+type RestrictRefsFlag = string | boolean | undefined;
+
+/** Normalize the Commander flag to the pipeline/runner option shape. */
+function restrictRefsOpt(flag: RestrictRefsFlag): { restrictRefs?: string | true } {
+  return flag === undefined || flag === false
+    ? {}
+    : { restrictRefs: flag === true ? true : flag };
+}
+
+/** One-line-per-mode help text for `--restrict-refs` (FR-003). */
+const RESTRICT_REFS_HELP =
+  "confine §7.2 reference loading (omitted: unrestricted, shipped behavior; " +
+  "bare: restrict to the root soul document's directory; " +
+  "with <dir>: restrict to that directory, resolved from cwd)";
+
 /** Run the static pipeline on one soul file (FR-012, FR-024). */
 async function checkSoulFile(
   soulPath: string,
-  opts: { profile?: string; state?: string; mode: Mode }
+  opts: { profile?: string; state?: string; mode: Mode; restrictRefs?: string | true }
 ): Promise<CheckResult> {
   const abs = toAbsolute(soulPath);
   const raw = await readFileOrThrow(abs, "soul document");
-  const loadRef = makeFsLoadRef((refRaw, refPath) =>
-    rfc1Adapter.parse(refRaw, refPath, opts.mode)
+  // --restrict-refs mapping (FR-003): absent → unrestricted (NFR-001);
+  // bare → the root soul's directory; value → that directory from cwd.
+  const restrictTo =
+    opts.restrictRefs === undefined
+      ? undefined
+      : opts.restrictRefs === true
+        ? dirname(abs)
+        : resolvePath(opts.restrictRefs);
+  const loadRef = makeFsLoadRef(
+    (refRaw, refPath) => rfc1Adapter.parse(refRaw, refPath, opts.mode),
+    restrictTo === undefined ? undefined : { restrictTo }
   );
   const checkOpts: { profile?: string; state?: string; mode: Mode } = {
     mode: opts.mode,
@@ -152,13 +181,14 @@ function parseFiniteNumber(value: string): number {
 
 async function doCheck(
   soul: string,
-  opts: GlobalOpts & { profile?: string; state?: string },
+  opts: GlobalOpts & { profile?: string; state?: string; restrictRefs?: RestrictRefsFlag },
   io: Io
 ): Promise<number> {
   const { report } = await checkSoulFile(soul, {
     mode: opts.mode,
     ...(opts.profile !== undefined && { profile: opts.profile }),
     ...(opts.state !== undefined && { state: opts.state }),
+    ...restrictRefsOpt(opts.restrictRefs),
   });
   // The §25.1 report IS the requested artifact — stdout in both renderings.
   io.outLine(
@@ -171,13 +201,19 @@ async function doCheck(
 
 async function doResolve(
   soul: string,
-  opts: GlobalOpts & { profile?: string; state?: string; outputFormat: string },
+  opts: GlobalOpts & {
+    profile?: string;
+    state?: string;
+    outputFormat: string;
+    restrictRefs?: RestrictRefsFlag;
+  },
   io: Io
 ): Promise<number> {
   const { report, effective } = await checkSoulFile(soul, {
     mode: opts.mode,
     ...(opts.profile !== undefined && { profile: opts.profile }),
     ...(opts.state !== undefined && { state: opts.state }),
+    ...restrictRefsOpt(opts.restrictRefs),
   });
   if (!report.ok || effective === null) {
     // Contract: resolution errors → report on stderr, exit 1.
@@ -206,7 +242,7 @@ async function doResolve(
 
 async function doCtsRun(
   manifest: string,
-  opts: GlobalOpts & { filter?: string },
+  opts: GlobalOpts & { filter?: string; restrictRefs?: RestrictRefsFlag },
   io: Io
 ): Promise<number> {
   const loaded = await loadManifest(toAbsolute(manifest));
@@ -215,10 +251,16 @@ async function doCtsRun(
       `CTS manifest failed Appendix F.1 validation:\n${violationLines(loaded)}`
     );
   }
-  const runOpts =
-    opts.filter !== undefined
-      ? { filter: (id: string) => globToRegExp(opts.filter as string).test(id) }
-      : undefined;
+  const runOpts: RunCtsOptions = {};
+  if (opts.filter !== undefined) {
+    runOpts.filter = (id: string) => globToRegExp(opts.filter as string).test(id);
+  }
+  // --restrict-refs (FR-003): bare → each case's root soul directory (the
+  // runner resolves it per case); value → one fixed directory from cwd.
+  if (opts.restrictRefs !== undefined && opts.restrictRefs !== false) {
+    runOpts.restrictRefs =
+      opts.restrictRefs === true ? true : resolvePath(opts.restrictRefs);
+  }
   const results = await runCts(rfc1Adapter, loaded, runOpts);
   io.outLine(
     opts.json === true ? JSON.stringify(results, null, 2) : formatCtsHuman(results)
@@ -233,6 +275,7 @@ interface BehaveOpts extends GlobalOpts {
   model?: string;
   temperature?: number;
   runs?: number;
+  restrictRefs?: RestrictRefsFlag;
 }
 
 /**
@@ -283,10 +326,12 @@ async function doBehaveRun(
   const verdicts: CaseVerdict[] = [];
   for (const kase of loaded.cases) {
     // Static gate first: never grade against a non-conforming persona.
+    // --restrict-refs bare maps to each case's soul directory (FR-003).
     const check = await checkSoulFile(kase.soul, {
       mode: opts.mode,
       ...(kase.profile !== undefined && { profile: kase.profile }),
       ...(kase.state !== undefined && { state: kase.state }),
+      ...restrictRefsOpt(opts.restrictRefs),
     });
     if (!check.report.ok || check.effective === null) {
       io.errLine(`case "${kase.id}": soul "${kase.soul}" is not conforming — static report:`);
@@ -360,6 +405,7 @@ function buildProgram(
     .argument("<soul>", "path to the Soul.md document")
     .option("--profile <p>", "profile to apply (default: default)")
     .option("--state <s>", "runtime-requested state (§20.1)")
+    .option("--restrict-refs [dir]", RESTRICT_REFS_HELP)
     .action(async (soul: string, _local, cmd: Command) => {
       setExit(await doCheck(soul, cmd.optsWithGlobals(), io));
     });
@@ -380,6 +426,7 @@ function buildProgram(
         .choices(["canonical-json", "json", "yaml"])
         .default("canonical-json")
     )
+    .option("--restrict-refs [dir]", RESTRICT_REFS_HELP)
     .action(async (soul: string, _local, cmd: Command) => {
       setExit(await doResolve(soul, cmd.optsWithGlobals(), io));
     });
@@ -392,6 +439,12 @@ function buildProgram(
     .description("Run the fixture suite described by a CTS manifest (Appendix F.1).")
     .argument("<manifest>", "path to cts/manifest.yaml")
     .option("--filter <glob>", "run only case ids matching the glob (* wildcard)")
+    .option(
+      "--restrict-refs [dir]",
+      "confine §7.2 reference loading (omitted: unrestricted, shipped behavior; " +
+        "bare: restrict each case to its root soul document's directory; " +
+        "with <dir>: restrict every case to that directory, resolved from cwd)"
+    )
     .action(async (manifest: string, _local, cmd: Command) => {
       setExit(await doCtsRun(manifest, cmd.optsWithGlobals(), io));
     });
@@ -414,6 +467,13 @@ function buildProgram(
       parseFiniteNumber
     )
     .option("--runs <n>", "override runs-per-case (n in k-of-n)", parsePositiveInt)
+    .option(
+      "--restrict-refs [dir]",
+      "confine §7.2 reference loading during the static gate (omitted: " +
+        "unrestricted, shipped behavior; bare: restrict each case to its soul " +
+        "document's directory; with <dir>: restrict every case to that " +
+        "directory, resolved from cwd)"
+    )
     .addHelpText(
       "after",
       "\nAPI key: read from the MUSTER_API_KEY environment variable " +

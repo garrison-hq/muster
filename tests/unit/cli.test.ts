@@ -7,7 +7,7 @@
  * observable directly. Offline by construction (NFR-003): mocked clients only.
  */
 
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -136,6 +136,79 @@ await writeFile(
     "    axes:",
     `      - axis: "verbosity"`,
     `        turns: "all"`,
+    "",
+  ].join("\n"),
+  "utf8"
+);
+
+// ── --restrict-refs fixtures (WP01: FR-001..FR-003, RFC-1 §7.2) ─────────────
+//
+// Layout: restrict/nested/Soul.md extends "../shared.md" — a reference that
+// escapes the root soul's own directory but stays inside restrict/.
+
+/** A minimal valid soul document; `extendsList` populates composition.extends. */
+function fixtureSoul(id: string, extendsList: string[]): string {
+  return [
+    "---",
+    'soul_spec: "1.0.0-rc1"',
+    `id: ${JSON.stringify(id)}`,
+    'name: "WP01 Restrict Fixture"',
+    'locale: "en"',
+    "composition:",
+    `  extends: [${extendsList.map((entry) => JSON.stringify(entry)).join(", ")}]`,
+    "  mixins: []",
+    "  merge_policy: standard",
+    'profiles: ["default"]',
+    "profile_overrides: {}",
+    "values:",
+    '  priorities: ["accuracy", "clarity", "safety", "speed"]',
+    "voice:",
+    "  formality: 60",
+    "  warmth: 30",
+    "  verbosity: 50",
+    "  jargon: 40",
+    "  formatting: minimal",
+    "interaction:",
+    "  clarifying_questions: when_ambiguous",
+    "  uncertainty: explicit",
+    "  disagreement: neutral",
+    "  confirmations: implicit",
+    "safety:",
+    "  refusal_style: brief",
+    "  privacy: strict",
+    "  speculation: mark",
+    "extensions: {}",
+    "---",
+    "",
+    "Body prose.",
+    "",
+  ].join("\n");
+}
+
+const restrictRoot = join(tempDir, "restrict");
+const escapingSoul = join(restrictRoot, "nested", "Soul.md");
+const uriSoul = join(restrictRoot, "uri.md");
+await mkdir(join(restrictRoot, "nested"), { recursive: true });
+await writeFile(escapingSoul, fixtureSoul("org.example.wp01.escaping", ["../shared.md"]));
+await writeFile(
+  join(restrictRoot, "shared.md"),
+  fixtureSoul("org.example.wp01.shared", [])
+);
+await writeFile(
+  uriSoul,
+  fixtureSoul("org.example.wp01.uri", ["https://example.com/evil.md"])
+);
+
+// CTS manifest over the escaping soul: passes unrestricted, fails under
+// bare --restrict-refs (each case confined to its root soul's directory).
+const restrictCtsManifest = join(tempDir, "restrict-cts.yaml");
+await writeFile(
+  restrictCtsManifest,
+  [
+    `- id: "escaping_ref_case"`,
+    `  root: ${JSON.stringify(escapingSoul)}`,
+    `  mode: "strict"`,
+    `  expect_ok: true`,
     "",
   ].join("\n"),
   "utf8"
@@ -381,6 +454,93 @@ describe("muster behave run (RFC-1 §20/§21 behavioral surface; FR-016..FR-023)
       }),
     });
     expect(code).toBe(2);
+  });
+});
+
+describe("--restrict-refs reference hardening (WP01: FR-001..FR-003; RFC-1 §7.2)", () => {
+  it("FR-003 §7.2 absent: escaping reference loads unrestricted (shipped behavior) → exit 0", async () => {
+    const { code, stdout } = await run(["check", escapingSoul]);
+    expect(code).toBe(0);
+    expect(stdout.startsWith("OK")).toBe(true);
+  });
+
+  it("FR-003 §7.2 bare: confined to the root soul's directory → exit 1 with the escape violation in the §25.1 report", async () => {
+    const { code, stdout } = await run(["check", escapingSoul, "--json", "--restrict-refs"]);
+    expect(code).toBe(1);
+    const report = JSON.parse(stdout) as ConformanceReport;
+    expect(report.ok).toBe(false);
+    expect(
+      report.errors.some((e) =>
+        e.message.includes('reference "../shared.md" escapes the restricted base directory')
+      )
+    ).toBe(true);
+
+    // resolve honors the same flag: report on stderr, exit 1, stdout empty.
+    const resolved = await run(["resolve", escapingSoul, "--restrict-refs"]);
+    expect(resolved.code).toBe(1);
+    expect(resolved.stdout).toBe("");
+    expect(resolved.stderr).toContain("escapes the restricted base directory");
+  });
+
+  it("FR-003 §7.2 with value: --restrict-refs <dir> spanning both documents → exit 0", async () => {
+    const { code } = await run(["check", escapingSoul, "--restrict-refs", restrictRoot]);
+    expect(code).toBe(0);
+  });
+
+  it("FR-001 §7.2: a URI-scheme reference is rejected with a §7.2-cited violation → exit 1 (no flag required)", async () => {
+    const { code, stdout } = await run(["check", uriSoul, "--json"]);
+    expect(code).toBe(1);
+    const report = JSON.parse(stdout) as ConformanceReport;
+    expect(
+      report.errors.some(
+        (e) =>
+          e.section === "§7.2" &&
+          e.message.includes("URI reference schemes are not supported by muster")
+      )
+    ).toBe(true);
+  });
+
+  it("FR-003 §7.2: cts run bare --restrict-refs confines each case to its root soul's directory → exit flips 0 → 1", async () => {
+    const unrestricted = await run(["cts", "run", restrictCtsManifest]);
+    expect(unrestricted.code).toBe(0);
+
+    const restricted = await run(["cts", "run", restrictCtsManifest, "--json", "--restrict-refs"]);
+    expect(restricted.code).toBe(1);
+    const results = JSON.parse(restricted.stdout) as CtsCaseResult[];
+    expect(results[0]?.passed).toBe(false);
+    expect(
+      results[0]?.report.errors.some((e) =>
+        e.message.includes("escapes the restricted base directory")
+      )
+    ).toBe(true);
+  });
+
+  it("FR-003: check, resolve, cts run, and behave run all document --restrict-refs [dir]", async () => {
+    for (const argv of [
+      ["check", "--help"],
+      ["resolve", "--help"],
+      ["cts", "run", "--help"],
+      ["behave", "run", "--help"],
+    ]) {
+      const { code, stdout } = await run(argv);
+      expect(code, argv.join(" ")).toBe(0);
+      expect(stdout, argv.join(" ")).toContain("--restrict-refs [dir]");
+    }
+  });
+
+  it("NFR-001 byte-identity: default-path resolve (NO flag) emits bytes equal to the pre-change expected.json fixtures", async () => {
+    // expected.json fixtures encode the shipped release's canonical bytes;
+    // minimal valid AND a composition fixture (reference loading exercised).
+    for (const fixture of ["minimal/valid", "composition/local_wins"]) {
+      const soul = join(repoRoot, "cts/fixtures", fixture, "Soul.md");
+      const expected = await readFile(
+        join(repoRoot, "cts/fixtures", fixture, "expected.json"),
+        "utf8"
+      );
+      const { code, stdout } = await run(["resolve", soul, "--output-format", "canonical-json"]);
+      expect(code, fixture).toBe(0);
+      expect(stdout, fixture).toBe(expected);
+    }
   });
 });
 

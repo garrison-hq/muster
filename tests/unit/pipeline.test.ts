@@ -1,5 +1,8 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { stringify } from "yaml";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import type { Violation } from "../../src/core/report.js";
@@ -282,6 +285,162 @@ describe("makeFsLoadRef (core's only fs touchpoint)", () => {
     const violations = result as Violation[];
     expect(violations[0]?.severity).toBe("error");
     expect(violations[0]?.message).toContain("does-not-exist.md");
+  });
+});
+
+describe("makeFsLoadRef reference hardening (mission-review RISK-1/RISK-2; RFC-1 §7.2)", () => {
+  const parseFn = (raw: string, path: string) => rfc1Adapter.parse(raw, path, "strict");
+
+  /** Soul-YAML with an unclosed flow sequence; the marker line lands inside
+   *  the yaml library's code-frame excerpt (FR-004 audit, T003). */
+  const leakyRaw = [
+    "---",
+    'soul_spec: "1.0.0-rc1"',
+    "SECRET_MARKER_XYZZY: [unclosed",
+    "name: oops",
+    "---",
+    "",
+    "Body.",
+    "",
+  ].join("\n");
+
+  let tmp: string;
+  let baseDir: string;
+
+  beforeAll(async () => {
+    tmp = await mkdtemp(join(tmpdir(), "muster-wp01-pipeline-"));
+    baseDir = join(tmp, "base");
+    await mkdir(join(baseDir, "..dots"), { recursive: true });
+    await mkdir(join(tmp, "basesib"), { recursive: true });
+    await mkdir(join(tmp, "a:b"), { recursive: true });
+    const valid = (id: string): string => soulMd(minimalSoul({ id }));
+    await writeFile(join(tmp, "outside.md"), valid("org.example.wp01.outside"));
+    await writeFile(join(baseDir, "inner.md"), valid("org.example.wp01.inner"));
+    await writeFile(join(baseDir, "..dots", "x.md"), valid("org.example.wp01.dots"));
+    await writeFile(join(tmp, "basesib", "x.md"), valid("org.example.wp01.sibling"));
+    await writeFile(join(tmp, "a:b", "c.md"), valid("org.example.wp01.colon"));
+    await writeFile(join(tmp, "leaky.md"), leakyRaw);
+    await writeFile(join(tmp, "no-front-matter.md"), "no front matter at all\n");
+  });
+
+  afterAll(async () => {
+    await rm(tmp, { recursive: true, force: true });
+  });
+
+  it('FR-001 §7.2: URI-scheme references ("https://", "file://", case-insensitive) are rejected honestly, never path-mangled', async () => {
+    const loadRef = makeFsLoadRef(parseFn);
+    for (const ref of ["https://x/y.md", "file:///y.md", "HTTPS://x"]) {
+      const result = await loadRef(ref, join(tmp, "root.md"));
+      expect(Array.isArray(result), ref).toBe(true);
+      const violations = result as Violation[];
+      expect(violations).toHaveLength(1);
+      expect(violations[0]?.path).toBe("composition");
+      expect(violations[0]?.severity).toBe("error");
+      expect(violations[0]?.section).toBe("§7.2");
+      expect(violations[0]?.message).toContain(
+        "URI reference schemes are not supported by muster (this pass)"
+      );
+      expect(violations[0]?.message).toContain(`"${ref}"`);
+    }
+  });
+
+  it('FR-001 §7.2: a scheme-less colon path ("a:b/c.md" — no "//") still resolves as a relative path (spec edge case)', async () => {
+    const loadRef = makeFsLoadRef(parseFn);
+    const result = await loadRef("a:b/c.md", join(tmp, "root.md"));
+    // A SoulDocument, not violations: the reference loaded and parsed.
+    expect(Array.isArray(result)).toBe(false);
+  });
+
+  it('FR-002 §7.2: "../../outside.md"-style escape is rejected when restricted', async () => {
+    const loadRef = makeFsLoadRef(parseFn, { restrictTo: baseDir });
+    const result = await loadRef("../outside.md", join(baseDir, "root.md"));
+    expect(Array.isArray(result)).toBe(true);
+    const violations = result as Violation[];
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.path).toBe("composition");
+    expect(violations[0]?.severity).toBe("error");
+    expect(violations[0]?.message).toBe(
+      'reference "../outside.md" escapes the restricted base directory'
+    );
+  });
+
+  it("FR-002 §7.2: the same escaping reference loads normally when NOT restricted (opt-in only — NFR-001)", async () => {
+    const loadRef = makeFsLoadRef(parseFn);
+    const result = await loadRef("../outside.md", join(baseDir, "root.md"));
+    expect(Array.isArray(result)).toBe(false);
+  });
+
+  it("FR-002 §7.2: a reference resolving exactly inside the base is allowed", async () => {
+    const loadRef = makeFsLoadRef(parseFn, { restrictTo: baseDir });
+    const result = await loadRef("./inner.md", join(baseDir, "root.md"));
+    expect(Array.isArray(result)).toBe(false);
+  });
+
+  it("FR-002 §7.2: containment applies to ABSOLUTE references too — outside rejected, inside allowed", async () => {
+    const loadRef = makeFsLoadRef(parseFn, { restrictTo: baseDir });
+    const outside = await loadRef(join(tmp, "outside.md"), join(baseDir, "root.md"));
+    expect(Array.isArray(outside)).toBe(true);
+    expect((outside as Violation[])[0]?.message).toContain(
+      "escapes the restricted base directory"
+    );
+    const inside = await loadRef(join(baseDir, "inner.md"), join(baseDir, "root.md"));
+    expect(Array.isArray(inside)).toBe(false);
+  });
+
+  it('FR-002 / plan R2: a sibling directory sharing the base\'s name prefix ("/a/bc" vs base "/a/b") is OUTSIDE — rejected (naive startsWith would falsely contain it)', async () => {
+    // join(tmp, "basesib") starts with join(tmp, "base") as a raw string.
+    const loadRef = makeFsLoadRef(parseFn, { restrictTo: baseDir });
+    const result = await loadRef(join(tmp, "basesib", "x.md"), join(baseDir, "root.md"));
+    expect(Array.isArray(result)).toBe(true);
+    expect((result as Violation[])[0]?.message).toContain(
+      "escapes the restricted base directory"
+    );
+  });
+
+  it('FR-002 §7.2: an in-base entry whose name merely BEGINS with ".." is not falsely blocked (the guard is rel === ".." or "../" prefix, not a ".." substring)', async () => {
+    const loadRef = makeFsLoadRef(parseFn, { restrictTo: baseDir });
+    const result = await loadRef("./..dots/x.md", join(baseDir, "root.md"));
+    expect(Array.isArray(result)).toBe(false);
+  });
+
+  it("FR-004 §7.2: a referenced document's YAML parse error never echoes source excerpts — line/column kept, marker withheld", async () => {
+    const loadRef = makeFsLoadRef(parseFn);
+    const result = await loadRef("./leaky.md", join(tmp, "root.md"));
+    expect(Array.isArray(result)).toBe(true);
+    const violations = result as Violation[];
+    expect(violations.length).toBeGreaterThan(0);
+    for (const violation of violations) {
+      expect(violation.message).not.toContain("SECRET_MARKER_XYZZY");
+      expect(violation.message).not.toContain("\n");
+    }
+    // Line/column survive (the yaml error's first line carries them) and the
+    // withholding is announced; the §4.1 citation is preserved.
+    expect(violations[0]?.message).toMatch(/at line \d+, column \d+/);
+    expect(violations[0]?.message).toContain(
+      "source excerpt withheld for referenced documents"
+    );
+    expect(violations[0]?.section).toBe("§4.1");
+  });
+
+  it("FR-004 §7.2: ROOT-document parse errors are unchanged — authors keep the full excerpt for their own file", async () => {
+    const { report } = await checkSoul(
+      rfc1Adapter,
+      leakyRaw,
+      "root.md",
+      { mode: "strict" },
+      noRefs
+    );
+    expect(report.ok).toBe(false);
+    expect(report.errors.some((e) => e.message.includes("SECRET_MARKER_XYZZY"))).toBe(true);
+  });
+
+  it("FR-004 §7.2: single-line referenced-document violations pass through byte-identical — no suffix appended when nothing was stripped (NFR-001)", async () => {
+    const loadRef = makeFsLoadRef(parseFn);
+    const result = await loadRef("./no-front-matter.md", join(tmp, "root.md"));
+    expect(Array.isArray(result)).toBe(true);
+    const violations = result as Violation[];
+    expect(violations[0]?.message).toBe("missing or malformed front matter");
+    expect(violations[0]?.section).toBe("§3.1.1");
   });
 });
 

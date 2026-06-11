@@ -1,0 +1,69 @@
+{
+  "mission_slug": "mission-review-remediation-01KTT2XH",
+  "mission_number": null,
+  "mission_type": "software-dev",
+  "criteria": [
+    {
+      "criterion_id": "SC-001",
+      "description": "Live demonstration: a hostile ../../ soul is rejected under restriction and still resolved without it; an https:// reference yields the documented §7.2 message.",
+      "proof_type": "manual_qa",
+      "evidence": "WP01 live verifier executed the built CLI: escape attempt against ../../../../etc/hostname rejected with 'escapes the restricted base directory' (exit 1) under --restrict-refs; without the flag the shipped behavior is preserved (the file was actually read, proving RISK-1 was real); https:// reference produced the §7.2 'URI reference schemes are not supported' message in both modes; a:b.md colon-path edge case still resolves as a path.",
+      "pass_fail": "pass",
+      "verified_by": "claude (workflow wf_e5b8a84b-038 live verifier: WP01)",
+      "verified_at": "2026-06-11T03:30:00Z"
+    },
+    {
+      "criterion_id": "SC-002",
+      "description": "Full suite green including new guards; shipped CTS suite 28/28 with byte-identical canonical outputs (NFR-001).",
+      "proof_type": "automated_test",
+      "evidence": "567 tests / 30 files green on the integrated mission branch. NFR-001 proven live: resolve --output-format canonical-json sha256-identical between pre-change main and the hardened build for minimal/valid (a1c93803…) and composition/local_wins (8647b6fd…); cts run 28/28 with and without bare --restrict-refs.",
+      "pass_fail": "pass",
+      "verified_by": "claude (workflow wf_e5b8a84b-038 verifiers: WP01, WP02; integration run on mission branch)",
+      "verified_at": "2026-06-11T03:30:00Z"
+    },
+    {
+      "criterion_id": "SC-003",
+      "description": "Each invariant guard demonstrably constrains: planting a violation makes the matching guard fail.",
+      "proof_type": "manual_qa",
+      "evidence": "WP02 verifier ran all three trip-tests in a scratch copy: planted nvapi-shaped secret tripped NI-001 (failure output did NOT print the planted string), core→adapters import tripped NI-002, stray fetch( in a test tripped NI-003. Scratch discarded; guards run in ~30 ms (NFR-002 <2 s).",
+      "pass_fail": "pass",
+      "verified_by": "claude (workflow wf_e5b8a84b-038 live verifier: WP02)",
+      "verified_at": "2026-06-11T03:30:00Z"
+    },
+    {
+      "criterion_id": "SC-004",
+      "description": "README 'Reference resolution' section verified against the built CLI's help and actual error messages.",
+      "proof_type": "manual_qa",
+      "evidence": "WP03 verifier rebuilt the CLI and diffed every quoted artifact in the README section against live output: --restrict-refs help line, the §7.2 URI error, and the escape error all reproduced verbatim; §7.2 cited explicitly; trust-model paragraph present; adjacent README sections unchanged and accurate.",
+      "pass_fail": "pass",
+      "verified_by": "claude (workflow wf_e5b8a84b-038 live verifier: WP03)",
+      "verified_at": "2026-06-11T03:30:00Z"
+    }
+  ],
+  "negative_invariants": [
+    {
+      "invariant_id": "NI-001",
+      "description": "No new runtime dependencies introduced (spec NFR-003).",
+      "verification_method": "custom_command",
+      "verification_command": "git diff main..HEAD -- package.json pnpm-lock.yaml --stat",
+      "result": "confirmed_absent",
+      "evidence": "Empty diff — dependency set unchanged (ajv, commander, yaml)."
+    },
+    {
+      "invariant_id": "NI-002",
+      "description": "Parent-mission locked behavior untouched: shipped CTS fixtures, expected.json files, and suite gate unmodified (charter directive 4).",
+      "verification_method": "custom_command",
+      "verification_command": "git diff main..HEAD --stat -- cts/ tests/cts/ souls/ behave/ src/adapters/",
+      "result": "confirmed_absent",
+      "evidence": "Empty diff — only pipeline.ts, cts/runner.ts, cli/index.ts, two existing test files, the new invariants test, and README changed."
+    },
+    {
+      "invariant_id": "NI-003",
+      "description": "The three permanent invariant guards (secrets, core/adapter boundary, fetch isolation) pass on the integrated tree.",
+      "verification_method": "custom_command",
+      "verification_command": "pnpm vitest run tests/unit/invariants.test.ts",
+      "result": "confirmed_absent",
+      "evidence": "All guards green in the 567-test integrated run on the mission branch."
+    }
+  ]
+}

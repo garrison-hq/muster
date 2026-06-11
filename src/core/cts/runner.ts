@@ -22,6 +22,7 @@
  */
 
 import { readFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import { parse as parseYaml } from "yaml";
 import type { EffectiveConfig, SpecAdapter } from "../adapter.js";
 import { canonicalJson } from "../canonical-json.js";
@@ -47,6 +48,12 @@ export interface CtsSummary {
 export interface RunCtsOptions {
   /** Run only cases whose id satisfies the predicate. */
   filter?: (id: string) => boolean;
+  /**
+   * FR-002/FR-003 (`--restrict-refs`): confine §7.2 reference loading.
+   * `true` → each case's root soul directory; a string → that fixed base
+   * directory. Absent → unrestricted (shipped behavior, NFR-001).
+   */
+  restrictRefs?: string | true;
 }
 
 /** ±40-byte debug window around a byte difference (SC-007 debuggability). */
@@ -217,11 +224,24 @@ async function checkEffective(
   }
 }
 
-async function runCase(adapter: SpecAdapter, ctsCase: CtsCase): Promise<CtsCaseResult> {
+async function runCase(
+  adapter: SpecAdapter,
+  ctsCase: CtsCase,
+  restrictRefs?: string | true
+): Promise<CtsCaseResult> {
   try {
     const raw = await readFile(ctsCase.root, "utf8");
-    const loadRef = makeFsLoadRef((refRaw, refPath) =>
-      adapter.parse(refRaw, refPath, ctsCase.mode)
+    // --restrict-refs (FR-003): bare flag → per-case root soul directory;
+    // a string → fixed base directory; absent → unrestricted (NFR-001).
+    const restrictTo =
+      restrictRefs === undefined
+        ? undefined
+        : restrictRefs === true
+          ? dirname(ctsCase.root)
+          : restrictRefs;
+    const loadRef = makeFsLoadRef(
+      (refRaw, refPath) => adapter.parse(refRaw, refPath, ctsCase.mode),
+      restrictTo === undefined ? undefined : { restrictTo }
     );
     const opts: { profile?: string; state?: string; mode: CtsCase["mode"] } = {
       mode: ctsCase.mode,
@@ -260,7 +280,7 @@ export async function runCts(
   const selected = opts?.filter !== undefined ? cases.filter((c) => opts.filter!(c.id)) : cases;
   const results: CtsCaseResult[] = [];
   for (const ctsCase of selected) {
-    results.push(await runCase(adapter, ctsCase));
+    results.push(await runCase(adapter, ctsCase, opts?.restrictRefs));
   }
   return results;
 }
