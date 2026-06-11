@@ -8,11 +8,11 @@
 
 | ID | Description | WP | Parallel |
 |----|-------------|----|----------|
-| T001 | URI-scheme detection in makeFsLoadRef (§7.2 violation, R1 regex) | WP01 | [P] |
-| T002 | Containment option (restrictTo) incl. absolute refs, R2 comparison | WP01 | |
-| T003 | Referenced-document leak sanitization (position kept, no excerpts) | WP01 | |
-| T004 | CLI --restrict-refs [dir] on all four subcommands + cts runner pass-through | WP01 | |
-| T005 | Stream-1 tests: scheme/escape/bare-flag/sanitization/exit codes + NFR-001 byte-identity | WP01 | |
+| T001 | URI-scheme detection in makeFsLoadRef (§7.2 violation, R1 regex) | WP01 | [P] | [D] |
+| T002 | Containment option (restrictTo) incl. absolute refs, R2 comparison | WP01 | | [D] |
+| T003 | Referenced-document leak sanitization (position kept, no excerpts) | WP01 | | [D] |
+| T004 | CLI --restrict-refs [dir] on all four subcommands + cts runner pass-through | WP01 | | [D] |
+| T005 | Stream-1 tests: scheme/escape/bare-flag/sanitization/exit codes + NFR-001 byte-identity | WP01 | | [D] |
 | T006 | Invariant guards test file (Node-based: secrets, core boundary, fetch isolation) | WP02 | [D] |
 | T007 | Guard documentation comment (grep-binary rationale) + perf budget assert | WP02 | | [D] |
 | T008 | README "Reference resolution" section (§7.2 MUST: schemes, flag modes, trust model) | WP03 | |
@@ -24,11 +24,11 @@
 **Goal**: Close RISK-1 + RISK-2: honest URI rejection, opt-in containment, no referenced-content leakage — with shipped behavior byte-identical when the flag is absent.
 **Priority**: P0 | **Dependencies**: none | **Estimated prompt**: ~280 lines
 **Independent test**: hostile `../../` soul rejected under restriction / resolved without; `https://` ref yields §7.2 message; CTS 28/28 byte-identical with flag absent.
-- [ ] T001 URI-scheme detection (WP01)
-- [ ] T002 Containment option (WP01)
-- [ ] T003 Leak sanitization (WP01)
-- [ ] T004 CLI flag + runner pass-through (WP01)
-- [ ] T005 Tests incl. NFR-001 byte-identity (WP01)
+- [x] T001 URI-scheme detection (WP01)
+- [x] T002 Containment option (WP01)
+- [x] T003 Leak sanitization (WP01)
+- [x] T004 CLI flag + runner pass-through (WP01)
+- [x] T005 Tests incl. NFR-001 byte-identity (WP01)
 **Prompt**: [tasks/WP01-reference-hardening.md](tasks/WP01-reference-hardening.md)
 
 ### WP02 — Invariant Guards
