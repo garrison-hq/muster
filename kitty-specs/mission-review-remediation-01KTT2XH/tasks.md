@@ -15,8 +15,8 @@
 | T005 | Stream-1 tests: scheme/escape/bare-flag/sanitization/exit codes + NFR-001 byte-identity | WP01 | | [D] |
 | T006 | Invariant guards test file (Node-based: secrets, core boundary, fetch isolation) | WP02 | [D] |
 | T007 | Guard documentation comment (grep-binary rationale) + perf budget assert | WP02 | | [D] |
-| T008 | README "Reference resolution" section (§7.2 MUST: schemes, flag modes, trust model) | WP03 | |
-| T009 | README cross-check against built CLI help/error output (SC-004) | WP03 | |
+| T008 | README "Reference resolution" section (§7.2 MUST: schemes, flag modes, trust model) | WP03 | | [D] |
+| T009 | README cross-check against built CLI help/error output (SC-004) | WP03 | | [D] |
 
 ## Phase 1 — Parallel code streams
 
@@ -45,8 +45,8 @@
 **Goal**: Close DRIFT-2: README documents reference resolution (a §7.2 MUST), the new flag's three modes, and the trust model — matching the code WP01 actually shipped.
 **Priority**: P1 | **Dependencies**: WP01 | **Estimated prompt**: ~150 lines
 **Independent test**: every documented flag mode and error message reproduced verbatim from the built CLI.
-- [ ] T008 README section (WP03)
-- [ ] T009 Docs-vs-reality cross-check (WP03)
+- [x] T008 README section (WP03)
+- [x] T009 Docs-vs-reality cross-check (WP03)
 **Prompt**: [tasks/WP03-reference-docs.md](tasks/WP03-reference-docs.md)
 
 ## Dependency Graph & Parallelization
