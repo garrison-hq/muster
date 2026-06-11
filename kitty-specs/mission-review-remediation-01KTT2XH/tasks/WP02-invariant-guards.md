@@ -78,3 +78,4 @@ Implement a small `walk(dir, {exclude})` helper (recursive `readdirSync`, exclus
 ## Activity Log
 
 - 2026-06-11T01:04:30Z – claude – shell_pid=1833582 – Assigned agent via action command
+- 2026-06-11T01:09:40Z – claude – shell_pid=1833582 – Ready for review: invariant guards implemented in tests/unit/invariants.test.ts; full suite 531 green incl. base 519 and CTS; SC-003 adversarial checks all trip; guards run in <50ms (NFR-002 budget 2s)
