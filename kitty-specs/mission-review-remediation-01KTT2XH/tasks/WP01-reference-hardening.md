@@ -19,7 +19,8 @@ subtasks:
 - T003
 - T004
 - T005
-shell_pid: '1833431'
+shell_pid: "1833431"
+agent: "claude"
 history:
 - timestamp: '2026-06-11T02:00:00Z'
   event: created
@@ -110,3 +111,7 @@ spec-kitty agent action implement WP01 --agent <name>
 ## Risks
 
 - Commander optional-value flags have quirky `true`-vs-string typing — test all three modes explicitly rather than trusting types.
+
+## Activity Log
+
+- 2026-06-11T01:04:30Z – claude – shell_pid=1833431 – Assigned agent via action command
