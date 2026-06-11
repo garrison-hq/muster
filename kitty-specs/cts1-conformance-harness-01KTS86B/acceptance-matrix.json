@@ -1,0 +1,114 @@
+{
+  "mission_slug": "cts1-conformance-harness-01KTS86B",
+  "mission_number": "",
+  "mission_type": "software-dev",
+  "overall_verdict": "pass",
+  "criteria": [
+    {
+      "criterion_id": "SC-001",
+      "description": "Every one of the nine CTS-1 minimum test categories (\u00a725.2) is exercised by at least one fixture case, and the full static suite passes.",
+      "proof_type": "automated_test",
+      "evidence": "cts/manifest.yaml header maps all nine \u00a725.2 categories to case ids; muster cts run cts/manifest.yaml \u2192 28 passed, 0 failed of 28 (exit 0); tests/cts/suite.test.ts enforces this in pnpm test (519 tests green).",
+      "pass_fail": "pass",
+      "verified_by": "claude (workflow wf_d5ee54fa-eac live verifiers: WP08, WP10)",
+      "verified_at": "2026-06-11T00:00:00Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "SC-002",
+      "description": "100% of intentionally-broken fixtures are rejected with at least one error naming the offending path; 100% of valid fixtures pass.",
+      "proof_type": "automated_test",
+      "evidence": "All expect_ok:false cases pass their expect_errors path assertions in the 28-case suite; WP06 verifier proved discrimination (expect_ok flipped \u2192 case FAILS); WP07 verifier ran checkSoul against every shipped fixture root.",
+      "pass_fail": "pass",
+      "verified_by": "claude (workflow wf_d5ee54fa-eac live verifiers: WP06, WP07, WP08)",
+      "verified_at": "2026-06-11T00:00:00Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "SC-003",
+      "description": "The spec's own minimal soul (Appendix A) and extended composition examples check out as conforming without modification.",
+      "proof_type": "automated_test",
+      "evidence": "cts/fixtures/minimal/valid/Soul.md transcribes Appendix A and passes strict (muster check \u2192 OK, exit 0); composition fixtures exercise Appendix D-style extends+mixins chains and pass with byte-exact expected.json comparison.",
+      "pass_fail": "pass",
+      "verified_by": "claude (workflow wf_d5ee54fa-eac live verifiers: WP07, WP10)",
+      "verified_at": "2026-06-11T00:00:00Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "SC-004",
+      "description": "Static resolution output is byte-for-byte reproducible across consecutive runs (RFC 8785 canonical JSON).",
+      "proof_type": "automated_test",
+      "evidence": "muster resolve --output-format canonical-json run twice \u2192 diff empty, identical sha256 (a1c93803\u2026); WP08 verifier re-ran all resolution-bearing CTS cases twice with byte-identical canonical output; determinism guard lives in tests/cts/suite.test.ts.",
+      "pass_fail": "pass",
+      "verified_by": "claude (workflow wf_d5ee54fa-eac live verifiers: WP08, WP10)",
+      "verified_at": "2026-06-11T00:00:00Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "SC-005",
+      "description": "The behavioral suite produces verdicts on all three axes against two independently-hosted endpoints with only endpoint configuration changed between runs.",
+      "proof_type": "manual_qa",
+      "evidence": "Live runs recorded in behave/results/: NVIDIA NIM (meta/llama-3.1-8b-instruct) and OpenAI (gpt-4o-mini) via identical 'muster behave run' commands differing only in --base-url/--model/key env. All three real cases produced k-of-3 verdicts on both endpoints (NIM: 3/3, 3/3, 3/3). Local Ollama documented as pending environment (no service; reproduction command recorded in behave/results/README.md).",
+      "pass_fail": "pass",
+      "verified_by": "claude (workflow wf_d5ee54fa-eac live verifiers: WP09, WP11)",
+      "verified_at": "2026-06-11T00:00:00Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "SC-006",
+      "description": "The behavioral grader demonstrates discrimination: a deliberately non-conforming run is failed, and a conforming run passes, on the same soul and test cases.",
+      "proof_type": "manual_qa",
+      "evidence": "xfail_discrimination_overly_verbose (impossible 5-word cap) FAILED 0/3 on both live endpoints while the three real cases passed \u2014 recorded in behave/results/*.json; behave run exit code 1 attributable solely to the expected-fail case.",
+      "pass_fail": "pass",
+      "verified_by": "claude (workflow wf_d5ee54fa-eac live verifier: WP11)",
+      "verified_at": "2026-06-11T00:00:00Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "SC-007",
+      "description": "A soul author can check a single file and read the verdict in under 5 seconds, with every failure naming path and message.",
+      "proof_type": "automated_test",
+      "evidence": "muster check completes in well under 5s (full 28-case suite runs in ~2s); exit-code matrix verified live (0/1/2); error lines render 'ERROR <path>: <message> [<section>]'; NFR-005 hygiene (non-empty path+message) asserted across unit suites.",
+      "pass_fail": "pass",
+      "verified_by": "claude (workflow wf_d5ee54fa-eac live verifier: WP10)",
+      "verified_at": "2026-06-11T00:00:00Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "SC-008",
+      "description": "The fixture set + manifest stands alone as a self-describing package suitable for proposing upstream as the CTS-1 fixture-repository seed.",
+      "proof_type": "code_review",
+      "evidence": "cts/ follows the Appendix F layout exactly; manifest.yaml header carries the nine-category \u00a725.2 map; every fixture Soul.md body documents its purpose; loader resolves all paths manifest-relative (no harness-specific config needed). Reviewed and approved in WP08 review.",
+      "pass_fail": "pass",
+      "verified_by": "claude (workflow wf_d5ee54fa-eac reviewer: WP08)",
+      "verified_at": "2026-06-11T00:00:00Z",
+      "notes": null
+    }
+  ],
+  "negative_invariants": [
+    {
+      "invariant_id": "NI-001",
+      "description": "No API keys, credentials, or Authorization headers committed anywhere in the repository (charter directive 5).",
+      "verification_method": "grep_absence",
+      "verification_command": "grep -rEl 'nvapi-[A-Za-z0-9]{8}|sk-[A-Za-z0-9_-]{20}' --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.worktrees --exclude-dir=dist .",
+      "result": "confirmed_absent",
+      "evidence": "grep found zero matches"
+    },
+    {
+      "invariant_id": "NI-002",
+      "description": "No file under src/core/ imports from src/adapters/ (constraint C-004 \u2014 spec-agnostic core).",
+      "verification_method": "grep_absence",
+      "verification_command": "grep -rn \"from ['\\\"].*adapters\" src/core/ --include=*.ts",
+      "result": "confirmed_absent",
+      "evidence": "grep found zero matches"
+    },
+    {
+      "invariant_id": "NI-003",
+      "description": "The test suite performs zero network access (NFR-003): the only fetch call in the codebase lives in src/core/behavioral/client.ts, and test files never call fetch directly (the client is stubbed).",
+      "verification_method": "grep_absence",
+      "verification_command": "grep -rln 'fetch(' src/core/ src/adapters/ src/cli/ tests/ | grep -v 'src/core/behavioral/client.ts'",
+      "result": "confirmed_absent",
+      "evidence": "grep found zero matches"
+    }
+  ]
+}

@@ -1,0 +1,276 @@
+# CTS-1 manifest — Soul.md RFC-1 1.0.0-rc1 (Appendix F.1 field set plus the
+# muster `expect_effective_json` extension: byte-compare against canonical
+# JSON, Appendix F.2). Paths are manifest-relative. One entry per fixture;
+# permissive twins exist where strict and permissive behavior differ.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# §25.2 category → case-id map (the nine CTS-1 categories; SC-001 audit surface)
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. Soul-YAML enforcement (§4.2):
+#      valid:  minimal_valid                 (clean Soul-YAML parses)
+#      broken: minimal_forbidden_yaml_strict, minimal_forbidden_yaml_permissive
+#              (anchors/aliases REFUSED in BOTH modes — §4.2 forbids applying
+#               forbidden semantics; permissive may only warn-and-refuse)
+# 2. Mandatory core presence (§5.1, §5.2.1):
+#      valid:  minimal_valid
+#      broken: minimal_missing_mandatory     (no `voice`; rejected in both modes)
+# 3. Type/range checks (§4.3, §4.3.1):
+#      valid:  minimal_valid                 (all scalars in range)
+#      broken: minimal_bad_types             (percent 142; locale en_US)
+# 4. Standard Merge (§8.1–§8.3):
+#      merge_scalar_replace, merge_map_deep, merge_list_replace,
+#      merge_null_value, merge_type_mismatch
+#      (five valid-expectation cases; each expected.json encodes the §8 rule it
+#       names, so a wrong merge implementation fails the byte comparison —
+#       the category's discrimination is carried by the expectations)
+# 5. Composition order (§7.5 steps 1–3, §9.4):
+#      valid:  composition_order, composition_local_wins,
+#              composition_strip_root_owned
+#      broken: composition_cycle             (unresolvable graph; shared w/ cat 6)
+# 6. Cycle detection (§7.3):
+#      valid:  composition_order             (acyclic multi-reference graph resolves)
+#      broken: composition_cycle
+# 7. Profiles (§9):
+#      valid:  profiles_overlay_concise      (overlay deep-merge, §9.2/§7.5 step 4)
+#      broken: profiles_missing_default (§9.1), profiles_override_not_subset (§9.2)
+# 8. State semantics (§20, §4.4):
+#      valid:  state_base_explicit (§20.1),
+#              state_base_fallback_lexicographic_alpha_wins (§4.4 UTF-8 byte order),
+#              state_trigger_unknown_state_permissive (§20.3.7 trigger ignored)
+#      broken: state_bad_base (§20.1), state_trigger_unknown_state_strict (§20.3.7),
+#              state_timed_no_ttl (§20.3.7)
+# 9. Evaluation rule references (§21.1):
+#      valid:  evaluation_rule_id_ok         (@id resolves against rule_catalog)
+#      broken: evaluation_rule_id_unresolved (@ghost_rule),
+#              evaluation_literal_whitespace_mismatch (exact code-point equality)
+#
+# Supplementary — §25 keyspace / §5.2.1 mode table (outside the nine categories):
+#      broken (strict): keyspace_unknown_key_strict
+#      valid (permissive): keyspace_unknown_key_permissive
+#      (fixture lives under fixtures/profiles/unknown_key/ for work-package
+#       file-ownership reasons; see its body note)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── cat 1–3: minimal/ ───────────────────────────────────────────────────────
+
+- id: "minimal_valid"
+  root: "fixtures/minimal/valid/Soul.md"
+  mode: strict
+  expect_ok: true
+  expect_effective_json: "fixtures/minimal/valid/expected.json"
+
+- id: "minimal_missing_mandatory"
+  root: "fixtures/minimal/missing_mandatory/Soul.md"
+  mode: strict
+  expect_ok: false
+  expect_errors:
+    - path: "voice"
+      message: "required property 'voice'"
+
+- id: "minimal_forbidden_yaml_strict"
+  root: "fixtures/minimal/forbidden_yaml/Soul.md"
+  mode: strict
+  expect_ok: false
+  expect_errors:
+    - path: "aliases"
+      message: "anchor (&) is forbidden"
+    - path: "reuse"
+      message: "alias (*) is forbidden"
+
+# §4.2: permissive mode MUST NOT apply forbidden semantics either — the
+# document stays REFUSED (the easy mistake is expecting permissive to load it).
+- id: "minimal_forbidden_yaml_permissive"
+  root: "fixtures/minimal/forbidden_yaml/Soul.md"
+  mode: permissive
+  expect_ok: false
+  expect_errors:
+    - path: "aliases"
+      message: "anchor (&) is forbidden"
+    - path: "reuse"
+      message: "alias (*) is forbidden"
+
+- id: "minimal_bad_types"
+  root: "fixtures/minimal/bad_types/Soul.md"
+  mode: strict
+  expect_ok: false
+  expect_errors:
+    - path: "voice.verbosity"
+      message: "percent in 0..100"
+    - path: "locale"
+      message: "not a syntactically valid BCP-47"
+
+# ── cat 4: merge/ ───────────────────────────────────────────────────────────
+
+- id: "merge_scalar_replace"
+  root: "fixtures/merge/scalar_replace/Soul.md"
+  mode: strict
+  expect_ok: true
+  expect_effective_json: "fixtures/merge/scalar_replace/expected.json"
+
+- id: "merge_map_deep"
+  root: "fixtures/merge/map_deep/Soul.md"
+  mode: strict
+  expect_ok: true
+  expect_effective_json: "fixtures/merge/map_deep/expected.json"
+
+- id: "merge_list_replace"
+  root: "fixtures/merge/list_replace/Soul.md"
+  mode: strict
+  expect_ok: true
+  expect_effective_json: "fixtures/merge/list_replace/expected.json"
+
+- id: "merge_null_value"
+  root: "fixtures/merge/null_value/Soul.md"
+  mode: strict
+  expect_ok: true
+  expect_effective_json: "fixtures/merge/null_value/expected.json"
+
+- id: "merge_type_mismatch"
+  root: "fixtures/merge/type_mismatch/Soul.md"
+  mode: strict
+  expect_ok: true
+  expect_effective_json: "fixtures/merge/type_mismatch/expected.json"
+
+# ── cat 5–6: composition/ ───────────────────────────────────────────────────
+
+- id: "composition_order"
+  root: "fixtures/composition/order/Soul.md"
+  mode: strict
+  expect_ok: true
+  expect_effective_json: "fixtures/composition/order/expected.json"
+
+- id: "composition_local_wins"
+  root: "fixtures/composition/local_wins/Soul.md"
+  mode: strict
+  expect_ok: true
+  expect_effective_json: "fixtures/composition/local_wins/expected.json"
+
+- id: "composition_strip_root_owned"
+  root: "fixtures/composition/strip_root_owned/Soul.md"
+  mode: strict
+  expect_ok: true
+  expect_effective_json: "fixtures/composition/strip_root_owned/expected.json"
+
+- id: "composition_cycle"
+  root: "fixtures/composition/cycle/Soul.md"
+  mode: strict
+  expect_ok: false
+  expect_errors:
+    - path: "composition"
+      message: "Cycle detected"
+
+# ── cat 7: profiles/ ────────────────────────────────────────────────────────
+
+- id: "profiles_overlay_concise"
+  root: "fixtures/profiles/overlay/Soul.md"
+  profile: "concise"
+  mode: strict
+  expect_ok: true
+  expect_effective_json: "fixtures/profiles/overlay/expected.json"
+
+- id: "profiles_missing_default"
+  root: "fixtures/profiles/missing_default/Soul.md"
+  mode: strict
+  expect_ok: false
+  expect_errors:
+    - path: "profiles"
+      message: "must include \"default\""
+
+- id: "profiles_override_not_subset"
+  root: "fixtures/profiles/override_not_subset/Soul.md"
+  mode: strict
+  expect_ok: false
+  expect_errors:
+    - path: "profile_overrides.ghost"
+      message: "not present in profiles"
+
+# ── supplementary: §25 keyspace / §5.2.1 ────────────────────────────────────
+
+- id: "keyspace_unknown_key_strict"
+  root: "fixtures/profiles/unknown_key/Soul.md"
+  mode: strict
+  expect_ok: false
+  expect_errors:
+    - path: "mood_engine"
+      message: "unknown top-level key outside RFC-1 keyspace"
+
+# §25/§5.2.1: permissive mode MUST ignore the unknown key (MAY warn) — the
+# document loads OK. No expect_effective_json: this case tests load
+# acceptance, not resolution semantics.
+- id: "keyspace_unknown_key_permissive"
+  root: "fixtures/profiles/unknown_key/Soul.md"
+  mode: permissive
+  expect_ok: true
+
+# ── cat 8: state/ ───────────────────────────────────────────────────────────
+
+- id: "state_base_explicit"
+  root: "fixtures/state/base_explicit/Soul.md"
+  mode: strict
+  expect_ok: true
+  expect_effective_json: "fixtures/state/base_explicit/expected.json"
+
+# Named so a failure message teaches the rule: with state.base omitted, the
+# fallback is the lexicographically smallest state key in UTF-8 byte order
+# (§4.4) — "alpha" wins over the first-authored "zeta".
+- id: "state_base_fallback_lexicographic_alpha_wins"
+  root: "fixtures/state/base_fallback_lexicographic/Soul.md"
+  mode: strict
+  expect_ok: true
+  expect_effective_json: "fixtures/state/base_fallback_lexicographic/expected.json"
+
+- id: "state_bad_base"
+  root: "fixtures/state/bad_base/Soul.md"
+  mode: strict
+  expect_ok: false
+  expect_errors:
+    - path: "state.base"
+      message: "does not reference a key in state.states"
+
+- id: "state_trigger_unknown_state_strict"
+  root: "fixtures/state/trigger_unknown_state/Soul.md"
+  mode: strict
+  expect_ok: false
+  expect_errors:
+    - path: "state.triggers[0].shift_to"
+      message: "does not exist in state.states"
+
+# §20.3.7 permissive twin: the invalid trigger is ignored with a warning and
+# loading proceeds — the warm base overlay still applies (§20.1).
+- id: "state_trigger_unknown_state_permissive"
+  root: "fixtures/state/trigger_unknown_state/Soul.md"
+  mode: permissive
+  expect_ok: true
+  expect_effective_json: "fixtures/state/trigger_unknown_state/expected.json"
+
+- id: "state_timed_no_ttl"
+  root: "fixtures/state/timed_no_ttl/Soul.md"
+  mode: strict
+  expect_ok: false
+  expect_errors:
+    - path: "state.triggers[0].ttl_seconds"
+      message: "requires ttl_seconds"
+
+# ── cat 9: evaluation/ ──────────────────────────────────────────────────────
+
+- id: "evaluation_rule_id_ok"
+  root: "fixtures/evaluation/rule_id_ok/Soul.md"
+  mode: strict
+  expect_ok: true
+  expect_effective_json: "fixtures/evaluation/rule_id_ok/expected.json"
+
+- id: "evaluation_rule_id_unresolved"
+  root: "fixtures/evaluation/rule_id_unresolved/Soul.md"
+  mode: strict
+  expect_ok: false
+  expect_errors:
+    - path: "evaluation.test_prompts[0].expected_rules[0]"
+      message: "does not match any rule_catalog entry id"
+
+- id: "evaluation_literal_whitespace_mismatch"
+  root: "fixtures/evaluation/literal_whitespace_mismatch/Soul.md"
+  mode: strict
+  expect_ok: false
+  expect_errors:
+    - path: "evaluation.test_prompts[0].expected_rules[0]"
+      message: "exact code-point match; no trimming"

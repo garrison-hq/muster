@@ -1,8 +1,27 @@
 {
+  "acceptance_history": [
+    {
+      "accept_commit": "8e6f4d1eb1abf2a4ff88c42db83afa3da9f6402c",
+      "acceptance_mode": "local",
+      "accepted_at": "2026-06-11T00:35:33.274793+00:00",
+      "accepted_by": "jeroennouws",
+      "accepted_from_commit": "070f8612d0abe056572ebbed9d330e5fd1252c16"
+    },
+    {
+      "acceptance_mode": "local",
+      "accepted_at": "2026-06-11T00:36:03.814716+00:00",
+      "accepted_by": "jeroennouws",
+      "accepted_from_commit": "4114dc824a624885de93abe315670a3c62134fca"
+    }
+  ],
+  "acceptance_mode": "local",
+  "accepted_at": "2026-06-11T00:36:03.814716+00:00",
+  "accepted_by": "jeroennouws",
+  "accepted_from_commit": "4114dc824a624885de93abe315670a3c62134fca",
   "created_at": "2026-06-10T17:10:01.811955+00:00",
   "friendly_name": "Soul.md CTS-1 Conformance Harness",
   "mission_id": "01KTS86BAC5H36TJX529ZKVT1J",
-  "mission_number": null,
+  "mission_number": 1,
   "mission_slug": "cts1-conformance-harness-01KTS86B",
   "mission_type": "software-dev",
   "slug": "cts1-conformance-harness-01KTS86B",

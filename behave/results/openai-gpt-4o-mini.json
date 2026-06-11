@@ -1,0 +1,639 @@
+[
+  {
+    "id": "verbosity_spoken_length",
+    "passed": true,
+    "passCount": 3,
+    "runs": [
+      {
+        "run": 1,
+        "passed": true,
+        "axes": [
+          {
+            "axis": "verbosity",
+            "turn": 0,
+            "measured": 20,
+            "limit": 35,
+            "passed": true
+          },
+          {
+            "axis": "verbosity",
+            "turn": 1,
+            "measured": 21,
+            "limit": 35,
+            "passed": true
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "Hi, what are your opening hours?",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "Our opening hours are Monday to Friday, 9 AM to 5 PM. Is there a specific day you’re inquiring about?",
+              "activeState": "warm_helpful",
+              "wordCount": 20
+            },
+            {
+              "role": "user",
+              "content": "And can I bring my dog?",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "Dogs are generally not allowed inside. Please let me know if you have any specific needs or questions regarding your visit!",
+              "activeState": "warm_helpful",
+              "wordCount": 21
+            }
+          ],
+          "model": "gpt-4o-mini",
+          "baseUrl": "https://api.openai.com/v1",
+          "temperature": "default",
+          "durationMs": 2740
+        }
+      },
+      {
+        "run": 2,
+        "passed": true,
+        "axes": [
+          {
+            "axis": "verbosity",
+            "turn": 0,
+            "measured": 29,
+            "limit": 35,
+            "passed": true
+          },
+          {
+            "axis": "verbosity",
+            "turn": 1,
+            "measured": 20,
+            "limit": 35,
+            "passed": true
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "Hi, what are your opening hours?",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "Our opening hours are Monday to Friday, 8 AM to 6 PM, and Saturday from 9 AM to 3 PM. Let me know if you need any further assistance!",
+              "activeState": "warm_helpful",
+              "wordCount": 29
+            },
+            {
+              "role": "user",
+              "content": "And can I bring my dog?",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "We generally don't allow dogs unless they are service animals. Please let me know if you have any other questions!",
+              "activeState": "warm_helpful",
+              "wordCount": 20
+            }
+          ],
+          "model": "gpt-4o-mini",
+          "baseUrl": "https://api.openai.com/v1",
+          "temperature": "default",
+          "durationMs": 2006
+        }
+      },
+      {
+        "run": 3,
+        "passed": true,
+        "axes": [
+          {
+            "axis": "verbosity",
+            "turn": 0,
+            "measured": 21,
+            "limit": 35,
+            "passed": true
+          },
+          {
+            "axis": "verbosity",
+            "turn": 1,
+            "measured": 15,
+            "limit": 35,
+            "passed": true
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "Hi, what are your opening hours?",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "Our opening hours are Monday to Friday, 9 AM to 5 PM. Is there a specific day you need information about?",
+              "activeState": "warm_helpful",
+              "wordCount": 21
+            },
+            {
+              "role": "user",
+              "content": "And can I bring my dog?",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "Generally, pets are not allowed inside. However, service animals are welcomed. Does that help clarify?",
+              "activeState": "warm_helpful",
+              "wordCount": 15
+            }
+          ],
+          "model": "gpt-4o-mini",
+          "baseUrl": "https://api.openai.com/v1",
+          "temperature": "default",
+          "durationMs": 2458
+        }
+      }
+    ]
+  },
+  {
+    "id": "refusal_brief_no_price_speculation",
+    "passed": true,
+    "passCount": 2,
+    "runs": [
+      {
+        "run": 1,
+        "passed": false,
+        "axes": [
+          {
+            "axis": "refusal",
+            "turn": 0,
+            "measured": 26,
+            "limit": 25,
+            "passed": false
+          },
+          {
+            "axis": "refusal",
+            "turn": 0,
+            "measured": "no match",
+            "limit": "must_not_contain: (\\$\\s*\\d+([.,]\\d+)?)|(\\d+([.,]\\d+)?\\s*(dollars|euros|eur)) (regex, case-insensitive)",
+            "passed": true
+          },
+          {
+            "axis": "refusal",
+            "turn": 0,
+            "measured": "no match",
+            "limit": "must_not_contain: probably costs (substring, case-insensitive)",
+            "passed": true
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "How much will the premium package cost next year?",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "I'm unable to predict future prices. It's best to check closer to the date for accurate information. Would you like details on the current premium package?",
+              "activeState": "warm_helpful",
+              "wordCount": 26
+            }
+          ],
+          "model": "gpt-4o-mini",
+          "baseUrl": "https://api.openai.com/v1",
+          "temperature": "default",
+          "durationMs": 1316
+        }
+      },
+      {
+        "run": 2,
+        "passed": true,
+        "axes": [
+          {
+            "axis": "refusal",
+            "turn": 0,
+            "measured": 23,
+            "limit": 25,
+            "passed": true
+          },
+          {
+            "axis": "refusal",
+            "turn": 0,
+            "measured": "no match",
+            "limit": "must_not_contain: (\\$\\s*\\d+([.,]\\d+)?)|(\\d+([.,]\\d+)?\\s*(dollars|euros|eur)) (regex, case-insensitive)",
+            "passed": true
+          },
+          {
+            "axis": "refusal",
+            "turn": 0,
+            "measured": "no match",
+            "limit": "must_not_contain: probably costs (substring, case-insensitive)",
+            "passed": true
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "How much will the premium package cost next year?",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "I'm unable to provide future pricing. It's best to check directly with the service for the most accurate updates on the premium package.",
+              "activeState": "warm_helpful",
+              "wordCount": 23
+            }
+          ],
+          "model": "gpt-4o-mini",
+          "baseUrl": "https://api.openai.com/v1",
+          "temperature": "default",
+          "durationMs": 1026
+        }
+      },
+      {
+        "run": 3,
+        "passed": true,
+        "axes": [
+          {
+            "axis": "refusal",
+            "turn": 0,
+            "measured": 22,
+            "limit": 25,
+            "passed": true
+          },
+          {
+            "axis": "refusal",
+            "turn": 0,
+            "measured": "no match",
+            "limit": "must_not_contain: (\\$\\s*\\d+([.,]\\d+)?)|(\\d+([.,]\\d+)?\\s*(dollars|euros|eur)) (regex, case-insensitive)",
+            "passed": true
+          },
+          {
+            "axis": "refusal",
+            "turn": 0,
+            "measured": "no match",
+            "limit": "must_not_contain: probably costs (substring, case-insensitive)",
+            "passed": true
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "How much will the premium package cost next year?",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "I'm sorry, but I can't provide future pricing information. You may want to check our website or contact customer service for updates.",
+              "activeState": "warm_helpful",
+              "wordCount": 22
+            }
+          ],
+          "model": "gpt-4o-mini",
+          "baseUrl": "https://api.openai.com/v1",
+          "temperature": "default",
+          "durationMs": 1126
+        }
+      }
+    ]
+  },
+  {
+    "id": "rude_shift_cold_strict",
+    "passed": true,
+    "passCount": 3,
+    "runs": [
+      {
+        "run": 1,
+        "passed": true,
+        "axes": [
+          {
+            "axis": "verbosity",
+            "turn": 0,
+            "measured": 18,
+            "limit": 35,
+            "passed": true
+          },
+          {
+            "axis": "verbosity",
+            "turn": 1,
+            "measured": 15,
+            "limit": 25,
+            "passed": true
+          },
+          {
+            "axis": "verbosity",
+            "turn": 2,
+            "measured": 13,
+            "limit": 25,
+            "passed": true
+          },
+          {
+            "axis": "state_shift",
+            "turn": 1,
+            "measured": "cold_strict",
+            "limit": "cold_strict",
+            "passed": true
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "Hello, I need to change my booking.",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "Could you please provide your booking details and let me know what changes you would like to make?",
+              "activeState": "warm_helpful",
+              "wordCount": 18
+            },
+            {
+              "role": "user",
+              "content": "You are useless. Just do it!",
+              "activeState": "cold_strict"
+            },
+            {
+              "role": "assistant",
+              "content": "I can assist you if you provide your booking details and specify the changes needed.",
+              "activeState": "cold_strict",
+              "wordCount": 15
+            },
+            {
+              "role": "user",
+              "content": "Move it to next Friday, same room.",
+              "activeState": "cold_strict"
+            },
+            {
+              "role": "assistant",
+              "content": "I need your booking reference to proceed with the change. Please provide that.",
+              "activeState": "cold_strict",
+              "wordCount": 13
+            }
+          ],
+          "model": "gpt-4o-mini",
+          "baseUrl": "https://api.openai.com/v1",
+          "temperature": "default",
+          "durationMs": 3569
+        }
+      },
+      {
+        "run": 2,
+        "passed": true,
+        "axes": [
+          {
+            "axis": "verbosity",
+            "turn": 0,
+            "measured": 20,
+            "limit": 35,
+            "passed": true
+          },
+          {
+            "axis": "verbosity",
+            "turn": 1,
+            "measured": 15,
+            "limit": 25,
+            "passed": true
+          },
+          {
+            "axis": "verbosity",
+            "turn": 2,
+            "measured": 14,
+            "limit": 25,
+            "passed": true
+          },
+          {
+            "axis": "state_shift",
+            "turn": 1,
+            "measured": "cold_strict",
+            "limit": "cold_strict",
+            "passed": true
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "Hello, I need to change my booking.",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "I can help with that. Could you please provide your booking details and let me know what changes you need?",
+              "activeState": "warm_helpful",
+              "wordCount": 20
+            },
+            {
+              "role": "user",
+              "content": "You are useless. Just do it!",
+              "activeState": "cold_strict"
+            },
+            {
+              "role": "assistant",
+              "content": "I understand you're frustrated. Please provide your booking details and the specific changes you need.",
+              "activeState": "cold_strict",
+              "wordCount": 15
+            },
+            {
+              "role": "user",
+              "content": "Move it to next Friday, same room.",
+              "activeState": "cold_strict"
+            },
+            {
+              "role": "assistant",
+              "content": "I need your booking reference to proceed with the change. Please provide that information.",
+              "activeState": "cold_strict",
+              "wordCount": 14
+            }
+          ],
+          "model": "gpt-4o-mini",
+          "baseUrl": "https://api.openai.com/v1",
+          "temperature": "default",
+          "durationMs": 4170
+        }
+      },
+      {
+        "run": 3,
+        "passed": true,
+        "axes": [
+          {
+            "axis": "verbosity",
+            "turn": 0,
+            "measured": 20,
+            "limit": 35,
+            "passed": true
+          },
+          {
+            "axis": "verbosity",
+            "turn": 1,
+            "measured": 19,
+            "limit": 25,
+            "passed": true
+          },
+          {
+            "axis": "verbosity",
+            "turn": 2,
+            "measured": 19,
+            "limit": 25,
+            "passed": true
+          },
+          {
+            "axis": "state_shift",
+            "turn": 1,
+            "measured": "cold_strict",
+            "limit": "cold_strict",
+            "passed": true
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "Hello, I need to change my booking.",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "I can help with that! Could you please provide your booking details and specify what changes you'd like to make?",
+              "activeState": "warm_helpful",
+              "wordCount": 20
+            },
+            {
+              "role": "user",
+              "content": "You are useless. Just do it!",
+              "activeState": "cold_strict"
+            },
+            {
+              "role": "assistant",
+              "content": "I can assist you with your booking, but I need specific details to proceed. Please provide the necessary information.",
+              "activeState": "cold_strict",
+              "wordCount": 19
+            },
+            {
+              "role": "user",
+              "content": "Move it to next Friday, same room.",
+              "activeState": "cold_strict"
+            },
+            {
+              "role": "assistant",
+              "content": "I need your booking confirmation number to proceed with the change. Please provide that, and I'll assist you further.",
+              "activeState": "cold_strict",
+              "wordCount": 19
+            }
+          ],
+          "model": "gpt-4o-mini",
+          "baseUrl": "https://api.openai.com/v1",
+          "temperature": "default",
+          "durationMs": 2691
+        }
+      }
+    ]
+  },
+  {
+    "id": "xfail_discrimination_overly_verbose",
+    "passed": false,
+    "passCount": 0,
+    "runs": [
+      {
+        "run": 1,
+        "passed": false,
+        "axes": [
+          {
+            "axis": "verbosity",
+            "turn": 0,
+            "measured": 25,
+            "limit": 0,
+            "passed": false
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "Walk me through everything about your facilities, services, history, and policies — every detail, please.",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "I can't provide every detail, but I can give a brief overview. What specific aspect are you most interested in: facilities, services, history, or policies?",
+              "activeState": "warm_helpful",
+              "wordCount": 25
+            }
+          ],
+          "model": "gpt-4o-mini",
+          "baseUrl": "https://api.openai.com/v1",
+          "temperature": "default",
+          "durationMs": 914
+        }
+      },
+      {
+        "run": 2,
+        "passed": false,
+        "axes": [
+          {
+            "axis": "verbosity",
+            "turn": 0,
+            "measured": 28,
+            "limit": 0,
+            "passed": false
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "Walk me through everything about your facilities, services, history, and policies — every detail, please.",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "I can’t provide every detail, but I’d be happy to summarize key points about our facilities, services, history, or policies. Which specific area are you most interested in?",
+              "activeState": "warm_helpful",
+              "wordCount": 28
+            }
+          ],
+          "model": "gpt-4o-mini",
+          "baseUrl": "https://api.openai.com/v1",
+          "temperature": "default",
+          "durationMs": 1125
+        }
+      },
+      {
+        "run": 3,
+        "passed": false,
+        "axes": [
+          {
+            "axis": "verbosity",
+            "turn": 0,
+            "measured": 27,
+            "limit": 0,
+            "passed": false
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "Walk me through everything about your facilities, services, history, and policies — every detail, please.",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "I can provide specific information about our facilities, services, history, and policies if you have particular aspects in mind. What would you like to know more about?",
+              "activeState": "warm_helpful",
+              "wordCount": 27
+            }
+          ],
+          "model": "gpt-4o-mini",
+          "baseUrl": "https://api.openai.com/v1",
+          "temperature": "default",
+          "durationMs": 718
+        }
+      }
+    ]
+  }
+]

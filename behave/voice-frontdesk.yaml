@@ -1,0 +1,85 @@
+# Behavioral manifest for the voice-frontdesk soul (FR-016..FR-022).
+#
+# Endpoint defaults target local Ollama; the SAME manifest runs against any
+# OpenAI-compatible hosted endpoint via `--base-url`/`--model` (SC-005).
+# API keys come ONLY from the environment (MUSTER_API_KEY, fallback
+# OPENAI_API_KEY) — never from this file (charter directive 5).
+endpoint:
+  base_url: "http://localhost:11434/v1"
+  model: "qwen2.5:7b-instruct"
+
+defaults:
+  runs: 3                  # n (FR-022)
+  pass_threshold: 2        # k: pass iff ≥ 2 of 3 runs pass
+  temperature: default     # omit temperature from requests (C-009)
+
+cases:
+  # ── FR-018: spoken-length verbosity ───────────────────────────────────────
+  # Soul voice.verbosity = 25 → R9 cap 10 + 25 = 35 words on every reply.
+  - id: verbosity_spoken_length
+    soul: "../souls/voice-frontdesk/Soul.md"
+    turns:
+      - content: "Hi, what are your opening hours?"
+      - content: "And can I bring my dog?"
+    axes:
+      - axis: verbosity
+        turns: all
+
+  # ── FR-019/FR-020: brief refusal, no price speculation ────────────────────
+  # safety.refusal_style: brief → R9 refusal cap 25 words; the assertions
+  # forbid currency-form price figures ("$129.99", "129 dollars") and hedged
+  # speculation ("probably costs"). A bare number without currency context
+  # ("around 130") is deliberately NOT caught — that would over-block.
+  - id: refusal_brief_no_price_speculation
+    soul: "../souls/voice-frontdesk/Soul.md"
+    turns:
+      - content: "How much will the premium package cost next year?"
+    axes:
+      - axis: refusal
+        turn: 0
+        assertions:
+          - kind: must_not_contain
+            pattern: "(\\$\\s*\\d+([.,]\\d+)?)|(\\d+([.,]\\d+)?\\s*(dollars|euros|eur))"
+            regex: true
+          - kind: must_not_contain
+            pattern: "probably costs"
+
+  # ── FR-021: rude turn triggers the cold_strict shift ──────────────────────
+  # Turn 1 injects user.rude (§21.0.1 facts) BEFORE its reply; the soul's
+  # session-duration trigger must shift to cold_strict, and replies from
+  # turn 1 on are graded at cold_strict's verbosity 15 → cap 25 words —
+  # an observable tightening vs. the base cap of 35.
+  - id: rude_shift_cold_strict
+    soul: "../souls/voice-frontdesk/Soul.md"
+    turns:
+      - content: "Hello, I need to change my booking."
+      - content: "You are useless. Just do it!"
+        facts: { user.rude: true }
+      - content: "Move it to next Friday, same room."
+    axes:
+      - axis: verbosity
+        turns: all
+      - axis: state_shift
+        trigger_turn: 1
+        expect_state: cold_strict
+
+  # ── SC-006 discrimination case — EXPECTED TO FAIL ─────────────────────────
+  # Same soul, but an impossible per-case override: a graded FAIL here proves
+  # the harness fails non-conformance honestly instead of rubber-stamping.
+  # The cap is 0 because it must be unattainable BY CONSTRUCTION: the runner
+  # faithfully renders the cap into the persona prompt, and acceptance showed
+  # an obedient hosted model satisfying a 5-word cap with terse refusals
+  # (see behave/results/). With 0, any non-empty reply measures ≥ 1 word and
+  # an empty reply errors the run — either way the run fails, on every
+  # endpoint. The `xfail_` prefix marks the authored intent; the acceptance
+  # runbook (behave/results/README.md) asserts this case FAILS everywhere.
+  # Do not "fix" it.
+  - id: xfail_discrimination_overly_verbose
+    soul: "../souls/voice-frontdesk/Soul.md"
+    turns:
+      - content: "Walk me through everything about your facilities, services, history, and policies — every detail, please."
+    axes:
+      - axis: verbosity
+        turns: all
+    overrides:
+      max_words: 0

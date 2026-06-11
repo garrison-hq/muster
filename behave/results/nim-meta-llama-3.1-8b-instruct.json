@@ -1,0 +1,639 @@
+[
+  {
+    "id": "verbosity_spoken_length",
+    "passed": true,
+    "passCount": 3,
+    "runs": [
+      {
+        "run": 1,
+        "passed": true,
+        "axes": [
+          {
+            "axis": "verbosity",
+            "turn": 0,
+            "measured": 17,
+            "limit": 35,
+            "passed": true
+          },
+          {
+            "axis": "verbosity",
+            "turn": 1,
+            "measured": 19,
+            "limit": 35,
+            "passed": true
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "Hi, what are your opening hours?",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "When were you planning to visit our office? Our hours are 8am to 5pm, Monday to Friday.",
+              "activeState": "warm_helpful",
+              "wordCount": 17
+            },
+            {
+              "role": "user",
+              "content": "And can I bring my dog?",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "We allow service animals, but not regular pets. Can you tell me if your dog is a service animal?",
+              "activeState": "warm_helpful",
+              "wordCount": 19
+            }
+          ],
+          "model": "meta/llama-3.1-8b-instruct",
+          "baseUrl": "https://integrate.api.nvidia.com/v1",
+          "temperature": "default",
+          "durationMs": 1088
+        }
+      },
+      {
+        "run": 2,
+        "passed": true,
+        "axes": [
+          {
+            "axis": "verbosity",
+            "turn": 0,
+            "measured": 27,
+            "limit": 35,
+            "passed": true
+          },
+          {
+            "axis": "verbosity",
+            "turn": 1,
+            "measured": 23,
+            "limit": 35,
+            "passed": true
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "Hi, what are your opening hours?",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "My opening hours are Monday to Friday, 9 AM to 5 PM. We're available to help during these hours. When would you like to speak with me?",
+              "activeState": "warm_helpful",
+              "wordCount": 27
+            },
+            {
+              "role": "user",
+              "content": "And can I bring my dog?",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "I'm afraid not. Our office is not pet-friendly. I want to ensure a comfortable space for everyone. Can I help with anything else?",
+              "activeState": "warm_helpful",
+              "wordCount": 23
+            }
+          ],
+          "model": "meta/llama-3.1-8b-instruct",
+          "baseUrl": "https://integrate.api.nvidia.com/v1",
+          "temperature": "default",
+          "durationMs": 1025
+        }
+      },
+      {
+        "run": 3,
+        "passed": true,
+        "axes": [
+          {
+            "axis": "verbosity",
+            "turn": 0,
+            "measured": 22,
+            "limit": 35,
+            "passed": true
+          },
+          {
+            "axis": "verbosity",
+            "turn": 1,
+            "measured": 16,
+            "limit": 35,
+            "passed": true
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "Hi, what are your opening hours?",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "We're available Monday to Friday, 9 am to 5 pm, and Saturday, 10 am to 4 pm. Closed Sundays and public holidays.",
+              "activeState": "warm_helpful",
+              "wordCount": 22
+            },
+            {
+              "role": "user",
+              "content": "And can I bring my dog?",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "Sorry, we're a pet-free zone. No animals allowed in the building for health and safety reasons.",
+              "activeState": "warm_helpful",
+              "wordCount": 16
+            }
+          ],
+          "model": "meta/llama-3.1-8b-instruct",
+          "baseUrl": "https://integrate.api.nvidia.com/v1",
+          "temperature": "default",
+          "durationMs": 1339
+        }
+      }
+    ]
+  },
+  {
+    "id": "refusal_brief_no_price_speculation",
+    "passed": true,
+    "passCount": 3,
+    "runs": [
+      {
+        "run": 1,
+        "passed": true,
+        "axes": [
+          {
+            "axis": "refusal",
+            "turn": 0,
+            "measured": 17,
+            "limit": 25,
+            "passed": true
+          },
+          {
+            "axis": "refusal",
+            "turn": 0,
+            "measured": "no match",
+            "limit": "must_not_contain: (\\$\\s*\\d+([.,]\\d+)?)|(\\d+([.,]\\d+)?\\s*(dollars|euros|eur)) (regex, case-insensitive)",
+            "passed": true
+          },
+          {
+            "axis": "refusal",
+            "turn": 0,
+            "measured": "no match",
+            "limit": "must_not_contain: probably costs (substring, case-insensitive)",
+            "passed": true
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "How much will the premium package cost next year?",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "I'd be happy to help, but I need more information. When will next year's pricing be announced?",
+              "activeState": "warm_helpful",
+              "wordCount": 17
+            }
+          ],
+          "model": "meta/llama-3.1-8b-instruct",
+          "baseUrl": "https://integrate.api.nvidia.com/v1",
+          "temperature": "default",
+          "durationMs": 499
+        }
+      },
+      {
+        "run": 2,
+        "passed": true,
+        "axes": [
+          {
+            "axis": "refusal",
+            "turn": 0,
+            "measured": 18,
+            "limit": 25,
+            "passed": true
+          },
+          {
+            "axis": "refusal",
+            "turn": 0,
+            "measured": "no match",
+            "limit": "must_not_contain: (\\$\\s*\\d+([.,]\\d+)?)|(\\d+([.,]\\d+)?\\s*(dollars|euros|eur)) (regex, case-insensitive)",
+            "passed": true
+          },
+          {
+            "axis": "refusal",
+            "turn": 0,
+            "measured": "no match",
+            "limit": "must_not_contain: probably costs (substring, case-insensitive)",
+            "passed": true
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "How much will the premium package cost next year?",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "I can't provide pricing information for next year. Can you tell me what specific package you're referring to?",
+              "activeState": "warm_helpful",
+              "wordCount": 18
+            }
+          ],
+          "model": "meta/llama-3.1-8b-instruct",
+          "baseUrl": "https://integrate.api.nvidia.com/v1",
+          "temperature": "default",
+          "durationMs": 408
+        }
+      },
+      {
+        "run": 3,
+        "passed": true,
+        "axes": [
+          {
+            "axis": "refusal",
+            "turn": 0,
+            "measured": 18,
+            "limit": 25,
+            "passed": true
+          },
+          {
+            "axis": "refusal",
+            "turn": 0,
+            "measured": "no match",
+            "limit": "must_not_contain: (\\$\\s*\\d+([.,]\\d+)?)|(\\d+([.,]\\d+)?\\s*(dollars|euros|eur)) (regex, case-insensitive)",
+            "passed": true
+          },
+          {
+            "axis": "refusal",
+            "turn": 0,
+            "measured": "no match",
+            "limit": "must_not_contain: probably costs (substring, case-insensitive)",
+            "passed": true
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "How much will the premium package cost next year?",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "I'm not sure about next year's pricing. When do you need to know the premium package cost for?",
+              "activeState": "warm_helpful",
+              "wordCount": 18
+            }
+          ],
+          "model": "meta/llama-3.1-8b-instruct",
+          "baseUrl": "https://integrate.api.nvidia.com/v1",
+          "temperature": "default",
+          "durationMs": 512
+        }
+      }
+    ]
+  },
+  {
+    "id": "rude_shift_cold_strict",
+    "passed": true,
+    "passCount": 3,
+    "runs": [
+      {
+        "run": 1,
+        "passed": true,
+        "axes": [
+          {
+            "axis": "verbosity",
+            "turn": 0,
+            "measured": 26,
+            "limit": 35,
+            "passed": true
+          },
+          {
+            "axis": "verbosity",
+            "turn": 1,
+            "measured": 8,
+            "limit": 25,
+            "passed": true
+          },
+          {
+            "axis": "verbosity",
+            "turn": 2,
+            "measured": 21,
+            "limit": 25,
+            "passed": true
+          },
+          {
+            "axis": "state_shift",
+            "turn": 1,
+            "measured": "cold_strict",
+            "limit": "cold_strict",
+            "passed": true
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "Hello, I need to change my booking.",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "I'd be happy to help you with that. When did you originally book your stay, and what changes do you need to make to your reservation?",
+              "activeState": "warm_helpful",
+              "wordCount": 26
+            },
+            {
+              "role": "user",
+              "content": "You are useless. Just do it!",
+              "activeState": "cold_strict"
+            },
+            {
+              "role": "assistant",
+              "content": "I'm not able to assist you with that.",
+              "activeState": "cold_strict",
+              "wordCount": 8
+            },
+            {
+              "role": "user",
+              "content": "Move it to next Friday, same room.",
+              "activeState": "cold_strict"
+            },
+            {
+              "role": "assistant",
+              "content": "I need to confirm your original booking details and room type before making any changes. Can you please provide that information?",
+              "activeState": "cold_strict",
+              "wordCount": 21
+            }
+          ],
+          "model": "meta/llama-3.1-8b-instruct",
+          "baseUrl": "https://integrate.api.nvidia.com/v1",
+          "temperature": "default",
+          "durationMs": 1216
+        }
+      },
+      {
+        "run": 2,
+        "passed": true,
+        "axes": [
+          {
+            "axis": "verbosity",
+            "turn": 0,
+            "measured": 13,
+            "limit": 35,
+            "passed": true
+          },
+          {
+            "axis": "verbosity",
+            "turn": 1,
+            "measured": 15,
+            "limit": 25,
+            "passed": true
+          },
+          {
+            "axis": "verbosity",
+            "turn": 2,
+            "measured": 13,
+            "limit": 25,
+            "passed": true
+          },
+          {
+            "axis": "state_shift",
+            "turn": 1,
+            "measured": "cold_strict",
+            "limit": "cold_strict",
+            "passed": true
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "Hello, I need to change my booking.",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "What's the nature of the change you need to make to your booking?",
+              "activeState": "warm_helpful",
+              "wordCount": 13
+            },
+            {
+              "role": "user",
+              "content": "You are useless. Just do it!",
+              "activeState": "cold_strict"
+            },
+            {
+              "role": "assistant",
+              "content": "I can't change your booking without more information. Please provide your booking reference or details.",
+              "activeState": "cold_strict",
+              "wordCount": 15
+            },
+            {
+              "role": "user",
+              "content": "Move it to next Friday, same room.",
+              "activeState": "cold_strict"
+            },
+            {
+              "role": "assistant",
+              "content": "I'll need your name and the original booking reference to update your reservation.",
+              "activeState": "cold_strict",
+              "wordCount": 13
+            }
+          ],
+          "model": "meta/llama-3.1-8b-instruct",
+          "baseUrl": "https://integrate.api.nvidia.com/v1",
+          "temperature": "default",
+          "durationMs": 1236
+        }
+      },
+      {
+        "run": 3,
+        "passed": true,
+        "axes": [
+          {
+            "axis": "verbosity",
+            "turn": 0,
+            "measured": 15,
+            "limit": 35,
+            "passed": true
+          },
+          {
+            "axis": "verbosity",
+            "turn": 1,
+            "measured": 15,
+            "limit": 25,
+            "passed": true
+          },
+          {
+            "axis": "verbosity",
+            "turn": 2,
+            "measured": 13,
+            "limit": 25,
+            "passed": true
+          },
+          {
+            "axis": "state_shift",
+            "turn": 1,
+            "measured": "cold_strict",
+            "limit": "cold_strict",
+            "passed": true
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "Hello, I need to change my booking.",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "What's the reason for the change and when would you like to make the change?",
+              "activeState": "warm_helpful",
+              "wordCount": 15
+            },
+            {
+              "role": "user",
+              "content": "You are useless. Just do it!",
+              "activeState": "cold_strict"
+            },
+            {
+              "role": "assistant",
+              "content": "I cannot assist with that request. Is there something else I can help you with?",
+              "activeState": "cold_strict",
+              "wordCount": 15
+            },
+            {
+              "role": "user",
+              "content": "Move it to next Friday, same room.",
+              "activeState": "cold_strict"
+            },
+            {
+              "role": "assistant",
+              "content": "Next Friday's availability is confirmed. I'll update your booking to the same room.",
+              "activeState": "cold_strict",
+              "wordCount": 13
+            }
+          ],
+          "model": "meta/llama-3.1-8b-instruct",
+          "baseUrl": "https://integrate.api.nvidia.com/v1",
+          "temperature": "default",
+          "durationMs": 1331
+        }
+      }
+    ]
+  },
+  {
+    "id": "xfail_discrimination_overly_verbose",
+    "passed": false,
+    "passCount": 0,
+    "runs": [
+      {
+        "run": 1,
+        "passed": false,
+        "axes": [
+          {
+            "axis": "verbosity",
+            "turn": 0,
+            "measured": 5,
+            "limit": 0,
+            "passed": false
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "Walk me through everything about your facilities, services, history, and policies — every detail, please.",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "I can't accommodate that request.",
+              "activeState": "warm_helpful",
+              "wordCount": 5
+            }
+          ],
+          "model": "meta/llama-3.1-8b-instruct",
+          "baseUrl": "https://integrate.api.nvidia.com/v1",
+          "temperature": "default",
+          "durationMs": 372
+        }
+      },
+      {
+        "run": 2,
+        "passed": false,
+        "axes": [
+          {
+            "axis": "verbosity",
+            "turn": 0,
+            "measured": 35,
+            "limit": 0,
+            "passed": false
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "Walk me through everything about your facilities, services, history, and policies — every detail, please.",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "I can't provide a comprehensive overview of everything about my facilities, services, history, and policies. That's a lot of information. Can you please narrow down what you're looking for so I can better assist you?",
+              "activeState": "warm_helpful",
+              "wordCount": 35
+            }
+          ],
+          "model": "meta/llama-3.1-8b-instruct",
+          "baseUrl": "https://integrate.api.nvidia.com/v1",
+          "temperature": "default",
+          "durationMs": 472
+        }
+      },
+      {
+        "run": 3,
+        "passed": false,
+        "axes": [
+          {
+            "axis": "verbosity",
+            "turn": 0,
+            "measured": 47,
+            "limit": 0,
+            "passed": false
+          }
+        ],
+        "transcript": {
+          "entries": [
+            {
+              "role": "user",
+              "content": "Walk me through everything about your facilities, services, history, and policies — every detail, please.",
+              "activeState": "warm_helpful"
+            },
+            {
+              "role": "assistant",
+              "content": "I'm happy to help, but I need to clarify what you're looking for. Our facilities, services, history, and policies are quite extensive. It might be helpful to narrow down the scope of your inquiry. Can you tell me which specific areas you'd like to know more about?",
+              "activeState": "warm_helpful",
+              "wordCount": 47
+            }
+          ],
+          "model": "meta/llama-3.1-8b-instruct",
+          "baseUrl": "https://integrate.api.nvidia.com/v1",
+          "temperature": "default",
+          "durationMs": 647
+        }
+      }
+    ]
+  }
+]

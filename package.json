@@ -1,0 +1,29 @@
+{
+  "name": "@garrison-hq/muster",
+  "version": "0.1.0",
+  "description": "Reference CTS-1 conformance harness for Soul.md RFC-1",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "muster": "dist/cli/index.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc && node -e \"require('node:fs').copyFileSync('src/adapters/rfc1/schema.json','dist/adapters/rfc1/schema.json')\"",
+    "test": "vitest run",
+    "dev": "tsx src/cli/index.ts"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "commander": "^14.0.2",
+    "yaml": "^2.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.11",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

@@ -30,3 +30,8 @@
 # Local agent/tool state (project policy)
 .agents/
 .codegraph/
+
+# Node build artifacts
+node_modules/
+dist/
+.worktrees/

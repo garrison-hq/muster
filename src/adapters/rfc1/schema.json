@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/soulmd/rfc1/soul.schema.json",
+  "title": "Soul.md RFC-1 (Permissive)",
+  "type": "object",
+  "oneOf": [
+    {
+      "title": "Soul document (kind: soul or omitted)",
+      "type": "object",
+      "required": [
+        "soul_spec",
+        "id",
+        "name",
+        "locale",
+        "composition",
+        "profiles",
+        "profile_overrides",
+        "values",
+        "voice",
+        "interaction",
+        "safety",
+        "extensions"
+      ],
+      "properties": {
+        "soul_spec": {"type": "string"},
+        "kind": {"type": "string", "enum": ["soul"]},
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "locale": {"type": "string"},
+
+        "composition": {
+          "type": "object",
+          "required": ["extends", "mixins", "merge_policy"],
+          "properties": {
+            "extends": {"type": "array", "items": {"type": "string"}},
+            "mixins": {"type": "array", "items": {"type": "string"}},
+            "merge_policy": {"type": "string", "enum": ["standard"]}
+          },
+          "additionalProperties": true
+        },
+
+        "profiles": {"type": "array", "items": {"type": "string"}},
+        "profile_overrides": {"type": "object"},
+
+        "values": {
+          "type": "object",
+          "required": ["priorities"],
+          "properties": {
+            "priorities": {"type": "array", "items": {"type": "string"}},
+            "tradeoffs": {"type": "array", "items": {"type": "string"}},
+            "taboo": {"type": "array", "items": {"type": "string"}}
+          },
+          "additionalProperties": true
+        },
+
+        "voice": {
+          "type": "object",
+          "required": ["formality", "warmth", "verbosity", "jargon", "formatting"],
+          "properties": {
+            "formality": {"type": "integer", "minimum": 0, "maximum": 100},
+            "warmth": {"type": "integer", "minimum": 0, "maximum": 100},
+            "verbosity": {"type": "integer", "minimum": 0, "maximum": 100},
+            "jargon": {"type": "integer", "minimum": 0, "maximum": 100},
+            "formatting": {"type": "string", "enum": ["minimal", "plain", "markdown"]},
+            "banned_phrases": {"type": "array", "items": {"type": "string"}},
+            "preferred_phrases": {"type": "array", "items": {"type": "string"}},
+            "punctuation": {"type": "string", "enum": ["normal", "sparse"]},
+            "emoji_policy": {"type": "string", "enum": ["never", "rare", "normal"]},
+            "examples_budget": {"type": "integer", "minimum": 0, "maximum": 100}
+          },
+          "additionalProperties": true
+        },
+
+        "interaction": {
+          "type": "object",
+          "required": ["clarifying_questions", "uncertainty", "disagreement", "confirmations"],
+          "properties": {
+            "clarifying_questions": {"type": "string", "enum": ["never", "when_ambiguous", "always"]},
+            "uncertainty": {"type": "string", "enum": ["explicit", "implicit", "never"]},
+            "disagreement": {"type": "string", "enum": ["soft", "neutral", "direct"]},
+            "confirmations": {"type": "string", "enum": ["none", "implicit", "explicit"]},
+            "ask_threshold": {"type": "integer", "minimum": 0, "maximum": 100},
+            "uncertainty_markers": {"type": "array", "items": {"type": "string"}},
+            "error_handling": {"type": "object"}
+          },
+          "additionalProperties": true
+        },
+
+        "safety": {
+          "type": "object",
+          "required": ["refusal_style", "privacy", "speculation"],
+          "properties": {
+            "refusal_style": {"type": "string", "enum": ["brief", "explain", "policy_cite"]},
+            "privacy": {"type": "string", "enum": ["normal", "strict"]},
+            "speculation": {"type": "string", "enum": ["allow", "mark", "avoid"]}
+          },
+          "additionalProperties": true
+        },
+
+        "relationship": {"type": "object", "additionalProperties": true},
+        "identity": {"type": "object", "additionalProperties": true},
+        "cognition": {"type": "object", "additionalProperties": true},
+        "planning": {"type": "object", "additionalProperties": true},
+        "verification": {"type": "object", "additionalProperties": true},
+        "uncertainty": {"type": "object", "additionalProperties": true},
+        "decisions": {"type": "object", "additionalProperties": true},
+        "response": {"type": "object", "additionalProperties": true},
+        "social": {"type": "object", "additionalProperties": true},
+        "memory": {"type": "object", "additionalProperties": true},
+        "actions": {"type": "object", "additionalProperties": true},
+        "presentation": {"type": "object", "additionalProperties": true},
+        "state": {"type": "object", "additionalProperties": true},
+        "evaluation": {"type": "object", "additionalProperties": true},
+
+        "extensions": {"type": "object"}
+      },
+      "additionalProperties": true
+    },
+    {
+      "title": "Mixin document (kind: mixin)",
+      "type": "object",
+      "required": ["soul_spec", "id", "kind"],
+      "properties": {
+        "soul_spec": {"type": "string"},
+        "kind": {"type": "string", "enum": ["mixin"]},
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "locale": {"type": "string"},
+        "extensions": {"type": "object"}
+      },
+      "additionalProperties": true
+    }
+  ],
+  "additionalProperties": true
+}
