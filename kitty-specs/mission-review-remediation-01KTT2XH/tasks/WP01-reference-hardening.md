@@ -117,3 +117,4 @@ spec-kitty agent action implement WP01 --agent <name>
 - 2026-06-11T01:04:30Z – claude – shell_pid=1833431 – Assigned agent via action command
 - 2026-06-11T01:15:35Z – claude – shell_pid=1833431 – Ready for review: §7.2 URI rejection + opt-in --restrict-refs containment + referenced-doc sanitization; 555 tests green, CTS 28/28, NFR-001 byte-identity guarded
 - 2026-06-11T01:16:22Z – claude – shell_pid=1912099 – Started review via action command
+- 2026-06-11T01:19:36Z – claude – shell_pid=1912099 – Review passed: gates re-run independently (build green, 555 tests, CTS 28/28); NFR-001 byte-identity verified against freshly built main for all fixtures; absolute-ref containment and root-vs-referenced sanitization confirmed in code and tests
