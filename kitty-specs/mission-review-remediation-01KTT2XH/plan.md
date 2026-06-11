@@ -1,108 +1,71 @@
-# Implementation Plan: [FEATURE]
-*Path: [templates/plan-template.md](templates/plan-template.md)*
+# Implementation Plan: Mission-Review Remediation
 
-
-**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
-**Input**: Feature specification from `/kitty-specs/[###-feature-name]/spec.md`
-
-**Note**: This template is filled in by the `/spec-kitty.plan` command. See `src/specify_cli/missions/software-dev/command-templates/plan.md` for the execution workflow.
-
-The planner will not begin until all planning questions have been answered—capture those answers in this document before progressing to later phases.
+**Branch**: `main` | **Date**: 2026-06-11 | **Spec**: [spec.md](spec.md)
+**Input**: `kitty-specs/mission-review-remediation-01KTT2XH/spec.md` + parent mission-review findings
 
 ## Summary
 
-[Extract from feature spec: primary requirement + technical approach from research]
+Three small, sharply-scoped work streams against the merged muster codebase: (1) reference-resolution hardening in `makeFsLoadRef` + CLI (URI-scheme rejection, opt-in containment, referenced-document leak sanitization — RISK-1/RISK-2); (2) Node-based invariant guard tests codifying the acceptance matrix's negative invariants (RISK-3); (3) the §7.2 reference-resolution README section + trust model (DRIFT-2). Streams 1 and 2 own disjoint files and run in parallel isolated worktrees; stream 3 documents stream 1's final behavior and lands after it.
 
 ## Technical Context
 
-<!--
-  ACTION REQUIRED: Replace the content in this section with the technical details
-  for the project. The structure here is presented in advisory capacity to guide
-  the iteration process.
--->
-
-**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
-**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
-**Testing**: [Project-specific test approach or NEEDS CLARIFICATION]
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
-**Project Type**: [single/web/mobile - determines source structure]  
-**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
-**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
-**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
+**Language/Toolchain**: inherited unchanged — TypeScript strict, Node 22, pnpm, Vitest (charter; spec C-003). No new dependencies (NFR-003).
+**Change surface**:
+- Stream 1: `src/core/pipeline.ts` (`makeFsLoadRef` gains `opts {restrictTo?}` + scheme sniff), `src/core/cts/runner.ts` (options pass-through at its loadRef construction, `runner.ts:223`), `src/cli/index.ts` (`--restrict-refs [dir]` on check/resolve/cts run/behave run), `tests/unit/pipeline.test.ts`, `tests/unit/cli.test.ts`.
+- Stream 2: `tests/unit/invariants.test.ts` (new file only).
+- Stream 3: `README.md` only.
+**Key design points**:
+- Scheme detection: `/^[a-z][a-z0-9+.-]*:\/\//i` — requires `//`, so `a:b/c.md` stays a valid relative path (spec edge case). Violation `section: "§7.2"`.
+- Containment check: resolve target, then `relative(restrictTo, target)` must not start with `..` (and not be absolute); applies to absolute refs too. Lexical only — symlinks documented out of scope (spec assumption).
+- Leak sanitization: when a referenced document's parse yields violations, never surface raw source excerpts; keep path + line/col. Fix at the loadRef/violation-assembly layer in pipeline.ts so the WP02-era parse layer stays untouched.
+- CLI flag: Commander optional-value flag (`--restrict-refs [dir]`); bare → `dirname(root soul)`; `cts run` bare → per-case root dir.
+- Invariant guards walk files via Node `fs` (no grep — RFC-section `§` characters make GNU grep classify sources as binary): secrets patterns (`nvapi-[A-Za-z0-9]{8}`, `sk-[A-Za-z0-9_-]{20}`), core→adapter import scan over every `src/core/**/*.ts`, fetch isolation (`fetch(` only in the behavioral client). Guard self-test (SC-003) performed at verify time in a scratch worktree, not as a committed test.
+**Performance**: suite stays < 10 s; guards < 2 s.
 
 ## Charter Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+| Gate | Status |
+|---|---|
+| Stack/toolchain unchanged, no new deps | PASS |
+| Directive 2 (spec→plan→tasks before code) | PASS — this document precedes implementation |
+| Directive 3 (RFC-1 citations in tests) | PASS — §7.2 citations specified for stream 1 tests |
+| Directive 4 (parent locked constraints untouched) | PASS — opt-in flag; NFR-001 byte-identity gate proves it |
+| Directive 5 (no credentials) | PASS — stream 2 strengthens enforcement |
 
-[Gates determined based on charter file]
+No violations; Complexity Tracking empty.
 
-## Project Structure
-
-### Documentation (this feature)
-
-```
-kitty-specs/[###-feature]/
-├── plan.md              # This file (/spec-kitty.plan command output)
-├── research.md          # Phase 0 output (/spec-kitty.plan command)
-├── data-model.md        # Phase 1 output (/spec-kitty.plan command)
-├── quickstart.md        # Phase 1 output (/spec-kitty.plan command)
-├── contracts/           # Phase 1 output (/spec-kitty.plan command)
-└── tasks.md             # Phase 2 output (/spec-kitty.tasks command - NOT created by /spec-kitty.plan)
-```
-
-### Source Code (repository root)
-<!--
-  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
-  for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
-  not include Option labels.
--->
+## Project Structure (delta only)
 
 ```
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
-src/
-├── models/
-├── services/
-├── cli/
-└── lib/
-
-tests/
-├── contract/
-├── integration/
-└── unit/
-
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
-backend/
-├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
-└── tests/
-
-frontend/
-├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
-
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
+src/core/pipeline.ts          # modified (stream 1)
+src/core/cts/runner.ts        # modified, minimal pass-through (stream 1)
+src/cli/index.ts              # modified (stream 1)
+tests/unit/pipeline.test.ts   # modified (stream 1)
+tests/unit/cli.test.ts        # modified (stream 1)
+tests/unit/invariants.test.ts # NEW (stream 2)
+README.md                     # modified (stream 3)
 ```
 
-**Structure Decision**: [Document the selected structure and reference the real
-directories captured above]
+## Phase 0 — Research (3 decisions)
 
-## Complexity Tracking
+- **R1 — Commander optional-value flag**: `.option("--restrict-refs [dir]")` yields `true` (bare) | string | undefined — exactly the three modes FR-003 needs. Two separate flags rejected: worse UX for one concept.
+- **R2 — Containment comparison**: both paths absolute-resolved, then `path.relative(base, target)` must not start with `..` nor be absolute. `target.startsWith(base)` rejected: false positives on sibling directories (`/a/bc` vs `/a/b`).
+- **R3 — Guard file walking**: recursive `readdirSync` with exclusion set (`node_modules`, `.git`, `dist`, `.worktrees`, `.kittify`); `kitty-specs/` excluded from the secrets guard only (historical planning text), while the boundary and fetch guards scan their natural domains (`src/`, `tests/`). `git ls-files` subprocess rejected: subprocess in tests adds flake surface.
 
-*Fill ONLY if Charter Check has violations that must be justified*
+## Phase 1 — Contract (CLI delta)
 
-| Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
+`--restrict-refs [dir]` on all four subcommands:
+- absent → unrestricted (shipped behavior; byte-identical outputs — NFR-001)
+- bare → base = root soul file's directory (per-case root for `cts run`)
+- with value → base = given directory (resolved from cwd)
+- Escape violation: `{path: "composition", message: 'reference "<ref>" escapes the restricted base directory', severity: "error"}`
+- URI violation: `{path: "composition", message: 'URI reference schemes are not supported by muster (this pass): "<ref>" — use a relative or absolute file path', severity: "error", section: "§7.2"}`
+- Exit codes unchanged (violations → 1; flag misuse → 2).
+
+No data-model or quickstart deltas — entities live in spec.md Key Entities; the README section *is* the user-facing doc deliverable (FR-006).
+
+## Execution & Parallelization (feeds /spec-kitty.tasks)
+
+- **WP-A (stream 1)** ∥ **WP-B (stream 2)** — disjoint owned_files, parallel isolated worktrees (spec C-004).
+- **WP-C (stream 3)** depends on WP-A (documents its final behavior).
+- Per-WP discipline: implement → independent review → live-execution verify (SC-001/SC-003/SC-004 are explicitly live checks) → fix loop.
