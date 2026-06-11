@@ -11,6 +11,8 @@ branch_strategy: Planning artifacts for this feature were generated on main. Dur
 subtasks:
 - T008
 - T009
+agent: "claude"
+shell_pid: "1939903"
 history:
 - timestamp: '2026-06-11T02:00:00Z'
   event: created
@@ -69,3 +71,7 @@ Add a `## Reference resolution` section (place after the existing CTS/fixture ma
 ## Risks
 
 - WP01's final message strings may differ from the plan's draft wording — that is exactly why this WP depends on WP01 and quotes the binary, not the plan.
+
+## Activity Log
+
+- 2026-06-11T01:28:45Z – claude – shell_pid=1939903 – Started implementation via action command
