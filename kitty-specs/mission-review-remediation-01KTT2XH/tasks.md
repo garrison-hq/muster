@@ -13,8 +13,8 @@
 | T003 | Referenced-document leak sanitization (position kept, no excerpts) | WP01 | |
 | T004 | CLI --restrict-refs [dir] on all four subcommands + cts runner pass-through | WP01 | |
 | T005 | Stream-1 tests: scheme/escape/bare-flag/sanitization/exit codes + NFR-001 byte-identity | WP01 | |
-| T006 | Invariant guards test file (Node-based: secrets, core boundary, fetch isolation) | WP02 | [P] |
-| T007 | Guard documentation comment (grep-binary rationale) + perf budget assert | WP02 | |
+| T006 | Invariant guards test file (Node-based: secrets, core boundary, fetch isolation) | WP02 | [D] |
+| T007 | Guard documentation comment (grep-binary rationale) + perf budget assert | WP02 | | [D] |
 | T008 | README "Reference resolution" section (§7.2 MUST: schemes, flag modes, trust model) | WP03 | |
 | T009 | README cross-check against built CLI help/error output (SC-004) | WP03 | |
 
@@ -35,8 +35,8 @@
 **Goal**: Close RISK-3: the acceptance matrix's three negative invariants become Node-based tests that run in every `pnpm test` and are immune to grep's binary-file heuristic.
 **Priority**: P0 | **Dependencies**: none (parallel with WP01; new file only) | **Estimated prompt**: ~200 lines
 **Independent test**: guards pass on clean tree; planting a fake secret / boundary import / stray fetch in a scratch worktree makes the matching guard fail (SC-003, verified at verify time).
-- [ ] T006 Guards test file (WP02)
-- [ ] T007 Rationale comment + perf assert (WP02)
+- [x] T006 Guards test file (WP02)
+- [x] T007 Rationale comment + perf assert (WP02)
 **Prompt**: [tasks/WP02-invariant-guards.md](tasks/WP02-invariant-guards.md)
 
 ## Phase 2 — Documentation
