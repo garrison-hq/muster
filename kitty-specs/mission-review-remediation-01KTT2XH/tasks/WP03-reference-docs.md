@@ -77,3 +77,4 @@ Add a `## Reference resolution` section (place after the existing CTS/fixture ma
 - 2026-06-11T01:28:45Z – claude – shell_pid=1939903 – Started implementation via action command
 - 2026-06-11T01:31:52Z – claude – shell_pid=1939903 – Ready for review: §7.2 Reference resolution README section added; help text and both error messages byte-verified against the built binary; 555 tests + CTS 28/28 green
 - 2026-06-11T01:32:22Z – claude – shell_pid=1949484 – Started review via action command
+- 2026-06-11T01:36:30Z – claude – shell_pid=1949484 – Review passed: README-only diff; help text and both error messages byte-verified against built CLI; all three --restrict-refs modes, bare-colon, absolute-ref containment, nested relative anchoring and symlink caveat reproduced live; §7.2 MUST quote matches vendored spec; build clean, 555/555 tests, CTS 28/28
