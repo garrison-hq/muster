@@ -1,19 +1,19 @@
 {
-  "event_count": 62,
-  "last_event_id": "01KTSZD501H03BFMYMF3XMVKV1",
-  "materialized_at": "2026-06-10T23:55:41.953867+00:00",
+  "event_count": 63,
+  "last_event_id": "01KTSZR1S5BED48YDB2TBTMN3R",
+  "materialized_at": "2026-06-11T00:01:39.109545+00:00",
   "mission_number": "",
   "mission_slug": "cts1-conformance-harness-01KTS86B",
   "mission_type": "software-dev",
   "summary": {
-    "approved": 9,
+    "approved": 10,
     "blocked": 0,
     "canceled": 0,
     "claimed": 0,
     "done": 0,
     "for_review": 0,
     "in_progress": 0,
-    "in_review": 1,
+    "in_review": 0,
     "planned": 1
   },
   "work_packages": {
@@ -81,11 +81,11 @@
       "last_transition_at": "2026-06-10T23:39:13.453311+00:00"
     },
     "WP10": {
-      "actor": "claude",
+      "actor": "user",
       "force_count": 1,
-      "lane": "in_review",
-      "last_event_id": "01KTSZD501H03BFMYMF3XMVKV1",
-      "last_transition_at": "2026-06-10T23:55:41.953867+00:00"
+      "lane": "approved",
+      "last_event_id": "01KTSZR1S5BED48YDB2TBTMN3R",
+      "last_transition_at": "2026-06-11T00:01:39.109545+00:00"
     },
     "WP11": {
       "actor": "finalize-tasks",
