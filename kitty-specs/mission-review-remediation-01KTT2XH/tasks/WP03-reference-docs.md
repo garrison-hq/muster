@@ -12,7 +12,7 @@ subtasks:
 - T008
 - T009
 agent: "claude"
-shell_pid: "1939903"
+shell_pid: "1949484"
 history:
 - timestamp: '2026-06-11T02:00:00Z'
   event: created
@@ -76,3 +76,4 @@ Add a `## Reference resolution` section (place after the existing CTS/fixture ma
 
 - 2026-06-11T01:28:45Z – claude – shell_pid=1939903 – Started implementation via action command
 - 2026-06-11T01:31:52Z – claude – shell_pid=1939903 – Ready for review: §7.2 Reference resolution README section added; help text and both error messages byte-verified against the built binary; 555 tests + CTS 28/28 green
+- 2026-06-11T01:32:22Z – claude – shell_pid=1949484 – Started review via action command
