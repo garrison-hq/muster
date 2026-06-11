@@ -49,10 +49,10 @@
 | T039 | `muster cts run` (+ --filter) | WP10 | | [D] |
 | T040 | `muster behave run` (+ endpoint flags) | WP10 | | [D] |
 | T041 | CLI tests: exit codes, report schema conformance | WP10 | | [D] |
-| T042 | Voice-frontdesk Soul.md (cold_strict state, user.rude trigger) | WP11 | [P] |
-| T043 | Behavioral manifest: 3 axes + discrimination case | WP11 | |
-| T044 | README: quickstart, endpoint setup (Ollama/NIM), fixture contribution note | WP11 | |
-| T045 | Acceptance runs: local Ollama + hosted NIM, record results | WP11 | |
+| T042 | Voice-frontdesk Soul.md (cold_strict state, user.rude trigger) | WP11 | [D] |
+| T043 | Behavioral manifest: 3 axes + discrimination case | WP11 | | [D] |
+| T044 | README: quickstart, endpoint setup (Ollama/NIM), fixture contribution note | WP11 | | [D] |
+| T045 | Acceptance runs: local Ollama + hosted NIM, record results | WP11 | | [D] |
 
 ## Phase 1 — Setup
 
@@ -169,10 +169,10 @@
 **Goal**: The behavioral substrate soul, the 3-axis manifest with discrimination case, README, and the two acceptance runs (Ollama local + NIM hosted) — SC-005/SC-006.
 **Priority**: P1 | **Dependencies**: WP09, WP10 | **Estimated prompt**: ~360 lines
 **Independent test**: `muster check souls/voice-frontdesk/Soul.md` passes strict; behave run produces verdicts on all three axes on both endpoints; discrimination case fails as designed.
-- [ ] T042 Voice-frontdesk Soul.md (WP11)
-- [ ] T043 Behavioral manifest + discrimination case (WP11)
-- [ ] T044 README + endpoint setup docs (WP11)
-- [ ] T045 Acceptance runs on both endpoints (WP11)
+- [x] T042 Voice-frontdesk Soul.md (WP11)
+- [x] T043 Behavioral manifest + discrimination case (WP11)
+- [x] T044 README + endpoint setup docs (WP11)
+- [x] T045 Acceptance runs on both endpoints (WP11)
 **Prompt**: [tasks/WP11-voice-soul-acceptance.md](tasks/WP11-voice-soul-acceptance.md)
 
 ## Dependency Graph & Parallelization
