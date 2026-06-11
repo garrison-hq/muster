@@ -1,10 +1,12 @@
 {
   "created_at": "2026-06-11T00:57:05.102867+00:00",
-  "friendly_name": "mission review remediation",
+  "friendly_name": "Mission-Review Remediation",
   "mission_id": "01KTT2XH5GG4W74GKARXWX4901",
   "mission_number": null,
   "mission_slug": "mission-review-remediation-01KTT2XH",
   "mission_type": "software-dev",
   "slug": "mission-review-remediation-01KTT2XH",
-  "target_branch": "main"
+  "source_description": "Remediate the non-blocking findings from the cts1-conformance-harness mission review: RISK-1/RISK-2 (reference-resolution hardening: URI-scheme rejection, opt-in containment, leak sanitization), RISK-3 (Node-based invariant guards), DRIFT-2 (RFC-1 \u00a77.2 reference documentation + trust model). DRIFT-1 (local Ollama acceptance) is explicitly out of scope pending reboot.",
+  "target_branch": "main",
+  "vcs": "git"
 }
