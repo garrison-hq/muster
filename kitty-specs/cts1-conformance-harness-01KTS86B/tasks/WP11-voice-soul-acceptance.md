@@ -117,3 +117,4 @@ spec-kitty agent action implement WP11 --agent <name>
 ## Activity Log
 
 - 2026-06-11T00:04:52Z – claude – shell_pid=1577219 – Started implementation via action command
+- 2026-06-11T00:15:22Z – claude – shell_pid=1577219 – Ready for review: voice-frontdesk soul (strict-clean), behavioral manifest (3 axes + xfail discrimination), README, acceptance evidence for NIM + OpenAI committed; Ollama documented as pending environment
