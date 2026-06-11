@@ -4,7 +4,10 @@
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
 [![Node ≥ 22](https://img.shields.io/badge/node-%E2%89%A522-339933.svg)](https://nodejs.org/)
 [![Soul.md RFC-1](https://img.shields.io/badge/Soul.md-RFC--1%20(1.0.0--rc1)-8a2be2.svg)](https://github.com/rokoss21/soul.md)
+[![Docs](https://img.shields.io/badge/docs-garrison--hq.github.io%2Fmuster-blue.svg)](https://garrison-hq.github.io/muster)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
+
+📖 **Documentation: [garrison-hq.github.io/muster](https://garrison-hq.github.io/muster)**
 
 **muster** (`@garrison-hq/muster`) is a reference **CTS-1 conformance harness**
 for [Soul.md RFC-1](https://github.com/rokoss21/soul.md) (`1.0.0-rc1`) — the

@@ -5,7 +5,7 @@
   "type": "module",
   "license": "Apache-2.0",
   "author": "Jeroen Nouws",
-  "homepage": "https://github.com/garrison-hq/muster#readme",
+  "homepage": "https://garrison-hq.github.io/muster",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/garrison-hq/muster.git"

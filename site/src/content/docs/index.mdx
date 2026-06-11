@@ -1,0 +1,55 @@
+---
+title: muster
+description: Reference CTS-1 conformance harness for Soul.md RFC-1 — static validation, deterministic composition resolution, and behavioral conformance grading.
+template: splash
+hero:
+  tagline: Does your SOUL.md conform — and does your model actually behave like it? muster checks the file and the model against Soul.md RFC-1, deterministically and offline-first.
+  actions:
+    - text: Get started
+      link: /muster/getting-started/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/garrison-hq/muster
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid stagger>
+  <Card title="Static conformance" icon="approve-check">
+    Parse a SOUL.md, enforce the Soul-YAML subset, validate against the RFC-1
+    schema **and** the §25 keyspace rules, then resolve composition
+    (extends / mixins / profiles / state) to a byte-stable canonical form.
+    A §25.1 report tells you exactly which clause failed and where.
+  </Card>
+  <Card title="Behavioral conformance" icon="rocket">
+    Turn-list in, transcript out. Grade a bring-your-own model against a soul's
+    declared axes — verbosity, brief refusals, and dynamic state shifts — with
+    k-of-n majority and a documented, reproducible threshold mapping.
+  </Card>
+  <Card title="CTS-1 fixture suite" icon="list-format">
+    A self-describing fixture corpus laid out per RFC-1 **Appendix F**, covering
+    all nine §25.2 conformance categories. Point any Soul.md runtime at the
+    manifest and you have a shared conformance target.
+  </Card>
+  <Card title="Deterministic & offline" icon="laptop">
+    Static checking needs zero network and is byte-for-byte reproducible
+    (RFC 8785 canonical JSON). Behavioral checks talk to any OpenAI-compatible
+    endpoint — local Ollama, NVIDIA NIM, OpenAI — with no provider baked in and
+    no key ever written to disk.
+  </Card>
+</CardGrid>
+
+## What is Soul.md?
+
+[Soul.md RFC-1](https://github.com/rokoss21/soul.md) is a portable, file-based
+format for defining an AI agent's persona — its voice, values, interaction
+style, safety posture, composition from reusable mixins, and reactive "mood"
+states. muster is the reference **CTS-1** (Conformance Test Suite) harness for
+that spec: it tests whether a SOUL.md file is *valid* and whether a model
+*behaves* the way the file declares.
+
+The normative spec text is vendored in the repository and is the single source
+of truth for every check muster performs — each test cites the RFC-1 section it
+enforces.
