@@ -30,9 +30,7 @@ hand-computed `expected.json`, and each fixture's Markdown body explains which
 normative clause it exercises.
 
 That means any Soul.md runtime — in any language — can point its own harness at
-`cts/manifest.yaml` and immediately have a shared conformance target. The corpus
-is offered upstream as a seed for the official CTS-1 fixture repository the
-Soul.md spec lists as unbuilt.
+`cts/manifest.yaml` and immediately have a shared conformance target.
 
 ## Expected-output fixtures are computed by hand
 
