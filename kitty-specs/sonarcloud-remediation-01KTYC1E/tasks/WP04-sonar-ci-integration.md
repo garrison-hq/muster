@@ -245,3 +245,33 @@ version comment, or a justified `actions/*` tag; both hotspot lines resolved.
 ## Activity Log
 
 - 2026-06-12T19:21:19Z – claude:sonnet:implementer:implementer – shell_pid=1256727 – Started implementation via action command
+- 2026-06-12T19:25:46Z – claude:sonnet:implementer:implementer – shell_pid=1256727 – WP04 complete. All 6 subtasks done; 6 owned files modified; tests green; YAML valid.
+
+NOTE: coverage/ directory is untracked (not committed) — it is a build artifact. .gitignore does not have a coverage/ entry (flagged below).
+
+## Per-subtask outcomes
+- T020: sonar-project.properties created at repo root (projectKey garrison-hq_muster, org garrison-hq)
+- T021: @vitest/coverage-v8@^3.2.6 installed, test:coverage script added, vitest.config.ts coverage block wired; pnpm test:coverage green, coverage/lcov.info 57 KB produced
+- T022: sonar job added to ci.yml — needs build-test, fetch-depth 0, fork-PR guard, pnpm test:coverage + SonarSource/sonarqube-scan-action, sonar.qualitygate.wait=true, no continue-on-error
+- T023: site.yml workflow-level permissions block removed; contents:read added to build job; pages:write + id-token:write added to deploy job (closes S8233x2 + S8264)
+- T024: All uses: entries SHA-pinned in both workflows with version comments
+- T025: Verification battery passed; 6 owned files only in diff
+
+## Resolved SHAs
+- pnpm/action-setup@v4             → b906affcce14559ad1aafd4ab0e942779e9f58b1
+- actions/checkout@v4              → 34e114876b0b11c390a56381ad16ebd13914f8d5
+- actions/setup-node@v4            → 49933ea5288caeca8642d1e84afbd3f7d6820020
+- actions/upload-pages-artifact@v3 → 56afc609e74202658d3ffba0e8f6dda462b719fa
+- actions/deploy-pages@v4          → d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e
+- SonarSource/sonarqube-scan-action@v8.2.0 → 713881670b6b3676cda39549040e2d88c70d582e
+
+## FLAG: coverage/ not in .gitignore
+coverage/ is not listed in .gitignore. Add 'coverage/' entry to .gitignore before merge.
+
+## ⚠ Manual steps required BEFORE merging this PR
+- [ ] Create SONAR_TOKEN repo secret (SonarCloud → My Account → Security → generate; GitHub → Settings → Secrets → Actions)
+- [ ] Disable Automatic Analysis (SonarCloud → Project → Administration → Analysis Method) — CI analysis errors if both are active
+## After merge, verify
+- [ ] SonarCloud check appears and passes on this PR / next main push
+- [ ] Coverage visible on SonarCloud dashboard
+- [ ] Quality gate status = OK (expect 0 issues after WP01–03)
