@@ -21,7 +21,8 @@ subtasks:
 - T005
 - T006
 - T007
-shell_pid: '1059627'
+shell_pid: "1059627"
+agent: "claude:sonnet:implementer:implementer"
 history:
 - timestamp: '2026-06-12T18:19:06Z'
   event: created
@@ -261,3 +262,7 @@ Confirm no `export` declarations changed:
   condition set and ordering, no behavior branch added/removed.
 - For S4325 removals: confirm `tsc` strict passes (CI build is the proof).
 - ReDoS fix: ask for the pathological-input check evidence (T002.4).
+
+## Activity Log
+
+- 2026-06-12T18:26:49Z – claude:sonnet:implementer:implementer – shell_pid=1059627 – Assigned agent via action command
