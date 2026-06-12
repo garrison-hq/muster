@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-06-12T16:20:07.086111+00:00",
+  "friendly_name": "v2 agent stack research",
+  "mission_id": "01KTYA4C6DD8KQ4M1VY19ASPJT",
+  "mission_number": null,
+  "mission_slug": "v2-agent-stack-research-01KTYA4C",
+  "mission_type": "research",
+  "slug": "v2-agent-stack-research-01KTYA4C",
+  "target_branch": "main"
+}
