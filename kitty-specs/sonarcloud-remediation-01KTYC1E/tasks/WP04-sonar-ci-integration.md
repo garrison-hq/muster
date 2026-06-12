@@ -20,8 +20,8 @@ subtasks:
 - T023
 - T024
 - T025
-agent: "claude:sonnet:implementer:implementer"
-shell_pid: "1256727"
+agent: "claude:opus:reviewer:reviewer"
+shell_pid: "1287534"
 history:
 - timestamp: '2026-06-12T18:19:06Z'
   event: created
@@ -248,6 +248,7 @@ version comment, or a justified `actions/*` tag; both hotspot lines resolved.
 - 2026-06-12T19:25:46Z – claude:sonnet:implementer:implementer – shell_pid=1256727 – WP04 complete. All 6 subtasks done; 6 owned files modified; tests green; YAML valid.
 
 NOTE: coverage/ directory is untracked (not committed) — it is a build artifact. .gitignore does not have a coverage/ entry (flagged below).
+- 2026-06-12T19:26:35Z – claude:opus:reviewer:reviewer – shell_pid=1287534 – Started review via action command
 
 ## Per-subtask outcomes
 - T020: sonar-project.properties created at repo root (projectKey garrison-hq_muster, org garrison-hq)
