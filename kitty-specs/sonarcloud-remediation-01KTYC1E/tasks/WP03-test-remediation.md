@@ -18,6 +18,8 @@ subtasks:
 - T017
 - T018
 - T019
+agent: "claude:sonnet:implementer:implementer"
+shell_pid: "1178438"
 history:
 - timestamp: '2026-06-12T18:19:06Z'
   event: created
@@ -206,3 +208,7 @@ left as accepted.
 - The http-fixture decisions must each cite what the test exercises;
   "changed to https because Sonar said so" on an http-endpoint-support test
   is a reject.
+
+## Activity Log
+
+- 2026-06-12T19:01:00Z – claude:sonnet:implementer:implementer – shell_pid=1178438 – Started implementation via action command
