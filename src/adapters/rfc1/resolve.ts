@@ -140,16 +140,21 @@ function checkReferencedSoulRequirements(
 }
 
 /** Phase: load and merge one composition reference into accumulator (§7.5 steps 1–2). */
+interface MergeRefContext {
+  doc: SoulDocument;
+  loadRef: LoadRef;
+  visiting: string[];
+  violations: Violation[];
+  mode: Mode;
+}
+
 async function mergeOneRef(
   ref: unknown,
   refPath: string,
-  doc: SoulDocument,
-  loadRef: LoadRef,
-  visiting: string[],
-  violations: Violation[],
-  mode: Mode,
-  accumulator: Record<string, unknown>
+  accumulator: Record<string, unknown>,
+  ctx: MergeRefContext
 ): Promise<Record<string, unknown> | null> {
+  const { doc, loadRef, visiting, violations, mode } = ctx;
   if (typeof ref !== "string") {
     violations.push({
       path: refPath,
@@ -257,7 +262,7 @@ async function composeDocument(
     for (let index = 0; index < refs.length; index++) {
       const ref = refs[index];
       const refPath = `composition.${sourceKey}[${index}]`;
-      const next = await mergeOneRef(ref, refPath, doc, loadRef, visiting, violations, mode, accumulator);
+      const next = await mergeOneRef(ref, refPath, accumulator, { doc, loadRef, visiting, violations, mode });
       if (next === null) return null;
       accumulator = next;
     }

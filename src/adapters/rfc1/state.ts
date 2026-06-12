@@ -65,12 +65,14 @@ function statesMap(st: Record<string, unknown>): Record<string, unknown> {
 /** §20.1: resolve the explicitly-requested state name (or return a fallback
  *  indicator). Returns the state name, null (fall through to base/default),
  *  or Violation[] on strict-mode failure. */
+type StateResolution = string | null | Violation[];
+
 function resolveRequestedState(
   requested: string,
   states: Record<string, unknown>,
   mode: Mode,
   sink: Violation[] | undefined
-): string | null | Violation[] {
+): StateResolution {
   if (Object.hasOwn(states, requested)) return requested;
   const violation: Violation = {
     path: "state",
@@ -91,7 +93,7 @@ function resolveBaseState(
   states: Record<string, unknown>,
   mode: Mode,
   sink: Violation[] | undefined
-): string | null | Violation[] {
+): StateResolution {
   if (typeof base === "string" && Object.hasOwn(states, base)) return base;
   const violation: Violation = {
     path: "state.base",
@@ -125,7 +127,7 @@ export function selectState(
   requested: string | null,
   mode: Mode,
   sink?: Violation[]
-): string | null | Violation[] {
+): StateResolution {
   const st = stateBlock(effective);
   if (st === null) return null;
   const states = statesMap(st);
