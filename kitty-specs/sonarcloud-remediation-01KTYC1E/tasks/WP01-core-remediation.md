@@ -21,8 +21,8 @@ subtasks:
 - T005
 - T006
 - T007
-shell_pid: "1059627"
-agent: "claude:sonnet:implementer:implementer"
+shell_pid: "1099268"
+agent: "claude:opus:reviewer:reviewer"
 history:
 - timestamp: '2026-06-12T18:19:06Z'
   event: created
@@ -267,3 +267,4 @@ Confirm no `export` declarations changed:
 
 - 2026-06-12T18:26:49Z – claude:sonnet:implementer:implementer – shell_pid=1059627 – Assigned agent via action command
 - 2026-06-12T18:39:08Z – claude:sonnet:implementer:implementer – shell_pid=1059627 – Ready for review: 24 core findings fixed, byte-diffs empty, suite green (567/567), 6 owned files only
+- 2026-06-12T18:39:48Z – claude:opus:reviewer:reviewer – shell_pid=1099268 – Started review via action command
