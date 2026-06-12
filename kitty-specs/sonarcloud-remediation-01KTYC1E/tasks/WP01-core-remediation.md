@@ -10,7 +10,9 @@ requirement_refs:
 planning_base_branch: main
 merge_target_branch: main
 branch_strategy: Planning artifacts for this feature were generated on main. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into main unless the human explicitly redirects the landing branch.
-created_at: '2026-06-12T18:19:06Z'
+base_branch: kitty/mission-sonarcloud-remediation-01KTYC1E
+base_commit: 0cd02046ea98ad89b4a54cc3589a53aaffb527b9
+created_at: '2026-06-12T18:26:48.539308+00:00'
 subtasks:
 - T001
 - T002
@@ -19,6 +21,7 @@ subtasks:
 - T005
 - T006
 - T007
+shell_pid: '1059627'
 history:
 - timestamp: '2026-06-12T18:19:06Z'
   event: created

@@ -6,5 +6,7 @@
   "mission_slug": "sonarcloud-remediation-01KTYC1E",
   "mission_type": "software-dev",
   "slug": "sonarcloud-remediation-01KTYC1E",
-  "target_branch": "main"
+  "target_branch": "main",
+  "vcs": "git",
+  "vcs_locked_at": "2026-06-12T18:26:48.455163+00:00"
 }
