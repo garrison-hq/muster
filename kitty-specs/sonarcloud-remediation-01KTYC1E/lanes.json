@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "mission_slug": "sonarcloud-remediation-01KTYC1E",
+  "mission_id": "01KTYC1EQ1Z1Q1N1NYCAQHNG1F",
+  "mission_branch": "kitty/mission-sonarcloud-remediation-01KTYC1E",
+  "target_branch": "main",
+  "lanes": [
+    {
+      "lane_id": "lane-a",
+      "wp_ids": [
+        "WP01",
+        "WP02",
+        "WP03",
+        "WP04"
+      ],
+      "write_scope": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/site.yml",
+        "package.json",
+        "pnpm-lock.yaml",
+        "sonar-project.properties",
+        "src/adapters/rfc1/evaluation.ts",
+        "src/adapters/rfc1/frontmatter.ts",
+        "src/adapters/rfc1/index.ts",
+        "src/adapters/rfc1/keyspace.ts",
+        "src/adapters/rfc1/resolve.ts",
+        "src/adapters/rfc1/state.ts",
+        "src/cli/index.ts",
+        "src/cli/output.ts",
+        "src/core/behavioral/client.ts",
+        "src/core/behavioral/manifest.ts",
+        "src/core/behavioral/runner.ts",
+        "src/core/canonical-json.ts",
+        "src/core/cts/manifest.ts",
+        "src/core/cts/runner.ts",
+        "tests/behavioral/graders.test.ts",
+        "tests/behavioral/runner.test.ts",
+        "tests/cts/suite.test.ts",
+        "tests/unit/canonical-json.test.ts",
+        "tests/unit/cli.test.ts",
+        "tests/unit/cts-runner.test.ts",
+        "tests/unit/pipeline.test.ts",
+        "vitest.config.ts"
+      ],
+      "predicted_surfaces": [
+        "api",
+        "artifact-rendering",
+        "dashboard",
+        "legacy-cleanup",
+        "tracker-integration"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    }
+  ],
+  "computed_at": "2026-06-12T18:24:44.441101+00:00",
+  "computed_from": "dependency_graph+ownership",
+  "planning_artifact_wps": [],
+  "collapse_report": {
+    "events": [
+      {
+        "wp_a": "WP04",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP04 depends on WP01"
+      },
+      {
+        "wp_a": "WP04",
+        "wp_b": "WP02",
+        "rule": "dependency",
+        "evidence": "WP04 depends on WP02"
+      },
+      {
+        "wp_a": "WP04",
+        "wp_b": "WP03",
+        "rule": "dependency",
+        "evidence": "WP04 depends on WP03"
+      }
+    ],
+    "total_merges": 3,
+    "independent_wps_collapsed": 0,
+    "by_rule": {
+      "dependency": 3
+    }
+  }
+}

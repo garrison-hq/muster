@@ -1,0 +1,49 @@
+{
+  "event_count": 4,
+  "last_event_id": "01KTYH8JWES8T2F6AN09CWJ2X1",
+  "materialized_at": "2026-06-12T18:24:44.430421+00:00",
+  "mission_number": "",
+  "mission_slug": "sonarcloud-remediation-01KTYC1E",
+  "mission_type": "software-dev",
+  "summary": {
+    "approved": 0,
+    "blocked": 0,
+    "canceled": 0,
+    "claimed": 0,
+    "done": 0,
+    "for_review": 0,
+    "in_progress": 0,
+    "in_review": 0,
+    "planned": 4
+  },
+  "work_packages": {
+    "WP01": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KTYH8JPZFJTN8MABARGP6H4A",
+      "last_transition_at": "2026-06-12T18:24:44.255737+00:00"
+    },
+    "WP02": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KTYH8JVYK55G3G8XW6SHC89E",
+      "last_transition_at": "2026-06-12T18:24:44.414513+00:00"
+    },
+    "WP03": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KTYH8JW693X8CZE74K5X3J7A",
+      "last_transition_at": "2026-06-12T18:24:44.422270+00:00"
+    },
+    "WP04": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KTYH8JWES8T2F6AN09CWJ2X1",
+      "last_transition_at": "2026-06-12T18:24:44.430421+00:00"
+    }
+  }
+}
