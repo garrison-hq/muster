@@ -397,43 +397,70 @@ export function evaluateTriggers(
   };
 
   for (let index = 0; index < triggers.length; index++) {
-    const trigger = triggers[index];
-
-    // Structural validation: must be a record with a string `if` predicate.
-    const structViolation = validateTriggerStructure(trigger, index, mode);
-    if (structViolation !== null) {
-      if (mode === "strict") return [structViolation];
-      warn(structViolation);
-      continue;
+    const outcome = evaluateOneTrigger(triggers[index], index, facts, states, mode);
+    switch (outcome.kind) {
+      case "strict-fail":
+        return [outcome.violation];
+      case "skip":
+        warn(outcome.violation); // permissive: trigger skipped (§20.3.7)
+        continue;
+      case "match":
+        return outcome.shiftTo; // §20.3.3 first-match-wins; §20.3.6 one transition
+      case "no-match":
+        continue;
     }
-
-    const record = trigger as Record<string, unknown>;
-    const predicateResult = validatePredicate(record["if"] as string, index, mode);
-    if (!Array.isArray(predicateResult)) {
-      // predicateResult is a Violation
-      if (mode === "strict") return [predicateResult];
-      warn(predicateResult); // permissive: trigger skipped
-      continue;
-    }
-    const terms = predicateResult;
-
-    const matched = terms.every((term) => {
-      const truth = facts[term.ident] === true; // boolean true ONLY
-      return term.negated ? !truth : truth;
-    });
-    if (!matched) continue;
-
-    // Trigger matched — validate the shift_to target.
-    const shiftViolation = validateShiftTo(record, states, index, mode);
-    if (shiftViolation !== null) {
-      if (mode === "strict") return [shiftViolation];
-      warn(shiftViolation); // §20.3.7 permissive: ignore that trigger
-      continue;
-    }
-
-    return record["shift_to"] as string; // §20.3.3 first-match-wins; §20.3.6 one transition
   }
 
   if (sink === undefined && warnings.length > 0) return warnings;
   return null;
+}
+
+/** Outcome of evaluating one trigger: a strict-mode failure, a permissive skip
+ *  (carrying its warning), a matched transition, or no match. */
+type TriggerOutcome =
+  | { kind: "strict-fail"; violation: Violation }
+  | { kind: "skip"; violation: Violation }
+  | { kind: "match"; shiftTo: string }
+  | { kind: "no-match" };
+
+/** §20.3: structurally validate one trigger, evaluate its predicate against the
+ *  facts, and (on match) validate its shift_to target. Pure — the caller maps
+ *  the returned outcome to control flow. */
+function evaluateOneTrigger(
+  trigger: unknown,
+  index: number,
+  facts: Record<string, boolean | string>,
+  states: Record<string, unknown>,
+  mode: Mode
+): TriggerOutcome {
+  // Structural validation: must be a record with a string `if` predicate.
+  const structViolation = validateTriggerStructure(trigger, index, mode);
+  if (structViolation !== null) {
+    return mode === "strict"
+      ? { kind: "strict-fail", violation: structViolation }
+      : { kind: "skip", violation: structViolation };
+  }
+
+  const record = trigger as Record<string, unknown>;
+  const predicateResult = validatePredicate(record["if"] as string, index, mode);
+  if (!Array.isArray(predicateResult)) {
+    return mode === "strict"
+      ? { kind: "strict-fail", violation: predicateResult }
+      : { kind: "skip", violation: predicateResult };
+  }
+
+  const matched = predicateResult.every((term) => {
+    const truth = facts[term.ident] === true; // boolean true ONLY
+    return term.negated ? !truth : truth;
+  });
+  if (!matched) return { kind: "no-match" };
+
+  const shiftViolation = validateShiftTo(record, states, index, mode);
+  if (shiftViolation !== null) {
+    return mode === "strict"
+      ? { kind: "strict-fail", violation: shiftViolation }
+      : { kind: "skip", violation: shiftViolation };
+  }
+
+  return { kind: "match", shiftTo: record["shift_to"] as string };
 }

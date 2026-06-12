@@ -207,6 +207,27 @@ async function mergeOneRef(
   ) as Record<string, unknown>;
 }
 
+/** §7.5 steps 1–2: extends in listed order, then mixins in listed order, each
+ *  merged left-to-right with Standard Merge. Returns the accumulator, or null
+ *  if any reference fails (broken file, cycle, depth). */
+async function mergeCompositionRefs(
+  composition: Record<string, unknown>,
+  ctx: MergeRefContext
+): Promise<Record<string, unknown> | null> {
+  let accumulator: Record<string, unknown> = {};
+  for (const sourceKey of ["extends", "mixins"] as const) {
+    const refs = composition[sourceKey];
+    if (!Array.isArray(refs)) continue; // §7.1 default []
+    for (let index = 0; index < refs.length; index++) {
+      const refPath = `composition.${sourceKey}[${index}]`;
+      const next = await mergeOneRef(refs[index], refPath, accumulator, ctx);
+      if (next === null) return null;
+      accumulator = next;
+    }
+  }
+  return accumulator;
+}
+
 async function composeDocument(
   doc: SoulDocument,
   loadRef: LoadRef,
@@ -252,21 +273,14 @@ async function composeDocument(
   }
 
   const composition = isRecord(data["composition"]) ? data["composition"] : {};
-  let accumulator: Record<string, unknown> = {};
-
-  // §7.5 steps 1–2: extends in listed order, then mixins in listed order,
-  // each merged left-to-right with Standard Merge.
-  for (const sourceKey of ["extends", "mixins"] as const) {
-    const refs = composition[sourceKey];
-    if (!Array.isArray(refs)) continue; // §7.1 default []
-    for (let index = 0; index < refs.length; index++) {
-      const ref = refs[index];
-      const refPath = `composition.${sourceKey}[${index}]`;
-      const next = await mergeOneRef(ref, refPath, accumulator, { doc, loadRef, visiting, violations, mode });
-      if (next === null) return null;
-      accumulator = next;
-    }
-  }
+  const accumulator = await mergeCompositionRefs(composition, {
+    doc,
+    loadRef,
+    visiting,
+    violations,
+    mode,
+  });
+  if (accumulator === null) return null;
 
   // §7.5 step 3 + G.5.2/G.5.3: merge the local document (minus root-owned
   // fields), then reattach THIS document's original profiles and
