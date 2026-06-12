@@ -16,6 +16,8 @@ subtasks:
 - T011
 - T012
 - T013
+agent: "claude:sonnet:implementer:implementer"
+shell_pid: "1118999"
 history:
 - timestamp: '2026-06-12T18:19:06Z'
   event: created
@@ -198,3 +200,7 @@ git diff -U0 | grep '^[-+]export' || echo OK         # expect OK
 - `replaceAll` swaps: check each original — regex-with-g (safe) vs
   string-pattern-replace-first (semantics change → must be accepted, not
   swapped).
+
+## Activity Log
+
+- 2026-06-12T18:43:47Z – claude:sonnet:implementer:implementer – shell_pid=1118999 – Started implementation via action command
