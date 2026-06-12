@@ -20,6 +20,8 @@ subtasks:
 - T023
 - T024
 - T025
+agent: "claude:sonnet:implementer:implementer"
+shell_pid: "1256727"
 history:
 - timestamp: '2026-06-12T18:19:06Z'
   event: created
@@ -239,3 +241,7 @@ version comment, or a justified `actions/*` tag; both hotspot lines resolved.
   un-blocks the gate (user decision #1 says blocking).
 - Confirm the deploy job got `pages: write` + `id-token: write` and the build
   job only `contents: read` — swapped/duplicated permissions defeat S8233.
+
+## Activity Log
+
+- 2026-06-12T19:21:19Z – claude:sonnet:implementer:implementer – shell_pid=1256727 – Started implementation via action command

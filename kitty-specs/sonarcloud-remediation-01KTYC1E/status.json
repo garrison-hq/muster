@@ -1,7 +1,7 @@
 {
-  "event_count": 24,
-  "last_event_id": "01KTYMEPCEAXR4WX0SMTRNAMWX",
-  "materialized_at": "2026-06-12T19:20:30.350568+00:00",
+  "event_count": 26,
+  "last_event_id": "01KTYMG63EZAPVQZ9RF4MSYQM2",
+  "materialized_at": "2026-06-12T19:21:19.214599+00:00",
   "mission_number": "",
   "mission_slug": "sonarcloud-remediation-01KTYC1E",
   "mission_type": "software-dev",
@@ -12,9 +12,9 @@
     "claimed": 0,
     "done": 0,
     "for_review": 0,
-    "in_progress": 0,
+    "in_progress": 1,
     "in_review": 0,
-    "planned": 1
+    "planned": 0
   },
   "work_packages": {
     "WP01": {
@@ -39,11 +39,11 @@
       "last_transition_at": "2026-06-12T19:20:30.350568+00:00"
     },
     "WP04": {
-      "actor": "finalize-tasks",
+      "actor": "claude:sonnet:implementer:implementer",
       "force_count": 1,
-      "lane": "planned",
-      "last_event_id": "01KTYH8JWES8T2F6AN09CWJ2X1",
-      "last_transition_at": "2026-06-12T18:24:44.430421+00:00"
+      "lane": "in_progress",
+      "last_event_id": "01KTYMG63EZAPVQZ9RF4MSYQM2",
+      "last_transition_at": "2026-06-12T19:21:19.214599+00:00"
     }
   }
 }
