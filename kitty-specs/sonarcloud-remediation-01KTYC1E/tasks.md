@@ -29,12 +29,12 @@ from day one, flipped on against a clean main).
 | T011 | cli/index.ts: S3735 ×2, S3358, S7785, S7735 | WP02 | [D] |
 | T012 | cli/output.ts: S7735, S7780 | WP02 | [D] |
 | T013 | WP02 verification: build, full suite, smoke | WP02 | | [D] |
-| T014 | pipeline.test.ts: S5443 mkdtemp, S2871 ×2, S7784 ×3 (semantics check D-7) | WP03 | [P] |
-| T015 | cli.test.ts: ReDoS hotspot, http fixtures (D-5), S4325 ×4, S7723 | WP03 | [P] |
-| T016 | runner.test.ts: S7721 ×2, S6551 ×2, S7780 ×2, S4325 | WP03 | [P] |
-| T017 | graders.test.ts + cts-runner.test.ts: S7780 ×5 | WP03 | [P] |
-| T018 | canonical-json.test.ts + cts/suite.test.ts: S4325 ×4, S7773 ×2, S7748 | WP03 | [P] |
-| T019 | WP03 verification: full suite green, no test weakened | WP03 | |
+| T014 | pipeline.test.ts: S5443 mkdtemp, S2871 ×2, S7784 ×3 (semantics check D-7) | WP03 | [D] |
+| T015 | cli.test.ts: ReDoS hotspot, http fixtures (D-5), S4325 ×4, S7723 | WP03 | [D] |
+| T016 | runner.test.ts: S7721 ×2, S6551 ×2, S7780 ×2, S4325 | WP03 | [D] |
+| T017 | graders.test.ts + cts-runner.test.ts: S7780 ×5 | WP03 | [D] |
+| T018 | canonical-json.test.ts + cts/suite.test.ts: S4325 ×4, S7773 ×2, S7748 | WP03 | [D] |
+| T019 | WP03 verification: full suite green, no test weakened | WP03 | | [D] |
 | T020 | sonar-project.properties (project key, sources, exclusions, lcov path) | WP04 | [P] |
 | T021 | Coverage wiring: @vitest/coverage-v8, test:coverage script, vitest config | WP04 | [P] |
 | T022 | Blocking sonar job in ci.yml (fetch-depth 0, qualitygate.wait, fork guard) | WP04 | |
@@ -97,12 +97,12 @@ decisions per D-5, regex hotspot fix.
 **Independent test**: `pnpm test` green with identical test counts (no skips
 added); 0 open issues + 0 TO_REVIEW hotspots under `tests/`.
 
-- [ ] T014 pipeline.test.ts fixes (WP03)
-- [ ] T015 cli.test.ts fixes incl. hotspot decisions (WP03)
-- [ ] T016 runner.test.ts fixes (WP03)
-- [ ] T017 graders.test.ts + cts-runner.test.ts String.raw fixes (WP03)
-- [ ] T018 canonical-json.test.ts + cts/suite.test.ts fixes (WP03)
-- [ ] T019 WP03 verification (WP03)
+- [x] T014 pipeline.test.ts fixes (WP03)
+- [x] T015 cli.test.ts fixes incl. hotspot decisions (WP03)
+- [x] T016 runner.test.ts fixes (WP03)
+- [x] T017 graders.test.ts + cts-runner.test.ts String.raw fixes (WP03)
+- [x] T018 canonical-json.test.ts + cts/suite.test.ts fixes (WP03)
+- [x] T019 WP03 verification (WP03)
 
 **Dependencies**: none. **Parallel**: every subtask owns distinct files.
 **Risks**: S7784 structuredClone may silently change what a pipeline test
