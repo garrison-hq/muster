@@ -16,13 +16,13 @@ from day one, flipped on against a clean main).
 
 | ID | Description | WP | Parallel |
 |---|---|---|---|
-| T001 | S2871 comparator in canonical-json.ts + byte-stability guard | WP01 | [P] |
-| T002 | ReDoS regex fix in behavioral/client.ts:67 (hotspot, untrusted input) | WP01 | [P] |
-| T003 | Complexity refactors in behavioral/runner.ts (S3776 ×3, S107) | WP01 | |
-| T004 | runner.ts line-107 cluster + catch rename (S7735 ×2, S3358, S4624, S7718) | WP01 | |
-| T005 | behavioral/manifest.ts: S3776 ×2, S4325 ×4, S7735 | WP01 | [P] |
-| T006 | cts/manifest.ts + cts/runner.ts: S3776, S7735 ×3, S3358 | WP01 | [P] |
-| T007 | WP01 verification: build, full suite, smoke, byte-diff vs pre-change | WP01 | |
+| T001 | S2871 comparator in canonical-json.ts + byte-stability guard | WP01 | [P] | [D] |
+| T002 | ReDoS regex fix in behavioral/client.ts:67 (hotspot, untrusted input) | WP01 | [D] |
+| T003 | Complexity refactors in behavioral/runner.ts (S3776 ×3, S107) | WP01 | | [D] |
+| T004 | runner.ts line-107 cluster + catch rename (S7735 ×2, S3358, S4624, S7718) | WP01 | | [D] |
+| T005 | behavioral/manifest.ts: S3776 ×2, S4325 ×4, S7735 | WP01 | [D] |
+| T006 | cts/manifest.ts + cts/runner.ts: S3776, S7735 ×3, S3358 | WP01 | [D] |
+| T007 | WP01 verification: build, full suite, smoke, byte-diff vs pre-change | WP01 | | [D] |
 | T008 | rfc1/resolve.ts: S3776 ×2, S7778 ×2 | WP02 | [P] |
 | T009 | rfc1/state.ts: S3776 ×2, S6353 ×2 | WP02 | [P] |
 | T010 | rfc1 small fixes: evaluation, keyspace, frontmatter, index (6 issues) | WP02 | [P] |
@@ -54,13 +54,13 @@ behavioral client (D-4). Behavior-preserving only.
 **Independent test**: `pnpm build && pnpm test` green; CTS output byte-identical
 (quickstart diff procedure); SonarCloud shows 0 open issues under `src/core/`.
 
-- [ ] T001 S2871 comparator in canonical-json.ts + byte-stability guard (WP01)
-- [ ] T002 ReDoS regex fix in behavioral/client.ts:67 (WP01)
-- [ ] T003 Complexity refactors in behavioral/runner.ts (S3776 ×3, S107) (WP01)
-- [ ] T004 runner.ts line-107 cluster + catch rename (WP01)
-- [ ] T005 behavioral/manifest.ts fixes (WP01)
-- [ ] T006 cts/manifest.ts + cts/runner.ts fixes (WP01)
-- [ ] T007 WP01 verification incl. byte-diff (WP01)
+- [x] T001 S2871 comparator in canonical-json.ts + byte-stability guard (WP01)
+- [x] T002 ReDoS regex fix in behavioral/client.ts:67 (WP01)
+- [x] T003 Complexity refactors in behavioral/runner.ts (S3776 ×3, S107) (WP01)
+- [x] T004 runner.ts line-107 cluster + catch rename (WP01)
+- [x] T005 behavioral/manifest.ts fixes (WP01)
+- [x] T006 cts/manifest.ts + cts/runner.ts fixes (WP01)
+- [x] T007 WP01 verification incl. byte-diff (WP01)
 
 **Dependencies**: none. **Parallel**: T001/T002/T005/T006 touch disjoint files.
 **Risks**: comparator must not change output bytes (AC-5); runner refactors are
