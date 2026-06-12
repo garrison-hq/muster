@@ -1,0 +1,100 @@
+# Source Register: Master list of all research sources
+#
+# Column Definitions:
+# - source_id: Unique identifier (lowercase, no spaces, e.g., "smith2024")
+# - citation: Full citation (BibTeX or APA format)
+# - url: Direct link to source (DOI, arXiv, or web URL)
+# - accessed_date: Date source was accessed (YYYY-MM-DD)
+# - relevance: high | medium | low (to primary research question)
+# - status: reviewed | pending | archived
+#
+# Usage: Add sources when discovered, update status as research progresses
+# Validation: source_id must be unique
+source_id,citation,url,accessed_date,relevance,status
+agentsmd-site,"OpenAI et al. / AAIF (2025-2026). AGENTS.md.",https://agents.md,2026-06-12,high,reviewed
+agentsmd-repo,"agentsmd (2025-2026). agents.md repository.",https://github.com/agentsmd/agents.md,2026-06-12,high,reviewed
+lf-aaif,"Linux Foundation (2025). Formation of the Agentic AI Foundation.",https://www.linuxfoundation.org/press/linux-foundation-announces-the-formation-of-the-agentic-ai-foundation,2026-06-12,high,reviewed
+codex-agentsmd,"OpenAI (2026). Custom instructions with AGENTS.md - Codex.",https://developers.openai.com/codex/guides/agents-md,2026-06-12,high,reviewed
+agents-lint,"giacomo (2026). agents-lint.",https://github.com/giacomo/agents-lint,2026-06-12,medium,reviewed
+agentlinter,"AgentLinter (2026). Linter for CLAUDE.md & AI Agents.",https://agentlinter.com/,2026-06-12,high,reviewed
+morphllm-agentsmd-v11,"Morph (2026). AGENTS.md Spec guide (v1.1 frontmatter proposal claim).",https://www.morphllm.com/agents-md-guide,2026-06-12,low,pending
+as-spec,"Agent Skills (2026). Specification.",https://agentskills.io/specification,2026-06-12,high,reviewed
+anth-skills,"Anthropic (2025-2026). anthropics/skills repository incl. skill-creator.",https://github.com/anthropics/skills,2026-06-12,high,reviewed
+as-repo,"Agent Skills (2026). agentskills/agentskills repository.",https://github.com/agentskills/agentskills,2026-06-12,high,reviewed
+as-skills-ref,"Agent Skills (2026). skills-ref reference validator library.",https://github.com/agentskills/agentskills/tree/main/skills-ref,2026-06-12,high,reviewed
+as-clients,"Agent Skills (2026). Client Showcase.",https://agentskills.io/clients,2026-06-12,medium,reviewed
+openai-codex-skills,"OpenAI (2026). Agent Skills - Codex.",https://developers.openai.com/codex/skills,2026-06-12,medium,reviewed
+as-opt-desc,"Agent Skills (2026). Optimizing skill descriptions (trigger-testing methodology).",https://agentskills.io/skill-creation/optimizing-descriptions,2026-06-12,high,reviewed
+openai-eval-skills,"OpenAI (2026-01-22). Testing Agent Skills Systematically with Evals.",https://developers.openai.com/blog/eval-skills,2026-06-12,high,reviewed
+metatool,"Huang et al. (2024). MetaTool Benchmark (ICLR 2024).",https://arxiv.org/abs/2310.03128,2026-06-12,medium,reviewed
+bfcl,"Berkeley (2024-2026). Berkeley Function-Calling Leaderboard (irrelevance detection).",https://www.emergentmind.com/topics/berkeley-function-calling-benchmark-bfcl,2026-06-12,medium,reviewed
+skill-linter,"Yeh, W. (2026). agent-skill-linter.",https://github.com/William-Yeh/agent-skill-linter,2026-06-12,medium,reviewed
+arxiv-skills-analysis,"arXiv (2026). Agent Skills: A Data-Driven Analysis of Claude Skills.",https://arxiv.org/pdf/2602.08004,2026-06-12,low,pending
+rfc1-repo,"rokoss21 (2026). soul.md RFC-1 repository (README + spec).",https://github.com/rokoss21/soul.md,2026-06-12,high,reviewed
+rfc1-changelog,"rokoss21 (2026). soul.md RFC-1 CHANGELOG.md.",https://raw.githubusercontent.com/rokoss21/soul.md/main/CHANGELOG.md,2026-06-12,high,reviewed
+rfc1-api,"GitHub API (2026). rokoss21/soul.md repo + commit metadata.",https://api.github.com/repos/rokoss21/soul.md,2026-06-12,high,reviewed
+soulspec-v05,"ClawSouls (2026). SoulSpec v0.5 specification.",https://github.com/clawsouls/soulspec/blob/main/soul-spec-v0.5.md,2026-06-12,high,reviewed
+soulspec-v03,"ClawSouls (2026). SoulSpec v0.3 file descriptions.",https://raw.githubusercontent.com/clawsouls/soulspec/main/soul-spec-v0.3.md,2026-06-12,medium,reviewed
+soulspec-api,"GitHub API (2026). clawsouls/soulspec contents + org repos.",https://api.github.com/repos/clawsouls/soulspec,2026-06-12,high,reviewed
+soulspec-org,"ClawSouls (2026). soulspec.org landing page.",https://soulspec.org/,2026-06-12,medium,reviewed
+muster-core,"muster v1 (2026). SpecAdapter contract and rfc1 adapter (local code).",file:///home/jeroennouws/dev/garrison-hq/muster/src/core/adapter.ts,2026-06-12,high,reviewed
+oc-workspace,"OpenClaw (2026). Agent workspace (concepts).",https://docs.openclaw.ai/concepts/agent-workspace,2026-06-12,high,reviewed
+oc-workspace-repo,"OpenClaw (2026). docs/concepts/agent-workspace.md (repo mirror; SHA-pinnable).",https://github.com/openclaw/openclaw/blob/main/docs/concepts/agent-workspace.md,2026-06-12,high,reviewed
+oc-sysprompt,"OpenClaw (2026). System prompt (concepts).",https://docs.openclaw.ai/concepts/system-prompt,2026-06-12,high,reviewed
+oc-agents-default,"OpenClaw (2026). Default AGENTS.md reference template.",https://docs.openclaw.ai/reference/AGENTS.default,2026-06-12,high,reviewed
+oc-source-order,"OpenClaw (2026). src/agents/system-prompt.ts CONTEXT_FILE_ORDER (fetched 2026-06-12).",https://github.com/openclaw/openclaw/blob/main/src/agents/system-prompt.ts,2026-06-12,high,reviewed
+oc-issue-order,"OpenClaw (2026). Issue #65438: configurable bootstrap injection order.",https://github.com/openclaw/openclaw/issues/65438,2026-06-12,medium,reviewed
+oc-memory,"OpenClaw (2026). Memory (concepts).",https://docs.openclaw.ai/concepts/memory,2026-06-12,medium,reviewed
+oc-heartbeat,"OpenClaw (2026). Heartbeat (gateway).",https://docs.openclaw.ai/gateway/heartbeat,2026-06-12,high,reviewed
+oc-heartbeat-tpl,"OpenClaw (2026). HEARTBEAT.md template reference.",https://docs.openclaw.ai/reference/templates/HEARTBEAT,2026-06-12,medium,reviewed
+oc-wikipedia,"Wikipedia (2026). OpenClaw (rename history).",https://en.wikipedia.org/wiki/OpenClaw,2026-06-12,low,reviewed
+a2a-spec,"A2A Project / Linux Foundation (2026). A2A Protocol Specification v1.0.",https://a2a-protocol.org/latest/specification/,2026-06-12,high,reviewed
+a2a-releases,"A2A Project (2026). a2aproject/A2A releases + published a2a.json.",https://github.com/a2aproject/A2A/releases,2026-06-12,high,reviewed
+a2a-tck,"A2A Project (2026). a2a-tck official Technology Compatibility Kit.",https://github.com/a2aproject/a2a-tck,2026-06-12,high,reviewed
+a2a-inspector,"A2A Project (2026). a2a-inspector.",https://github.com/a2aproject/a2a-inspector,2026-06-12,medium,reviewed
+capiscio,"CapiscIO (2026). validate-a2a GitHub Action (v2.7.0; targets spec v0.3.0).",https://github.com/capiscio/validate-a2a,2026-06-12,medium,reviewed
+a2a-issue,"A2A Project (2026). Issue #1755: near-zero real-world A2A compliance.",https://github.com/a2aproject/A2A/issues/1755,2026-06-12,medium,reviewed
+lf-a2a-press,"Linux Foundation (2026-04-09). A2A surpasses 150 organizations; v1.0 stable.",https://www.linuxfoundation.org/press/a2a-protocol-surpasses-150-organizations-lands-in-major-cloud-platforms-and-sees-enterprise-production-use-in-first-year,2026-06-12,low,reviewed
+pf-asserts,"Promptfoo (2026). Assertions and Metrics documentation.",https://www.promptfoo.dev/docs/configuration/expected-outputs/,2026-06-12,high,reviewed
+pf-deterministic,"Promptfoo (2026). Deterministic and trajectory assertions.",https://www.promptfoo.dev/docs/configuration/expected-outputs/deterministic/,2026-06-12,high,reviewed
+pf-redteam,"Promptfoo (2026). Red Team Configuration and plugins.",https://www.promptfoo.dev/docs/red-team/configuration/,2026-06-12,high,reviewed
+pf-skill-integration,"Promptfoo (2026). Agent Skills integration (authoring aid, not SKILL.md testing).",https://www.promptfoo.dev/docs/integrations/agent-skill/,2026-06-12,medium,reviewed
+de-metrics,"DeepEval / Confident AI (2026). Metrics introduction (50+ metrics incl. agentic).",https://deepeval.com/docs/metrics-introduction,2026-06-12,high,reviewed
+deepteam,"Confident AI (2026). DeepTeam red-teaming documentation.",https://www.trydeepteam.com/docs/red-teaming-introduction,2026-06-12,medium,reviewed
+oai-graders,"OpenAI (2026). Graders guide (Evals API).",https://developers.openai.com/api/docs/guides/graders,2026-06-12,high,reviewed
+oai-agent-evals,"OpenAI (2026). Evaluate agent workflows (trace grading).",https://developers.openai.com/api/docs/guides/agent-evals,2026-06-12,medium,reviewed
+inspect-scorers,"UK AISI (2026). Inspect AI: Scorers and epoch reducers.",https://inspect.aisi.org.uk/scorers.html,2026-06-12,high,reviewed
+anthropic-eval-tool,"Anthropic (2026). Using the Evaluation Tool (Console).",https://docs.claude.com/en/docs/test-and-evaluate/eval-tool,2026-06-12,low,reviewed
+cclint,"Rannaberg, C. (2026). cclint (Claude Code config linter).",https://github.com/carlrannaberg/cclint,2026-06-12,medium,reviewed
+agnix-hn,"Agnix (2026). Lints Claude.md/skills/MCP/hooks (HN listing; site rate-limited).",https://news.ycombinator.com/item?id=46983879,2026-06-12,low,pending
+instr-hierarchy,"Wallace et al. (2024). The Instruction Hierarchy (OpenAI). arXiv:2404.13208.",https://arxiv.org/abs/2404.13208,2026-06-12,high,reviewed
+instr-ladder,"(2025). Reasoning Up the Instruction Ladder. arXiv:2511.04694.",https://arxiv.org/abs/2511.04694,2026-06-12,medium,reviewed
+manyih,"(2026). Many-Tier Instruction Hierarchy in LLM Agents (ManyIH-Bench). arXiv:2604.09443.",https://arxiv.org/html/2604.09443v2,2026-06-12,medium,reviewed
+sysbench,"(2024). SysBench: Can LLMs Follow System Messages? arXiv:2408.10943.",https://arxiv.org/abs/2408.10943,2026-06-12,medium,reviewed
+wire,"Yan, Chen, Zhang (2026). Diagnosing Live Within-Policy Instruction Conflicts (WIRE). arXiv:2605.27784.",https://arxiv.org/abs/2605.27784,2026-06-12,high,reviewed
+arbiter,"Mason (2026). Arbiter: Detecting Interference in LLM Agent System Prompts. arXiv:2603.08993.",https://arxiv.org/pdf/2603.08993,2026-06-12,high,reviewed
+constitutional-ai,"Bai et al. (2022). Constitutional AI (Anthropic). arXiv:2212.08073.",https://arxiv.org/abs/2212.08073,2026-06-12,low,reviewed
+deshpande2023,"Deshpande et al. (2023). Toxicity in ChatGPT: Analyzing Persona-assigned LLMs. EMNLP Findings. arXiv:2304.05335.",https://arxiv.org/abs/2304.05335,2026-06-12,high,reviewed
+persona-jailbreak,"(2025). Enhancing Jailbreak Attacks on LLMs via Persona Prompts. arXiv:2507.22171.",https://arxiv.org/abs/2507.22171,2026-06-12,high,reviewed
+phish,"(2026). Persona Jailbreaking in LLMs (PHISH). arXiv:2601.16466.",https://arxiv.org/abs/2601.16466,2026-06-12,medium,reviewed
+persona-drift,"Li et al. (2024). Measuring and Controlling Persona Drift. arXiv:2402.10962.",https://arxiv.org/html/2402.10962v1,2026-06-12,high,reviewed
+identity-drift,"(2024). Examining Identity Drift in Conversations of LLM Agents. arXiv:2412.00804.",https://arxiv.org/abs/2412.00804,2026-06-12,medium,reviewed
+sycophancy,"Sharma et al. (2023). Towards Understanding Sycophancy in Language Models (Anthropic; ICLR 2024). arXiv:2310.13548.",https://arxiv.org/abs/2310.13548,2026-06-12,high,reviewed
+mtbench,"Zheng et al. (2023). Judging LLM-as-a-Judge with MT-Bench (NeurIPS 2023). arXiv:2306.05685.",https://arxiv.org/abs/2306.05685,2026-06-12,high,reviewed
+fair-eval,"Wang et al. (2023). Large Language Models are not Fair Evaluators (ACL 2024). arXiv:2305.17926.",https://ar5iv.labs.arxiv.org/html/2305.17926,2026-06-12,medium,reviewed
+judging-judges,"(2026). Judging the Judges: Bias Mitigation in LLM-as-a-Judge Pipelines. arXiv:2604.23178.",https://arxiv.org/html/2604.23178,2026-06-12,medium,reviewed
+taubench,"Yao et al. (2024). tau-bench (Sierra; ICLR 2025). arXiv:2406.12045.",https://arxiv.org/abs/2406.12045,2026-06-12,high,reviewed
+strongreject,"Souly et al. (2024). A StrongREJECT for Empty Jailbreaks (NeurIPS 2024 D&B). arXiv:2402.10260.",https://arxiv.org/pdf/2402.10260,2026-06-12,high,reviewed
+sopbench,"(2025). SOPBench: Evaluating Language Agents at Following SOPs. arXiv:2503.08669.",https://arxiv.org/pdf/2503.08669,2026-06-12,high,reviewed
+solver-policy,"(2026). Solver-Aided Verification of Policy Compliance in Tool-Augmented LLM Agents. arXiv:2603.20449.",https://arxiv.org/html/2603.20449v1,2026-06-12,medium,reviewed
+deepset-pi,"deepset (2023). prompt-injections dataset (HuggingFace; Apache-2.0).",https://huggingface.co/datasets/deepset/prompt-injections,2026-06-12,high,reviewed
+gandalf,"Lakera (2023). gandalf_ignore_instructions dataset (HuggingFace; MIT).",https://huggingface.co/datasets/Lakera/gandalf_ignore_instructions,2026-06-12,high,reviewed
+jbb,"JailbreakBench (2024). JBB-Behaviors dataset (NeurIPS 2024; MIT).",https://huggingface.co/datasets/JailbreakBench/JBB-Behaviors,2026-06-12,medium,reviewed
+harmbench,"Center for AI Safety (2024). HarmBench (MIT).",https://github.com/centerforaisafety/HarmBench,2026-06-12,medium,reviewed
+advbench,"Zou et al. (2023). AdvBench in llm-attacks (MIT).",https://github.com/llm-attacks/llm-attacks,2026-06-12,medium,reviewed
+garak,"NVIDIA (2026). garak LLM vulnerability scanner (Apache-2.0; aggregated probe data).",https://github.com/NVIDIA/garak,2026-06-12,medium,reviewed
+pint,"Lakera (2024). PINT benchmark (harness MIT; dataset private).",https://github.com/lakeraai/pint-benchmark,2026-06-12,medium,reviewed
+llmail,"Microsoft (2025). LLMail-Inject challenge dataset (SaTML 2025; MIT). arXiv:2506.09956.",https://huggingface.co/datasets/microsoft/llmail-inject-challenge,2026-06-12,high,reviewed
+agentdojo,"Debenedetti et al. (2024). AgentDojo (ETH Zurich; NeurIPS 2024; MIT). arXiv:2406.13352.",https://github.com/ethz-spylab/agentdojo,2026-06-12,high,reviewed
+injecagent,"Zhan et al. (2024). InjecAgent (UIUC; ACL 2024 Findings; MIT). arXiv:2403.02691.",https://github.com/uiuc-kang-lab/InjecAgent,2026-06-12,high,reviewed
+bipia,"Microsoft (2024). BIPIA indirect-injection benchmark (repo MIT; some contexts not redistributable).",https://github.com/microsoft/BIPIA,2026-06-12,medium,reviewed
