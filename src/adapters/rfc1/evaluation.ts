@@ -56,7 +56,7 @@ export function matchExpectedRule(
   for (const source of ["critical_criteria", "secondary_criteria"] as const) {
     const list = evaluation[source];
     if (Array.isArray(list)) {
-      const index = list.findIndex((entry) => entry === ref);
+      const index = list.indexOf(ref);
       if (index >= 0) return { source, index };
     }
   }
@@ -92,12 +92,16 @@ export function resolveRuleRefs(effective: EffectiveConfig, mode: Mode): Violati
         return;
       }
       if (matchExpectedRule(ref, evaluation) !== null) return;
-      const message = ref.startsWith("@")
-        ? Array.isArray(evaluation["rule_catalog"])
+      let message: string;
+      if (ref.startsWith("@")) {
+        message = Array.isArray(evaluation["rule_catalog"])
           ? `ID reference "${ref}" does not match any rule_catalog entry id`
-          : `ID reference "${ref}" cannot resolve: no rule_catalog is defined`
-        : `literal rule text ${JSON.stringify(ref)} matches no entry in ` +
+          : `ID reference "${ref}" cannot resolve: no rule_catalog is defined`;
+      } else {
+        message =
+          `literal rule text ${JSON.stringify(ref)} matches no entry in ` +
           "critical_criteria or secondary_criteria (exact code-point match; no trimming)";
+      }
       violations.push({ path, message, severity, section: "§21.1" });
     });
   });

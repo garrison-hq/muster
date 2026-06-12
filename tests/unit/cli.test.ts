@@ -215,7 +215,7 @@ await writeFile(
 );
 
 const SHORT_REPLY = "Concise answer."; // 2 words ≤ 60
-const LONG_REPLY = Array(70).fill("word").join(" "); // 70 words > 60
+const LONG_REPLY = new Array(70).fill("word").join(" "); // 70 words > 60
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -328,7 +328,9 @@ describe("muster cts run (RFC-1 Appendix F; FR-014/FR-015)", () => {
   it("Appendix F: the full CTS-1 manifest passes → exit 0 with summary line", async () => {
     const { code, stdout } = await run(["cts", "run", ctsManifest]);
     expect(code).toBe(0);
-    expect(stdout).toMatch(/\d+ passed, 0 failed of \d+\n$/);
+    const summary = stdout.trimEnd().split("\n").at(-1) ?? "";
+    expect(summary).toMatch(/^\d+ passed, 0 failed of \d+$/);
+    expect(stdout.endsWith("\n")).toBe(true);
   });
 
   it("Appendix F.1: --filter 'merge_*' selects only the §8 merge cases", async () => {
@@ -397,7 +399,7 @@ describe("muster behave run (RFC-1 §20/§21 behavioral surface; FR-016..FR-023)
     expect(code).toBe(0);
     const verdicts = JSON.parse(stdout) as CaseVerdict[];
     expect(verdicts.length).toBe(1);
-    const verdict = verdicts[0]!;
+    const verdict = verdicts[0];
     expect(verdict.runs.length).toBe(2);
     for (const runVerdict of verdict.runs) {
       expect(runVerdict.transcript.entries.length).toBe(2); // user + assistant
@@ -415,7 +417,7 @@ describe("muster behave run (RFC-1 §20/§21 behavioral surface; FR-016..FR-023)
         behaveManifest,
         "--json",
         "--base-url",
-        "http://override.local/v1",
+        "https://override.local/v1",
         "--model",
         "other-model",
         "--runs",
@@ -425,10 +427,10 @@ describe("muster behave run (RFC-1 §20/§21 behavioral surface; FR-016..FR-023)
     );
     expect(code).toBe(0);
     expect(seen.length).toBe(1);
-    expect(seen[0]!.baseUrl).toBe("http://override.local/v1");
-    expect(seen[0]!.model).toBe("other-model");
+    expect(seen[0].baseUrl).toBe("https://override.local/v1");
+    expect(seen[0].model).toBe("other-model");
     const verdicts = JSON.parse(stdout) as CaseVerdict[];
-    expect(verdicts[0]!.runs.length).toBe(1);
+    expect(verdicts[0].runs.length).toBe(1);
   });
 
   it("§25.1: a non-conforming soul aborts before grading → exit 2 with the static report on stderr", async () => {

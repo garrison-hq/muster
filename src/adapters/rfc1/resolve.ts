@@ -99,6 +99,109 @@ function stripRootOwned(data: Record<string, unknown>): Record<string, unknown> 
  * Returns the composed mapping, or null when composition is unresolvable —
  * violations describing why are pushed onto `violations`.
  */
+
+/** Phase: validate mixin structure and return its data clone (G.5.2). */
+function checkMixinRequirements(
+  doc: SoulDocument,
+  data: Record<string, unknown>,
+  mode: Mode,
+  violations: Violation[]
+): Record<string, unknown> | null {
+  const missing = ["soul_spec", "id"].filter((key) => !Object.hasOwn(data, key));
+  for (const key of missing) {
+    violations.push({
+      path: key,
+      message: `mixin "${doc.path}" is missing required key "${key}"`,
+      severity: mode === "strict" ? "error" : "warning",
+      section: "§7.4",
+    });
+  }
+  if (mode === "strict" && missing.length > 0) return null;
+  return structuredClone(data);
+}
+
+/** Phase: validate mandatory core keys for non-root soul references (G.5.2). */
+function checkReferencedSoulRequirements(
+  doc: SoulDocument,
+  data: Record<string, unknown>,
+  mode: Mode,
+  violations: Violation[]
+): boolean {
+  const missing = MANDATORY.filter((key) => !Object.hasOwn(data, key));
+  for (const key of missing) {
+    violations.push({
+      path: key,
+      message: `referenced soul "${doc.path}" is missing required key "${key}"`,
+      severity: mode === "strict" ? "error" : "warning",
+      section: "§5.1",
+    });
+  }
+  return !(mode === "strict" && missing.length > 0);
+}
+
+/** Phase: load and merge one composition reference into accumulator (§7.5 steps 1–2). */
+async function mergeOneRef(
+  ref: unknown,
+  refPath: string,
+  doc: SoulDocument,
+  loadRef: LoadRef,
+  visiting: string[],
+  violations: Violation[],
+  mode: Mode,
+  accumulator: Record<string, unknown>
+): Promise<Record<string, unknown> | null> {
+  if (typeof ref !== "string") {
+    violations.push({
+      path: refPath,
+      message: "composition references must be strings",
+      severity: mode === "strict" ? "error" : "warning",
+      section: "§7.2",
+    });
+    return accumulator;
+  }
+
+  const loaded = await loadRef(ref, doc.path);
+  if (Array.isArray(loaded)) {
+    // Broken referenced file: propagate the child's violations with the
+    // referencing path context (WP04 T017).
+    violations.push(
+      {
+        path: refPath,
+        message: `failed to load reference "${ref}" from "${doc.path}"`,
+        severity: "error",
+        section: "§7.2",
+      },
+      ...loaded
+    );
+    return null;
+  }
+
+  // §7.3 cycle detection over the canonical paths reported by loadRef.
+  if (visiting.includes(loaded.path)) {
+    violations.push({
+      path: "composition",
+      message: `Cycle detected: ${[...visiting, loaded.path].join(" -> ")}`,
+      severity: "error", // a cycle is unresolvable in BOTH modes
+      section: "§7.3",
+    });
+    return null;
+  }
+
+  visiting.push(loaded.path);
+  const child = await composeDocument(loaded, loadRef, visiting, violations, mode, false);
+  visiting.pop();
+  if (child === null) return null;
+
+  // §7.5 / §9.4 / G.5.4: strip root-owned fields from the loaded result
+  // BEFORE merging — a base's or mixin's profiles never cross the
+  // composition boundary, even when the base is itself a composed soul.
+  return merge(
+    accumulator,
+    stripRootOwned(child),
+    RFC1_MERGE_STRATEGY
+  ) as Record<string, unknown>;
+}
+
 async function composeDocument(
   doc: SoulDocument,
   loadRef: LoadRef,
@@ -133,33 +236,14 @@ async function composeDocument(
   // G.5.2: a `kind: mixin` document returns as-is — its own composition (if
   // any) is NOT resolved. Partial mixins MUST carry soul_spec and id (§7.4).
   if (doc.kind === "mixin") {
-    const missing = ["soul_spec", "id"].filter((key) => !Object.hasOwn(data, key));
-    for (const key of missing) {
-      violations.push({
-        path: key,
-        message: `mixin "${doc.path}" is missing required key "${key}"`,
-        severity: mode === "strict" ? "error" : "warning",
-        section: "§7.4",
-      });
-    }
-    if (mode === "strict" && missing.length > 0) return null;
-    return structuredClone(data);
+    return checkMixinRequirements(doc, data, mode, violations);
   }
 
   // G.5.2 ValidateMandatoryCore for referenced (non-root) soul documents.
   // The root's own validity surfaces via the materialized validation (G.6)
   // and the pipeline's per-document validate, so it is not re-checked here.
-  if (!isRoot) {
-    const missing = MANDATORY.filter((key) => !Object.hasOwn(data, key));
-    for (const key of missing) {
-      violations.push({
-        path: key,
-        message: `referenced soul "${doc.path}" is missing required key "${key}"`,
-        severity: mode === "strict" ? "error" : "warning",
-        section: "§5.1",
-      });
-    }
-    if (mode === "strict" && missing.length > 0) return null;
+  if (!isRoot && !checkReferencedSoulRequirements(doc, data, mode, violations)) {
+    return null;
   }
 
   const composition = isRecord(data["composition"]) ? data["composition"] : {};
@@ -173,54 +257,9 @@ async function composeDocument(
     for (let index = 0; index < refs.length; index++) {
       const ref = refs[index];
       const refPath = `composition.${sourceKey}[${index}]`;
-      if (typeof ref !== "string") {
-        violations.push({
-          path: refPath,
-          message: "composition references must be strings",
-          severity: mode === "strict" ? "error" : "warning",
-          section: "§7.2",
-        });
-        continue;
-      }
-
-      const loaded = await loadRef(ref, doc.path);
-      if (Array.isArray(loaded)) {
-        // Broken referenced file: propagate the child's violations with the
-        // referencing path context (WP04 T017).
-        violations.push({
-          path: refPath,
-          message: `failed to load reference "${ref}" from "${doc.path}"`,
-          severity: "error",
-          section: "§7.2",
-        });
-        violations.push(...loaded);
-        return null;
-      }
-
-      // §7.3 cycle detection over the canonical paths reported by loadRef.
-      if (visiting.includes(loaded.path)) {
-        violations.push({
-          path: "composition",
-          message: `Cycle detected: ${[...visiting, loaded.path].join(" -> ")}`,
-          severity: "error", // a cycle is unresolvable in BOTH modes
-          section: "§7.3",
-        });
-        return null;
-      }
-
-      visiting.push(loaded.path);
-      const child = await composeDocument(loaded, loadRef, visiting, violations, mode, false);
-      visiting.pop();
-      if (child === null) return null;
-
-      // §7.5 / §9.4 / G.5.4: strip root-owned fields from the loaded result
-      // BEFORE merging — a base's or mixin's profiles never cross the
-      // composition boundary, even when the base is itself a composed soul.
-      accumulator = merge(
-        accumulator,
-        stripRootOwned(child),
-        RFC1_MERGE_STRATEGY
-      ) as Record<string, unknown>;
+      const next = await mergeOneRef(ref, refPath, doc, loadRef, visiting, violations, mode, accumulator);
+      if (next === null) return null;
+      accumulator = next;
     }
   }
 
@@ -244,38 +283,19 @@ async function composeDocument(
 }
 
 /**
- * Full §7.5 / Appendix G.5.1 resolution with a rich outcome: effective
- * config, applied profile, active state, and EVERY violation (errors and
- * warnings). The adapter-contract wrapper `resolveComposition` collapses
- * this to `EffectiveConfig | Violation[]`, which cannot carry warnings next
- * to a successful config — pipeline code that must report permissive-mode
- * warnings (WP05) should call this function instead.
+ * Phase: §7.5 step 4 / G.5.1 profile selection.
+ *
+ * Returns the resolved profile name and the effective config with the profile
+ * overlay applied, or null when strict-mode selection fails (violations
+ * pushed onto `violations`).
  */
-export async function resolveCompositionDetailed(
-  doc: SoulDocument,
-  opts: ResolveOptions,
-  loadRef: LoadRef
-): Promise<ResolveOutcome> {
-  const violations: Violation[] = [];
-  const mode = opts.mode;
-  let profile = opts.profile ?? "default"; // §9.3
-
-  // §7.5 steps 1–3 (G.5.2), cycle set seeded with the root's own path.
-  const composed = await composeDocument(
-    doc,
-    loadRef,
-    [doc.path],
-    violations,
-    mode,
-    true
-  );
-  if (composed === null) {
-    return { effective: null, profile, state: null, violations };
-  }
-
-  // §7.5 step 4 / G.5.1: profile selection against the ROOT's profiles
-  // (reattached by G.5.3 — bases'/mixins' lists were stripped and can never
-  // be selected against).
+function applyProfileSelection(
+  composed: Record<string, unknown>,
+  requestedProfile: string,
+  mode: Mode,
+  violations: Violation[]
+): { profile: string; effective: Record<string, unknown> } | null {
+  let profile = requestedProfile;
   const profiles = composed["profiles"];
   if (!Array.isArray(profiles) || !profiles.includes(profile)) {
     if (mode === "strict") {
@@ -285,7 +305,7 @@ export async function resolveCompositionDetailed(
         severity: "error",
         section: "§9",
       });
-      return { effective: null, profile, state: null, violations };
+      return null;
     }
     // Permissive: warn and fall back to "default" (§9.3; G.4 "continue when
     // safe" — mirrors the §20.1 unknown-requested-state fallback).
@@ -313,35 +333,94 @@ export async function resolveCompositionDetailed(
       });
     }
   }
+  return { profile, effective };
+}
 
-  // §7.5 step 5: state. Structural state-block checks first — strict mode
-  // MUST fail loading on §20.3.7/§20.1.1 violations.
+/**
+ * Phase: §7.5 step 5 state application.
+ *
+ * Returns `{ activeState, effective }` on success, or null when strict-mode
+ * state-block validation or selection fails (violations pushed onto `violations`).
+ */
+function applyStatePhase(
+  effective: Record<string, unknown>,
+  requestedState: string | null,
+  mode: Mode,
+  violations: Violation[]
+): { activeState: string | null; effective: Record<string, unknown> } | null {
   const stateBlockViolations = validateStateBlock(effective, mode);
   violations.push(...stateBlockViolations);
   if (mode === "strict" && stateBlockViolations.some((v) => v.severity === "error")) {
-    return { effective: null, profile, state: null, violations };
+    return null;
   }
 
-  const selection = selectState(effective, opts.state ?? null, mode, violations);
-  let activeState: string | null = null;
+  const selection = selectState(effective, requestedState, mode, violations);
   if (Array.isArray(selection)) {
     violations.push(...selection);
-    return { effective: null, profile, state: null, violations };
+    return null;
   }
+  let activeState: string | null = null;
   if (selection !== null) {
     activeState = selection;
     effective = applyStateOverlay(effective, selection);
   }
+  return { activeState, effective };
+}
+
+/**
+ * Full §7.5 / Appendix G.5.1 resolution with a rich outcome: effective
+ * config, applied profile, active state, and EVERY violation (errors and
+ * warnings). The adapter-contract wrapper `resolveComposition` collapses
+ * this to `EffectiveConfig | Violation[]`, which cannot carry warnings next
+ * to a successful config — pipeline code that must report permissive-mode
+ * warnings (WP05) should call this function instead.
+ */
+export async function resolveCompositionDetailed(
+  doc: SoulDocument,
+  opts: ResolveOptions,
+  loadRef: LoadRef
+): Promise<ResolveOutcome> {
+  const violations: Violation[] = [];
+  const mode = opts.mode;
+  const requestedProfile = opts.profile ?? "default"; // §9.3
+
+  // §7.5 steps 1–3 (G.5.2), cycle set seeded with the root's own path.
+  const composed = await composeDocument(
+    doc,
+    loadRef,
+    [doc.path],
+    violations,
+    mode,
+    true
+  );
+  if (composed === null) {
+    return { effective: null, profile: requestedProfile, state: null, violations };
+  }
+
+  // §7.5 step 4 / G.5.1: profile selection.
+  const profileResult = applyProfileSelection(composed, requestedProfile, mode, violations);
+  if (profileResult === null) {
+    return { effective: null, profile: requestedProfile, state: null, violations };
+  }
+  const { profile } = profileResult;
+  let effective = profileResult.effective;
+
+  // §7.5 step 5: state.
+  const stateResult = applyStatePhase(effective, opts.state ?? null, mode, violations);
+  if (stateResult === null) {
+    return { effective: null, profile, state: null, violations };
+  }
+  effective = stateResult.effective;
+  const activeState = stateResult.activeState;
 
   // G.6 materialized validation: composition can assemble an INVALID
   // effective config (bad ranges, unknown keys, broken profile bookkeeping);
   // that must surface even though every input document looked fine. The
   // effective config is still returned alongside the violations — the §25.1
   // report layer decides what `ok` means.
-  violations.push(...validate(effective, mode));
   // §21.1 / FR-011: evaluation rule references resolve against the
   // materialized config (profiles/state may have contributed criteria).
-  violations.push(...resolveRuleRefs(effective, mode));
+  violations.push(...validate(effective, mode), ...resolveRuleRefs(effective, mode));
 
   return { effective, profile, state: activeState, violations };
 }

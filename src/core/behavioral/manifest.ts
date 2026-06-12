@@ -151,12 +151,12 @@ function validateDefaults(raw: unknown, errors: Violation[]): BehavioralDefaults
   }
   const temperature = raw["temperature"];
   if (temperature !== undefined && temperature !== "default") {
-    if (typeof temperature !== "number") {
+    if (typeof temperature === "number") {
+      defaults.temperature = temperature;
+    } else {
       errors.push(
         violation("defaults.temperature", '"temperature" must be a number or the string "default" (C-009)')
       );
-    } else {
-      defaults.temperature = temperature;
     }
   }
   return defaults;
@@ -253,6 +253,71 @@ function validTurnIndex(
   return true;
 }
 
+function validateVerbosityAxis(
+  raw: Record<string, unknown>,
+  where: string,
+  turnCount: number,
+  errors: Violation[]
+): AxisSpec | null {
+  rejectUnknownFields(raw, new Set(["axis", "turns"]), where, errors);
+  const turns = raw["turns"];
+  if (turns === "all") return { axis: "verbosity", turns: "all" };
+  if (Array.isArray(turns)) {
+    let ok = true;
+    turns.forEach((value, i) => {
+      if (!validTurnIndex(value, turnCount, `${where}.turns[${i}]`, errors)) ok = false;
+    });
+    return ok ? { axis: "verbosity", turns: turns as number[] } : null;
+  }
+  errors.push(violation(`${where}.turns`, '"turns" must be "all" or a list of 0-indexed turn integers'));
+  return null;
+}
+
+function validateRefusalAxis(
+  raw: Record<string, unknown>,
+  where: string,
+  turnCount: number,
+  errors: Violation[]
+): AxisSpec | null {
+  rejectUnknownFields(raw, new Set(["axis", "turn", "assertions"]), where, errors);
+  const rawTurn = raw["turn"];
+  if (!validTurnIndex(rawTurn, turnCount, `${where}.turn`, errors)) return null;
+  const spec: AxisSpec = { axis: "refusal", turn: rawTurn };
+  const rawAssertions = raw["assertions"];
+  if (rawAssertions === undefined) return spec;
+  if (!Array.isArray(rawAssertions)) {
+    errors.push(violation(`${where}.assertions`, '"assertions" must be a list'));
+    return null;
+  }
+  const assertions: ContentAssertion[] = [];
+  let ok = true;
+  rawAssertions.forEach((entry, i) => {
+    const assertion = validateAssertion(entry, `${where}.assertions[${i}]`, errors);
+    if (assertion === null) ok = false;
+    else assertions.push(assertion);
+  });
+  if (!ok) return null;
+  spec.assertions = assertions;
+  return spec;
+}
+
+function validateStateShiftAxis(
+  raw: Record<string, unknown>,
+  where: string,
+  turnCount: number,
+  errors: Violation[]
+): AxisSpec | null {
+  rejectUnknownFields(raw, new Set(["axis", "trigger_turn", "expect_state"]), where, errors);
+  const rawTriggerTurn = raw["trigger_turn"];
+  if (!validTurnIndex(rawTriggerTurn, turnCount, `${where}.trigger_turn`, errors)) return null;
+  const expectState = raw["expect_state"];
+  if (typeof expectState !== "string" || expectState.length === 0) {
+    errors.push(violation(`${where}.expect_state`, '"expect_state" must be a non-empty string (FR-021)'));
+    return null;
+  }
+  return { axis: "state_shift", trigger_turn: rawTriggerTurn, expect_state: expectState };
+}
+
 function validateAxis(
   raw: unknown,
   where: string,
@@ -264,52 +329,9 @@ function validateAxis(
     return null;
   }
   const axis = raw["axis"];
-  if (axis === "verbosity") {
-    rejectUnknownFields(raw, new Set(["axis", "turns"]), where, errors);
-    const turns = raw["turns"];
-    if (turns === "all") return { axis: "verbosity", turns: "all" };
-    if (Array.isArray(turns)) {
-      let ok = true;
-      turns.forEach((value, i) => {
-        if (!validTurnIndex(value, turnCount, `${where}.turns[${i}]`, errors)) ok = false;
-      });
-      return ok ? { axis: "verbosity", turns: turns as number[] } : null;
-    }
-    errors.push(violation(`${where}.turns`, '"turns" must be "all" or a list of 0-indexed turn integers'));
-    return null;
-  }
-  if (axis === "refusal") {
-    rejectUnknownFields(raw, new Set(["axis", "turn", "assertions"]), where, errors);
-    if (!validTurnIndex(raw["turn"], turnCount, `${where}.turn`, errors)) return null;
-    const spec: AxisSpec = { axis: "refusal", turn: raw["turn"] as number };
-    const rawAssertions = raw["assertions"];
-    if (rawAssertions !== undefined) {
-      if (!Array.isArray(rawAssertions)) {
-        errors.push(violation(`${where}.assertions`, '"assertions" must be a list'));
-        return null;
-      }
-      const assertions: ContentAssertion[] = [];
-      let ok = true;
-      rawAssertions.forEach((entry, i) => {
-        const assertion = validateAssertion(entry, `${where}.assertions[${i}]`, errors);
-        if (assertion === null) ok = false;
-        else assertions.push(assertion);
-      });
-      if (!ok) return null;
-      spec.assertions = assertions;
-    }
-    return spec;
-  }
-  if (axis === "state_shift") {
-    rejectUnknownFields(raw, new Set(["axis", "trigger_turn", "expect_state"]), where, errors);
-    if (!validTurnIndex(raw["trigger_turn"], turnCount, `${where}.trigger_turn`, errors)) return null;
-    const expectState = raw["expect_state"];
-    if (typeof expectState !== "string" || expectState.length === 0) {
-      errors.push(violation(`${where}.expect_state`, '"expect_state" must be a non-empty string (FR-021)'));
-      return null;
-    }
-    return { axis: "state_shift", trigger_turn: raw["trigger_turn"] as number, expect_state: expectState };
-  }
+  if (axis === "verbosity") return validateVerbosityAxis(raw, where, turnCount, errors);
+  if (axis === "refusal") return validateRefusalAxis(raw, where, turnCount, errors);
+  if (axis === "state_shift") return validateStateShiftAxis(raw, where, turnCount, errors);
   errors.push(
     violation(`${where}.axis`, '"axis" must be one of "verbosity", "refusal", "state_shift" (the three locked axes)')
   );
@@ -334,6 +356,70 @@ function validateOverrides(raw: unknown, where: string, errors: Violation[]): Ca
     }
   }
   return overrides;
+}
+
+/** Validate turns list and axes list for a case; returns [turns, axes]. */
+function validateCaseTurnsAndAxes(
+  raw: Record<string, unknown>,
+  where: string,
+  errors: Violation[]
+): [Turn[], AxisSpec[]] {
+  const rawTurns = raw["turns"];
+  const turns: Turn[] = [];
+  if (!Array.isArray(rawTurns) || rawTurns.length === 0) {
+    errors.push(violation(`${where}.turns`, 'required field "turns" must be a non-empty list (C-005)'));
+  } else {
+    rawTurns.forEach((entry, i) => {
+      const turn = validateTurn(entry, `${where}.turns[${i}]`, errors);
+      if (turn !== null) turns.push(turn);
+    });
+  }
+
+  const axes: AxisSpec[] = [];
+  const rawAxes = raw["axes"];
+  if (!Array.isArray(rawAxes) || rawAxes.length === 0) {
+    errors.push(violation(`${where}.axes`, 'required field "axes" must be a non-empty list'));
+  } else if (Array.isArray(rawTurns)) {
+    rawAxes.forEach((entry, i) => {
+      const axis = validateAxis(entry, `${where}.axes[${i}]`, rawTurns.length, errors);
+      if (axis !== null) axes.push(axis);
+    });
+  }
+  return [turns, axes];
+}
+
+/** Validate runs and pass_threshold for a case; returns [runs, passThreshold]. */
+function validateCaseRunCounts(
+  raw: Record<string, unknown>,
+  where: string,
+  defaults: BehavioralDefaults,
+  errors: Violation[]
+): [number, number] {
+  let runs = defaults.runs;
+  if (raw["runs"] !== undefined) {
+    if (!isInt(raw["runs"]) || raw["runs"] < 1) {
+      errors.push(violation(`${where}.runs`, '"runs" must be an integer ≥ 1 (FR-022)'));
+    } else {
+      runs = raw["runs"];
+    }
+  }
+  let passThreshold = defaults.pass_threshold;
+  if (raw["pass_threshold"] !== undefined) {
+    if (!isInt(raw["pass_threshold"]) || raw["pass_threshold"] < 1) {
+      errors.push(violation(`${where}.pass_threshold`, '"pass_threshold" must be an integer ≥ 1 (FR-022)'));
+    } else {
+      passThreshold = raw["pass_threshold"];
+    }
+  }
+  if (passThreshold > runs) {
+    errors.push(
+      violation(
+        `${where}.pass_threshold`,
+        `pass_threshold ${passThreshold} exceeds runs ${runs} — the case could never pass (FR-022 k ≤ n)`
+      )
+    );
+  }
+  return [runs, passThreshold];
 }
 
 function validateCase(
@@ -365,52 +451,8 @@ function validateCase(
     }
   }
 
-  const rawTurns = raw["turns"];
-  const turns: Turn[] = [];
-  if (!Array.isArray(rawTurns) || rawTurns.length === 0) {
-    errors.push(violation(`${where}.turns`, 'required field "turns" must be a non-empty list (C-005)'));
-  } else {
-    rawTurns.forEach((entry, i) => {
-      const turn = validateTurn(entry, `${where}.turns[${i}]`, errors);
-      if (turn !== null) turns.push(turn);
-    });
-  }
-
-  const axes: AxisSpec[] = [];
-  const rawAxes = raw["axes"];
-  if (!Array.isArray(rawAxes) || rawAxes.length === 0) {
-    errors.push(violation(`${where}.axes`, 'required field "axes" must be a non-empty list'));
-  } else if (Array.isArray(rawTurns)) {
-    rawAxes.forEach((entry, i) => {
-      const axis = validateAxis(entry, `${where}.axes[${i}]`, rawTurns.length, errors);
-      if (axis !== null) axes.push(axis);
-    });
-  }
-
-  let runs = defaults.runs;
-  if (raw["runs"] !== undefined) {
-    if (!isInt(raw["runs"]) || raw["runs"] < 1) {
-      errors.push(violation(`${where}.runs`, '"runs" must be an integer ≥ 1 (FR-022)'));
-    } else {
-      runs = raw["runs"];
-    }
-  }
-  let passThreshold = defaults.pass_threshold;
-  if (raw["pass_threshold"] !== undefined) {
-    if (!isInt(raw["pass_threshold"]) || raw["pass_threshold"] < 1) {
-      errors.push(violation(`${where}.pass_threshold`, '"pass_threshold" must be an integer ≥ 1 (FR-022)'));
-    } else {
-      passThreshold = raw["pass_threshold"];
-    }
-  }
-  if (passThreshold > runs) {
-    errors.push(
-      violation(
-        `${where}.pass_threshold`,
-        `pass_threshold ${passThreshold} exceeds runs ${runs} — the case could never pass (FR-022 k ≤ n)`
-      )
-    );
-  }
+  const [turns, axes] = validateCaseTurnsAndAxes(raw, where, errors);
+  const [runs, passThreshold] = validateCaseRunCounts(raw, where, defaults, errors);
 
   let overrides: CaseOverrides | undefined;
   if (raw["overrides"] !== undefined) {
@@ -420,11 +462,13 @@ function validateCase(
 
   if (errors.length > startCount) return null;
 
+  // id and soul validated as non-empty strings above; errors guard confirms.
+  const caseId = String(id);
+  const caseSoul = String(soul);
+
   const behavioralCase: BehavioralCase = {
-    id: id as string,
-    soul: isAbsolute(soul as string)
-      ? (soul as string)
-      : resolvePath(manifestDir, soul as string),
+    id: caseId,
+    soul: isAbsolute(caseSoul) ? caseSoul : resolvePath(manifestDir, caseSoul),
     turns,
     axes,
     runs,

@@ -35,6 +35,7 @@ import type { Violation } from "../report.js";
 import { gradeRefusal, gradeStateShift, gradeVerbosity, verbosityLimit } from "./graders.js";
 import type {
   AxisGrade,
+  AxisSpec,
   BehavioralCase,
   CaseVerdict,
   ChatClient,
@@ -74,6 +75,72 @@ function dig(value: unknown, ...path: string[]): unknown {
   return current;
 }
 
+/** Build the identity line (name + optional id). */
+function personaIdentityLine(effective: EffectiveConfig): string {
+  const name = asString(effective["name"]);
+  if (name === null) {
+    return "You are the configured persona. Stay in character in every reply.";
+  }
+  const id = asString(effective["id"]);
+  const idSuffix = id === null ? "" : ` (persona ${id})`;
+  return `You are ${name}${idSuffix}. Stay in character in every reply.`;
+}
+
+/** Build voice-profile lines (scales + formatting + word budget). */
+function personaVoiceLines(effective: EffectiveConfig, maxWords?: number): string[] {
+  const lines: string[] = [];
+  const formality = asNumber(dig(effective, "voice", "formality"));
+  const warmth = asNumber(dig(effective, "voice", "warmth"));
+  const verbosity = asNumber(dig(effective, "voice", "verbosity"));
+  const jargon = asNumber(dig(effective, "voice", "jargon"));
+  const formatting = asString(dig(effective, "voice", "formatting"));
+  const voiceParts: string[] = [];
+  if (formality !== null) voiceParts.push(`formality ${formality}`);
+  if (warmth !== null) voiceParts.push(`warmth ${warmth}`);
+  if (verbosity !== null) voiceParts.push(`verbosity ${verbosity}`);
+  if (jargon !== null) voiceParts.push(`technical jargon ${jargon}`);
+  if (voiceParts.length > 0) {
+    lines.push(`Voice profile on 0-100 scales (0 = minimal, 100 = maximal): ${voiceParts.join(", ")}.`);
+  }
+  if (formatting !== null) {
+    lines.push(`Formatting style: ${formatting}. Answer in plain prose sentences.`);
+  }
+  if (maxWords !== undefined) {
+    lines.push(`Length discipline: every reply must be at most ${maxWords} words. Never exceed it.`);
+  }
+  return lines;
+}
+
+/** Build the interaction-style line (clarifying / uncertainty / disagreement / confirmations). */
+function personaInteractionLine(effective: EffectiveConfig): string | null {
+  const clarifying = asString(dig(effective, "interaction", "clarifying_questions"));
+  const uncertainty = asString(dig(effective, "interaction", "uncertainty"));
+  const disagreement = asString(dig(effective, "interaction", "disagreement"));
+  const confirmations = asString(dig(effective, "interaction", "confirmations"));
+  const parts: string[] = [];
+  if (clarifying !== null) parts.push(`ask clarifying questions: ${clarifying}`);
+  if (uncertainty !== null) parts.push(`uncertainty handling: ${uncertainty}`);
+  if (disagreement !== null) parts.push(`disagreement style: ${disagreement}`);
+  if (confirmations !== null) parts.push(`confirmations: ${confirmations}`);
+  return parts.length > 0 ? `Interaction style: ${parts.join("; ")}.` : null;
+}
+
+/** Build the safety line (refusal_style / privacy / speculation). */
+function personaSafetyLine(effective: EffectiveConfig): string | null {
+  const refusalStyle = asString(dig(effective, "safety", "refusal_style"));
+  const privacy = asString(dig(effective, "safety", "privacy"));
+  const speculation = asString(dig(effective, "safety", "speculation"));
+  const parts: string[] = [];
+  if (refusalStyle !== null) {
+    parts.push(
+      `refusal style: ${refusalStyle} — when you cannot or should not answer, refuse in very few words and do not speculate`
+    );
+  }
+  if (privacy !== null) parts.push(`privacy: ${privacy}`);
+  if (speculation !== null) parts.push(`speculation: ${speculation}`);
+  return parts.length > 0 ? `Safety: ${parts.join("; ")}.` : null;
+}
+
 /**
  * Render the effective config as the persona system prompt.
  *
@@ -100,70 +167,20 @@ export function personaPrompt(
 ): string {
   const lines: string[] = [];
 
-  const name = asString(effective["name"]);
-  const id = asString(effective["id"]);
-  lines.push(
-    name !== null
-      ? `You are ${name}${id !== null ? ` (persona ${id})` : ""}. Stay in character in every reply.`
-      : "You are the configured persona. Stay in character in every reply."
-  );
+  lines.push(personaIdentityLine(effective));
 
   const priorities = dig(effective, "values", "priorities");
   if (Array.isArray(priorities) && priorities.length > 0) {
     lines.push(`Your values, highest priority first: ${priorities.map(String).join(", ")}.`);
   }
 
-  const formality = asNumber(dig(effective, "voice", "formality"));
-  const warmth = asNumber(dig(effective, "voice", "warmth"));
-  const verbosity = asNumber(dig(effective, "voice", "verbosity"));
-  const jargon = asNumber(dig(effective, "voice", "jargon"));
-  const formatting = asString(dig(effective, "voice", "formatting"));
-  const voiceParts: string[] = [];
-  if (formality !== null) voiceParts.push(`formality ${formality}`);
-  if (warmth !== null) voiceParts.push(`warmth ${warmth}`);
-  if (verbosity !== null) voiceParts.push(`verbosity ${verbosity}`);
-  if (jargon !== null) voiceParts.push(`technical jargon ${jargon}`);
-  if (voiceParts.length > 0) {
-    lines.push(
-      `Voice profile on 0-100 scales (0 = minimal, 100 = maximal): ${voiceParts.join(", ")}.`
-    );
-  }
-  if (formatting !== null) {
-    lines.push(`Formatting style: ${formatting}. Answer in plain prose sentences.`);
-  }
-  if (opts.maxWords !== undefined) {
-    lines.push(
-      `Length discipline: every reply must be at most ${opts.maxWords} words. Never exceed it.`
-    );
-  }
+  lines.push(...personaVoiceLines(effective, opts.maxWords));
 
-  const clarifying = asString(dig(effective, "interaction", "clarifying_questions"));
-  const uncertainty = asString(dig(effective, "interaction", "uncertainty"));
-  const disagreement = asString(dig(effective, "interaction", "disagreement"));
-  const confirmations = asString(dig(effective, "interaction", "confirmations"));
-  const interactionParts: string[] = [];
-  if (clarifying !== null) interactionParts.push(`ask clarifying questions: ${clarifying}`);
-  if (uncertainty !== null) interactionParts.push(`uncertainty handling: ${uncertainty}`);
-  if (disagreement !== null) interactionParts.push(`disagreement style: ${disagreement}`);
-  if (confirmations !== null) interactionParts.push(`confirmations: ${confirmations}`);
-  if (interactionParts.length > 0) {
-    lines.push(`Interaction style: ${interactionParts.join("; ")}.`);
-  }
+  const interactionLine = personaInteractionLine(effective);
+  if (interactionLine !== null) lines.push(interactionLine);
 
-  const refusalStyle = asString(dig(effective, "safety", "refusal_style"));
-  const privacy = asString(dig(effective, "safety", "privacy"));
-  const speculation = asString(dig(effective, "safety", "speculation"));
-  const safetyParts: string[] = [];
-  if (refusalStyle !== null) {
-    safetyParts.push(
-      `refusal style: ${refusalStyle} — when you cannot or should not answer, refuse in very few words and do not speculate`
-    );
-  }
-  if (privacy !== null) safetyParts.push(`privacy: ${privacy}`);
-  if (speculation !== null) safetyParts.push(`speculation: ${speculation}`);
-  if (safetyParts.length > 0) {
-    lines.push(`Safety: ${safetyParts.join("; ")}.`);
-  }
+  const safetyLine = personaSafetyLine(effective);
+  if (safetyLine !== null) lines.push(safetyLine);
 
   if (opts.activeState !== undefined && opts.activeState !== null && opts.activeState !== "") {
     lines.push(`Current mood state: ${opts.activeState}.`);
@@ -231,25 +248,108 @@ interface TurnRecord {
   reply: TranscriptEntry;
 }
 
-/** Execute one run: fresh conversation, all turns, per-turn state tracking. */
-async function executeRun(
-  adapter: SpecAdapter,
-  kase: BehavioralCase,
-  client: ChatClient,
-  opts: RunnerOptions,
-  baseEffective: EffectiveConfig,
+/** File-local options bundle for executeRun — folds the 8-param list (S107). */
+interface ExecuteRunOptions {
+  adapter: SpecAdapter;
+  kase: BehavioralCase;
+  client: ChatClient;
+  runnerOpts: RunnerOptions;
+  baseEffective: EffectiveConfig;
+  baseState: string;
+  mode: Mode;
+  entries: TranscriptEntry[];
+}
+
+/** Mutable conversation state threaded through each turn. */
+interface TurnState {
+  activeState: string;
+  currentEffective: EffectiveConfig;
+  revertBeforeNextEvaluation: boolean;
+}
+
+/**
+ * Apply the `duration: message` state revert at the start of a turn (§20.3.5).
+ * Mutates `state`; pushes a system message when a revert actually occurs.
+ */
+function applyMessageRevert(
+  state: TurnState,
   baseState: string,
+  baseEffective: EffectiveConfig,
+  maxWordsFor: (eff: EffectiveConfig) => number | undefined,
+  messages: ChatMessage[]
+): void {
+  state.revertBeforeNextEvaluation = false;
+  if (state.activeState === baseState) return;
+  state.activeState = baseState;
+  state.currentEffective = baseEffective;
+  const baseLabel = baseState === "" ? "(none)" : baseState;
+  messages.push({
+    role: "system",
+    content:
+      `[state reverted to "${baseLabel}" — duration: message] ` +
+      "Updated persona:\n" +
+      personaPrompt(state.currentEffective, {
+        activeState: state.activeState,
+        maxWords: maxWordsFor(state.currentEffective),
+      }),
+  });
+}
+
+/**
+ * Evaluate trigger facts for a turn and apply any state shift (§20.3.1/§20.3.4).
+ * Mutates `state`; pushes a system message when a transition occurs.
+ * @throws when trigger evaluation reports an error-severity violation.
+ */
+function applyTriggerFacts(
+  state: TurnState,
+  facts: Record<string, boolean | string>,
+  adapter: SpecAdapter,
+  baseEffective: EffectiveConfig,
   mode: Mode,
-  entries: TranscriptEntry[]
-): Promise<TurnRecord[]> {
+  maxWordsFor: (eff: EffectiveConfig) => number | undefined,
+  messages: ChatMessage[]
+): void {
+  const outcome = adapter.evaluateTriggers(state.currentEffective, facts, mode);
+  if (Array.isArray(outcome)) {
+    const violations = outcome;
+    if (violations.some((v) => v.severity === "error")) {
+      throw new Error(`trigger evaluation failed: ${describeViolations(violations)}`);
+    }
+    // Warning-only outcome (permissive skip): no transition.
+    return;
+  }
+  if (typeof outcome !== "string" || outcome === state.activeState) return;
+  state.activeState = outcome;
+  state.currentEffective = shiftedEffective(adapter, baseEffective, outcome);
+  if (triggerDuration(baseEffective, outcome) === "message") {
+    state.revertBeforeNextEvaluation = true;
+  }
+  // Append (never rewrite) — transcripts stay honest about what the
+  // model saw before vs. after the shift.
+  messages.push({
+    role: "system",
+    content:
+      `[state changed to "${outcome}"] Updated persona:\n` +
+      personaPrompt(state.currentEffective, {
+        activeState: state.activeState,
+        maxWords: maxWordsFor(state.currentEffective),
+      }),
+  });
+}
+
+/** Execute one run: fresh conversation, all turns, per-turn state tracking. */
+async function executeRun(runOpts: ExecuteRunOptions): Promise<TurnRecord[]> {
+  const { adapter, kase, client, runnerOpts, baseEffective, baseState, mode, entries } = runOpts;
   const records: TurnRecord[] = [];
   const chatOpts =
-    opts.temperature === "default" ? {} : { temperature: opts.temperature };
+    runnerOpts.temperature === "default" ? {} : { temperature: runnerOpts.temperature };
 
-  let activeState = baseState;
-  // The base state's overlay is already applied (§7.5 step 5 / Appendix G.7).
-  let currentEffective = baseEffective;
-  let revertBeforeNextEvaluation = false;
+  const state: TurnState = {
+    activeState: baseState,
+    // The base state's overlay is already applied (§7.5 step 5 / Appendix G.7).
+    currentEffective: baseEffective,
+    revertBeforeNextEvaluation: false,
+  };
 
   const maxWordsFor = (effective: EffectiveConfig): number | undefined => {
     const limit = verbosityLimit(effective, kase.overrides?.max_words, adapter.thresholds);
@@ -259,79 +359,115 @@ async function executeRun(
   const messages: ChatMessage[] = [
     {
       role: "system",
-      content: personaPrompt(currentEffective, {
-        activeState,
-        maxWords: maxWordsFor(currentEffective),
+      content: personaPrompt(state.currentEffective, {
+        activeState: state.activeState,
+        maxWords: maxWordsFor(state.currentEffective),
       }),
     },
   ];
 
   for (const turn of kase.turns) {
     // §20.3.5 `duration: message`: revert BEFORE this turn's evaluation.
-    if (revertBeforeNextEvaluation) {
-      revertBeforeNextEvaluation = false;
-      if (activeState !== baseState) {
-        activeState = baseState;
-        currentEffective = baseEffective;
-        messages.push({
-          role: "system",
-          content:
-            `[state reverted to "${baseState === "" ? "(none)" : baseState}" — duration: message] ` +
-            "Updated persona:\n" +
-            personaPrompt(currentEffective, {
-              activeState,
-              maxWords: maxWordsFor(currentEffective),
-            }),
-        });
-      }
+    if (state.revertBeforeNextEvaluation) {
+      applyMessageRevert(state, baseState, baseEffective, maxWordsFor, messages);
     }
 
     // §20.3.1 OnUserMessage / §20.3.4: facts evaluated and the new state
     // applied BEFORE generating this turn's reply.
     if (turn.facts !== undefined) {
-      const outcome = adapter.evaluateTriggers(currentEffective, turn.facts, mode);
-      if (Array.isArray(outcome)) {
-        const violations = outcome;
-        if (violations.some((violation) => violation.severity === "error")) {
-          throw new Error(`trigger evaluation failed: ${describeViolations(violations)}`);
-        }
-        // Warning-only outcome (permissive skip): no transition.
-      } else if (typeof outcome === "string" && outcome !== activeState) {
-        activeState = outcome;
-        currentEffective = shiftedEffective(adapter, baseEffective, outcome);
-        if (triggerDuration(baseEffective, outcome) === "message") {
-          revertBeforeNextEvaluation = true;
-        }
-        // Append (never rewrite) — transcripts stay honest about what the
-        // model saw before vs. after the shift.
-        messages.push({
-          role: "system",
-          content:
-            `[state changed to "${outcome}"] Updated persona:\n` +
-            personaPrompt(currentEffective, {
-              activeState,
-              maxWords: maxWordsFor(currentEffective),
-            }),
-        });
-      }
+      applyTriggerFacts(state, turn.facts, adapter, baseEffective, mode, maxWordsFor, messages);
     }
 
     messages.push({ role: "user", content: turn.content });
-    entries.push({ role: "user", content: turn.content, activeState });
+    entries.push({ role: "user", content: turn.content, activeState: state.activeState });
 
     const reply = await client.chat(messages, chatOpts);
     messages.push({ role: "assistant", content: reply });
     const replyEntry: TranscriptEntry = {
       role: "assistant",
       content: reply,
-      activeState,
+      activeState: state.activeState,
       wordCount: adapter.thresholds.words(reply),
     };
     entries.push(replyEntry);
-    records.push({ activeState, effective: currentEffective, reply: replyEntry });
+    records.push({ activeState: state.activeState, effective: state.currentEffective, reply: replyEntry });
   }
 
   return records;
+}
+
+/** Grade verbosity axis turns and accumulate into grades + verbosityGrades. */
+function gradeVerbosityAxis(
+  axis: Extract<AxisSpec, { axis: "verbosity" }>,
+  kase: BehavioralCase,
+  adapter: SpecAdapter,
+  records: TurnRecord[],
+  grades: AxisGrade[],
+  verbosityGrades: AxisGrade[]
+): void {
+  const targets = axis.turns === "all" ? records.map((_, index) => index) : axis.turns;
+  for (const turn of targets) {
+    const record = records[turn];
+    if (record === undefined) continue; // manifest validation prevents this
+    const grade = gradeVerbosity(
+      record.reply,
+      record.effective,
+      kase.overrides?.max_words,
+      adapter.thresholds,
+      turn
+    );
+    grades.push(grade);
+    verbosityGrades.push(grade);
+  }
+}
+
+/** Grade refusal axis for one turn. */
+function gradeRefusalAxis(
+  axis: Extract<AxisSpec, { axis: "refusal" }>,
+  kase: BehavioralCase,
+  adapter: SpecAdapter,
+  records: TurnRecord[],
+  grades: AxisGrade[]
+): void {
+  const record = records[axis.turn];
+  if (record === undefined) return;
+  grades.push(
+    ...gradeRefusal(
+      record.reply,
+      kase.overrides?.refusal_cap,
+      axis.assertions ?? [],
+      adapter.thresholds,
+      axis.turn
+    )
+  );
+}
+
+/** Grade state_shift axis using post-shift verbosity evidence. */
+function gradeStateShiftAxis(
+  axis: Extract<AxisSpec, { axis: "state_shift" }>,
+  kase: BehavioralCase,
+  adapter: SpecAdapter,
+  baseEffective: EffectiveConfig,
+  records: TurnRecord[],
+  verbosityGrades: AxisGrade[],
+  grades: AxisGrade[]
+): void {
+  const record = records[axis.trigger_turn];
+  const runState = record?.activeState ?? "";
+  // Expected post-shift verbosity limit, derived from the EXPECTED state's
+  // overlay — post-shift grades must have used it (observable change).
+  const expectedLimit = verbosityLimit(
+    shiftedEffective(adapter, baseEffective, axis.expect_state),
+    kase.overrides?.max_words,
+    adapter.thresholds
+  );
+  const postShift = verbosityGrades.filter((grade) => grade.turn >= axis.trigger_turn);
+  grades.push(
+    gradeStateShift(runState, axis.expect_state, postShift, {
+      turn: axis.trigger_turn,
+      ...(typeof expectedLimit === "number" && { shiftedLimit: expectedLimit }),
+    })
+  );
 }
 
 /** Grade every axis of the case against the per-turn active effective configs. */
@@ -347,55 +483,17 @@ function gradeRun(
   // Pass 1: verbosity + refusal (state_shift consumes verbosity grades).
   for (const axis of kase.axes) {
     if (axis.axis === "verbosity") {
-      const targets =
-        axis.turns === "all" ? records.map((_, index) => index) : axis.turns;
-      for (const turn of targets) {
-        const record = records[turn];
-        if (record === undefined) continue; // manifest validation prevents this
-        const grade = gradeVerbosity(
-          record.reply,
-          record.effective,
-          kase.overrides?.max_words,
-          adapter.thresholds,
-          turn
-        );
-        grades.push(grade);
-        verbosityGrades.push(grade);
-      }
+      gradeVerbosityAxis(axis, kase, adapter, records, grades, verbosityGrades);
     } else if (axis.axis === "refusal") {
-      const record = records[axis.turn];
-      if (record === undefined) continue;
-      grades.push(
-        ...gradeRefusal(
-          record.reply,
-          kase.overrides?.refusal_cap,
-          axis.assertions ?? [],
-          adapter.thresholds,
-          axis.turn
-        )
-      );
+      gradeRefusalAxis(axis, kase, adapter, records, grades);
     }
   }
 
   // Pass 2: state_shift (FR-021 observable change).
   for (const axis of kase.axes) {
-    if (axis.axis !== "state_shift") continue;
-    const record = records[axis.trigger_turn];
-    const runState = record?.activeState ?? "";
-    // Expected post-shift verbosity limit, derived from the EXPECTED state's
-    // overlay — post-shift grades must have used it (observable change).
-    const expectedLimit = verbosityLimit(
-      shiftedEffective(adapter, baseEffective, axis.expect_state),
-      kase.overrides?.max_words,
-      adapter.thresholds
-    );
-    const postShift = verbosityGrades.filter((grade) => grade.turn >= axis.trigger_turn);
-    grades.push(
-      gradeStateShift(runState, axis.expect_state, postShift, {
-        turn: axis.trigger_turn,
-        ...(typeof expectedLimit === "number" && { shiftedLimit: expectedLimit }),
-      })
-    );
+    if (axis.axis === "state_shift") {
+      gradeStateShiftAxis(axis, kase, adapter, baseEffective, records, verbosityGrades, grades);
+    }
   }
 
   return grades;
@@ -438,19 +536,19 @@ export async function runCase(
     let error: string | undefined;
 
     try {
-      records = await executeRun(
+      records = await executeRun({
         adapter,
         kase,
         client,
-        opts,
+        runnerOpts: opts,
         baseEffective,
         baseState,
         mode,
-        entries
-      );
-    } catch (caught) {
+        entries,
+      });
+    } catch (error_) {
       // FR-022: an errored run is a failed run — record, never re-throw.
-      error = caught instanceof Error ? caught.message : String(caught);
+      error = error_ instanceof Error ? error_.message : String(error_);
     }
 
     const transcript: Transcript = {

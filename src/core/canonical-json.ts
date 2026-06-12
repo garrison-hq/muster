@@ -49,8 +49,11 @@ function canonicalArray(values: readonly unknown[]): string {
 }
 
 function canonicalObject(obj: Record<string, unknown>): string {
-  // Default sort compares UTF-16 code units — exactly the RFC 8785 key order.
-  const keys = Object.keys(obj).sort();
+  // Key ordering MUST be UTF-16 code-unit based (RFC 8785 §3.2.3).
+  // Do NOT replace with localeCompare — locale/ICU-dependent ordering breaks
+  // byte-stable canonical output. This comparator encodes the engine default
+  // explicitly and is provably equivalent to the bare .sort().
+  const keys = Object.keys(obj).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
   const members = keys.map((key) => `${JSON.stringify(key)}:${canonicalJson(obj[key])}`);
   return `{${members.join(",")}}`;
 }

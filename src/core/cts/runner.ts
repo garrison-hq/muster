@@ -164,11 +164,11 @@ async function checkEffective(
   if (expectationPath === undefined) {
     return;
   }
-  const which = ctsCase.expect_effective_json !== undefined
-    ? "expect_effective_json"
-    : "expect_effective_yaml";
+  const which = ctsCase.expect_effective_json === undefined
+    ? "expect_effective_yaml"
+    : "expect_effective_json";
 
-  if (!ctsCase.expect_ok) {
+  if (ctsCase.expect_ok === false) {
     // Manifest authoring error: F.2 comparison only applies to passing cases.
     mismatches.push(
       `manifest authoring error: ${which} declared on an expect_ok: false case — effective comparison applies to passing cases only`
@@ -233,12 +233,12 @@ async function runCase(
     const raw = await readFile(ctsCase.root, "utf8");
     // --restrict-refs (FR-003): bare flag → per-case root soul directory;
     // a string → fixed base directory; absent → unrestricted (NFR-001).
-    const restrictTo =
-      restrictRefs === undefined
-        ? undefined
-        : restrictRefs === true
-          ? dirname(ctsCase.root)
-          : restrictRefs;
+    let restrictTo: string | undefined;
+    if (restrictRefs === true) {
+      restrictTo = dirname(ctsCase.root);
+    } else if (restrictRefs !== undefined) {
+      restrictTo = restrictRefs;
+    }
     const loadRef = makeFsLoadRef(
       (refRaw, refPath) => adapter.parse(refRaw, refPath, ctsCase.mode),
       restrictTo === undefined ? undefined : { restrictTo }
@@ -277,7 +277,7 @@ export async function runCts(
   cases: readonly CtsCase[],
   opts?: RunCtsOptions
 ): Promise<CtsCaseResult[]> {
-  const selected = opts?.filter !== undefined ? cases.filter((c) => opts.filter!(c.id)) : cases;
+  const selected = opts?.filter === undefined ? cases : cases.filter((c) => opts.filter!(c.id));
   const results: CtsCaseResult[] = [];
   for (const ctsCase of selected) {
     results.push(await runCase(adapter, ctsCase, opts?.restrictRefs));

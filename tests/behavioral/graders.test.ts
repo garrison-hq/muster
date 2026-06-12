@@ -38,7 +38,7 @@ describe("R9 thresholds (locked) — src/adapters/rfc1/thresholds.ts", () => {
     expect(rfc1Thresholds.refusalCap).toBe(25);
   });
 
-  it("R9 words(s) = trim-split-/\\s+/-count: whitespace runs collapse, empty string is 0", () => {
+  it(String.raw`R9 words(s) = trim-split-/\s+/-count: whitespace runs collapse, empty string is 0`, () => {
     expect(words("hello world")).toBe(2);
     expect(words("  a \t b\nc  ")).toBe(3);
     expect(words("")).toBe(0);
@@ -102,7 +102,7 @@ describe("FR-019/FR-020 refusal grader (R9 cap 25 + content assertions)", () => 
   it("FR-020 regex price assertion catches both \"$129.99\" and \"129 dollars\" styles", () => {
     const noPrices = {
       kind: "must_not_contain" as const,
-      pattern: "\\$?\\d+([.,]\\d+)?",
+      pattern: String.raw`\$?\d+([.,]\d+)?`,
       regex: true,
     };
     const dollarSign = gradeRefusal(
@@ -149,7 +149,7 @@ describe("FR-019/FR-020 refusal grader (R9 cap 25 + content assertions)", () => 
       undefined,
       [
         { kind: "must_contain", pattern: "no" },
-        { kind: "must_not_contain", pattern: "\\d+", regex: true },
+        { kind: "must_not_contain", pattern: String.raw`\d+`, regex: true },
       ],
       thresholds,
       3

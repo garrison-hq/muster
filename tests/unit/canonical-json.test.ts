@@ -29,7 +29,7 @@ describe("canonicalJson — RFC 8785 / RFC-1 Appendix F.2", () => {
 
   describe("RFC 8785: number forms (ECMA-262 via JSON.stringify)", () => {
     it("RFC 8785: 1.0 serializes as 1", () => {
-      expect(canonicalJson(1.0)).toBe("1");
+      expect(canonicalJson(1)).toBe("1");
     });
 
     it("RFC 8785: 1e+30 serializes as 1e+30", () => {
@@ -43,10 +43,10 @@ describe("canonicalJson — RFC 8785 / RFC-1 Appendix F.2", () => {
 
   describe("RFC 8785: unrepresentable values are rejected", () => {
     it("RFC 8785: throws TypeError for non-finite numbers (never emits null)", () => {
-      expect(() => canonicalJson(NaN)).toThrow(TypeError);
+      expect(() => canonicalJson(Number.NaN)).toThrow(TypeError);
       expect(() => canonicalJson(Infinity)).toThrow(TypeError);
       expect(() => canonicalJson(-Infinity)).toThrow(TypeError);
-      expect(() => canonicalJson({ a: NaN })).toThrow(TypeError);
+      expect(() => canonicalJson({ a: Number.NaN })).toThrow(TypeError);
     });
 
     it("RFC 8785: throws TypeError for undefined and functions", () => {
@@ -137,7 +137,7 @@ describe("ConformanceReport — RFC-1 §25.1 shape", () => {
     expect(report.ok).toBe(false);
     expect(report.errors[0]).toEqual({ path: "id", message: "missing", section: "§6.1" });
     expect(report.errors[1]).toEqual({ path: "name", message: "missing" });
-    expect("section" in report.errors[1]!).toBe(false);
+    expect("section" in report.errors[1]).toBe(false);
     expect(validateReport(report)).toBe(true);
   });
 });

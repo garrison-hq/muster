@@ -113,7 +113,7 @@ function isMixinDocument(data: unknown): boolean {
 
 /** Unescape one RFC 6901 JSON-pointer segment (`~1` → `/`, `~0` → `~`). */
 function unescapePointerSegment(segment: string): string {
-  return segment.replace(/~1/g, "/").replace(/~0/g, "~");
+  return segment.replaceAll(/~1/g, "/").replaceAll(/~0/g, "~");
 }
 
 /** Convert an Ajv instancePath (`/a/b/0`) to a config path (`a.b[0]`). */
@@ -299,7 +299,7 @@ function validateLocale(data: Record<string, unknown>, mode: Mode): Violation[] 
   if (isSyntacticallyValidBcp47(locale)) return [];
 
   if (mode === "permissive") {
-    const normalized = locale.replace(/_/g, "-");
+    const normalized = locale.replaceAll(/_/g, "-");
     if (normalized !== locale && isSyntacticallyValidBcp47(normalized)) {
       return [
         {

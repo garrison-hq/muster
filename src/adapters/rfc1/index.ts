@@ -124,6 +124,7 @@ export const rfc1Adapter: DetailedSpecAdapter = {
   },
 };
 
-/** Structural conformance witness: the assembly satisfies the C-004 contract. */
+/** Structural conformance witness: the assembly satisfies the C-004 contract.
+ *  The typed assignment is the check; `noUnusedLocals` is not enabled so the
+ *  `_`-prefixed variable requires no `void` suppressor (S3735). */
 const _contractCheck: SpecAdapter = rfc1Adapter;
-void _contractCheck;

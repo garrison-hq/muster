@@ -63,8 +63,17 @@ function extractContent(payload: unknown): string | null {
  * Build a ChatClient for one OpenAI-compatible endpoint. Pure construction —
  * no env read, no network until `chat` is invoked.
  */
+/** Strip trailing slashes without a regex to avoid super-linear backtracking. */
+function stripTrailingSlashes(s: string): string {
+  let end = s.length;
+  while (end > 0 && s[end - 1] === "/") {
+    end--;
+  }
+  return end === s.length ? s : s.slice(0, end);
+}
+
 export function makeClient(endpoint: EndpointConfig): ChatClient {
-  const url = `${endpoint.baseUrl.replace(/\/+$/, "")}/chat/completions`;
+  const url = `${stripTrailingSlashes(endpoint.baseUrl)}/chat/completions`;
   const host = hostnameOf(endpoint.baseUrl);
 
   return {

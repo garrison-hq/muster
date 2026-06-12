@@ -23,7 +23,7 @@ import type { Violation } from "../../core/report.js";
 
 /** Strip a single leading UTF-8 BOM (U+FEFF) — §3.2 (UTF-8 encoding). */
 function stripBom(raw: string): string {
-  return raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw;
+  return raw.codePointAt(0) === 0xfeff ? raw.slice(1) : raw;
 }
 
 /** True iff the line is exactly `---` (tolerating a trailing CR from CRLF files). */
