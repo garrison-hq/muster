@@ -23,12 +23,12 @@ from day one, flipped on against a clean main).
 | T005 | behavioral/manifest.ts: S3776 ×2, S4325 ×4, S7735 | WP01 | [D] |
 | T006 | cts/manifest.ts + cts/runner.ts: S3776, S7735 ×3, S3358 | WP01 | [D] |
 | T007 | WP01 verification: build, full suite, smoke, byte-diff vs pre-change | WP01 | | [D] |
-| T008 | rfc1/resolve.ts: S3776 ×2, S7778 ×2 | WP02 | [P] |
-| T009 | rfc1/state.ts: S3776 ×2, S6353 ×2 | WP02 | [P] |
-| T010 | rfc1 small fixes: evaluation, keyspace, frontmatter, index (6 issues) | WP02 | [P] |
-| T011 | cli/index.ts: S3735 ×2, S3358, S7785, S7735 | WP02 | [P] |
-| T012 | cli/output.ts: S7735, S7780 | WP02 | [P] |
-| T013 | WP02 verification: build, full suite, smoke | WP02 | |
+| T008 | rfc1/resolve.ts: S3776 ×2, S7778 ×2 | WP02 | [D] |
+| T009 | rfc1/state.ts: S3776 ×2, S6353 ×2 | WP02 | [D] |
+| T010 | rfc1 small fixes: evaluation, keyspace, frontmatter, index (6 issues) | WP02 | [D] |
+| T011 | cli/index.ts: S3735 ×2, S3358, S7785, S7735 | WP02 | [D] |
+| T012 | cli/output.ts: S7735, S7780 | WP02 | [D] |
+| T013 | WP02 verification: build, full suite, smoke | WP02 | | [D] |
 | T014 | pipeline.test.ts: S5443 mkdtemp, S2871 ×2, S7784 ×3 (semantics check D-7) | WP03 | [P] |
 | T015 | cli.test.ts: ReDoS hotspot, http fixtures (D-5), S4325 ×4, S7723 | WP03 | [P] |
 | T016 | runner.test.ts: S7721 ×2, S6551 ×2, S7780 ×2, S4325 | WP03 | [P] |
@@ -75,12 +75,12 @@ mechanical smells. Behavior-preserving only; adapter/core boundary untouched.
 **Independent test**: `pnpm build && pnpm test` green; CLI smoke commands
 byte-identical output; 0 open issues under `src/adapters/` + `src/cli/`.
 
-- [ ] T008 rfc1/resolve.ts fixes (WP02)
-- [ ] T009 rfc1/state.ts fixes (WP02)
-- [ ] T010 rfc1 small fixes: evaluation/keyspace/frontmatter/index (WP02)
-- [ ] T011 cli/index.ts fixes (WP02)
-- [ ] T012 cli/output.ts fixes (WP02)
-- [ ] T013 WP02 verification (WP02)
+- [x] T008 rfc1/resolve.ts fixes (WP02)
+- [x] T009 rfc1/state.ts fixes (WP02)
+- [x] T010 rfc1 small fixes: evaluation/keyspace/frontmatter/index (WP02)
+- [x] T011 cli/index.ts fixes (WP02)
+- [x] T012 cli/output.ts fixes (WP02)
+- [x] T013 WP02 verification (WP02)
 
 **Dependencies**: none. **Parallel**: every subtask owns distinct files.
 **Risks**: resolve.ts/state.ts are the deterministic-resolution heart of the
