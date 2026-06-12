@@ -249,6 +249,7 @@ version comment, or a justified `actions/*` tag; both hotspot lines resolved.
 
 NOTE: coverage/ directory is untracked (not committed) — it is a build artifact. .gitignore does not have a coverage/ entry (flagged below).
 - 2026-06-12T19:26:35Z – claude:opus:reviewer:reviewer – shell_pid=1287534 – Started review via action command
+- 2026-06-12T19:29:10Z – claude:opus:reviewer:reviewer – shell_pid=1287534 – Review passed: PRIORITY test-count reconciled — pnpm test = 567 passed/30 files AND pnpm test:coverage = 567 passed/30 files (IDENTICAL); the report's '291' was a misreport, coverage drops no tests, lcov.info 57KB produced. All 6 SHAs verified vs gh api (all match version comments; pnpm/action-setup & upload-pages-artifact annotated tags dereferenced). Only the 6 owned files changed in WP04 commits; build-test job logic unchanged. sonar job: needs build-test, fetch-depth 0, fork-PR guard, runs test:coverage, sonar.qualitygate.wait=true, NO continue-on-error. site.yml: workflow-level permissions removed, build=contents:read, deploy=pages:write+id-token:write (S8233x2+S8264 closed). YAML valid both. Manual-steps checklist present in work log. coverage/ not-in-.gitignore is known orchestrator follow-up.
 
 ## Per-subtask outcomes
 - T020: sonar-project.properties created at repo root (projectKey garrison-hq_muster, org garrison-hq)
