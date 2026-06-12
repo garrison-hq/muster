@@ -16,8 +16,8 @@ subtasks:
 - T011
 - T012
 - T013
-agent: "claude:sonnet:implementer:implementer"
-shell_pid: "1118999"
+agent: "claude:opus:reviewer:reviewer"
+shell_pid: "1157557"
 history:
 - timestamp: '2026-06-12T18:19:06Z'
   event: created
@@ -205,3 +205,4 @@ git diff -U0 | grep '^[-+]export' || echo OK         # expect OK
 
 - 2026-06-12T18:43:47Z – claude:sonnet:implementer:implementer – shell_pid=1118999 – Started implementation via action command
 - 2026-06-12T18:55:54Z – claude:sonnet:implementer:implementer – shell_pid=1118999 – Ready for review: 19 adapter/CLI findings fixed, output+exit codes byte-identical, suite green (567/567, 30 files)
+- 2026-06-12T18:56:34Z – claude:opus:reviewer:reviewer – shell_pid=1157557 – Started review via action command
