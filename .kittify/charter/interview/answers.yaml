@@ -16,12 +16,20 @@ answers:
     second the OpenClaw SOP adapter (AGENTS.md compliance probes plus
     adversarial injection and scope-escape probes from vendored corpora),
     third the cross-layer test class (rule survival under persona,
-    precedence-conflict findings, cross-file contradiction lint). Each layer
-    ships as its own spec-kitty mission of roughly 2-3 days, independently
-    releasable within the v1 pre-release series, and shaped to be upstreamable
-    as the CTS for its spec. SoulSpec, memory, heartbeat, tools-drift, and A2A
-    layers wait for a later milestone - A2A specifically because the official
-    a2a-tck already covers the center of that ground.
+    precedence-conflict findings, cross-file contradiction lint); and the three
+    remaining OpenClaw convention layers - tools (TOOLS.md static lint plus the
+    new drift test class: documented tools vs the live environment descriptor),
+    memory (MEMORY.md/USER.md staleness and contradiction lint, recall probes,
+    and the privacy/leak probe citing OpenClaw's verbatim private-session rule),
+    and schedule (HEARTBEAT.md action-diff, idempotency, and quiet-when-nothing-
+    to-do probes). Together these six adapters - skills, SOP, cross-layer, tools,
+    memory, schedule - on top of v1's persona constitute the v1.0.0 release
+    scope. Each layer ships as its own spec-kitty mission of roughly 2-3 days,
+    independently releasable within the v1 pre-release series, and shaped to be
+    upstreamable as the CTS for its spec. The SoulSpec persona-package adapter,
+    the thin cross-vendor agents.md adapter, and the A2A manifest layer wait for
+    a post-1.0.0 milestone - A2A specifically because the official a2a-tck
+    already covers the center of that ground.
   languages_frameworks: TypeScript on Node 22 LTS, pnpm, single package.
     Minimal dependencies (yaml for AST-level parsing, Ajv for JSON Schema
     Draft 2020-12, commander for CLI, Vitest for tests; @vitest/coverage-v8
