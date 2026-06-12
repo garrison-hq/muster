@@ -14,7 +14,7 @@ import type { CaseVerdict, RunVerdict } from "../core/behavioral/types.js";
 
 /** `[§x.y]` suffix only when the violation carries a section citation. */
 function sectionSuffix(section: string | undefined): string {
-  return section !== undefined ? ` [${section}]` : "";
+  return section === undefined ? "" : ` [${section}]`;
 }
 
 /**
@@ -95,7 +95,7 @@ export function formatBehaveHuman(verdicts: readonly CaseVerdict[]): string {
 export function globToRegExp(glob: string): RegExp {
   const escaped = glob
     .split("*")
-    .map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&"))
+    .map((part) => part.replace(/[.+?^${}()|[\]\\]/g, String.raw`\$&`))
     .join(".*");
   return new RegExp(`^${escaped}$`);
 }

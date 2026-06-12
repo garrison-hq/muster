@@ -117,8 +117,9 @@ describe("checkSoul static pipeline (§25.1 report; FR-012, FR-024)", () => {
     // additionalProperties:false AND we assert the key list explicitly.
     const serialized = JSON.parse(JSON.stringify(report)) as Record<string, unknown>;
     expect(validateReport(serialized)).toBe(true);
-    expect(Object.keys(serialized).sort()).toEqual(
-      ["spec", "soul_id", "mode", "profile", "state", "ok", "errors", "warnings"].sort()
+    const codeUnitOrder = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+    expect(Object.keys(serialized).sort(codeUnitOrder)).toEqual(
+      ["spec", "soul_id", "mode", "profile", "state", "ok", "errors", "warnings"].sort(codeUnitOrder)
     );
   });
 
@@ -280,7 +281,7 @@ describe("C-004 boundary (locked constraint)", () => {
 describe("makeFsLoadRef (core's only fs touchpoint)", () => {
   it("§7.2 unreadable reference → error violation, no throw", async () => {
     const loadRef = makeFsLoadRef((raw, path) => rfc1Adapter.parse(raw, path, "strict"));
-    const result = await loadRef("./does-not-exist.md", "/tmp/muster-pipeline-test/root.md");
+    const result = await loadRef("./does-not-exist.md", join(tmpdir(), "muster-pipeline-test", "root.md"));
     expect(Array.isArray(result)).toBe(true);
     const violations = result as Violation[];
     expect(violations[0]?.severity).toBe("error");

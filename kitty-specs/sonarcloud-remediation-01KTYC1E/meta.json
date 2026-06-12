@@ -1,0 +1,12 @@
+{
+  "created_at": "2026-06-12T16:53:28.609555+00:00",
+  "friendly_name": "sonarcloud remediation",
+  "mission_id": "01KTYC1EQ1Z1Q1N1NYCAQHNG1F",
+  "mission_number": 3,
+  "mission_slug": "sonarcloud-remediation-01KTYC1E",
+  "mission_type": "software-dev",
+  "slug": "sonarcloud-remediation-01KTYC1E",
+  "target_branch": "main",
+  "vcs": "git",
+  "vcs_locked_at": "2026-06-12T18:26:48.455163+00:00"
+}

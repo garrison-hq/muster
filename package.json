@@ -50,6 +50,7 @@
   "scripts": {
     "build": "tsc && node -e \"require('node:fs').copyFileSync('src/adapters/rfc1/schema.json','dist/adapters/rfc1/schema.json')\"",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "dev": "tsx src/cli/index.ts",
     "prepublishOnly": "pnpm build && pnpm test"
@@ -61,6 +62,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.19.11",
+    "@vitest/coverage-v8": "^3.2.6",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"

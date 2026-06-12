@@ -1,0 +1,11 @@
+{
+  "created_at": "2026-06-12T19:07:03.906435+00:00",
+  "friendly_name": "Cross-Layer Conformance (rule survival, precedence, contradiction lint)",
+  "mission_id": "01KTYKP22F4HCTWGK7C27XZVKM",
+  "mission_number": null,
+  "mission_slug": "cross-layer-conformance-01KTYKP2",
+  "mission_type": "software-dev",
+  "slug": "cross-layer-conformance-01KTYKP2",
+  "target_branch": "main",
+  "source_description": "Cross-layer test class: static contradiction/precedence lint across composed layers plus behavioral rule-survival (persona-vs-SOP erosion, pass^k). The headline feature. v1-extended layer 3 of 3."
+}

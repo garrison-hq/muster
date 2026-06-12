@@ -62,6 +62,50 @@ function statesMap(st: Record<string, unknown>): Record<string, unknown> {
   return isRecord(states) ? states : {};
 }
 
+/** §20.1: resolve the explicitly-requested state name (or return a fallback
+ *  indicator). Returns the state name, null (fall through to base/default),
+ *  or Violation[] on strict-mode failure. */
+type StateResolution = string | null | Violation[];
+
+function resolveRequestedState(
+  requested: string,
+  states: Record<string, unknown>,
+  mode: Mode,
+  sink: Violation[] | undefined
+): StateResolution {
+  if (Object.hasOwn(states, requested)) return requested;
+  const violation: Violation = {
+    path: "state",
+    message: `requested state "${requested}" does not exist in state.states`,
+    severity: mode === "strict" ? "error" : "warning",
+    section: "§20.1",
+  };
+  if (mode === "strict") return [violation];
+  sink?.push(violation); // permissive: ignore the request, fall back to base/default
+  return null;
+}
+
+/** §20.1: resolve state.base (when provided) against the known states.
+ *  Returns the state name, null (fall through to §4.4 default), or
+ *  Violation[] on strict-mode failure. */
+function resolveBaseState(
+  base: unknown,
+  states: Record<string, unknown>,
+  mode: Mode,
+  sink: Violation[] | undefined
+): StateResolution {
+  if (typeof base === "string" && Object.hasOwn(states, base)) return base;
+  const violation: Violation = {
+    path: "state.base",
+    message: `state.base ${JSON.stringify(base)} does not reference a key in state.states`,
+    severity: mode === "strict" ? "error" : "warning",
+    section: "§20.1",
+  };
+  if (mode === "strict") return [violation];
+  sink?.push(violation); // permissive: fall back to the §4.4 default below
+  return null;
+}
+
 /**
  * §20.1 active-state selection.
  *
@@ -83,7 +127,7 @@ export function selectState(
   requested: string | null,
   mode: Mode,
   sink?: Violation[]
-): string | null | Violation[] {
+): StateResolution {
   const st = stateBlock(effective);
   if (st === null) return null;
   const states = statesMap(st);
@@ -93,29 +137,15 @@ export function selectState(
 
   // Runtime-requested state (§20.1 "Runtime state selection").
   if (requested !== null) {
-    if (Object.hasOwn(states, requested)) return requested;
-    const violation: Violation = {
-      path: "state",
-      message: `requested state "${requested}" does not exist in state.states`,
-      severity: mode === "strict" ? "error" : "warning",
-      section: "§20.1",
-    };
-    if (mode === "strict") return [violation];
-    sink?.push(violation); // permissive: ignore the request, fall back below
+    const result = resolveRequestedState(requested, states, mode, sink);
+    if (result !== null) return result; // name found, or Violation[] on strict failure
   }
 
   // §20.1: state.base, when provided, MUST reference a key in state.states.
   const base = st["base"];
   if (base !== undefined) {
-    if (typeof base === "string" && Object.hasOwn(states, base)) return base;
-    const violation: Violation = {
-      path: "state.base",
-      message: `state.base ${JSON.stringify(base)} does not reference a key in state.states`,
-      severity: mode === "strict" ? "error" : "warning",
-      section: "§20.1",
-    };
-    if (mode === "strict") return [violation];
-    sink?.push(violation); // permissive: fall back to the §4.4 default below
+    const result = resolveBaseState(base, states, mode, sink);
+    if (result !== null) return result; // name found, or Violation[] on strict failure
   }
 
   // §20.1: omitted base behaves as the lexicographically smallest key (§4.4).
@@ -226,8 +256,10 @@ interface PredicateTerm {
   ident: string;
 }
 
-/** Dotted identifier: `user.rude`, `task.success` (§20.2 RPP-1). */
-const IDENT_RE = /^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/;
+/** Dotted identifier: `user.rude`, `task.success` (§20.2 RPP-1).
+ * `\w` ≡ `[A-Za-z0-9_]` in JS for both unicode-aware and plain regex — safe
+ * substitution (S6353). */
+const IDENT_RE = /^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*$/;
 
 /**
  * Parse the documented RPP-1 subset (§20.2):
@@ -259,6 +291,70 @@ function parsePredicate(source: string): PredicateTerm[] | null {
   }
   if (expectTerm) return null; // dangling "&&"
   return terms;
+}
+
+/** Validate a single trigger entry, returning a Violation on structural error
+ *  or null when the trigger is structurally valid. */
+function validateTriggerStructure(
+  trigger: unknown,
+  index: number,
+  mode: Mode
+): Violation | null {
+  if (!isRecord(trigger)) {
+    return {
+      path: `state.triggers[${index}]`,
+      message: "trigger must be a mapping",
+      severity: mode === "strict" ? "error" : "warning",
+      section: "§20",
+    };
+  }
+  const predicate = trigger["if"];
+  if (typeof predicate !== "string") {
+    return {
+      path: `state.triggers[${index}].if`,
+      message: "trigger predicate must be a string",
+      severity: mode === "strict" ? "error" : "warning",
+      section: "§20",
+    };
+  }
+  return null;
+}
+
+/** Validate the `if` predicate string; returns parsed terms or a Violation. */
+function validatePredicate(
+  predicate: string,
+  index: number,
+  mode: Mode
+): PredicateTerm[] | Violation {
+  const terms = parsePredicate(predicate);
+  if (terms !== null) return terms;
+  return {
+    path: `state.triggers[${index}].if`,
+    message:
+      `unsupported predicate ${JSON.stringify(predicate)} ` +
+      '(muster implements a documented RPP-1 subset: "&&" and "!" over dotted identifiers)',
+    severity: mode === "strict" ? "error" : "warning",
+    section: "§20.2",
+  };
+}
+
+/** Validate `shift_to` on a matched trigger; returns null when valid. */
+function validateShiftTo(
+  trigger: Record<string, unknown>,
+  states: Record<string, unknown>,
+  index: number,
+  mode: Mode
+): Violation | null {
+  const shiftTo = trigger["shift_to"];
+  if (typeof shiftTo === "string" && Object.hasOwn(states, shiftTo)) return null;
+  return {
+    path: `state.triggers[${index}].shift_to`,
+    message:
+      `shift_to ${JSON.stringify(shiftTo)} does not exist in state.states` +
+      (mode === "permissive" ? " (trigger ignored)" : ""),
+    severity: mode === "strict" ? "error" : "warning",
+    section: "§20.3.7",
+  };
 }
 
 /**
@@ -302,45 +398,24 @@ export function evaluateTriggers(
 
   for (let index = 0; index < triggers.length; index++) {
     const trigger = triggers[index];
-    if (!isRecord(trigger)) {
-      const violation: Violation = {
-        path: `state.triggers[${index}]`,
-        message: "trigger must be a mapping",
-        severity: mode === "strict" ? "error" : "warning",
-        section: "§20",
-      };
-      if (mode === "strict") return [violation];
-      warn(violation);
+
+    // Structural validation: must be a record with a string `if` predicate.
+    const structViolation = validateTriggerStructure(trigger, index, mode);
+    if (structViolation !== null) {
+      if (mode === "strict") return [structViolation];
+      warn(structViolation);
       continue;
     }
 
-    const predicate = trigger["if"];
-    if (typeof predicate !== "string") {
-      const violation: Violation = {
-        path: `state.triggers[${index}].if`,
-        message: "trigger predicate must be a string",
-        severity: mode === "strict" ? "error" : "warning",
-        section: "§20",
-      };
-      if (mode === "strict") return [violation];
-      warn(violation);
+    const record = trigger as Record<string, unknown>;
+    const predicateResult = validatePredicate(record["if"] as string, index, mode);
+    if (!Array.isArray(predicateResult)) {
+      // predicateResult is a Violation
+      if (mode === "strict") return [predicateResult];
+      warn(predicateResult); // permissive: trigger skipped
       continue;
     }
-
-    const terms = parsePredicate(predicate);
-    if (terms === null) {
-      const violation: Violation = {
-        path: `state.triggers[${index}].if`,
-        message:
-          `unsupported predicate ${JSON.stringify(predicate)} ` +
-          '(muster implements a documented RPP-1 subset: "&&" and "!" over dotted identifiers)',
-        severity: mode === "strict" ? "error" : "warning",
-        section: "§20.2",
-      };
-      if (mode === "strict") return [violation];
-      warn(violation); // permissive: trigger skipped
-      continue;
-    }
+    const terms = predicateResult;
 
     const matched = terms.every((term) => {
       const truth = facts[term.ident] === true; // boolean true ONLY
@@ -348,22 +423,15 @@ export function evaluateTriggers(
     });
     if (!matched) continue;
 
-    const shiftTo = trigger["shift_to"];
-    if (typeof shiftTo !== "string" || !Object.hasOwn(states, shiftTo)) {
-      const violation: Violation = {
-        path: `state.triggers[${index}].shift_to`,
-        message:
-          `shift_to ${JSON.stringify(shiftTo)} does not exist in state.states` +
-          (mode === "permissive" ? " (trigger ignored)" : ""),
-        severity: mode === "strict" ? "error" : "warning",
-        section: "§20.3.7",
-      };
-      if (mode === "strict") return [violation];
-      warn(violation); // §20.3.7 permissive: ignore that trigger
+    // Trigger matched — validate the shift_to target.
+    const shiftViolation = validateShiftTo(record, states, index, mode);
+    if (shiftViolation !== null) {
+      if (mode === "strict") return [shiftViolation];
+      warn(shiftViolation); // §20.3.7 permissive: ignore that trigger
       continue;
     }
 
-    return shiftTo; // §20.3.3 first-match-wins; §20.3.6 one transition per cycle
+    return record["shift_to"] as string; // §20.3.3 first-match-wins; §20.3.6 one transition
   }
 
   if (sink === undefined && warnings.length > 0) return warnings;

@@ -278,7 +278,7 @@ describe("§20.3.4 state application timing (the correctness crux)", () => {
     const kase: BehavioralCase = {
       ...twoTurnCase,
       turns: [
-        twoTurnCase.turns[0] as BehavioralCase["turns"][number],
+        twoTurnCase.turns[0],
         { role: "user", content: "Please hurry.", facts: { "user.rude": false } },
       ],
       axes: [{ axis: "state_shift", trigger_turn: 1, expect_state: "cold_strict" }],
@@ -397,6 +397,13 @@ describe("personaPrompt rendering", () => {
 
 // ─── OpenAI-compatible client (T033 request-shape, mocked fetch only) ────────
 
+function okResponse(content: string): Response {
+  return new Response(JSON.stringify({ choices: [{ message: { content } }] }), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+}
+
 describe("C-006 makeClient (mocked fetch — no real network)", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -410,13 +417,6 @@ describe("C-006 makeClient (mocked fetch — no real network)", () => {
   };
   const messages: ChatMessage[] = [{ role: "user", content: "hi" }];
 
-  function okResponse(content: string): Response {
-    return new Response(JSON.stringify({ choices: [{ message: { content } }] }), {
-      status: 200,
-      headers: { "content-type": "application/json" },
-    });
-  }
-
   it("C-009 temperature omitted entirely from the request body when not supplied", async () => {
     const fetchMock = vi.fn(async () => okResponse("hello"));
     vi.stubGlobal("fetch", fetchMock);
@@ -425,14 +425,14 @@ describe("C-006 makeClient (mocked fetch — no real network)", () => {
     await makeClient(endpoint).chat(messages, {});
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("http://localhost:9999/v1/chat/completions");
-    const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+    const body = JSON.parse(init.body as string) as Record<string, unknown>;
     expect(body["model"]).toBe("test-model");
     expect(body["messages"]).toEqual(messages);
     expect("temperature" in body).toBe(false);
 
     await makeClient(endpoint).chat(messages, { temperature: 0 });
     const [, second] = fetchMock.mock.calls[1] as unknown as [string, RequestInit];
-    expect((JSON.parse(String(second.body)) as Record<string, unknown>)["temperature"]).toBe(0);
+    expect((JSON.parse(second.body as string) as Record<string, unknown>)["temperature"]).toBe(0);
   });
 
   it("directive 5: Authorization sent ONLY when the env var is set; key read at call time", async () => {
@@ -535,14 +535,14 @@ describe("C-004 / directive 5 source hygiene", () => {
 
 // ─── Behavioral manifest loader (contracts/behavioral-manifest.md) ───────────
 
-describe("behavioral manifest loader (C-005 multi-turn format)", () => {
-  async function writeManifest(content: string): Promise<string> {
-    const dir = await mkdtemp(join(tmpdir(), "muster-behave-"));
-    const path = join(dir, "manifest.yaml");
-    await writeFile(path, content, "utf8");
-    return path;
-  }
+async function writeManifest(content: string): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), "muster-behave-"));
+  const path = join(dir, "manifest.yaml");
+  await writeFile(path, content, "utf8");
+  return path;
+}
 
+describe("behavioral manifest loader (C-005 multi-turn format)", () => {
   const validManifest = `
 endpoint:
   base_url: "http://localhost:11434/v1"
@@ -614,7 +614,7 @@ cases:
     expect(second?.axes[1]).toMatchObject({
       axis: "refusal",
       turn: 0,
-      assertions: [{ kind: "must_not_contain", pattern: "\\$?\\d+([.,]\\d+)?", regex: true }],
+      assertions: [{ kind: "must_not_contain", pattern: String.raw`\$?\d+([.,]\d+)?`, regex: true }],
     });
   });
 

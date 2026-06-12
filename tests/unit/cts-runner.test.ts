@@ -331,8 +331,8 @@ describe("runCts (Appendix F.2, §25.1 comparison; FR-014)", () => {
     expect(mismatch).toContain("byte offset 1");
     expect(mismatch).toContain("expected context");
     expect(mismatch).toContain("actual context");
-    expect(mismatch).toContain('{ \\"name\\"'); // fixture side window
-    expect(mismatch).toContain('{\\"name\\"'); // canonical side window
+    expect(mismatch).toContain(String.raw`{ \"name\"`); // fixture side window
+    expect(mismatch).toContain(String.raw`{\"name\"`); // canonical side window
   });
 
   it("R8 expect_effective_yaml: YAML expectation is canonicalized on BOTH sides, then byte-compared", async () => {

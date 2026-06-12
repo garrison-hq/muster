@@ -101,11 +101,12 @@ describe("CTS-1 suite — RFC-1 §25.2 / Appendix F (cts/manifest.yaml)", () => 
     for (const rerun of rerunResults) {
       const first = resultById.get(rerun.id);
       expect(first, `case "${rerun.id}" missing from the first run`).toBeDefined();
+      if (first === undefined) continue;
       // Both runs byte-compared canonicalJson(effective) against the same
       // expected.json fixture; equal full results mean byte-identical output.
       expect(rerun.passed, describeFailure(rerun)).toBe(true);
       expect(canonicalJson({ id: rerun.id, passed: rerun.passed, report: rerun.report })).toBe(
-        canonicalJson({ id: first!.id, passed: first!.passed, report: first!.report })
+        canonicalJson({ id: first.id, passed: first.passed, report: first.report })
       );
     }
   });

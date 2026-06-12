@@ -1,0 +1,11 @@
+{
+  "created_at": "2026-06-12T19:19:16.616954+00:00",
+  "friendly_name": "Memory (MEMORY.md / USER.md) Conformance Adapter",
+  "mission_id": "01KTYMCDM4WACCJ8V4R16R0E49",
+  "mission_number": null,
+  "mission_slug": "memory-adapter-01KTYMCD",
+  "mission_type": "software-dev",
+  "slug": "memory-adapter-01KTYMCD",
+  "target_branch": "main",
+  "source_description": "Memory adapter: staleness + contradiction static lint, recall probes, and the privacy/leak probe (private memory must not surface in group context, pass^k) citing OpenClaw's documented rule verbatim. v1-extended."
+}

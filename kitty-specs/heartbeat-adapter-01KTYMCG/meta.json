@@ -1,0 +1,11 @@
+{
+  "created_at": "2026-06-12T19:19:19.044074+00:00",
+  "friendly_name": "Schedule (HEARTBEAT.md) Conformance Adapter",
+  "mission_id": "01KTYMCG4N3X9ASWF4RGGJTFCR",
+  "mission_number": null,
+  "mission_slug": "heartbeat-adapter-01KTYMCG",
+  "mission_type": "software-dev",
+  "slug": "heartbeat-adapter-01KTYMCG",
+  "target_branch": "main",
+  "source_description": "Schedule adapter: HEARTBEAT.md static lint plus behavioral tick probes (action-diff, idempotency, quiet-when-nothing-to-do via HEARTBEAT_OK/ackMaxChars), interval-config aware. v1-extended."
+}

@@ -79,6 +79,37 @@ function resolveFromManifest(manifestDir: string, ref: string): string {
   return isAbsolute(ref) ? ref : resolvePath(manifestDir, ref);
 }
 
+/** Parse and validate one `expect_errors` list; pushes errors, returns array or undefined. */
+function validateExpectErrors(
+  rawExpectErrors: unknown[],
+  where: string,
+  errors: Violation[]
+): CtsExpectedError[] {
+  const expectErrors: CtsExpectedError[] = [];
+  rawExpectErrors.forEach((raw, errorIndex) => {
+    const errorWhere = `${where}.expect_errors[${errorIndex}]`;
+    if (!isRecord(raw)) {
+      errors.push(violation(errorWhere, "expect_errors entry must be a {path, message} mapping"));
+      return;
+    }
+    for (const key of Object.keys(raw)) {
+      if (!EXPECTED_ERROR_FIELDS.has(key)) {
+        errors.push(
+          violation(`${errorWhere}.${key}`, `unknown expect_errors field "${key}" (only path and message)`)
+        );
+      }
+    }
+    if (typeof raw["path"] !== "string" || typeof raw["message"] !== "string") {
+      errors.push(
+        violation(errorWhere, "expect_errors entry requires string \"path\" and string \"message\"")
+      );
+      return;
+    }
+    expectErrors.push({ path: raw["path"], message: raw["message"] });
+  });
+  return expectErrors;
+}
+
 function validateEntry(
   entry: unknown,
   index: number,
@@ -145,33 +176,12 @@ function validateEntry(
   let expectErrors: CtsExpectedError[] | undefined;
   const rawExpectErrors = entry["expect_errors"];
   if (rawExpectErrors !== undefined) {
-    if (!Array.isArray(rawExpectErrors)) {
+    if (Array.isArray(rawExpectErrors)) {
+      expectErrors = validateExpectErrors(rawExpectErrors, where, errors);
+    } else {
       errors.push(
         violation(`${where}.expect_errors`, 'optional field "expect_errors" must be a list of {path, message}')
       );
-    } else {
-      expectErrors = [];
-      rawExpectErrors.forEach((raw, errorIndex) => {
-        const errorWhere = `${where}.expect_errors[${errorIndex}]`;
-        if (!isRecord(raw)) {
-          errors.push(violation(errorWhere, "expect_errors entry must be a {path, message} mapping"));
-          return;
-        }
-        for (const key of Object.keys(raw)) {
-          if (!EXPECTED_ERROR_FIELDS.has(key)) {
-            errors.push(
-              violation(`${errorWhere}.${key}`, `unknown expect_errors field "${key}" (only path and message)`)
-            );
-          }
-        }
-        if (typeof raw["path"] !== "string" || typeof raw["message"] !== "string") {
-          errors.push(
-            violation(errorWhere, "expect_errors entry requires string \"path\" and string \"message\"")
-          );
-          return;
-        }
-        expectErrors?.push({ path: raw["path"], message: raw["message"] });
-      });
     }
   }
 

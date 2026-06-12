@@ -126,12 +126,14 @@ async function checkSoulFile(
   const raw = await readFileOrThrow(abs, "soul document");
   // --restrict-refs mapping (FR-003): absent → unrestricted (NFR-001);
   // bare → the root soul's directory; value → that directory from cwd.
-  const restrictTo =
-    opts.restrictRefs === undefined
-      ? undefined
-      : opts.restrictRefs === true
-        ? dirname(abs)
-        : resolvePath(opts.restrictRefs);
+  let restrictTo: string | undefined;
+  if (opts.restrictRefs === undefined) {
+    restrictTo = undefined;
+  } else if (opts.restrictRefs === true) {
+    restrictTo = dirname(abs);
+  } else {
+    restrictTo = resolvePath(opts.restrictRefs);
+  }
   const loadRef = makeFsLoadRef(
     (refRaw, refPath) => rfc1Adapter.parse(refRaw, refPath, opts.mode),
     restrictTo === undefined ? undefined : { restrictTo }
@@ -347,13 +349,13 @@ async function doBehaveRun(
 
     // --runs overrides the manifest-resolved n; k clamps so k ≤ n holds.
     const applied =
-      opts.runs !== undefined
-        ? {
+      opts.runs === undefined
+        ? kase
+        : {
             ...kase,
             runs: opts.runs,
             pass_threshold: Math.min(kase.pass_threshold, opts.runs),
-          }
-        : kase;
+          };
     verdicts.push(await runCase(rfc1Adapter, check, applied, client, runnerOpts));
   }
 
@@ -495,8 +497,8 @@ export async function runCli(
   argv: string[],
   options: RunCliOptions = {}
 ): Promise<number> {
-  const out = options.out ?? ((text: string) => void process.stdout.write(text));
-  const err = options.err ?? ((text: string) => void process.stderr.write(text));
+  const out = options.out ?? ((text: string) => { process.stdout.write(text); });
+  const err = options.err ?? ((text: string) => { process.stderr.write(text); });
   const io: Io = {
     out,
     outLine: (text) => out(`${text}\n`),
@@ -544,13 +546,10 @@ if (entryPath !== undefined) {
   }
 }
 if (isMain) {
-  runCli(process.argv.slice(2)).then(
-    (code) => {
-      process.exitCode = code;
-    },
-    (error: unknown) => {
-      process.stderr.write(`muster: ${errorMessage(error)}\n`);
-      process.exitCode = 2;
-    }
-  );
+  try {
+    process.exitCode = await runCli(process.argv.slice(2));
+  } catch (error: unknown) {
+    process.stderr.write(`muster: ${errorMessage(error)}\n`);
+    process.exitCode = 2;
+  }
 }
