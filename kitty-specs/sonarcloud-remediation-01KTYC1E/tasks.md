@@ -35,12 +35,12 @@ from day one, flipped on against a clean main).
 | T017 | graders.test.ts + cts-runner.test.ts: S7780 ×5 | WP03 | [D] |
 | T018 | canonical-json.test.ts + cts/suite.test.ts: S4325 ×4, S7773 ×2, S7748 | WP03 | [D] |
 | T019 | WP03 verification: full suite green, no test weakened | WP03 | | [D] |
-| T020 | sonar-project.properties (project key, sources, exclusions, lcov path) | WP04 | [P] |
-| T021 | Coverage wiring: @vitest/coverage-v8, test:coverage script, vitest config | WP04 | [P] |
-| T022 | Blocking sonar job in ci.yml (fetch-depth 0, qualitygate.wait, fork guard) | WP04 | |
-| T023 | site.yml: workflow-level permissions → job level (S8233 ×2, S8264) | WP04 | [P] |
-| T024 | SHA-pin third-party actions in both workflows (2 hotspots) | WP04 | [P] |
-| T025 | WP04 verification + PR-description flags for the 2 manual user steps | WP04 | |
+| T020 | sonar-project.properties (project key, sources, exclusions, lcov path) | WP04 | [D] |
+| T021 | Coverage wiring: @vitest/coverage-v8, test:coverage script, vitest config | WP04 | [D] |
+| T022 | Blocking sonar job in ci.yml (fetch-depth 0, qualitygate.wait, fork guard) | WP04 | | [D] |
+| T023 | site.yml: workflow-level permissions → job level (S8233 ×2, S8264) | WP04 | [D] |
+| T024 | SHA-pin third-party actions in both workflows (2 hotspots) | WP04 | [D] |
+| T025 | WP04 verification + PR-description flags for the 2 manual user steps | WP04 | | [D] |
 
 ## Phase 1 — Parallel remediation (WP01, WP02, WP03)
 
@@ -124,12 +124,12 @@ Lands last so the blocking gate activates against a clean `main`.
 visible; `pnpm test:coverage` emits `coverage/lcov.info`; post-merge `main`
 analysis: 0 issues, 0 hotspots, gate `OK`.
 
-- [ ] T020 sonar-project.properties (WP04)
-- [ ] T021 Coverage wiring (@vitest/coverage-v8, script, vitest config) (WP04)
-- [ ] T022 Blocking sonar job in ci.yml (WP04)
-- [ ] T023 site.yml permissions to job level (WP04)
-- [ ] T024 SHA-pin third-party actions (WP04)
-- [ ] T025 WP04 verification + manual-step flags (WP04)
+- [x] T020 sonar-project.properties (WP04)
+- [x] T021 Coverage wiring (@vitest/coverage-v8, script, vitest config) (WP04)
+- [x] T022 Blocking sonar job in ci.yml (WP04)
+- [x] T023 site.yml permissions to job level (WP04)
+- [x] T024 SHA-pin third-party actions (WP04)
+- [x] T025 WP04 verification + manual-step flags (WP04)
 
 **Dependencies**: Depends on WP01, WP02, WP03 (merge-order enforcement: the
 blocking gate must flip on against a remediated main; user decision #1).
