@@ -23,6 +23,7 @@ subtasks:
 - T029
 - T030
 - T031
+assignee: "claude:sonnet:implementer:implementer"
 history:
 - timestamp: '2026-06-13T01:30:00Z'
   event: created
@@ -531,3 +532,4 @@ correct case count; only `owned_files` modified.
 ## Activity Log
 
 - 2026-06-13T01:30:00Z – /spec-kitty.tasks – created
+- 2026-06-13T16:06:53Z – unknown – Moved to in_progress
