@@ -47,13 +47,13 @@ and the final fixture set assembly; no WP owns a file another owns.
 | T005 | Unit tests for WP01 logic (`tests/crosslayer/unit/composition.test.ts`) | WP01 | | [D] |
 | T006 | Benign-composition fixture set (`fixtures/crosslayer/benign/`) | WP01 | | [D] |
 | T007 | WP01 verification: `pnpm build && pnpm test` green; no files outside `owned_files` | WP01 | | [D] |
-| T008 | `CrossLayerFinding` + `CrossLayerLintReport` types in `contradiction-lint.ts` | WP02 | [P] |
-| T009 | Refinement-vs-contradiction distinguisher (SOP narrowing a persona generality is NOT flagged) | WP02 | |
-| T010 | `undefined-precedence` / `resolved-by-precedence` emission path + `winner` field | WP02 | |
-| T011 | Circular-precedence detection → `circular-precedence-error` static error, halts further analysis | WP02 | |
-| T012 | Byte-stable output: sort findings by (type, layerA, layerB, clauseA) in UTF-16 code-unit order (NFR-001) | WP02 | |
-| T013 | Fixture tests: scenarios 1–5 incl. discrimination control (benign → `ok: true`) | WP02 | |
-| T014 | WP02 verification: `pnpm build && pnpm test` green; byte-stability confirmed across two runs | WP02 | |
+| T008 | `CrossLayerFinding` + `CrossLayerLintReport` types in `contradiction-lint.ts` | WP02 | [D] |
+| T009 | Refinement-vs-contradiction distinguisher (SOP narrowing a persona generality is NOT flagged) | WP02 | | [D] |
+| T010 | `undefined-precedence` / `resolved-by-precedence` emission path + `winner` field | WP02 | | [D] |
+| T011 | Circular-precedence detection → `circular-precedence-error` static error, halts further analysis | WP02 | | [D] |
+| T012 | Byte-stable output: sort findings by (type, layerA, layerB, clauseA) in UTF-16 code-unit order (NFR-001) | WP02 | | [D] |
+| T013 | Fixture tests: scenarios 1–5 incl. discrimination control (benign → `ok: true`) | WP02 | | [D] |
+| T014 | WP02 verification: `pnpm build && pnpm test` green; byte-stability confirmed across two runs | WP02 | | [D] |
 | T015 | `RuleSurvivalCase` / `RuleSurvivalResult` types + `GradingClass` in `rule-survival.ts` | WP03 | [P] |
 | T016 | Baseline runner (SOP-alone context, N runs via plain `fetch`, errored run = failed) | WP03 | |
 | T017 | Composed runner (persona + SOP context, same probes), baseline-failure guard | WP03 | |
@@ -106,13 +106,13 @@ Fixture tests covering all five acceptance scenarios.
 **Independent test**: `pnpm build && pnpm test` green; benign composition → `ok: true`
 zero findings; byte-stability confirmed by running lint twice and diffing output.
 
-- [ ] T008 `CrossLayerFinding` + `CrossLayerLintReport` types
-- [ ] T009 Refinement-vs-contradiction distinguisher
-- [ ] T010 `undefined-precedence` / `resolved-by-precedence` emission path
-- [ ] T011 Circular-precedence detection
-- [ ] T012 Byte-stable output ordering
-- [ ] T013 Fixture tests (scenarios 1–5 + discrimination control)
-- [ ] T014 WP02 verification
+- [x] T008 `CrossLayerFinding` + `CrossLayerLintReport` types
+- [x] T009 Refinement-vs-contradiction distinguisher
+- [x] T010 `undefined-precedence` / `resolved-by-precedence` emission path
+- [x] T011 Circular-precedence detection
+- [x] T012 Byte-stable output ordering
+- [x] T013 Fixture tests (scenarios 1–5 + discrimination control)
+- [x] T014 WP02 verification
 
 **Dependencies**: WP01 (lint consumes `StackComposition.resolved.layerTexts`).
 **Parallel**: T008 (types) is independent of WP01's assembly code; lint logic (T009–T012) requires WP01 complete.
