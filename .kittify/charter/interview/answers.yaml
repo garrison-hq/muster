@@ -48,9 +48,11 @@ answers:
     privacy boundaries) aggregate as pass^k requiring all k runs to pass;
     stylistic axes keep k-of-n thresholds. An errored run counts as a failed
     run everywhere - never skipped, never retried. Every judge-backed grader
-    ships with a rigged-impossible control case proving it can fail. No
-    minimum coverage gate; coverage is uploaded to SonarCloud as
-    informational.
+    ships with a rigged-impossible control case proving it can fail. New-code
+    test coverage must meet the SonarCloud quality-gate threshold of at least
+    80% (the default Sonar way gate); coverage is uploaded as lcov and the gate
+    enforces it on changed code in every PR. There is no whole-project coverage
+    floor - the threshold applies to new code only.
   quality_gates: Before merge - strict TypeScript type-check (tsc) passes,
     full Vitest suite green including all fixture suites, SonarCloud quality
     gate passes as a blocking PR check, no implementation code lands before
