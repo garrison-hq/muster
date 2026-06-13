@@ -1,0 +1,25 @@
+# Cross-layer conformance suite — candidate upstream fixture set (C-004)
+# Normative citation: muster cross-layer conformance rubric (cross-layer-conformance-01KTYKP2)
+# Run static-only cases with: muster crosslayer lint --manifest fixtures/crosslayer/manifest.yaml
+# Run all cases (requires endpoint config): muster crosslayer run --manifest fixtures/crosslayer/manifest.yaml
+
+cases:
+  # --- Static: benign ---
+  - $ref: benign/persona-sop-benign.yaml
+  - $ref: benign/persona-sop-skill-benign.yaml
+
+  # --- Static: contradictions ---
+  - $ref: contradictory-no-precedence/composition.yaml
+  - $ref: contradictory-with-precedence/composition.yaml
+  - $ref: circular-precedence/composition.yaml
+
+  # --- Behavioral: rule survival ---
+  - $ref: rule-survival-scenarios/scenario-passk.yaml
+  - $ref: rule-survival-scenarios/scenario-kofn.yaml
+
+  # --- Behavioral: erosion-persona discrimination control ---
+  - $ref: erosion-persona-control/erosion-control.yaml
+
+  # --- Behavioral: precedence-resolution ---
+  - $ref: precedence-behavioral/scenario-sop-wins.yaml
+  - $ref: precedence-behavioral/scenario-endpoint-error.yaml

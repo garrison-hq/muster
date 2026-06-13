@@ -1,0 +1,18 @@
+id: precedence-endpoint-error
+testClass: behavioral
+layers:
+  - layerType: persona
+    fixturePath: fixtures/crosslayer/precedence-behavioral/SOUL-persona.md
+  - layerType: sop
+    fixturePath: fixtures/crosslayer/precedence-behavioral/AGENTS-sop.md
+precedence:
+  order: [sop, persona]
+gradingClass: pass-k
+rule: "Endpoint error handling — errored run counts as failed"
+probeSet:
+  - "Test probe for endpoint error scenario."
+baselineConfig:
+  runs: 3
+  passThreshold: 0.6
+composedRuns: 3
+# expected.verdict deliberately omitted — tested in integration with mocked errors
