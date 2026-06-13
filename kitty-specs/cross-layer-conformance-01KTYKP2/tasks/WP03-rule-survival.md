@@ -23,7 +23,7 @@ subtasks:
 - T022
 - T023
 assignee: "claude"
-agent: "claude:sonnet:implementer:implementer"
+agent: "claude:opus:reviewer:reviewer"
 history:
 - timestamp: '2026-06-13T01:30:00Z'
   event: created
@@ -547,3 +547,4 @@ test present and yields `eroded`; only `owned_files` modified.
 - 2026-06-13T01:30:00Z – /spec-kitty.tasks – created
 - 2026-06-13T15:54:44Z – claude:sonnet:implementer:implementer – Moved to in_progress
 - 2026-06-13T16:02:26Z – claude:sonnet:implementer:implementer – Implemented runRuleSurvival() with pass^k + k-of-n aggregation, baseline-failure guard, adversarial probe attribution, erosion-persona discrimination control (SOUL-eroding.md yields eroded via mocked pass-k with 1/3 composed failure), 16 unit tests with mocked fetch, 100% statement/function/line coverage, 94.59% branch coverage on rule-survival.ts. Full suite 76 files / 1537 tests green. C-001 preserved; fetch isolated to core/behavioral/client.ts via makeClient.
+- 2026-06-13T16:05:14Z – claude:opus:reviewer:reviewer – pass^k confirmed conjunctive (aggregateVerdict: composedResults.every(r=>r.passed); single failure=>eroded,passK:false). Errored=failed verified through wired runner: catch pushes {passed:false,errorMessage} no retry/skip; tests drive real fetch throw (run2) and HTTP 500 via core client (both throw)=>passed:false, baselinePassRate 2/3 and 1/2. Erosion discrimination control genuine: isDiscriminationControl pass-k baseline 3/3 composed 1/3 fail=>verdict eroded,passK false via full runRuleSurvival; plus warn-on-unexpected-pass path asserted (DISCRIMINATION CONTROL PASSED). Surviving PASS case present (passk-all-pass). HTTP isolated to core/behavioral/client.ts via makeClient; zero raw fetch, zero SDK, zero hardcoded creds (process.env[apiKeyEnv] at call time). C-001 clean: no crosslayer in src/core; WP03 commit touched only rule-survival.ts+test. build green, 1537 passed/2 pre-existing skips, rule-survival.ts coverage 100pct stmt/line, 94.59pct branch. No localeCompare/Date.now/Math.random/any.
