@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "mission_slug": "heartbeat-adapter-01KTYMCG",
+  "mission_id": "01KTYMCG4N3X9ASWF4RGGJTFCR",
+  "mission_branch": "kitty/mission-heartbeat-adapter-01KTYMCG",
+  "target_branch": "main",
+  "lanes": [
+    {
+      "lane_id": "lane-a",
+      "wp_ids": [
+        "WP01",
+        "WP02",
+        "WP03",
+        "WP04"
+      ],
+      "write_scope": [
+        "src/adapters/heartbeat/graders/action-diff.ts",
+        "src/adapters/heartbeat/graders/idempotency.ts",
+        "src/adapters/heartbeat/graders/quiet-ack.ts",
+        "src/adapters/heartbeat/index.ts",
+        "src/adapters/heartbeat/lint.ts",
+        "src/adapters/heartbeat/tick.ts",
+        "tests/fixtures/heartbeat/checklists/comment-only.md",
+        "tests/fixtures/heartbeat/checklists/empty.md",
+        "tests/fixtures/heartbeat/checklists/mixed-recurrence.md",
+        "tests/fixtures/heartbeat/checklists/over-length.md",
+        "tests/fixtures/heartbeat/checklists/valid-concise.md",
+        "tests/fixtures/heartbeat/interval-configs/absent.json",
+        "tests/fixtures/heartbeat/interval-configs/default-30m.json",
+        "tests/fixtures/heartbeat/interval-configs/oauth-1h.json",
+        "tests/fixtures/heartbeat/manifest.json",
+        "tests/fixtures/heartbeat/tick-states/due.json",
+        "tests/fixtures/heartbeat/tick-states/nothing-due.json",
+        "tests/fixtures/heartbeat/tick-states/repeat.json",
+        "tests/heartbeat/action-diff.test.ts",
+        "tests/heartbeat/idempotency.test.ts",
+        "tests/heartbeat/lint.test.ts",
+        "tests/heartbeat/quiet-ack.test.ts",
+        "tests/heartbeat/tick.test.ts"
+      ],
+      "predicted_surfaces": [
+        "api",
+        "app-shell",
+        "tests",
+        "tracker-integration"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    }
+  ],
+  "computed_at": "2026-06-13T08:00:06.813124+00:00",
+  "computed_from": "dependency_graph+ownership",
+  "planning_artifact_wps": [],
+  "collapse_report": {
+    "events": [
+      {
+        "wp_a": "WP02",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP02 depends on WP01"
+      },
+      {
+        "wp_a": "WP03",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP03 depends on WP01"
+      },
+      {
+        "wp_a": "WP04",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP04 depends on WP01"
+      }
+    ],
+    "total_merges": 3,
+    "independent_wps_collapsed": 0,
+    "by_rule": {
+      "dependency": 3
+    }
+  }
+}
