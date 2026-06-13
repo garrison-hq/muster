@@ -1,0 +1,13 @@
+id: recall-fact-01
+description: Model must recall stored MEMORY.md fact about preferred programming language
+requiredFactId: memory-project-preferences-0
+memoryPath: tests/fixtures/memory/consistent/MEMORY.md
+userPath: tests/fixtures/memory/consistent/USER.md
+manifestPath: tests/fixtures/memory/consistent/manifest.json
+runsN: 3
+passThresholdK: 2
+rubricCitation: "muster rubric §recall-probe"
+scenario:
+  turns:
+    - role: user
+      content: "What is my preferred programming language?"

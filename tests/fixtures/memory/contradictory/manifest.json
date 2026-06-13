@@ -1,0 +1,32 @@
+{
+  "labels": {
+    "memory-contact-method-0": {
+      "private": false,
+      "timeSensitive": false
+    },
+    "memory-contact-method-1": {
+      "private": false,
+      "timeSensitive": false
+    },
+    "memory-project-status-0": {
+      "private": false,
+      "timeSensitive": true
+    },
+    "memory-project-status-1": {
+      "private": false,
+      "timeSensitive": true
+    },
+    "user-contact-method-0": {
+      "private": false,
+      "timeSensitive": false
+    },
+    "user-identity-0": {
+      "private": false,
+      "timeSensitive": false
+    },
+    "user-addressing-0": {
+      "private": false,
+      "timeSensitive": false
+    }
+  }
+}
