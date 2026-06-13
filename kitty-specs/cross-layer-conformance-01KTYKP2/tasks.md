@@ -54,15 +54,15 @@ and the final fixture set assembly; no WP owns a file another owns.
 | T012 | Byte-stable output: sort findings by (type, layerA, layerB, clauseA) in UTF-16 code-unit order (NFR-001) | WP02 | | [D] |
 | T013 | Fixture tests: scenarios 1–5 incl. discrimination control (benign → `ok: true`) | WP02 | | [D] |
 | T014 | WP02 verification: `pnpm build && pnpm test` green; byte-stability confirmed across two runs | WP02 | | [D] |
-| T015 | `RuleSurvivalCase` / `RuleSurvivalResult` types + `GradingClass` in `rule-survival.ts` | WP03 | [P] |
-| T016 | Baseline runner (SOP-alone context, N runs via plain `fetch`, errored run = failed) | WP03 | |
-| T017 | Composed runner (persona + SOP context, same probes), baseline-failure guard | WP03 | |
-| T018 | `pass^k` aggregation for safety-critical rules; `k-of-n` aggregation for stylistic | WP03 | |
-| T019 | Erosion-persona control fixture (`fixtures/crosslayer/erosion-persona-control/`) + discrimination control test | WP03 | |
-| T020 | Adversarial probe cases in composed context (spec scenario 10, FR-007) | WP03 | |
-| T021 | Unit tests for WP03 logic (`tests/crosslayer/unit/rule-survival.test.ts`) | WP03 | |
-| T022 | Rule-survival scenario fixtures (`fixtures/crosslayer/rule-survival-scenarios/`) | WP03 | |
-| T023 | WP03 verification: `pnpm build && pnpm test` green; discrimination control yields `eroded` verdict | WP03 | |
+| T015 | `RuleSurvivalCase` / `RuleSurvivalResult` types + `GradingClass` in `rule-survival.ts` | WP03 | [D] |
+| T016 | Baseline runner (SOP-alone context, N runs via plain `fetch`, errored run = failed) | WP03 | | [D] |
+| T017 | Composed runner (persona + SOP context, same probes), baseline-failure guard | WP03 | | [D] |
+| T018 | `pass^k` aggregation for safety-critical rules; `k-of-n` aggregation for stylistic | WP03 | | [D] |
+| T019 | Erosion-persona control fixture (`fixtures/crosslayer/erosion-persona-control/`) + discrimination control test | WP03 | | [D] |
+| T020 | Adversarial probe cases in composed context (spec scenario 10, FR-007) | WP03 | | [D] |
+| T021 | Unit tests for WP03 logic (`tests/crosslayer/unit/rule-survival.test.ts`) | WP03 | | [D] |
+| T022 | Rule-survival scenario fixtures (`fixtures/crosslayer/rule-survival-scenarios/`) | WP03 | | [D] |
+| T023 | WP03 verification: `pnpm build && pnpm test` green; discrimination control yields `eroded` verdict | WP03 | | [D] |
 | T024 | `CompositionManifest` + `CompositionManifestCase` types in `rule-survival.ts` manifest section | WP04 | [P] |
 | T025 | Manifest runner: reads YAML, dispatches static/behavioral cases, emits per-case pass/fail summary | WP04 | |
 | T026 | Precedence-resolution behavioral cases: SOP-outranks-persona (spec scenarios 11–13) | WP04 | |
@@ -133,15 +133,15 @@ safety-critical rules, ships the erosion-persona discrimination control fixture.
 yields `verdict === "eroded"`; `pass^k` aggregation fails on a single composed
 violation.
 
-- [ ] T015 `RuleSurvivalCase` / `RuleSurvivalResult` types
-- [ ] T016 Baseline runner (SOP-alone, errored = failed)
-- [ ] T017 Composed runner + baseline-failure guard
-- [ ] T018 `pass^k` / `k-of-n` aggregation
-- [ ] T019 Erosion-persona control fixture + discrimination test
-- [ ] T020 Adversarial probe cases in composed context
-- [ ] T021 Unit tests for rule-survival logic
-- [ ] T022 Rule-survival scenario fixtures
-- [ ] T023 WP03 verification
+- [x] T015 `RuleSurvivalCase` / `RuleSurvivalResult` types
+- [x] T016 Baseline runner (SOP-alone, errored = failed)
+- [x] T017 Composed runner + baseline-failure guard
+- [x] T018 `pass^k` / `k-of-n` aggregation
+- [x] T019 Erosion-persona control fixture + discrimination test
+- [x] T020 Adversarial probe cases in composed context
+- [x] T021 Unit tests for rule-survival logic
+- [x] T022 Rule-survival scenario fixtures
+- [x] T023 WP03 verification
 
 **Dependencies**: WP01 (context assembly for composed runs); SOP adapter merged
 (probe set + grader reuse per plan.md key design decision).
