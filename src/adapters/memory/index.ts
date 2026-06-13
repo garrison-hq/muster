@@ -15,6 +15,7 @@
 
 import { readFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
+import { parse as parseYaml } from "yaml";
 import type { SpecAdapter } from "../../core/adapter.js";
 import { FactParser, StalenessLinter, type LintReport, type StalenessFinding, type ContradictionFinding } from "./lint.js";
 import { ContradictionLinter } from "./contradiction.js";
@@ -340,204 +341,13 @@ export class MemoryAdapter {
 
 // ---------------------------------------------------------------------------
 // Internal: parse a probe YAML into a typed probe object.
-// Uses a minimal YAML parser (structural — no dynamic imports from src/core/).
+// Uses the `yaml` package (already a runtime dep in package.json).
+// C-001: no import from src/core/; `yaml` is an adapter-level dependency.
+// NFR-001: parsing is deterministic — same input → same output.
 // ---------------------------------------------------------------------------
 
 function parseProbeYaml<T>(yamlText: string): T {
-  // Simple structural YAML → object conversion for probe files.
-  // These files are authored by the test suite and have a known shape.
-  // We use the `yaml` package already in devDependencies.
-  // Dynamic import is used to avoid a top-level ESM static import cycle.
-  // The yaml package is a dev/runtime dep (already in package.json).
-
-  // Inline synchronous parse using JSON-safe approach: probe YAMLs are simple
-  // structured files that we parse line by line into a known schema.
-  return parseSimpleProbeYaml<T>(yamlText);
-}
-
-/**
- * Parse the probe YAML files used by the fixture suite.
- * These files have a known, simple structure (flat key-value + nested scenario).
- * C-001: no import from src/core/; uses only Node builtins and plain parsing.
- *
- * NFR-001: parsing is deterministic — same input → same output.
- */
-function parseSimpleProbeYaml<T>(yamlText: string): T {
-  const lines = yamlText.split("\n");
-  const obj: Record<string, unknown> = {};
-  let i = 0;
-
-  while (i < lines.length) {
-    const line = lines[i];
-    if (line === undefined || line.trim() === "" || line.trim().startsWith("#")) {
-      i++;
-      continue;
-    }
-
-    // Top-level key: value
-    const topMatch = /^(\w[\w-]*):\s*(.*)$/.exec(line);
-    if (topMatch) {
-      const key = topMatch[1] as string;
-      const rawVal = (topMatch[2] ?? "").trim();
-
-      if (rawVal === "") {
-        // Multi-line nested block — collect sub-lines until next top-level key or EOF.
-        i++;
-        const nested = parseNestedBlock(lines, i);
-        obj[key] = nested.value;
-        i = nested.nextIndex;
-        continue;
-      } else {
-        // Inline value (string / number / boolean).
-        obj[key] = parseScalar(rawVal);
-        i++;
-        continue;
-      }
-    }
-    i++;
-  }
-
-  return obj as unknown as T;
-}
-
-interface ParsedBlock {
-  value: unknown;
-  nextIndex: number;
-}
-
-function parseNestedBlock(lines: string[], startIndex: number): ParsedBlock {
-  // Determine indent level from first non-empty sub-line.
-  let firstNonEmpty = startIndex;
-  while (firstNonEmpty < lines.length && (lines[firstNonEmpty] ?? "").trim() === "") {
-    firstNonEmpty++;
-  }
-
-  if (firstNonEmpty >= lines.length) {
-    return { value: null, nextIndex: lines.length };
-  }
-
-  const firstLine = lines[firstNonEmpty] ?? "";
-  const indentMatch = /^(\s+)/.exec(firstLine);
-  const baseIndent = indentMatch ? indentMatch[1].length : 0;
-
-  if (baseIndent === 0) {
-    return { value: null, nextIndex: firstNonEmpty };
-  }
-
-  // Check if block is a list (starts with "- ").
-  const isList = firstLine.trim().startsWith("- ");
-
-  if (isList) {
-    return parseListBlock(lines, firstNonEmpty, baseIndent);
-  } else {
-    return parseObjectBlock(lines, firstNonEmpty, baseIndent);
-  }
-}
-
-function parseListBlock(lines: string[], startIndex: number, baseIndent: number): ParsedBlock {
-  const items: unknown[] = [];
-  let i = startIndex;
-
-  while (i < lines.length) {
-    const line = lines[i] ?? "";
-    if (line.trim() === "") { i++; continue; }
-
-    const currentIndent = ((/^(\s*)/.exec(line))?.[1] ?? "").length;
-    if (currentIndent < baseIndent) break;
-
-    const listItemMatch = /^\s+- (.+)$/.exec(line);
-    if (listItemMatch) {
-      // Simple list item: "  - value"
-      const itemContent = listItemMatch[1].trim();
-      // Check if this is an object item start (e.g., "- role: user")
-      const kvMatch = /^(\w[\w-]*):\s*(.*)$/.exec(itemContent);
-      if (kvMatch) {
-        // Object item — collect its properties.
-        const itemObj: Record<string, unknown> = {};
-        itemObj[kvMatch[1]] = parseScalar((kvMatch[2] ?? "").trim());
-        i++;
-        // Collect continuation lines for this list item.
-        while (i < lines.length) {
-          const subLine = lines[i] ?? "";
-          if (subLine.trim() === "") { i++; continue; }
-          const subIndent = ((/^(\s*)/.exec(subLine))?.[1] ?? "").length;
-          if (subIndent <= baseIndent) break;
-          // Check if it's back to a list item at same indent.
-          if (subIndent === baseIndent && subLine.trim().startsWith("-")) break;
-          const subKv = /^\s+(\w[\w-]*):\s*(.*)$/.exec(subLine);
-          if (subKv) {
-            const subKey = subKv[1] as string;
-            const subRawVal = (subKv[2] ?? "").trim();
-            if (subRawVal === "") {
-              // Nested block inside list item.
-              const nested = parseNestedBlock(lines, i + 1);
-              itemObj[subKey] = nested.value;
-              i = nested.nextIndex;
-            } else {
-              itemObj[subKey] = parseScalar(subRawVal);
-              i++;
-            }
-          } else {
-            i++;
-          }
-        }
-        items.push(itemObj);
-      } else {
-        items.push(parseScalar(itemContent));
-        i++;
-      }
-    } else {
-      // Not a list item at this indent — done.
-      break;
-    }
-  }
-
-  return { value: items, nextIndex: i };
-}
-
-function parseObjectBlock(lines: string[], startIndex: number, baseIndent: number): ParsedBlock {
-  const obj: Record<string, unknown> = {};
-  let i = startIndex;
-
-  while (i < lines.length) {
-    const line = lines[i] ?? "";
-    if (line.trim() === "") { i++; continue; }
-
-    const currentIndent = ((/^(\s*)/.exec(line))?.[1] ?? "").length;
-    if (currentIndent < baseIndent) break;
-
-    const kvMatch = /^\s+(\w[\w-]*):\s*(.*)$/.exec(line);
-    if (kvMatch) {
-      const key = kvMatch[1] as string;
-      const rawVal = (kvMatch[2] ?? "").trim();
-      if (rawVal === "") {
-        const nested = parseNestedBlock(lines, i + 1);
-        obj[key] = nested.value;
-        i = nested.nextIndex;
-      } else {
-        obj[key] = parseScalar(rawVal);
-        i++;
-      }
-    } else {
-      i++;
-    }
-  }
-
-  return { value: obj, nextIndex: i };
-}
-
-function parseScalar(raw: string): unknown {
-  // Strip surrounding quotes.
-  if ((raw.startsWith('"') && raw.endsWith('"')) ||
-      (raw.startsWith("'") && raw.endsWith("'"))) {
-    return raw.slice(1, -1);
-  }
-  if (raw === "true") return true;
-  if (raw === "false") return false;
-  if (raw === "null" || raw === "~") return null;
-  const num = Number(raw);
-  if (!isNaN(num) && raw !== "") return num;
-  return raw;
+  return parseYaml(yamlText) as T;
 }
 
 // ---------------------------------------------------------------------------
