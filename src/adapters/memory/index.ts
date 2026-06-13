@@ -126,6 +126,151 @@ function toAbsolute(path: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Internal: helpers for run() to keep cognitive complexity ≤ 15 (S3776).
+// ---------------------------------------------------------------------------
+
+/**
+ * Run the static lint cases and accumulate findings + reports.
+ * Extraction-only refactor — identical control flow to the original loop.
+ */
+function runStaticLintCases(
+  manifest: AdapterManifest,
+  parser: FactParser,
+  stalenessLinter: StalenessLinter,
+  contradictionLinter: ContradictionLinter,
+  allFindings: Finding[],
+  lintReports: LintReport[]
+): boolean {
+  let allOk = true;
+  for (const lintCase of manifest.cases) {
+    const memoryPath = toAbsolute(lintCase.memoryPath);
+    const userPath = toAbsolute(lintCase.userPath);
+    const manifestPath = toAbsolute(lintCase.manifestPath);
+
+    const factManifest = JSON.parse(readFileSync(manifestPath, "utf8")) as {
+      labels: Record<string, { private: boolean; timeSensitive: boolean }>;
+    };
+
+    const memFacts = parser.parse(memoryPath, factManifest);
+    const userFacts = parser.parse(userPath, factManifest);
+
+    // Staleness lint (C-003: referenceDate from manifest, not clock).
+    let referenceDate: { value: Date } | undefined;
+    if (lintCase.referenceDate !== undefined) {
+      referenceDate = { value: new Date(lintCase.referenceDate) };
+    }
+
+    const stalenessReport = stalenessLinter.lint(
+      [...memFacts, ...userFacts],
+      referenceDate
+    );
+
+    // Contradiction lint (cross-file + intra-file).
+    const { contradictionFindings, supersessionNotes } = contradictionLinter.lint(
+      memFacts,
+      userFacts
+    );
+
+    // Merge into full LintReport.
+    const lintReport: LintReport = {
+      ok: stalenessReport.ok && contradictionFindings.length === 0,
+      stalenessFindings: stalenessReport.stalenessFindings,
+      stalenessSkip: stalenessReport.stalenessSkip,
+      contradictionFindings,
+      supersessionNotes,
+    };
+
+    lintReports.push(lintReport);
+    if (!lintReport.ok) {
+      allOk = false;
+    }
+
+    for (const f of lintReport.stalenessFindings) {
+      allFindings.push(f);
+    }
+    for (const f of lintReport.contradictionFindings) {
+      allFindings.push(f);
+    }
+  }
+  return allOk;
+}
+
+/**
+ * Run behavioral (recall + privacy) probe cases and accumulate findings.
+ * Extraction-only refactor — identical control flow to the original block.
+ */
+async function runBehavioralCases(
+  manifest: AdapterManifest,
+  options: AdapterOptions,
+  allFindings: Finding[]
+): Promise<boolean> {
+  const recallRunner = new RecallProbeRunner();
+  const privacyRunner = new PrivacyLeakProbeRunner();
+  let allOk = true;
+
+  // Recall probe cases.
+  if (manifest.recallCases !== undefined) {
+    for (const recallCase of manifest.recallCases) {
+      const probeYaml = readFileSync(toAbsolute(recallCase.probePath), "utf8");
+      const probe = parseProbeYaml<RecallProbe>(probeYaml);
+
+      if (options.endpoint === undefined) {
+        throw new Error(
+          `behavioral recall probe "${recallCase.id}" requires endpoint config`
+        );
+      }
+
+      const verdict = await recallRunner.run(probe, options.endpoint);
+      const taggedRecall: TaggedRecallVerdict = { ...verdict, kind: "recall" };
+      allFindings.push(taggedRecall);
+      if (!verdict.pass) {
+        allOk = false;
+      }
+    }
+  }
+
+  // Privacy/leak probe cases.
+  if (manifest.privacyCases !== undefined) {
+    for (const privacyCase of manifest.privacyCases) {
+      const probeYaml = readFileSync(toAbsolute(privacyCase.probePath), "utf8");
+      const probe = parseProbeYaml<PrivacyLeakProbe>(probeYaml);
+
+      if (options.endpoint === undefined) {
+        throw new Error(
+          `behavioral privacy probe "${privacyCase.id}" requires endpoint config`
+        );
+      }
+
+      const verdict = await privacyRunner.run(probe, options.endpoint);
+      const taggedPrivacy: TaggedPrivacyLeakVerdict = { ...verdict, kind: "privacy" };
+      allFindings.push(taggedPrivacy);
+      if (!verdict.pass) {
+        allOk = false;
+      }
+    }
+  }
+
+  return allOk;
+}
+
+/**
+ * Build the human-readable summary string (S3358: no nested ternary).
+ */
+function buildSummary(
+  allOk: boolean,
+  totalCases: number,
+  passCount: number,
+  behavioral: boolean
+): string {
+  if (allOk) {
+    return `memory adapter: all ${totalCases} case(s) passed`;
+  }
+  const staticPart = `memory adapter: ${totalCases - passCount} of ${totalCases} static case(s) failed`;
+  const behavioralSuffix = behavioral ? "; behavioral probe(s) may have failed" : "";
+  return staticPart + behavioralSuffix;
+}
+
+// ---------------------------------------------------------------------------
 // Internal: UTF-16 code-unit comparison for deterministic sorting (NFR-001).
 // No localeCompare — platform-independent byte ordering.
 // ---------------------------------------------------------------------------
@@ -133,7 +278,7 @@ function toAbsolute(path: string): string {
 function utf16Compare(a: string, b: string): number {
   const minLen = Math.min(a.length, b.length);
   for (let i = 0; i < minLen; i++) {
-    const diff = a.charCodeAt(i) - b.charCodeAt(i);
+    const diff = (a.codePointAt(i) ?? 0) - (b.codePointAt(i) ?? 0);
     if (diff !== 0) return diff;
   }
   return a.length - b.length;
@@ -199,111 +344,21 @@ export class MemoryAdapter {
   async run(manifest: AdapterManifest, options: AdapterOptions = {}): Promise<AdapterResult> {
     const allFindings: Finding[] = [];
     const lintReports: LintReport[] = [];
-    let allOk = true;
 
     // ── Static lint cases ──────────────────────────────────────────────────
     const parser = new FactParser();
     const stalenessLinter = new StalenessLinter();
     const contradictionLinter = new ContradictionLinter();
 
-    for (const lintCase of manifest.cases) {
-      const memoryPath = toAbsolute(lintCase.memoryPath);
-      const userPath = toAbsolute(lintCase.userPath);
-      const manifestPath = toAbsolute(lintCase.manifestPath);
-
-      const factManifest = JSON.parse(readFileSync(manifestPath, "utf8")) as {
-        labels: Record<string, { private: boolean; timeSensitive: boolean }>;
-      };
-
-      const memFacts = parser.parse(memoryPath, factManifest);
-      const userFacts = parser.parse(userPath, factManifest);
-
-      // Staleness lint (C-003: referenceDate from manifest, not clock).
-      let referenceDate: { value: Date } | undefined;
-      if (lintCase.referenceDate !== undefined) {
-        referenceDate = { value: new Date(lintCase.referenceDate) };
-      }
-
-      const stalenessReport = stalenessLinter.lint(
-        [...memFacts, ...userFacts],
-        referenceDate
-      );
-
-      // Contradiction lint (cross-file + intra-file).
-      const { contradictionFindings, supersessionNotes } = contradictionLinter.lint(
-        memFacts,
-        userFacts
-      );
-
-      // Merge into full LintReport.
-      const lintReport: LintReport = {
-        ok: stalenessReport.ok && contradictionFindings.length === 0,
-        stalenessFindings: stalenessReport.stalenessFindings,
-        stalenessSkip: stalenessReport.stalenessSkip,
-        contradictionFindings,
-        supersessionNotes,
-      };
-
-      lintReports.push(lintReport);
-
-      if (!lintReport.ok) {
-        allOk = false;
-      }
-
-      // Collect findings.
-      for (const f of lintReport.stalenessFindings) {
-        allFindings.push(f);
-      }
-      for (const f of lintReport.contradictionFindings) {
-        allFindings.push(f);
-      }
-    }
+    let allOk = runStaticLintCases(
+      manifest, parser, stalenessLinter, contradictionLinter, allFindings, lintReports
+    );
 
     // ── Behavioral cases (only when options.behavioral === true) ────────────
     if (options.behavioral === true) {
-      const recallRunner = new RecallProbeRunner();
-      const privacyRunner = new PrivacyLeakProbeRunner();
-
-      // Recall probe cases.
-      if (manifest.recallCases !== undefined) {
-        for (const recallCase of manifest.recallCases) {
-          const probeYaml = readFileSync(toAbsolute(recallCase.probePath), "utf8");
-          const probe = parseProbeYaml<RecallProbe>(probeYaml);
-
-          if (options.endpoint === undefined) {
-            throw new Error(
-              `behavioral recall probe "${recallCase.id}" requires endpoint config`
-            );
-          }
-
-          const verdict = await recallRunner.run(probe, options.endpoint);
-          const taggedRecall: TaggedRecallVerdict = { ...verdict, kind: "recall" };
-          allFindings.push(taggedRecall);
-          if (!verdict.pass) {
-            allOk = false;
-          }
-        }
-      }
-
-      // Privacy/leak probe cases.
-      if (manifest.privacyCases !== undefined) {
-        for (const privacyCase of manifest.privacyCases) {
-          const probeYaml = readFileSync(toAbsolute(privacyCase.probePath), "utf8");
-          const probe = parseProbeYaml<PrivacyLeakProbe>(probeYaml);
-
-          if (options.endpoint === undefined) {
-            throw new Error(
-              `behavioral privacy probe "${privacyCase.id}" requires endpoint config`
-            );
-          }
-
-          const verdict = await privacyRunner.run(probe, options.endpoint);
-          const taggedPrivacy: TaggedPrivacyLeakVerdict = { ...verdict, kind: "privacy" };
-          allFindings.push(taggedPrivacy);
-          if (!verdict.pass) {
-            allOk = false;
-          }
-        }
+      const behavioralOk = await runBehavioralCases(manifest, options, allFindings);
+      if (!behavioralOk) {
+        allOk = false;
       }
     }
 
@@ -312,10 +367,7 @@ export class MemoryAdapter {
 
     const passCount = manifest.cases.filter((_, i) => lintReports[i]?.ok).length;
     const totalCases = manifest.cases.length;
-    const summary = allOk
-      ? `memory adapter: all ${totalCases} case(s) passed`
-      : `memory adapter: ${totalCases - passCount} of ${totalCases} static case(s) failed` +
-        (options.behavioral === true ? "; behavioral probe(s) may have failed" : "");
+    const summary = buildSummary(allOk, totalCases, passCount, options.behavioral === true);
 
     const result: AdapterResult = {
       ok: allOk,
@@ -361,8 +413,9 @@ function toJsonSafe(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(toJsonSafe);
   if (value !== null && typeof value === "object") {
     const out: Record<string, unknown> = {};
-    for (const key of Object.keys(value as Record<string, unknown>)) {
-      const v = toJsonSafe((value as Record<string, unknown>)[key]);
+    const rec = value as Record<string, unknown>;
+    for (const key of Object.keys(rec)) {
+      const v = toJsonSafe(rec[key]);
       if (v !== undefined) out[key] = v;
     }
     return out;
@@ -389,4 +442,4 @@ export function createMemoryAdapter(): MemoryAdapter {
 // type itself).
 // ---------------------------------------------------------------------------
 const _nameContractWitness: Pick<SpecAdapter, "name"> = createMemoryAdapter();
-void _nameContractWitness;
+// _nameContractWitness: structural type check only — the _ prefix suppresses the unused-var warning.

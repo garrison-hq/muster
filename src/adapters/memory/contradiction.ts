@@ -102,10 +102,83 @@ function compareDates(
 function utf16Compare(a: string, b: string): number {
   const minLen = Math.min(a.length, b.length);
   for (let i = 0; i < minLen; i++) {
-    const diff = a.charCodeAt(i) - b.charCodeAt(i);
+    const diff = (a.codePointAt(i) ?? 0) - (b.codePointAt(i) ?? 0);
     if (diff !== 0) return diff;
   }
   return a.length - b.length;
+}
+
+// ---------------------------------------------------------------------------
+// T006 helpers (file-local, extraction-only — identical control flow)
+// ---------------------------------------------------------------------------
+
+/**
+ * Build all fact pairs to examine: MEMORY×USER (cross-file) and
+ * MEMORY×MEMORY (intra-file). USER×USER pairs are excluded per rubric.
+ */
+function buildPairs(
+  memoryFacts: MemoryFact[],
+  userFacts: MemoryFact[]
+): Array<[MemoryFact, MemoryFact]> {
+  const pairs: Array<[MemoryFact, MemoryFact]> = [];
+  // Cross-file: MEMORY × USER
+  for (const memFact of memoryFacts) {
+    for (const userFact of userFacts) {
+      pairs.push([memFact, userFact]);
+    }
+  }
+  // Intra-file: MEMORY × MEMORY (each distinct ordered pair once)
+  for (let i = 0; i < memoryFacts.length; i++) {
+    for (let j = i + 1; j < memoryFacts.length; j++) {
+      pairs.push([memoryFacts[i], memoryFacts[j]]);
+    }
+  }
+  return pairs;
+}
+
+/**
+ * Classify one topic-related pair as supersession, contradiction, or neither.
+ * Appends to the caller-supplied output arrays (mutation is intentional —
+ * avoids allocating intermediate result objects for each pair).
+ */
+function classifyPair(
+  factA: MemoryFact,
+  factB: MemoryFact,
+  contradictionFindings: ContradictionFinding[],
+  supersessionNotes: SupersessionNote[]
+): void {
+  const cmp = compareDates(factA.timestamp, factB.timestamp);
+
+  if (factA.timestamp !== undefined && factB.timestamp !== undefined && cmp !== 0) {
+    // One supersedes the other — record as supersession, not contradiction.
+    const [superseded, superseding] = cmp < 0
+      ? [factA, factB]  // factA is older → superseded
+      : [factB, factA]; // factB is older → superseded
+    supersessionNotes.push({
+      kind: "supersession",
+      supersededFactId: superseded.id,
+      supersedingFactId: superseding.id,
+      note:
+        `Fact "${superseded.id}" (${superseded.timestamp!.toISOString()}) ` +
+        `superseded by "${superseding.id}" (${superseding.timestamp!.toISOString()}) ` +
+        `on topic covered by: "${superseded.text.slice(0, 60)}"`,
+    });
+    return;
+  }
+
+  // Contradiction check: topic-related, not a supersession, and texts differ.
+  if (factA.text !== factB.text) {
+    contradictionFindings.push({
+      kind: "contradiction",
+      factAId: factA.id,
+      factBId: factB.id,
+      factASource: factA.source,
+      factBSource: factB.source,
+      factAText: factA.text,
+      factBText: factB.text,
+      rubricCitation: RUBRIC_CITATION,
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -141,68 +214,11 @@ export class ContradictionLinter {
     const contradictionFindings: ContradictionFinding[] = [];
     const supersessionNotes: SupersessionNote[] = [];
 
-    // Produce all pairs to check.
-    const pairs: Array<[MemoryFact, MemoryFact]> = [];
-
-    // Cross-file: MEMORY × USER
-    for (const memFact of memoryFacts) {
-      for (const userFact of userFacts) {
-        pairs.push([memFact, userFact]);
-      }
-    }
-
-    // Intra-file: MEMORY × MEMORY (each distinct ordered pair once)
-    for (let i = 0; i < memoryFacts.length; i++) {
-      for (let j = i + 1; j < memoryFacts.length; j++) {
-        pairs.push([memoryFacts[i], memoryFacts[j]]);
-      }
-    }
+    const pairs = buildPairs(memoryFacts, userFacts);
 
     for (const [factA, factB] of pairs) {
-      // Only consider topic-related pairs.
       if (!topicRelated(factA, factB)) continue;
-
-      // Supersession check: if both have timestamps and one is strictly newer.
-      const cmp = compareDates(factA.timestamp, factB.timestamp);
-
-      if (
-        factA.timestamp !== undefined &&
-        factB.timestamp !== undefined &&
-        cmp !== 0
-      ) {
-        // One supersedes the other — record as supersession, not contradiction.
-        const [superseded, superseding] = cmp < 0
-          ? [factA, factB]   // factA is older → superseded
-          : [factB, factA];  // factB is older → superseded
-
-        supersessionNotes.push({
-          kind: "supersession",
-          supersededFactId: superseded.id,
-          supersedingFactId: superseding.id,
-          note:
-            `Fact "${superseded.id}" (${superseded.timestamp!.toISOString()}) ` +
-            `superseded by "${superseding.id}" (${superseding.timestamp!.toISOString()}) ` +
-            `on topic covered by: "${superseded.text.slice(0, 60)}"`,
-        });
-        continue;
-      }
-
-      // Contradiction check: both are topic-related but not a supersession.
-      // We check that the facts assert different values for the shared topic.
-      // Strategy: if the texts are not identical and share at least one
-      // strong subject word, treat them as contradictory.
-      if (factA.text !== factB.text) {
-        contradictionFindings.push({
-          kind: "contradiction",
-          factAId: factA.id,
-          factBId: factB.id,
-          factASource: factA.source,
-          factBSource: factB.source,
-          factAText: factA.text,
-          factBText: factB.text,
-          rubricCitation: RUBRIC_CITATION,
-        });
-      }
+      classifyPair(factA, factB, contradictionFindings, supersessionNotes);
     }
 
     // NFR-001: sort findings deterministically by factAId → factBId (UTF-16

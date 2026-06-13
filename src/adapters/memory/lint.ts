@@ -113,7 +113,7 @@ function parseInlineDate(text: string): Date | undefined {
   if (!match) return undefined;
   const candidate = new Date(match[1]);
   // isNaN check without Date.now()
-  if (isNaN(candidate.getTime())) return undefined;
+  if (Number.isNaN(candidate.getTime())) return undefined;
   return candidate;
 }
 
@@ -342,8 +342,9 @@ function toJsonSafe(value: unknown): unknown {
   }
   if (value !== null && typeof value === "object") {
     const out: Record<string, unknown> = {};
-    for (const key of Object.keys(value as Record<string, unknown>)) {
-      const v = toJsonSafe((value as Record<string, unknown>)[key]);
+    const rec = value as Record<string, unknown>;
+    for (const key of Object.keys(rec)) {
+      const v = toJsonSafe(rec[key]);
       // Skip undefined values — canonical-JSON cannot represent them
       // and JSON.stringify omits them from objects.
       if (v !== undefined) {
