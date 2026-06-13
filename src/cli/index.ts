@@ -58,6 +58,10 @@ import {
   formatReportHuman,
   globToRegExp,
 } from "./output.js";
+import {
+  runManifest as runCrossLayerManifest,
+  type ManifestRunSummary,
+} from "../crosslayer/manifest-runner.js";
 
 /** Version straight from package.json (works from src/ via tsx and dist/). */
 const VERSION = (
@@ -456,6 +460,80 @@ function formatMemoryResultHuman(result: import("../adapters/memory/index.js").A
   return lines.join("\n");
 }
 
+// ─── muster crosslayer run ──────────────────────────────────────────────────
+
+/**
+ * Run the cross-layer manifest runner (FR-011, C-004).
+ *
+ * The manifest is a YAML file listing static composition/lint cases and
+ * optionally behavioral rule-survival cases. Only the static path runs when
+ * --static-only is specified (offline, deterministic — NFR-001, C-003).
+ * Behavioral cases are skipped (recorded as failed) when the endpoint API key
+ * environment variable is not set (NFR-005: credentials from env only).
+ *
+ * The manifest path is resolved to an absolute path before being passed to
+ * runManifest so that $ref includes resolve correctly regardless of cwd.
+ *
+ * Normative citation: muster cross-layer conformance rubric
+ * (cross-layer-conformance-01KTYKP2), FR-011; C-001, C-004.
+ */
+async function doCrossLayerRun(
+  manifestPath: string,
+  opts: GlobalOpts & { staticOnly?: boolean },
+  io: Io
+): Promise<number> {
+  const absManifestPath = toAbsolute(manifestPath);
+  let summary: ManifestRunSummary;
+  try {
+    summary = await runCrossLayerManifest(absManifestPath, {
+      testClassFilter: opts.staticOnly === true ? "static" : undefined,
+    });
+  } catch (error) {
+    throw new ExecutionError(
+      `crosslayer manifest run failed: ${errorMessage(error)}`
+    );
+  }
+
+  io.outLine(
+    opts.json === true
+      ? JSON.stringify(summary, null, 2)
+      : formatCrossLayerResultHuman(summary)
+  );
+  return summary.failed > 0 ? 1 : 0;
+}
+
+/**
+ * Human-readable formatting for cross-layer ManifestRunSummary.
+ *
+ * Normative citation: muster cross-layer conformance rubric, FR-011.
+ */
+function formatCrossLayerResultHuman(summary: ManifestRunSummary): string {
+  const status = summary.failed === 0 ? "PASS" : "FAIL";
+  const lines: string[] = [
+    `crosslayer: ${status} — ${summary.passed}/${summary.total} cases passed, ${summary.failed} failed`,
+  ];
+  for (const result of summary.results) {
+    const icon = result.passed ? "PASS" : "FAIL";
+    const detail = buildCaseDetail(result);
+    lines.push(`  [${icon}] ${result.id}${detail}`);
+  }
+  return lines.join("\n");
+}
+
+/** Build the detail suffix for one case result line. */
+function buildCaseDetail(result: ManifestRunSummary["results"][number]): string {
+  if (result.error !== undefined) {
+    return `: error — ${result.error}`;
+  }
+  if (result.verdict !== undefined) {
+    return `: verdict=${result.verdict}`;
+  }
+  if (result.findings !== undefined && result.findings.length > 0) {
+    return `: findings=[${result.findings.join(", ")}]`;
+  }
+  return "";
+}
+
 // ─── program assembly ───────────────────────────────────────────────────────
 
 function buildProgram(
@@ -587,6 +665,34 @@ function buildProgram(
     .option("--model <m>", "behavioral endpoint model (default: llama3.2)")
     .action(async (manifest: string, _local, cmd: Command) => {
       setExit(await doMemoryRun(manifest, cmd.optsWithGlobals(), io));
+    });
+
+  // ─── muster crosslayer ────────────────────────────────────────────────────
+  const crosslayer = program
+    .command("crosslayer")
+    .description(
+      "Cross-layer conformance: static composition/lint and behavioral rule-survival " +
+      "cases across persona/SOP layer stacks (FR-011, C-004, cross-layer-conformance-01KTYKP2)"
+    );
+  crosslayer
+    .command("run")
+    .description(
+      "Run the cross-layer conformance manifest. Static cases run offline. " +
+        "Behavioral cases require MUSTER_ENDPOINT and MUSTER_API_KEY env vars; " +
+        "use --static-only to skip them."
+    )
+    .argument("<manifest>", "path to the cross-layer manifest YAML")
+    .option(
+      "--static-only",
+      "run only static composition/lint cases (no endpoint required)"
+    )
+    .addHelpText(
+      "after",
+      "\nAPI key: read from the env var declared in the manifest's endpoint.api_key_env " +
+        "field (e.g. MUSTER_API_KEY). Credentials never appear in argv or the manifest value."
+    )
+    .action(async (manifest: string, _local, cmd: Command) => {
+      setExit(await doCrossLayerRun(manifest, cmd.optsWithGlobals(), io));
     });
 
   return program;

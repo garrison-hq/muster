@@ -570,3 +570,104 @@ describe("muster program (contracts/cli.md global behavior)", () => {
     expect(stdout).not.toMatch(/--api[-_]?key/i);
   });
 });
+
+// ─── muster crosslayer run CLI tests ─────────────────────────────────────────
+
+/**
+ * CLI-level tests for `muster crosslayer run <manifest>`.
+ *
+ * Tests run IN-PROCESS via runCli — no subprocess spawn.
+ * Static cases run fully offline (NFR-003). Behavioral cases are NOT exercised
+ * here — that coverage lives in tests/crosslayer/integration/.
+ *
+ * Normative citation: muster cross-layer conformance rubric
+ * (cross-layer-conformance-01KTYKP2), FR-011; C-001, C-004.
+ */
+describe("muster crosslayer run (WP04, FR-011, C-004)", () => {
+  const crosslayerManifest = join(repoRoot, "fixtures/crosslayer/manifest.yaml");
+
+  it("--static-only: runs 5/5 static cases, exit 0, human summary", async () => {
+    const { code, stdout, stderr } = await run([
+      "crosslayer",
+      "run",
+      crosslayerManifest,
+      "--static-only",
+    ]);
+
+    expect(code).toBe(0);
+    // Human summary header line.
+    expect(stdout).toContain("crosslayer: PASS");
+    expect(stdout).toContain("5/5 cases passed");
+    expect(stdout).toContain("0 failed");
+    // All 5 static case IDs present in output.
+    expect(stdout).toContain("benign-persona-sop");
+    expect(stdout).toContain("benign-persona-sop-skill");
+    expect(stdout).toContain("contradictory-no-precedence");
+    expect(stdout).toContain("contradictory-with-precedence");
+    expect(stdout).toContain("circular-precedence");
+    // No noise on stderr.
+    expect(stderr).toBe("");
+  });
+
+  it("--static-only --json: exits 0, emits machine-readable JSON with correct shape", async () => {
+    const { code, stdout } = await run([
+      "crosslayer",
+      "run",
+      crosslayerManifest,
+      "--static-only",
+      "--json",
+    ]);
+
+    expect(code).toBe(0);
+    const summary = JSON.parse(stdout) as {
+      total: number;
+      passed: number;
+      failed: number;
+      results: Array<{ id: string; passed: boolean }>;
+    };
+    expect(summary.total).toBe(5);
+    expect(summary.passed).toBe(5);
+    expect(summary.failed).toBe(0);
+    expect(summary.results).toHaveLength(5);
+    // Every result is a pass.
+    for (const result of summary.results) {
+      expect(result.passed).toBe(true);
+    }
+  });
+
+  it("non-existent manifest path → exit 2 (execution error), stdout empty", async () => {
+    const { code, stdout, stderr } = await run([
+      "crosslayer",
+      "run",
+      join(repoRoot, "fixtures/crosslayer/does-not-exist.yaml"),
+      "--static-only",
+    ]);
+
+    expect(code).toBe(2);
+    expect(stdout).toBe("");
+    // Error message must appear on stderr.
+    expect(stderr).toContain("crosslayer manifest run failed");
+  });
+
+  it("--help exits 0 and documents --static-only flag", async () => {
+    const { code, stdout } = await run(["crosslayer", "run", "--help"]);
+    expect(code).toBe(0);
+    expect(stdout).toContain("--static-only");
+  });
+
+  it("human output: findings are listed in the per-case detail line", async () => {
+    const { code, stdout } = await run([
+      "crosslayer",
+      "run",
+      crosslayerManifest,
+      "--static-only",
+    ]);
+
+    expect(code).toBe(0);
+    // The contradictory-no-precedence case emits cross-layer-contradiction and undefined-precedence.
+    expect(stdout).toContain("cross-layer-contradiction");
+    expect(stdout).toContain("undefined-precedence");
+    // The circular-precedence case emits circular-precedence-error.
+    expect(stdout).toContain("circular-precedence-error");
+  });
+});
