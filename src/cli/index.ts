@@ -636,11 +636,12 @@ async function doHeartbeatRun(
  */
 function formatCrossLayerResultHuman(summary: ManifestRunSummary): string {
   const status = summary.failed === 0 ? "PASS" : "FAIL";
+  const skippedSuffix = summary.skipped > 0 ? `, ${summary.skipped} skipped` : "";
   const lines: string[] = [
-    `crosslayer: ${status} — ${summary.passed}/${summary.total} cases passed, ${summary.failed} failed`,
+    `crosslayer: ${status} — ${summary.passed}/${summary.total} cases passed, ${summary.failed} failed${skippedSuffix}`,
   ];
   for (const result of summary.results) {
-    const icon = result.passed ? "PASS" : "FAIL";
+    const icon = result.skipped === true ? "SKIP" : result.passed ? "PASS" : "FAIL";
     const detail = buildCaseDetail(result);
     lines.push(`  [${icon}] ${result.id}${detail}`);
   }

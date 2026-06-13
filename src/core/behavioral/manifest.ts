@@ -4,8 +4,8 @@
  *
  * Manifests are muster's own artifacts (not Soul-YAML): a plain `yaml` parse,
  * and validation is ALWAYS strict — unknown fields are errors. Credentials
- * are NEVER manifest fields: only the env-var NAME is configurable, limited
- * to MUSTER_API_KEY / OPENAI_API_KEY (charter directive 5).
+ * are NEVER manifest fields: only the env-var NAME is configurable (any
+ * non-empty string — charter directive 5, NFR-005).
  *
  * `soul` paths are resolved to ABSOLUTE paths against the manifest's
  * directory — never the process cwd. Defaults (runs=3, pass_threshold=2,
@@ -65,7 +65,9 @@ const CASE_FIELDS = new Set([
 const TURN_FIELDS = new Set(["role", "content", "facts"]);
 const OVERRIDE_FIELDS = new Set(["max_words", "refusal_cap"]);
 const ASSERTION_FIELDS = new Set(["kind", "pattern", "regex"]);
-const API_KEY_ENVS = new Set(["MUSTER_API_KEY", "OPENAI_API_KEY"]);
+// NOTE: EndpointConfig.apiKeyEnv was widened to `string` (Note 5 — NFR-005 widening).
+// The manifest loader still requires a non-empty string; it no longer restricts to
+// a narrow set of known names so callers can supply their own env-var names.
 
 function violation(path: string, message: string): Violation {
   return { path, message, severity: "error" };
@@ -109,12 +111,12 @@ function validateEndpoint(raw: unknown, errors: Violation[]): EndpointConfig | n
     errors.push(violation("endpoint.model", 'required field "model" must be a non-empty string'));
   }
   const apiKeyEnv = raw["api_key_env"] ?? "MUSTER_API_KEY";
-  if (typeof apiKeyEnv !== "string" || !API_KEY_ENVS.has(apiKeyEnv)) {
+  if (typeof apiKeyEnv !== "string" || apiKeyEnv.trim().length === 0) {
     errors.push(
       violation(
         "endpoint.api_key_env",
-        'optional field "api_key_env" must be "MUSTER_API_KEY" or "OPENAI_API_KEY" ' +
-          "(only the env-var NAME is configurable — never a key value; charter directive 5)"
+        'optional field "api_key_env" must be a non-empty string naming the environment variable ' +
+          "that holds the API key (only the env-var NAME is configurable — never a key value; charter directive 5)"
       )
     );
     return null;
@@ -123,7 +125,7 @@ function validateEndpoint(raw: unknown, errors: Violation[]): EndpointConfig | n
   return {
     baseUrl,
     model,
-    apiKeyEnv: apiKeyEnv as EndpointConfig["apiKeyEnv"],
+    apiKeyEnv,
   };
 }
 

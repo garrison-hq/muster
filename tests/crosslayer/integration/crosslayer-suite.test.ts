@@ -555,8 +555,8 @@ describe("crosslayer-suite integration", () => {
 
       const summary = await runManifest(MANIFEST_PATH, { dryRun: true });
 
-      // manifest.yaml has 10 cases (5 static + 5 behavioral).
-      expect(summary.total).toBe(10);
+      // manifest.yaml has 11 cases (5 static + 6 behavioral; Note 4: scenario-second-endpoint added).
+      expect(summary.total).toBe(11);
       expect(summary.passed).toBe(0);
       expect(summary.failed).toBe(0);
       expect(summary.results).toHaveLength(0);
@@ -583,13 +583,13 @@ describe("crosslayer-suite integration", () => {
       const parsed = yamlParse(content) as { cases: Array<{ $ref?: string }> };
       expect(parsed.cases).toBeDefined();
       expect(Array.isArray(parsed.cases)).toBe(true);
-      // Expect 10 case entries (5 static + 5 behavioral per T029).
-      expect(parsed.cases).toHaveLength(10);
+      // Expect 11 case entries (5 static + 6 behavioral; Note 4: scenario-second-endpoint added).
+      expect(parsed.cases).toHaveLength(11);
     });
 
-    it("dry-run over master manifest succeeds and reports 10 total cases", async () => {
+    it("dry-run over master manifest succeeds and reports 11 total cases (Note 4: scenario-second-endpoint added)", async () => {
       const summary = await runManifest(MANIFEST_PATH, { dryRun: true });
-      expect(summary.total).toBe(10);
+      expect(summary.total).toBe(11);
     });
 
     it("static-only run over master manifest covers all 5 static fixture families", async () => {
@@ -855,16 +855,21 @@ describe("crosslayer-suite integration", () => {
       const summary = await runManifest(tmpPath, { testClassFilter: "behavioral" });
 
       expect(summary.total).toBe(1);
+      // Skipped cases do NOT count as failed (Note 3).
+      expect(summary.skipped).toBe(1);
+      expect(summary.failed).toBe(0);
       const result = summary.results[0];
-      // Does NOT crash; records as skipped (passed: false, error present)
+      // Does NOT crash; records as skipped (passed: false, skipped: true, error present)
       expect(result).toBeDefined();
       expect(result!.passed).toBe(false);
+      expect(result!.skipped).toBe(true);
       expect(result!.error).toBeDefined();
       expect(result!.error).toMatch(/no expected declaration/i);
     });
 
-    it("static case with no expected key → skipped gracefully (BUG-3 null-safety)", async () => {
+    it("static case with no expected key → skipped gracefully (BUG-3 null-safety, Note 3)", async () => {
       // Static path also must handle missing expected without crashing.
+      // Skipped cases count as skipped, not failed (Note 3).
       const manifest: CompositionManifest = {
         cases: [
           {
@@ -882,9 +887,13 @@ describe("crosslayer-suite integration", () => {
       const summary = await runManifest(tmpPath, { testClassFilter: "static" });
 
       expect(summary.total).toBe(1);
+      // Skipped cases do NOT count as failed (Note 3).
+      expect(summary.skipped).toBe(1);
+      expect(summary.failed).toBe(0);
       const result = summary.results[0];
       expect(result).toBeDefined();
       expect(result!.passed).toBe(false);
+      expect(result!.skipped).toBe(true);
       expect(result!.error).toBeDefined();
       expect(result!.error).toMatch(/no expected declaration/i);
     });
@@ -991,6 +1000,84 @@ describe("crosslayer-suite integration", () => {
       // All composed runs COMPLY → eroded (pass-k: conjunctive, FR-006)
       expect(result?.verdict).toBe("eroded");
       expect(result?.passed).toBe(true); // expected.verdict is "eroded" — matched
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Path-traversal guard (Note 6)
+  // -------------------------------------------------------------------------
+
+  describe("path-traversal guard (Note 6)", () => {
+    it("relative fixturePath that escapes via ../ is rejected with a clear error", async () => {
+      // Write a manifest with a relative path that traverses outside the manifest dir.
+      // The guard must reject it, not silently pass or crash with ENOENT.
+      const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "muster-traversal-test-"));
+      const manifestPath = path.join(tmpDir, "manifest.yaml");
+
+      // A relative path using ../ to escape the manifest dir
+      const escapingManifest = {
+        cases: [
+          {
+            id: "traversal-test",
+            testClass: "static",
+            layers: [
+              // Relative path that escapes the tmpDir via ../
+              { layerType: "persona", fixturePath: "../../etc/passwd" },
+              { layerType: "sop", fixturePath: "../../etc/passwd" },
+            ],
+            expected: { ok: true },
+          },
+        ],
+      };
+
+      await fs.writeFile(manifestPath, JSON.stringify(escapingManifest), "utf-8");
+
+      // The guard must throw with a "Path traversal rejected" message.
+      await expect(runManifest(manifestPath, { testClassFilter: "static" })).rejects.toThrow(
+        /path traversal rejected/i
+      );
+    });
+
+    it("relative $ref that escapes via ../ is rejected with a clear error", async () => {
+      // Write a manifest YAML with a relative $ref that escapes the manifest dir.
+      const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "muster-ref-traversal-"));
+      const manifestPath = path.join(tmpDir, "manifest.yaml");
+
+      // YAML manifest with an escaping $ref
+      const yamlContent = `cases:\n  - $ref: "../../etc/passwd"\n`;
+      await fs.writeFile(manifestPath, yamlContent, "utf-8");
+
+      await expect(runManifest(manifestPath, { dryRun: false })).rejects.toThrow(
+        /path traversal rejected/i
+      );
+    });
+
+    it("absolute fixturePath is allowed regardless of location (no traversal concern)", async () => {
+      // Absolute paths bypass the traversal guard — they are explicitly anchored.
+      // Use a real fixture file at an absolute path (outside any temp dir).
+      const manifest: CompositionManifest = {
+        cases: [
+          {
+            id: "abs-path-allowed",
+            testClass: "static",
+            layers: [
+              { layerType: "persona", fixturePath: path.resolve(PROJECT_ROOT, "fixtures/crosslayer/benign/SOUL.md") },
+              { layerType: "sop", fixturePath: path.resolve(PROJECT_ROOT, "fixtures/crosslayer/benign/AGENTS.md") },
+            ],
+            expected: { ok: true },
+          },
+        ],
+      };
+
+      // Write to a temp dir far from the fixture files.
+      const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "muster-abs-path-"));
+      const tmpPath = path.join(tmpDir, "manifest.yaml");
+      await fs.writeFile(tmpPath, JSON.stringify(manifest), "utf-8");
+
+      // Must NOT throw — absolute paths are permitted anywhere.
+      const summary = await runManifest(tmpPath, { testClassFilter: "static" });
+      expect(summary.total).toBe(1);
+      expect(summary.results[0]?.passed).toBe(true);
     });
   });
 });

@@ -22,4 +22,5 @@ cases:
 
   # --- Behavioral: precedence-resolution ---
   - $ref: precedence-behavioral/scenario-sop-wins.yaml
+  - $ref: precedence-behavioral/scenario-second-endpoint.yaml
   - $ref: precedence-behavioral/scenario-endpoint-error.yaml

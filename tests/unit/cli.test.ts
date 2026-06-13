@@ -623,11 +623,14 @@ describe("muster crosslayer run (WP04, FR-011, C-004)", () => {
       total: number;
       passed: number;
       failed: number;
+      skipped: number;
       results: Array<{ id: string; passed: boolean }>;
     };
     expect(summary.total).toBe(5);
     expect(summary.passed).toBe(5);
     expect(summary.failed).toBe(0);
+    // Note 3: skipped counter present in JSON output (all 0 for static-only run).
+    expect(summary.skipped).toBe(0);
     expect(summary.results).toHaveLength(5);
     // Every result is a pass.
     for (const result of summary.results) {
