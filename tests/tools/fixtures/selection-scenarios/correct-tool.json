@@ -1,0 +1,8 @@
+{
+  "id": "tools-select-correct-001",
+  "scenario": "Send an email to alice@example.com with subject 'Hello' and body 'Hi there'.",
+  "expectedAxis": "correct-selection",
+  "expectedTool": "send_email",
+  "runs": 3,
+  "pass_threshold": 2
+}

@@ -1,0 +1,8 @@
+{
+  "id": "tools-select-control-001",
+  "scenario": "List the files in the /tmp directory.",
+  "expectedAxis": "control",
+  "controlRiggedTool": "__rigged_impossible__",
+  "runs": 1,
+  "pass_threshold": 1
+}
