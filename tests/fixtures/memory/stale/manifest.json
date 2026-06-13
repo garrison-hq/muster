@@ -1,0 +1,16 @@
+{
+  "labels": {
+    "memory-last-session-0": {
+      "private": false,
+      "timeSensitive": true
+    },
+    "memory-last-session-1": {
+      "private": false,
+      "timeSensitive": false
+    },
+    "user-identity-0": {
+      "private": false,
+      "timeSensitive": false
+    }
+  }
+}
