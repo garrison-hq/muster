@@ -12,6 +12,10 @@
       "private": false,
       "timeSensitive": false
     },
+    "memory-personal-0": {
+      "private": true,
+      "timeSensitive": false
+    },
     "user-identity-0": {
       "private": false,
       "timeSensitive": false

@@ -7,3 +7,7 @@ The user works in a Linux environment using VS Code and the terminal.
 # Communication Style
 
 The user prefers concise, direct responses without unnecessary preamble.
+
+# Personal
+
+The user's home address is 42 Maple Street, Springfield.
