@@ -25,13 +25,20 @@ import type {
   ThresholdMapping,
 } from "../../core/adapter.js";
 import type { Violation } from "../../core/report.js";
+import { makeClient } from "../../core/behavioral/client.js";
+import type { ChatClient } from "../../core/behavioral/types.js";
 import {
   parseHeartbeat,
+  applyManifest,
   lintHeartbeat,
   serializeLintReport,
 } from "./lint.js";
-import type { LintReport } from "./lint.js";
+import type { LintReport, RecurrenceManifest } from "./lint.js";
+import { loadTickState, buildScenarioFraming } from "./tick.js";
 import { loadIntervalConfig } from "./graders/quiet-ack.js";
+import * as ActionDiffGrader from "./graders/action-diff.js";
+import * as IdempotencyGrader from "./graders/idempotency.js";
+import * as QuietAckGrader from "./graders/quiet-ack.js";
 
 // ---------------------------------------------------------------------------
 // Version from package.json (mirrors rfc1Adapter pattern)
@@ -211,39 +218,271 @@ function gradeIntervalConfigCase(kase: ManifestCase, projectRoot: string): CaseR
   };
 }
 
+// ---------------------------------------------------------------------------
+// Behavioral case runner helpers (FR-001, FR-004/005/006, FR-008)
+// ---------------------------------------------------------------------------
+
+/** Default number of runs for k-of-n aggregation when not specified. */
+const DEFAULT_BEHAVIORAL_RUNS = 3;
+
+/**
+ * Build the recurrence manifest from a ManifestCase's itemRecurrence array.
+ * Used to annotate checklist items with their declared recurrence before grading.
+ */
+function buildRecurrenceManifest(kase: ManifestCase, checklistPath: string): RecurrenceManifest {
+  return {
+    checklistPath,
+    items: kase.itemRecurrence.map((entry) => ({
+      itemId: entry.itemId,
+      recurrence: entry.recurrence,
+    })),
+  };
+}
+
+/**
+ * Run N model calls for an action-diff behavioral case.
+ * Each errored run is represented as ActionDiff with passed:false (FR-008).
+ * Returns the aggregated pass/fail and run-level detail.
+ */
+async function runActionDiffCase(
+  kase: ManifestCase,
+  root: string,
+  client: ChatClient,
+  n: number,
+  k: number
+): Promise<CaseResult> {
+  const absChecklistPath = resolvePath(root, kase.checklistPath);
+  const raw = readFileSync(absChecklistPath, "utf-8");
+  const fileBase = parseHeartbeat(absChecklistPath, raw);
+  const recurrenceManifest = buildRecurrenceManifest(kase, absChecklistPath);
+  const checklist = applyManifest(fileBase, recurrenceManifest);
+
+  const tickStatePath = resolvePath(root, kase.tickState as string);
+  const tick = loadTickState(tickStatePath);
+  const intervalConfig = loadIntervalConfig(resolvePath(root, kase.intervalConfig));
+  const tickWithInterval = { ...tick, intervalConfig };
+  const framing = buildScenarioFraming(checklist, tickWithInterval);
+
+  const intendedActions = checklist.items.map((item) => item.text);
+  const runs: ActionDiffGrader.ActionDiff[] = [];
+
+  for (let i = 0; i < n; i++) {
+    let agentResponse: string;
+    try {
+      agentResponse = await client.chat(
+        [{ role: "user", content: framing }],
+        {}
+      );
+    } catch {
+      // FR-008: transport/model error is a failed run, never skipped.
+      runs.push({
+        intendedActions,
+        observedActions: [],
+        missingActions: [...intendedActions],
+        extraActions: [],
+        passed: false,
+      });
+      continue;
+    }
+    runs.push(ActionDiffGrader.gradeRun(agentResponse, intendedActions));
+  }
+
+  const passed = ActionDiffGrader.aggregateActionDiff(runs, k);
+  const passCount = runs.filter((r) => r.passed).length;
+
+  return {
+    id: kase.id,
+    description: kase.description,
+    gradingClass: kase.gradingClass,
+    passed,
+    skipped: false,
+    detail: { runs: n, k, passCount, runResults: runs },
+  };
+}
+
+/**
+ * Run N model calls for an idempotency behavioral case.
+ * Each errored run is represented as IdempotencyCheck with passed:false (FR-008).
+ */
+async function runIdempotencyCase(
+  kase: ManifestCase,
+  root: string,
+  client: ChatClient,
+  n: number,
+  k: number
+): Promise<CaseResult> {
+  const absChecklistPath = resolvePath(root, kase.checklistPath);
+  const raw = readFileSync(absChecklistPath, "utf-8");
+  const fileBase = parseHeartbeat(absChecklistPath, raw);
+  const recurrenceManifest = buildRecurrenceManifest(kase, absChecklistPath);
+  const checklist = applyManifest(fileBase, recurrenceManifest);
+
+  const tickStatePath = resolvePath(root, kase.tickState as string);
+  const tick = loadTickState(tickStatePath);
+  const intervalConfig = loadIntervalConfig(resolvePath(root, kase.intervalConfig));
+  const tickWithInterval = { ...tick, intervalConfig };
+  const framing = buildScenarioFraming(checklist, tickWithInterval);
+
+  const onceOnlyItems = checklist.items.filter((item) => item.recurrence === "once-only");
+  const priorActions = tick.priorActionSummary !== null
+    ? tick.priorActionSummary.split("\n").map((l) => l.trim()).filter((l) => l.length > 0)
+    : [];
+
+  const runs: IdempotencyGrader.IdempotencyCheck[] = [];
+
+  for (let i = 0; i < n; i++) {
+    let agentResponse: string;
+    try {
+      agentResponse = await client.chat(
+        [{ role: "user", content: framing }],
+        {}
+      );
+    } catch {
+      // FR-008: errored run is a failed run, never skipped.
+      runs.push({
+        onceOnlyItems,
+        priorActions,
+        observedActions: [],
+        repeatedActions: [],
+        passed: false,
+      });
+      continue;
+    }
+    runs.push(IdempotencyGrader.gradeRun(agentResponse, onceOnlyItems, priorActions));
+  }
+
+  const passed = IdempotencyGrader.aggregateIdempotency(runs, k);
+  const passCount = runs.filter((r) => r.passed).length;
+
+  return {
+    id: kase.id,
+    description: kase.description,
+    gradingClass: kase.gradingClass,
+    passed,
+    skipped: false,
+    detail: { runs: n, k, passCount, runResults: runs },
+  };
+}
+
+/**
+ * Run N model calls for a quiet-ack behavioral case.
+ * Each errored/empty run is represented as QuietAckCheck with passed:false (FR-008).
+ */
+async function runQuietAckCase(
+  kase: ManifestCase,
+  root: string,
+  client: ChatClient,
+  n: number,
+  k: number
+): Promise<CaseResult> {
+  const absChecklistPath = resolvePath(root, kase.checklistPath);
+  const raw = readFileSync(absChecklistPath, "utf-8");
+  const fileBase = parseHeartbeat(absChecklistPath, raw);
+  const checklist = applyManifest(fileBase, { checklistPath: absChecklistPath, items: [] });
+
+  const tickStatePath = resolvePath(root, kase.tickState as string);
+  const tick = loadTickState(tickStatePath);
+  const intervalConfig = loadIntervalConfig(resolvePath(root, kase.intervalConfig));
+  const tickWithInterval = { ...tick, intervalConfig };
+  const framing = buildScenarioFraming(checklist, tickWithInterval);
+
+  const runs: QuietAckGrader.QuietAckCheck[] = [];
+
+  for (let i = 0; i < n; i++) {
+    let agentResponse: string | null = null;
+    try {
+      agentResponse = await client.chat(
+        [{ role: "user", content: framing }],
+        {}
+      );
+    } catch {
+      // FR-008: transport/model error is a failed run, never skipped.
+      runs.push(QuietAckGrader.gradeRun(null, intervalConfig, tickWithInterval));
+      continue;
+    }
+    runs.push(QuietAckGrader.gradeRun(agentResponse, intervalConfig, tickWithInterval));
+  }
+
+  const passed = QuietAckGrader.aggregateQuietAck(runs, k);
+  const passCount = runs.filter((r) => r.passed).length;
+
+  return {
+    id: kase.id,
+    description: kase.description,
+    gradingClass: kase.gradingClass,
+    passed,
+    skipped: false,
+    detail: { runs: n, k, passCount, runResults: runs },
+  };
+}
+
+/**
+ * Grade one behavioral case (action-diff / idempotency / quiet-ack) using the
+ * core behavioral client. Called only when MUSTER_ENDPOINT is set.
+ *
+ * Maps manifest passThreshold → k = ceil(passThreshold * N) (charter pass^k).
+ * Errors per-run are materialised as passed:false before aggregation (FR-008).
+ */
+async function gradeBehavioralCase(
+  kase: ManifestCase,
+  root: string,
+  client: ChatClient
+): Promise<CaseResult> {
+  const exp = kase.expectation;
+  const passThreshold = typeof exp["passThreshold"] === "number" ? exp["passThreshold"] : 0.6;
+  const n = typeof exp["runs"] === "number" ? exp["runs"] : DEFAULT_BEHAVIORAL_RUNS;
+  const k = Math.ceil(passThreshold * n);
+
+  if (kase.gradingClass === "action-diff") {
+    return runActionDiffCase(kase, root, client, n, k);
+  }
+  if (kase.gradingClass === "idempotency") {
+    return runIdempotencyCase(kase, root, client, n, k);
+  }
+  return runQuietAckCase(kase, root, client, n, k);
+}
+
 /**
  * Run all cases in a heartbeat test manifest and return a deterministic
  * pass/fail summary sorted by case ID (UTF-16 code-unit ordering, NFR-001).
  *
  * Behavioral cases (action-diff, idempotency, quiet-ack) are skipped when
  * MUSTER_ENDPOINT is not set (pass^k grading requires a BYOM endpoint).
- * Static and interval-config cases run synchronously without an endpoint.
+ * When MUSTER_ENDPOINT IS set, they run through the core behavioral client
+ * (src/core/behavioral/client.ts) with the WP02/WP03 graders (FR-001,
+ * FR-004/005/006, FR-008).
  *
  * @param manifestPath - Absolute or project-relative path to manifest.json.
  * @param projectRoot  - Root directory for resolving relative fixture paths.
  *                       Defaults to the manifest file's parent directory.
  */
-export function runManifest(
+export async function runManifest(
   manifestPath: string,
   projectRoot?: string
-): ManifestSummary {
+): Promise<ManifestSummary> {
   const absManifest = resolvePath(manifestPath);
   const root = projectRoot ?? dirname(absManifest);
 
   const manifest = loadManifestFile(absManifest);
-  const hasMusterEndpoint = Boolean(process.env["MUSTER_ENDPOINT"]);
+  const endpointUrl = process.env["MUSTER_ENDPOINT"];
+  const hasMusterEndpoint = Boolean(endpointUrl);
 
-  const results: CaseResult[] = manifest.cases.map((kase): CaseResult => {
+  const results: CaseResult[] = [];
+
+  for (const kase of manifest.cases) {
+    let result: CaseResult;
     switch (kase.gradingClass) {
       case "static-lint":
-        return gradeStaticLintCase(kase, root);
+        result = gradeStaticLintCase(kase, root);
+        break;
       case "interval-config":
-        return gradeIntervalConfigCase(kase, root);
+        result = gradeIntervalConfigCase(kase, root);
+        break;
       case "action-diff":
       case "idempotency":
       case "quiet-ack":
         if (!hasMusterEndpoint) {
-          return {
+          result = {
             id: kase.id,
             description: kase.description,
             gradingClass: kase.gradingClass,
@@ -251,19 +490,18 @@ export function runManifest(
             skipped: true,
             skipReason: `MUSTER_ENDPOINT not set — behavioral case requires a BYOM endpoint`,
           };
+        } else {
+          const client = makeClient({
+            baseUrl: endpointUrl as string,
+            model: process.env["MUSTER_MODEL"] ?? "default",
+            apiKeyEnv: "MUSTER_API_KEY",
+          });
+          result = await gradeBehavioralCase(kase, root, client);
         }
-        // Behavioral endpoint execution is out of scope for the static suite runner.
-        return {
-          id: kase.id,
-          description: kase.description,
-          gradingClass: kase.gradingClass,
-          passed: false,
-          skipped: true,
-          skipReason: `Behavioral endpoint execution not yet implemented in this runner`,
-        };
+        break;
       default: {
         const exhaustiveCheck: never = kase.gradingClass;
-        return {
+        result = {
           id: kase.id,
           description: kase.description,
           gradingClass: String(exhaustiveCheck),
@@ -271,9 +509,11 @@ export function runManifest(
           skipped: false,
           detail: { error: `Unknown gradingClass: ${String(exhaustiveCheck)}` },
         };
+        break;
       }
     }
-  });
+    results.push(result);
+  }
 
   // Sort by case ID using UTF-16 code-unit ordering (NFR-001).
   // DO NOT use localeCompare — it is locale-dependent and breaks byte-stability.

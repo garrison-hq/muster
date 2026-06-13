@@ -3,8 +3,8 @@
  *
  * Drives the manifest runner against all static and interval-config cases in
  * tests/fixtures/heartbeat/manifest.json. Behavioral cases (action-diff,
- * idempotency, quiet-ack) are skipped when MUSTER_ENDPOINT is not set — they
- * use it.skipIf so they run when an endpoint is configured in CI.
+ * idempotency, quiet-ack) run via stubbed ChatClient when MUSTER_ENDPOINT is
+ * not set, and via the real core behavioral client when it is set.
  *
  * Invariants checked here:
  * - hb-static-001: valid-concise → ok: true, no findings
@@ -15,9 +15,11 @@
  * - hb-behavioral-001/002/003: skipped without MUSTER_ENDPOINT
  *
  * Also tests the manifest runner directly for determinism and sorting (NFR-001).
+ * Includes stub-client integration tests for the wired behavioral path (FR-001,
+ * FR-008 errored-run-as-failure).
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { resolve as resolvePath, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
@@ -33,6 +35,8 @@ import {
   lintHeartbeat,
 } from "../../src/adapters/heartbeat/lint.js";
 import { loadIntervalConfig } from "../../src/adapters/heartbeat/graders/quiet-ack.js";
+import * as BehavioralClient from "../../src/core/behavioral/client.js";
+import type { ChatClient } from "../../src/core/behavioral/types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURES_ROOT = resolvePath(__dirname, "../../tests/fixtures/heartbeat");
@@ -164,17 +168,17 @@ describe("T019 manifest.json", () => {
 // ---------------------------------------------------------------------------
 
 describe("T019 manifest runner", () => {
-  it("runs without throwing", () => {
-    expect(() => runManifest(MANIFEST_PATH, PROJECT_ROOT)).not.toThrow();
+  it("runs without throwing", async () => {
+    await expect(runManifest(MANIFEST_PATH, PROJECT_ROOT)).resolves.not.toThrow();
   });
 
-  it("returns 8 total cases", () => {
-    const summary = runManifest(MANIFEST_PATH, PROJECT_ROOT);
+  it("returns 8 total cases", async () => {
+    const summary = await runManifest(MANIFEST_PATH, PROJECT_ROOT);
     expect(summary.totalCases).toBe(8);
   });
 
-  it("passes hb-static-001 (valid-concise → ok: true, no findings)", () => {
-    const summary = runManifest(MANIFEST_PATH, PROJECT_ROOT);
+  it("passes hb-static-001 (valid-concise → ok: true, no findings)", async () => {
+    const summary = await runManifest(MANIFEST_PATH, PROJECT_ROOT);
     const result = summary.results.find((r) => r.id === "hb-static-001");
     expect(result).toBeDefined();
     expect(result?.skipped).toBe(false);
@@ -183,8 +187,8 @@ describe("T019 manifest runner", () => {
     expect((result?.detail as Record<string, unknown>)["isEmpty"]).toBe(false);
   });
 
-  it("passes hb-static-002 (empty → isEmpty: true, empty-file-skip rule)", () => {
-    const summary = runManifest(MANIFEST_PATH, PROJECT_ROOT);
+  it("passes hb-static-002 (empty → isEmpty: true, empty-file-skip rule)", async () => {
+    const summary = await runManifest(MANIFEST_PATH, PROJECT_ROOT);
     const result = summary.results.find((r) => r.id === "hb-static-002");
     expect(result).toBeDefined();
     expect(result?.skipped).toBe(false);
@@ -194,8 +198,8 @@ describe("T019 manifest runner", () => {
     expect(rules).toContain("heartbeat/empty-file-skip");
   });
 
-  it("passes hb-static-003 (comment-only → isEmpty: true, empty-file-skip rule)", () => {
-    const summary = runManifest(MANIFEST_PATH, PROJECT_ROOT);
+  it("passes hb-static-003 (comment-only → isEmpty: true, empty-file-skip rule)", async () => {
+    const summary = await runManifest(MANIFEST_PATH, PROJECT_ROOT);
     const result = summary.results.find((r) => r.id === "hb-static-003");
     expect(result).toBeDefined();
     expect(result?.skipped).toBe(false);
@@ -205,8 +209,8 @@ describe("T019 manifest runner", () => {
     expect(rules).toContain("heartbeat/empty-file-skip");
   });
 
-  it("passes hb-static-004 (over-length → length-advisory rule)", () => {
-    const summary = runManifest(MANIFEST_PATH, PROJECT_ROOT);
+  it("passes hb-static-004 (over-length → length-advisory rule)", async () => {
+    const summary = await runManifest(MANIFEST_PATH, PROJECT_ROOT);
     const result = summary.results.find((r) => r.id === "hb-static-004");
     expect(result).toBeDefined();
     expect(result?.skipped).toBe(false);
@@ -215,8 +219,8 @@ describe("T019 manifest runner", () => {
     expect(rules).toContain("heartbeat/length-advisory");
   });
 
-  it("passes hb-config-001 (absent config → assumed: true, 30m)", () => {
-    const summary = runManifest(MANIFEST_PATH, PROJECT_ROOT);
+  it("passes hb-config-001 (absent config → assumed: true, 30m)", async () => {
+    const summary = await runManifest(MANIFEST_PATH, PROJECT_ROOT);
     const result = summary.results.find((r) => r.id === "hb-config-001");
     expect(result).toBeDefined();
     expect(result?.skipped).toBe(false);
@@ -225,13 +229,13 @@ describe("T019 manifest runner", () => {
     expect((result?.detail as Record<string, unknown>)["intervalMinutes"]).toBe(30);
   });
 
-  it("skips all 3 behavioral cases when MUSTER_ENDPOINT is not set", () => {
+  it("skips all 3 behavioral cases when MUSTER_ENDPOINT is not set", async () => {
     // Ensure no endpoint is set for this test.
     const savedEndpoint = process.env["MUSTER_ENDPOINT"];
     delete process.env["MUSTER_ENDPOINT"];
 
     try {
-      const summary = runManifest(MANIFEST_PATH, PROJECT_ROOT);
+      const summary = await runManifest(MANIFEST_PATH, PROJECT_ROOT);
       const behavioralIds = ["hb-behavioral-001", "hb-behavioral-002", "hb-behavioral-003"];
       for (const id of behavioralIds) {
         const result = summary.results.find((r) => r.id === id);
@@ -248,33 +252,165 @@ describe("T019 manifest runner", () => {
 
   it.skipIf(!process.env["MUSTER_ENDPOINT"])(
     "behavioral cases run (not skipped) when MUSTER_ENDPOINT is set",
-    () => {
-      const summary = runManifest(MANIFEST_PATH, PROJECT_ROOT);
+    async () => {
+      const summary = await runManifest(MANIFEST_PATH, PROJECT_ROOT);
       const behavioralIds = ["hb-behavioral-001", "hb-behavioral-002", "hb-behavioral-003"];
       for (const id of behavioralIds) {
         const result = summary.results.find((r) => r.id === id);
-        // When endpoint is set, they should not be skipped due to missing endpoint.
-        expect(result?.skipReason).not.toContain("MUSTER_ENDPOINT not set");
+        // When endpoint is set, they must not be skipped and must have a pass/fail result.
+        expect(result?.skipped, `${id} must not be skipped`).toBe(false);
+        expect(typeof result?.passed, `${id} must have a boolean passed`).toBe("boolean");
+        expect(result?.skipReason, `${id} must have no skipReason`).toBeUndefined();
       }
     }
   );
 
-  it("results are sorted by case ID (UTF-16 ordering, NFR-001)", () => {
-    const summary = runManifest(MANIFEST_PATH, PROJECT_ROOT);
+  it("results are sorted by case ID (UTF-16 ordering, NFR-001)", async () => {
+    const summary = await runManifest(MANIFEST_PATH, PROJECT_ROOT);
     const ids = summary.results.map((r) => r.id);
     const sorted = [...ids].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
     expect(ids).toEqual(sorted);
   });
 
-  it("runner is deterministic: two runs produce identical summaries (NFR-001)", () => {
-    const run1 = runManifest(MANIFEST_PATH, PROJECT_ROOT);
-    const run2 = runManifest(MANIFEST_PATH, PROJECT_ROOT);
+  it("runner is deterministic: two runs produce identical summaries (NFR-001)", async () => {
+    const run1 = await runManifest(MANIFEST_PATH, PROJECT_ROOT);
+    const run2 = await runManifest(MANIFEST_PATH, PROJECT_ROOT);
     expect(JSON.stringify(run1)).toBe(JSON.stringify(run2));
   });
 
-  it("summary counts are consistent (passed + failed + skipped = totalCases)", () => {
-    const summary = runManifest(MANIFEST_PATH, PROJECT_ROOT);
+  it("summary counts are consistent (passed + failed + skipped = totalCases)", async () => {
+    const summary = await runManifest(MANIFEST_PATH, PROJECT_ROOT);
     expect(summary.passed + summary.failed + summary.skipped).toBe(summary.totalCases);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// T019-behavioral — Stub-client integration: behavioral path runs deterministically
+//
+// These tests wire a deterministic stub ChatClient into the manifest runner so
+// the behavioral graders (WP02/WP03) are exercised without a live endpoint.
+// They prove FR-001 (core behavioral client reused), FR-004/005/006 (graders
+// are called), and FR-008 (errored run counts as a failed run).
+// ---------------------------------------------------------------------------
+
+describe("T019 behavioral path (stub client)", () => {
+  let savedEndpoint: string | undefined;
+
+  beforeEach(() => {
+    savedEndpoint = process.env["MUSTER_ENDPOINT"];
+    // Set a fake endpoint so the behavioral path is activated.
+    process.env["MUSTER_ENDPOINT"] = "http://stub-endpoint.test";
+  });
+
+  afterEach(() => {
+    if (savedEndpoint !== undefined) {
+      process.env["MUSTER_ENDPOINT"] = savedEndpoint;
+    } else {
+      delete process.env["MUSTER_ENDPOINT"];
+    }
+    vi.restoreAllMocks();
+  });
+
+  it("action-diff case runs and produces pass/fail (stub returning HEARTBEAT_OK fails)", async () => {
+    // HEARTBEAT_OK on a due tick is an action-diff miss (spec edge case).
+    const stubClient: ChatClient = { chat: async () => "HEARTBEAT_OK" };
+    vi.spyOn(BehavioralClient, "makeClient").mockReturnValue(stubClient);
+
+    const summary = await runManifest(MANIFEST_PATH, PROJECT_ROOT);
+    const result = summary.results.find((r) => r.id === "hb-behavioral-001");
+    expect(result?.skipped).toBe(false);
+    expect(typeof result?.passed).toBe("boolean");
+    // HEARTBEAT_OK on a due tick → all actions missing → passed: false
+    expect(result?.passed).toBe(false);
+    const detail = result?.detail as Record<string, unknown>;
+    expect(detail["passCount"]).toBe(0);
+  });
+
+  it("action-diff case passes when stub returns all expected actions", async () => {
+    // valid-concise.md has 2 items; stub returns them as a list.
+    const stubClient: ChatClient = {
+      chat: async () =>
+        "- Check the error log for new critical entries\n- Summarise open pull requests awaiting review",
+    };
+    vi.spyOn(BehavioralClient, "makeClient").mockReturnValue(stubClient);
+
+    const summary = await runManifest(MANIFEST_PATH, PROJECT_ROOT);
+    const result = summary.results.find((r) => r.id === "hb-behavioral-001");
+    expect(result?.skipped).toBe(false);
+    expect(result?.passed).toBe(true);
+    const detail = result?.detail as Record<string, unknown>;
+    // All 3 runs passed (default N=3, k=ceil(0.6*3)=2; all pass so passCount=3)
+    expect((detail["passCount"] as number)).toBeGreaterThanOrEqual(2);
+  });
+
+  it("idempotency case runs and produces pass/fail", async () => {
+    // Stub returns once-only item text → idempotency check: repeated action
+    const stubClient: ChatClient = {
+      chat: async () => "- Send the daily summary email (once-only — do not repeat on subsequent ticks)",
+    };
+    vi.spyOn(BehavioralClient, "makeClient").mockReturnValue(stubClient);
+
+    const summary = await runManifest(MANIFEST_PATH, PROJECT_ROOT);
+    const result = summary.results.find((r) => r.id === "hb-behavioral-002");
+    expect(result?.skipped).toBe(false);
+    expect(typeof result?.passed).toBe("boolean");
+    const detail = result?.detail as Record<string, unknown>;
+    expect(typeof detail["passCount"]).toBe("number");
+  });
+
+  it("quiet-ack case passes when stub returns HEARTBEAT_OK", async () => {
+    const stubClient: ChatClient = { chat: async () => "HEARTBEAT_OK" };
+    vi.spyOn(BehavioralClient, "makeClient").mockReturnValue(stubClient);
+
+    const summary = await runManifest(MANIFEST_PATH, PROJECT_ROOT);
+    const result = summary.results.find((r) => r.id === "hb-behavioral-003");
+    expect(result?.skipped).toBe(false);
+    expect(result?.passed).toBe(true);
+    const detail = result?.detail as Record<string, unknown>;
+    expect((detail["passCount"] as number)).toBeGreaterThanOrEqual(1);
+  });
+
+  it("FR-008: errored run (client throws) counts as failed run and drops pass count", async () => {
+    // Stub that always throws — every run is an errored run → all failed.
+    const stubClient: ChatClient = {
+      chat: async () => { throw new Error("transport error"); },
+    };
+    vi.spyOn(BehavioralClient, "makeClient").mockReturnValue(stubClient);
+
+    const summary = await runManifest(MANIFEST_PATH, PROJECT_ROOT);
+
+    for (const id of ["hb-behavioral-001", "hb-behavioral-002", "hb-behavioral-003"]) {
+      const result = summary.results.find((r) => r.id === id);
+      expect(result?.skipped, `${id} must not be skipped`).toBe(false);
+      expect(result?.passed, `${id} errored runs must fail aggregation`).toBe(false);
+      const detail = result?.detail as Record<string, unknown>;
+      // passCount must be 0 since every run errored (FR-008: errored = failed).
+      expect(detail["passCount"], `${id} passCount must be 0`).toBe(0);
+    }
+  });
+
+  it("FR-008: partial errors reduce pass count below k threshold", async () => {
+    // Stub: each client gets a fresh callCount, so only the first call of
+    // each case's client passes; the remaining 2 throw → passCount=1, k=2 → fails.
+    vi.spyOn(BehavioralClient, "makeClient").mockImplementation(() => {
+      let callCount = 0;
+      const client: ChatClient = {
+        chat: async () => {
+          callCount++;
+          if (callCount === 1) return "HEARTBEAT_OK";
+          throw new Error("transport error");
+        },
+      };
+      return client;
+    });
+
+    const summary = await runManifest(MANIFEST_PATH, PROJECT_ROOT);
+    const result = summary.results.find((r) => r.id === "hb-behavioral-003");
+    expect(result?.skipped).toBe(false);
+    // passCount=1, k=ceil(0.6*3)=2 → aggregate fails
+    expect(result?.passed).toBe(false);
+    const detail = result?.detail as Record<string, unknown>;
+    expect(detail["passCount"]).toBe(1);
   });
 });
 
@@ -365,8 +501,8 @@ describe("T020 HeartbeatAdapter SpecAdapter boundary", () => {
 describe("T022 static fixture suite", () => {
   const staticCaseIds = ["hb-static-001", "hb-static-002", "hb-static-003", "hb-static-004"];
 
-  it("all 4 static cases pass in the manifest runner", () => {
-    const summary = runManifest(MANIFEST_PATH, PROJECT_ROOT);
+  it("all 4 static cases pass in the manifest runner", async () => {
+    const summary = await runManifest(MANIFEST_PATH, PROJECT_ROOT);
     for (const id of staticCaseIds) {
       const result = summary.results.find((r) => r.id === id);
       expect(result, `${id} must be present`).toBeDefined();
@@ -375,8 +511,8 @@ describe("T022 static fixture suite", () => {
     }
   });
 
-  it("hb-config-001 interval-config case passes", () => {
-    const summary = runManifest(MANIFEST_PATH, PROJECT_ROOT);
+  it("hb-config-001 interval-config case passes", async () => {
+    const summary = await runManifest(MANIFEST_PATH, PROJECT_ROOT);
     const result = summary.results.find((r) => r.id === "hb-config-001");
     expect(result?.passed).toBe(true);
     expect(result?.skipped).toBe(false);
@@ -496,7 +632,7 @@ describe("T020 HeartbeatAdapter stub method coverage", () => {
     };
     const tmpManifest = "/tmp/test-hb-manifest-999.json";
     writeFileSync(tmpManifest, JSON.stringify(fakeManifest));
-    const summary = runManifest(tmpManifest, PROJECT_ROOT);
+    const summary = await runManifest(tmpManifest, PROJECT_ROOT);
     expect(summary.results[0]?.passed).toBe(false);
     expect(summary.results[0]?.skipped).toBe(false);
     unlinkSync(tmpManifest);
