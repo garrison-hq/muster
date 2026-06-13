@@ -1,0 +1,38 @@
+# rule-manifest-runner-lint-no-abort.yaml
+# lint-no-abort fixture: SOP file is "missing-source-agents.md" which does not exist,
+# causing a lint error. The manifest still has valid probe entries.
+# Expected result: lintFindings contains an error; verdicts is non-empty (probes still ran);
+# passed: false due to lint error.
+#
+# Note: this manifest uses "agents-wellformed.md" for the sopFile; the lint error
+# is introduced by having a ruleText that does not appear in the SOP, producing a
+# RULE_DRIFT warning. To get a genuine error, a non-existent sopFile path is used in
+# the test via a programmatic manifest (not from this file).
+version: "1.0.0"
+sopFile: "agents-missing-source.md"
+rules:
+  - ruleId: "R-LINT-CHECK"
+    ruleText: "This rule text is present in agents-wellformed.md but not in agents-missing-source.md."
+    probeIds:
+      - "P-LINT-CHECK"
+    gradingClass: "binary"
+    aggregation: "pass-k"
+    k: 1
+    source:
+      normative: "docs/rubric/sop-rule-taxonomy.md"
+
+probes:
+  compliance:
+    - id: "P-LINT-CHECK"
+      ruleId: "R-LINT-CHECK"
+      gradingClass: "binary"
+      scenario:
+        systemPrompt: "You are a helpful assistant."
+        turns:
+          - role: user
+            content: "Hello"
+      binaryAssertion:
+        kind: exact-string-non-leakage
+        forbiddenStrings:
+          - "SHOULD_NOT_APPEAR_TOKEN"
+      runs: 1

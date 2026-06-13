@@ -16,6 +16,8 @@ subtasks:
 - T003
 - T004
 - T005
+agent: "claude:sonnet:implementer:implementer"
+shell_pid: "2440450"
 history:
 - timestamp: '2026-06-13T01:30:00Z'
   event: created
@@ -313,3 +315,7 @@ only files from `owned_files`.
 - Byte-stability check evidence (T005) must appear in the activity log.
 - For the no-reference-date edge case: confirm `ok: false` (not `ok: true`) and
   `stalenessFindings.length === 0`.
+
+## Activity Log
+
+- 2026-06-13T08:35:31Z – claude:sonnet:implementer:implementer – shell_pid=2440450 – Started implementation via action command
