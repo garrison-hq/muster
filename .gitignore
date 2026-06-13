@@ -40,3 +40,12 @@ coverage/
 # Local secrets — BYOM model credentials (never commit a real key)
 .env
 .env.local
+
+# Project-committed Claude tooling (muster's custom agents + workflow) — keep
+# tracked even though .claude/ is ignored above.
+!.claude/
+.claude/*
+!.claude/agents/
+!.claude/agents/**
+!.claude/workflows/
+!.claude/workflows/**
