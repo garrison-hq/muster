@@ -18,6 +18,8 @@ subtasks:
 - T012
 - T013
 - T014
+assignee: "claude"
+agent: "claude:sonnet:implementer:implementer"
 history:
 - timestamp: '2026-06-13T01:30:00Z'
   event: created
@@ -450,3 +452,4 @@ git diff --stat | grep -v 'src/crosslayer/contradiction-lint.ts' \
 ## Activity Log
 
 - 2026-06-13T01:30:00Z – /spec-kitty.tasks – created
+- 2026-06-13T15:42:57Z – claude:sonnet:implementer:implementer – Moved to in_progress
