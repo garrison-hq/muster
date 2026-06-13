@@ -57,7 +57,12 @@ export interface CompositionManifestCase {
   isDiscriminationControl?: boolean;
   /** Optional adversarial probe text (FR-007). */
   adversarialProbe?: string;
-  expected: {
+  /**
+   * Expected outcome. Optional: when absent (e.g. integration/mocked-error cases
+   * with no declared expected verdict), the case is skipped gracefully on live
+   * runs rather than crashing (FR-008 null-safety).
+   */
+  expected?: {
     ok?: boolean;
     findingTypes?: CrossLayerFindingType[];
     verdict?: RuleSurvivalVerdict;
@@ -230,8 +235,18 @@ export interface RunManifestOptions {
  *
  * - expected.ok: report.ok must match.
  * - expected.findingTypes: each expected type must appear in report findings.
+ *
+ * When expected is absent, the case is skipped gracefully (FR-008 null-safety).
  */
 async function runStaticCase(c: CompositionManifestCase): Promise<CaseResult> {
+  if (c.expected === undefined) {
+    return {
+      id: c.id,
+      passed: false,
+      error: `Static case "${c.id}" has no expected declaration — skipped (no verdict possible).`,
+    };
+  }
+
   const resolvedLayers = resolveLayerPaths(c.layers);
   const composition = await assembleComposedContext({
     layers: resolvedLayers,
@@ -320,6 +335,17 @@ async function runBehavioralCase(
     model: endpointCfg.model,
     apiKeyEnv: endpointCfg.api_key_env,
   };
+
+  if (c.expected === undefined) {
+    // No expected declaration — skip gracefully (FR-008 null-safety).
+    // Per spec intent: mocked-error / integration-only cases with no expected key
+    // are not runnable on a live path. Count as skipped (passed: false, clear reason).
+    return {
+      id: c.id,
+      passed: false,
+      error: `Behavioral case "${c.id}" has no expected declaration — skipped on live path (integration/mocked-error case).`,
+    };
+  }
 
   const result = await runRuleSurvival(survivalCase, composition, endpointConfig);
 
