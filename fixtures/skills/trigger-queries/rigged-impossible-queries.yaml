@@ -1,0 +1,28 @@
+id: rigged-impossible-queries
+source: "agentskills.io/specification#trigger-testing@d8a3f2e1b9c74051e6f8d2a7c3b5f0e9d1a4c8b2"
+threshold: 0.5
+# These are normal, plausible queries. The rigged skill's description is
+# intentionally nonsensical (ZZZCONTROL-IMPOSSIBLE prefix). A well-functioning
+# model should NEVER invoke the rigged tool for these queries.
+# The discrimination control asserts: shouldTrigger trigger rate < threshold.
+# (The control uses shouldTrigger queries but the rigged skill can't be invoked
+# by them -- so the "should-trigger" axis fails as designed, proving the grader
+# can produce passed: false.)
+shouldTrigger:
+  - "Help me write a Python function"
+  - "What is the capital of France?"
+  - "Summarize this article for me"
+  - "Translate this sentence to Spanish"
+  - "Write a unit test for this code"
+  - "Explain how TCP/IP works"
+  - "What are the best practices for REST APIs?"
+  - "Find a bug in this JavaScript snippet"
+nearMiss:
+  - "ZZZCONTROL placeholder near-miss 1"
+  - "ZZZCONTROL placeholder near-miss 2"
+  - "ZZZCONTROL placeholder near-miss 3"
+  - "ZZZCONTROL placeholder near-miss 4"
+  - "ZZZCONTROL placeholder near-miss 5"
+  - "ZZZCONTROL placeholder near-miss 6"
+  - "ZZZCONTROL placeholder near-miss 7"
+  - "ZZZCONTROL placeholder near-miss 8"
