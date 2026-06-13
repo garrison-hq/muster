@@ -28,6 +28,8 @@ owned_files:
 - tests/heartbeat/lint.test.ts
 - tests/heartbeat/tick.test.ts
 tags: []
+assignee: "claude"
+agent: "claude:sonnet:implementer:implementer"
 ---
 
 # WP01 — HEARTBEAT.md parser + manifest + static lint
@@ -412,3 +414,4 @@ node -e "
 ## Activity Log
 
 - 2026-06-13T01:30:00Z – /spec-kitty.tasks – created
+- 2026-06-13T14:26:28Z – claude:sonnet:implementer:implementer – Moved to in_progress

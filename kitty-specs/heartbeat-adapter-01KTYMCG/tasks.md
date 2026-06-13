@@ -13,29 +13,29 @@ never overlap across WPs.
 
 | ID | Description | WP | Parallel |
 |---|---|---|---|
-| T001 | Parse `HEARTBEAT.md` into `ChecklistItem[]`; isEmpty detection (empty/comment-only skip semantics, C-003) | WP01 | [P] |
-| T002 | Item-recurrence manifest loader: once-only / recurring labels from `manifest.json` (FR-002) | WP01 | [P] |
-| T003 | Tick-state model and scenario-framing helpers in `tick.ts` (SimulatedTick, IntervalConfig) | WP01 | [P] |
-| T004 | Static lint: length/"token burn" advisory + empty/comment-only skip detection citing OpenClaw docs pinned SHA (FR-003, FR-010) | WP01 | |
-| T005 | Machine-readable report output for static lint findings (FR-010, NFR-001) | WP01 | |
-| T006 | WP01 unit tests: lint.test.ts + tick.test.ts; ≥80% coverage on WP01 owned files | WP01 | |
-| T007 | WP01 verification: build, full suite, byte-stability check | WP01 | |
-| T008 | Action-diff grader: due-tick probe, k-of-n, intendedActions vs observedActions (FR-004, FR-008) | WP02 | [P] |
-| T009 | Idempotency grader: repeat-tick probe, once-only items not repeated, k-of-n (FR-005, FR-008) | WP02 | [P] |
-| T010 | Rigged-impossible discrimination controls for action-diff and idempotency graders (FR-009) | WP02 | |
-| T011 | action-diff.test.ts + idempotency.test.ts; errored-run = failed run everywhere (FR-008) | WP02 | |
-| T012 | WP02 verification: behavioral probe tests green, controls fail as designed | WP02 | |
-| T013 | Quiet-ack grader: nothing-due-tick probe, HEARTBEAT_OK within ackMaxChars (default 300), k-of-n, cites OpenClaw docs pinned SHA (FR-006, C-003) | WP03 | [P] |
-| T014 | Interval-config read path: IntervalConfig consumed from supplied config; default 30m assumed + recorded when absent (FR-007) | WP03 | [P] |
-| T015 | Rigged-impossible discrimination control for quiet-ack grader (FR-009) | WP03 | |
-| T016 | quiet-ack.test.ts; ackMaxChars edge cases; HEARTBEAT_OK-on-due-tick is action-diff miss (spec edge case) | WP03 | |
-| T017 | WP03 verification: quiet-ack probe tests green, interval-config tests green, control fails | WP03 | |
-| T018 | Complete fixture set: checklists, tick-state sequences (due/repeat/nothing-due), interval configs (C-005) | WP04 | [P] |
-| T019 | manifest.json runner: iterate cases from manifest, produce pass/fail summary (FR-011) | WP04 | [P] |
-| T020 | HeartbeatAdapter assembly in index.ts behind SpecAdapter boundary (FR-001, C-001) | WP04 | |
-| T021 | CLI wiring: `muster check --adapter heartbeat` (FR-012) | WP04 | |
-| T022 | Full fixture suite Vitest integration; SonarCloud quality gate green (NFR-006, charter gate) | WP04 | |
-| T023 | WP04 verification: build, full suite, CLI smoke, coverage ≥80%, SonarCloud gate | WP04 | |
+| T001 | Parse `HEARTBEAT.md` into `ChecklistItem[]`; isEmpty detection (empty/comment-only skip semantics, C-003) | WP01 | [P] | [D] |
+| T002 | Item-recurrence manifest loader: once-only / recurring labels from `manifest.json` (FR-002) | WP01 | [D] |
+| T003 | Tick-state model and scenario-framing helpers in `tick.ts` (SimulatedTick, IntervalConfig) | WP01 | [D] |
+| T004 | Static lint: length/"token burn" advisory + empty/comment-only skip detection citing OpenClaw docs pinned SHA (FR-003, FR-010) | WP01 | | [D] |
+| T005 | Machine-readable report output for static lint findings (FR-010, NFR-001) | WP01 | | [D] |
+| T006 | WP01 unit tests: lint.test.ts + tick.test.ts; ≥80% coverage on WP01 owned files | WP01 | | [D] |
+| T007 | WP01 verification: build, full suite, byte-stability check | WP01 | | [D] |
+| T008 | Action-diff grader: due-tick probe, k-of-n, intendedActions vs observedActions (FR-004, FR-008) | WP02 | [D] |
+| T009 | Idempotency grader: repeat-tick probe, once-only items not repeated, k-of-n (FR-005, FR-008) | WP02 | [D] |
+| T010 | Rigged-impossible discrimination controls for action-diff and idempotency graders (FR-009) | WP02 | | [D] |
+| T011 | action-diff.test.ts + idempotency.test.ts; errored-run = failed run everywhere (FR-008) | WP02 | | [D] |
+| T012 | WP02 verification: behavioral probe tests green, controls fail as designed | WP02 | | [D] |
+| T013 | Quiet-ack grader: nothing-due-tick probe, HEARTBEAT_OK within ackMaxChars (default 300), k-of-n, cites OpenClaw docs pinned SHA (FR-006, C-003) | WP03 | [D] |
+| T014 | Interval-config read path: IntervalConfig consumed from supplied config; default 30m assumed + recorded when absent (FR-007) | WP03 | [D] |
+| T015 | Rigged-impossible discrimination control for quiet-ack grader (FR-009) | WP03 | | [D] |
+| T016 | quiet-ack.test.ts; ackMaxChars edge cases; HEARTBEAT_OK-on-due-tick is action-diff miss (spec edge case) | WP03 | | [D] |
+| T017 | WP03 verification: quiet-ack probe tests green, interval-config tests green, control fails | WP03 | | [D] |
+| T018 | Complete fixture set: checklists, tick-state sequences (due/repeat/nothing-due), interval configs (C-005) | WP04 | [D] |
+| T019 | manifest.json runner: iterate cases from manifest, produce pass/fail summary (FR-011) | WP04 | [D] |
+| T020 | HeartbeatAdapter assembly in index.ts behind SpecAdapter boundary (FR-001, C-001) | WP04 | | [D] |
+| T021 | CLI wiring: `muster check --adapter heartbeat` (FR-012) | WP04 | | [D] |
+| T022 | Full fixture suite Vitest integration; SonarCloud quality gate green (NFR-006, charter gate) | WP04 | | [D] |
+| T023 | WP04 verification: build, full suite, CLI smoke, coverage ≥80%, SonarCloud gate | WP04 | | [D] |
 
 ## Phase 1 — Foundation (WP01)
 
@@ -51,13 +51,13 @@ citing OpenClaw docs pinned to a commit SHA; machine-readable report output.
 byte-identical across repeated runs on the same fixture set (NFR-001);
 `tests/heartbeat/lint.test.ts` and `tick.test.ts` all pass.
 
-- [ ] T001 Parse `HEARTBEAT.md`; isEmpty detection with OpenClaw docs citation (WP01)
-- [ ] T002 Item-recurrence manifest loader (WP01)
-- [ ] T003 Tick-state model + scenario-framing helpers in tick.ts (WP01)
-- [ ] T004 Static lint: length advisory + empty/comment-only skip (WP01)
-- [ ] T005 Machine-readable report output for static lint (WP01)
-- [ ] T006 WP01 unit tests: lint.test.ts + tick.test.ts (WP01)
-- [ ] T007 WP01 verification: build, suite, byte-stability (WP01)
+- [x] T001 Parse `HEARTBEAT.md`; isEmpty detection with OpenClaw docs citation (WP01)
+- [x] T002 Item-recurrence manifest loader (WP01)
+- [x] T003 Tick-state model + scenario-framing helpers in tick.ts (WP01)
+- [x] T004 Static lint: length advisory + empty/comment-only skip (WP01)
+- [x] T005 Machine-readable report output for static lint (WP01)
+- [x] T006 WP01 unit tests: lint.test.ts + tick.test.ts (WP01)
+- [x] T007 WP01 verification: build, suite, byte-stability (WP01)
 
 **Dependencies**: none. **Parallel**: T001/T002/T003 touch disjoint files and can be
 drafted in parallel; T004/T005 depend on T001; T006 depends on T001–T005.
@@ -77,11 +77,11 @@ graders, and OpenAI-compatible client without modification (FR-001, C-001).
 **Independent test**: `pnpm test -- heartbeat/action-diff heartbeat/idempotency` green;
 both discrimination controls fail as designed; no `src/core/` file touched.
 
-- [ ] T008 Action-diff grader + due-tick probe (WP02)
-- [ ] T009 Idempotency grader + repeat-tick probe (WP02)
-- [ ] T010 Rigged-impossible controls for action-diff and idempotency (WP02)
-- [ ] T011 action-diff.test.ts + idempotency.test.ts (WP02)
-- [ ] T012 WP02 verification (WP02)
+- [x] T008 Action-diff grader + due-tick probe (WP02)
+- [x] T009 Idempotency grader + repeat-tick probe (WP02)
+- [x] T010 Rigged-impossible controls for action-diff and idempotency (WP02)
+- [x] T011 action-diff.test.ts + idempotency.test.ts (WP02)
+- [x] T012 WP02 verification (WP02)
 
 **Dependencies**: WP01 (ChecklistItem, tick-state model, IntervalConfig).
 **Parallel**: T008/T009 are independent graders on disjoint test files; T010 depends on
@@ -102,11 +102,11 @@ HEARTBEAT_OK-on-due-tick-is-action-diff-miss spec edge case.
 **Independent test**: `pnpm test -- heartbeat/quiet-ack` green; quiet-ack control fails;
 interval-config default-assumed recorded in report.
 
-- [ ] T013 Quiet-ack grader + nothing-due-tick probe with OpenClaw docs citation (WP03)
-- [ ] T014 Interval-config read path: IntervalConfig from supplied config, default 30m (WP03)
-- [ ] T015 Rigged-impossible control for quiet-ack grader (WP03)
-- [ ] T016 quiet-ack.test.ts incl. ackMaxChars and spec edge cases (WP03)
-- [ ] T017 WP03 verification (WP03)
+- [x] T013 Quiet-ack grader + nothing-due-tick probe with OpenClaw docs citation (WP03)
+- [x] T014 Interval-config read path: IntervalConfig from supplied config, default 30m (WP03)
+- [x] T015 Rigged-impossible control for quiet-ack grader (WP03)
+- [x] T016 quiet-ack.test.ts incl. ackMaxChars and spec edge cases (WP03)
+- [x] T017 WP03 verification (WP03)
 
 **Dependencies**: WP01 (tick-state model, IntervalConfig, SimulatedTick).
 **Parallel**: T013/T014 touch disjoint concerns and can be drafted in parallel; T015
@@ -131,12 +131,12 @@ heartbeat`; full Vitest integration; SonarCloud quality gate green (NFR-006).
 exits 0 with report on stdout; `pnpm test:coverage` emits lcov and SonarCloud gate is
 green.
 
-- [ ] T018 Complete fixture set: all checklists + tick states + interval configs (WP04)
-- [ ] T019 manifest.json runner: iterate cases, produce pass/fail summary (WP04)
-- [ ] T020 HeartbeatAdapter assembly in index.ts (SpecAdapter boundary) (WP04)
-- [ ] T021 CLI wiring: --adapter heartbeat (WP04)
-- [ ] T022 Full fixture suite Vitest integration + coverage gate (WP04)
-- [ ] T023 WP04 verification: build, suite, CLI smoke, coverage, SonarCloud gate (WP04)
+- [x] T018 Complete fixture set: all checklists + tick states + interval configs (WP04)
+- [x] T019 manifest.json runner: iterate cases, produce pass/fail summary (WP04)
+- [x] T020 HeartbeatAdapter assembly in index.ts (SpecAdapter boundary) (WP04)
+- [x] T021 CLI wiring: --adapter heartbeat (WP04)
+- [x] T022 Full fixture suite Vitest integration + coverage gate (WP04)
+- [x] T023 WP04 verification: build, suite, CLI smoke, coverage, SonarCloud gate (WP04)
 
 **Dependencies**: WP01, WP02, WP03 (all adapter sources and tests must exist before
 assembly and CLI wiring).

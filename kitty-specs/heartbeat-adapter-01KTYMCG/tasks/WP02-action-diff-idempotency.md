@@ -25,6 +25,8 @@ owned_files:
 - tests/heartbeat/action-diff.test.ts
 - tests/heartbeat/idempotency.test.ts
 tags: []
+assignee: "claude"
+agent: "claude:sonnet:implementer:implementer"
 ---
 
 # WP02 — Action-diff probe + idempotency probe
@@ -312,3 +314,4 @@ pnpm test -- tests/heartbeat/action-diff --reporter=verbose 2>&1 | grep -E '(dis
 ## Activity Log
 
 - 2026-06-13T01:30:00Z – /spec-kitty.tasks – created
+- 2026-06-13T14:26:29Z – claude:sonnet:implementer:implementer – Moved to in_progress

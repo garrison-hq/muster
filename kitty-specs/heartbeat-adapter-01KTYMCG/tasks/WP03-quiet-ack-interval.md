@@ -25,6 +25,8 @@ owned_files:
 - src/adapters/heartbeat/graders/quiet-ack.ts
 - tests/heartbeat/quiet-ack.test.ts
 tags: []
+assignee: "claude"
+agent: "claude:sonnet:implementer:implementer"
 ---
 
 # WP03 — Quiet-ack probe + interval-config awareness + controls
@@ -313,3 +315,4 @@ node -e "
 ## Activity Log
 
 - 2026-06-13T01:30:00Z – /spec-kitty.tasks – created
+- 2026-06-13T14:26:31Z – claude:sonnet:implementer:implementer – Moved to in_progress

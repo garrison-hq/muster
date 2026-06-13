@@ -53,6 +53,13 @@ import { rfc1Adapter } from "../adapters/rfc1/index.js";
 // Memory adapter registration (FR-001, C-001: only the factory is imported here).
 import { createMemoryAdapter, type AdapterManifest, type AdapterOptions } from "../adapters/memory/index.js";
 import {
+  HeartbeatAdapter,
+  checkHeartbeatFile,
+  serializeLintReport,
+  runManifest as runHeartbeatManifest,
+  type ManifestSummary as HeartbeatManifestSummary,
+} from "../adapters/heartbeat/index.js";
+import {
   formatBehaveHuman,
   formatCtsHuman,
   formatReportHuman,
@@ -181,13 +188,25 @@ function parseFiniteNumber(value: string): number {
   return parsed;
 }
 
+// Adapter registry: maps --adapter values to adapter factory functions (C-004).
+const ADAPTER_REGISTRY: Record<string, () => InstanceType<typeof HeartbeatAdapter>> = {
+  heartbeat: () => new HeartbeatAdapter(),
+};
+
 // ─── muster check ───────────────────────────────────────────────────────────
 
 async function doCheck(
   soul: string,
-  opts: GlobalOpts & { profile?: string; state?: string; restrictRefs?: RestrictRefsFlag },
+  opts: GlobalOpts & { adapter?: string; profile?: string; state?: string; restrictRefs?: RestrictRefsFlag },
   io: Io
 ): Promise<number> {
+  // Heartbeat adapter path: runs the heartbeat lint pipeline (not Soul.md RFC-1).
+  if (opts.adapter === "heartbeat") {
+    const abs = toAbsolute(soul);
+    const report = await checkHeartbeatFile(abs);
+    io.outLine(serializeLintReport(report));
+    return report.ok ? 0 : 1;
+  }
   const { report } = await checkSoulFile(soul, {
     mode: opts.mode,
     ...(opts.profile !== undefined && { profile: opts.profile }),
@@ -456,6 +475,62 @@ function formatMemoryResultHuman(result: import("../adapters/memory/index.js").A
   return lines.join("\n");
 }
 
+// ─── muster heartbeat run ───────────────────────────────────────────────────
+
+/**
+ * Run the heartbeat adapter manifest runner (FR-011, T019).
+ *
+ * The manifest is a JSON file that lists static lint cases, interval-config
+ * cases, and optionally behavioral cases (action-diff, idempotency, quiet-ack).
+ * Static and interval-config cases always run (offline, deterministic,
+ * byte-stable — NFR-001, C-003). Behavioral cases require MUSTER_ENDPOINT and
+ * are skipped gracefully when it is absent.
+ */
+async function doHeartbeatRun(
+  manifestPath: string,
+  opts: GlobalOpts,
+  io: Io
+): Promise<number> {
+  let summary: HeartbeatManifestSummary;
+  try {
+    // projectRoot defaults to cwd so that relative checklist/fixture paths in
+    // the manifest resolve from the working directory (the conventional root).
+    summary = await runHeartbeatManifest(toAbsolute(manifestPath), process.cwd());
+  } catch (error) {
+    throw new ExecutionError(
+      `heartbeat manifest run failed: ${errorMessage(error)}`
+    );
+  }
+
+  io.outLine(
+    opts.json === true
+      ? JSON.stringify(summary, null, 2)
+      : formatHeartbeatSummaryHuman(summary)
+  );
+  return summary.failed > 0 ? 1 : 0;
+}
+
+/**
+ * Human-readable formatting for heartbeat ManifestSummary.
+ */
+function formatHeartbeatSummaryHuman(summary: HeartbeatManifestSummary): string {
+  const lines: string[] = [];
+  const statusWord = summary.failed > 0 ? "FAIL" : "PASS";
+  lines.push(
+    `heartbeat: ${statusWord} — ${summary.passed} passed, ${summary.failed} failed, ${summary.skipped} skipped of ${summary.totalCases}`
+  );
+  for (const result of summary.results) {
+    if (result.skipped) {
+      lines.push(`  SKIP ${result.id}: ${result.skipReason ?? "skipped"}`);
+    } else if (result.passed) {
+      lines.push(`  PASS ${result.id}: ${result.description}`);
+    } else {
+      lines.push(`  FAIL ${result.id}: ${result.description}`);
+    }
+  }
+  return lines.join("\n");
+}
+
 // ─── program assembly ───────────────────────────────────────────────────────
 
 function buildProgram(
@@ -484,6 +559,7 @@ function buildProgram(
       "Static conformance of one Soul.md document (§25.1 report). Never touches the network."
     )
     .argument("<soul>", "path to the Soul.md document")
+    .addOption(new Option("--adapter <name>", "adapter to use (default: rfc1)").choices(["rfc1", "heartbeat"]))
     .option("--profile <p>", "profile to apply (default: default)")
     .option("--state <s>", "runtime-requested state (§20.1)")
     .option("--restrict-refs [dir]", RESTRICT_REFS_HELP)
@@ -587,6 +663,31 @@ function buildProgram(
     .option("--model <m>", "behavioral endpoint model (default: llama3.2)")
     .action(async (manifest: string, _local, cmd: Command) => {
       setExit(await doMemoryRun(manifest, cmd.optsWithGlobals(), io));
+    });
+
+  // ─── muster heartbeat ─────────────────────────────────────────────────────
+  const heartbeat = program
+    .command("heartbeat")
+    .description(
+      "Heartbeat adapter: static lint, interval-config checks, and behavioral " +
+      "probes (action-diff / idempotency / quiet-ack) for HEARTBEAT.md conformance"
+    );
+  heartbeat
+    .command("run")
+    .description(
+      "Run the heartbeat conformance manifest. Static-lint and interval-config " +
+        "cases always run (offline, deterministic). Behavioral cases " +
+        "(action-diff, idempotency, quiet-ack) run only when MUSTER_ENDPOINT is set; " +
+        "they are skipped gracefully when it is absent."
+    )
+    .argument("<manifest>", "path to heartbeat adapter manifest JSON")
+    .addHelpText(
+      "after",
+      "\nBehavioral cases: set MUSTER_ENDPOINT (and optionally MUSTER_MODEL, " +
+        "MUSTER_API_KEY) to run them. Omit MUSTER_ENDPOINT for static-only."
+    )
+    .action(async (manifest: string, _local, cmd: Command) => {
+      setExit(await doHeartbeatRun(manifest, cmd.optsWithGlobals(), io));
     });
 
   return program;

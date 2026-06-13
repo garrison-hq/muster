@@ -37,6 +37,8 @@ owned_files:
 - tests/fixtures/heartbeat/interval-configs/absent.json
 - tests/fixtures/heartbeat/manifest.json
 tags: []
+assignee: "claude"
+agent: "claude:sonnet:implementer:implementer"
 ---
 
 # WP04 — Fixtures + manifest runner + CLI wiring
@@ -500,3 +502,4 @@ git diff -U0 src/cli/index.ts | grep '^\+' | grep -v 'heartbeat\|HeartbeatAdapte
 ## Activity Log
 
 - 2026-06-13T01:30:00Z – /spec-kitty.tasks – created
+- 2026-06-13T14:26:33Z – claude:sonnet:implementer:implementer – Moved to in_progress
