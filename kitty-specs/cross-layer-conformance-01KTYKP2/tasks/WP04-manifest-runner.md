@@ -24,7 +24,7 @@ subtasks:
 - T030
 - T031
 assignee: "claude"
-agent: "claude:sonnet:implementer:implementer"
+agent: "claude:opus:reviewer:reviewer"
 history:
 - timestamp: '2026-06-13T01:30:00Z'
   event: created
@@ -541,3 +541,4 @@ correct case count; only `owned_files` modified.
 - 2026-06-13T17:11:22Z – claude:opus:reviewer:reviewer – Re-review after live-path fix. Build clean, full suite 1619 passed/2 pre-existing skips, src/crosslayer coverage 93.46%/84.92% >=80 (manifest-runner reported 93%/83%). C-001 clean; fix commit 1030eff touched only owned_files; WP01/02/03 modules untouched. Runner reuses assembleComposedContext + lintComposition/runRuleSurvival (no reimplementation); HTTP isolated to core client; no raw fetch/SDK/hardcoded creds/any. FR-008 mid-suite endpoint-error test INTACT (Promise.reject on case 2 with real expected -> errored=failed, no retry/abort, remaining cases run) — the genuine errored=failed path is NOT replaced by the no-expected skip. BUG-3 no-expected handling acceptable: does not crash, does not silently pass (passed:false), per-case error field self-documents 'skipped (no expected declaration)' so it is not misreported as a genuine grading failure; aggregate counts it as failed which is the conservative fail-safe choice (never a false green). NOTE (non-blocking): no distinct 'skipped' counter — ungradeable cases roll into summary.failed; consider a separate skipped state for clearer C-004 conformance reporting. Discrimination control yields eroded in integration (DECISION:COMPLY composed) and unit. Static-suite <10s assertion present; dry-run 0 fetch; second-endpoint URL-spy present. No localeCompare/clock/RNG, no normative-order change, no complexity regression, no TODO.
 - 2026-06-13T19:21:47Z – claude:sonnet:implementer:implementer – Reopen: add muster crosslayer run CLI command (completes manifest-runner UX / FR-011)
 - 2026-06-13T19:25:49Z – claude:sonnet:implementer:implementer – Added muster crosslayer run CLI command: mirrors memory run, supports --static-only flag, --json output, non-zero exit on failures, 4 new CLI tests, all 78 test files green, coverage >=80%
+- 2026-06-13T19:30:28Z – claude:opus:reviewer:reviewer – Moved to planned
