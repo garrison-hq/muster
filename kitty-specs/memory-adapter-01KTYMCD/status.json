@@ -1,0 +1,56 @@
+{
+  "event_count": 5,
+  "last_event_id": "01KV00DS6E0PGSXG6B5AE1ZBKB",
+  "materialized_at": "2026-06-13T08:08:57.806271+00:00",
+  "mission_number": "",
+  "mission_slug": "memory-adapter-01KTYMCD",
+  "mission_type": "software-dev",
+  "summary": {
+    "approved": 0,
+    "blocked": 0,
+    "canceled": 0,
+    "claimed": 0,
+    "done": 0,
+    "for_review": 0,
+    "in_progress": 0,
+    "in_review": 0,
+    "planned": 5
+  },
+  "work_packages": {
+    "WP01": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KV00DS0N3K5FF1AHMBXVYBRM",
+      "last_transition_at": "2026-06-13T08:08:57.621200+00:00"
+    },
+    "WP02": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KV00DS5RFQFRA4PPJRHHG7NS",
+      "last_transition_at": "2026-06-13T08:08:57.784377+00:00"
+    },
+    "WP03": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KV00DS5ZWCWCKZGMW7Y42TK9",
+      "last_transition_at": "2026-06-13T08:08:57.791482+00:00"
+    },
+    "WP04": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KV00DS66MJ7094EBGEPF4Y9D",
+      "last_transition_at": "2026-06-13T08:08:57.798463+00:00"
+    },
+    "WP05": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KV00DS6E0PGSXG6B5AE1ZBKB",
+      "last_transition_at": "2026-06-13T08:08:57.806271+00:00"
+    }
+  }
+}

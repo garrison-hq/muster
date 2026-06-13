@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "mission_slug": "memory-adapter-01KTYMCD",
+  "mission_id": "01KTYMCDM4WACCJ8V4R16R0E49",
+  "mission_branch": "kitty/mission-memory-adapter-01KTYMCD",
+  "target_branch": "main",
+  "lanes": [
+    {
+      "lane_id": "lane-a",
+      "wp_ids": [
+        "WP01",
+        "WP02",
+        "WP03",
+        "WP04",
+        "WP05"
+      ],
+      "write_scope": [
+        "src/adapters/memory/contradiction.ts",
+        "src/adapters/memory/index.ts",
+        "src/adapters/memory/lint.ts",
+        "src/adapters/memory/privacy.ts",
+        "src/adapters/memory/recall.ts",
+        "tests/fixtures/memory/consistent/MEMORY.md",
+        "tests/fixtures/memory/consistent/USER.md",
+        "tests/fixtures/memory/contradictory/MEMORY.md",
+        "tests/fixtures/memory/contradictory/USER.md",
+        "tests/fixtures/memory/contradictory/manifest.json",
+        "tests/fixtures/memory/privacy-scenarios/adversarial-group-context.yaml",
+        "tests/fixtures/memory/privacy-scenarios/group-context.yaml",
+        "tests/fixtures/memory/recall-scenarios/addressing-recall.yaml",
+        "tests/fixtures/memory/recall-scenarios/fact-recall.yaml",
+        "tests/fixtures/memory/stale/MEMORY.md",
+        "tests/fixtures/memory/stale/USER.md",
+        "tests/fixtures/memory/vendored/CITATION.md",
+        "tests/fixtures/memory/vendored/LICENSE",
+        "tests/fixtures/memory/vendored/extraction-probes.jsonl",
+        "tests/integration/memory/memory-suite.test.ts",
+        "tests/unit/memory/contradiction.test.ts",
+        "tests/unit/memory/lint.test.ts",
+        "tests/unit/memory/privacy.test.ts",
+        "tests/unit/memory/recall.test.ts"
+      ],
+      "predicted_surfaces": [
+        "api",
+        "app-shell",
+        "tests",
+        "workspace"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    }
+  ],
+  "computed_at": "2026-06-13T08:08:57.819358+00:00",
+  "computed_from": "dependency_graph+ownership",
+  "planning_artifact_wps": [],
+  "collapse_report": {
+    "events": [
+      {
+        "wp_a": "WP02",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP02 depends on WP01"
+      },
+      {
+        "wp_a": "WP03",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP03 depends on WP01"
+      },
+      {
+        "wp_a": "WP04",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP04 depends on WP01"
+      },
+      {
+        "wp_a": "WP05",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP05 depends on WP01"
+      }
+    ],
+    "total_merges": 4,
+    "independent_wps_collapsed": 0,
+    "by_rule": {
+      "dependency": 4
+    }
+  }
+}

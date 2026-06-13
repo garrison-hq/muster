@@ -1,0 +1,49 @@
+{
+  "event_count": 4,
+  "last_event_id": "01KV00HS2GSHCJW927ZJ8ZZXVR",
+  "materialized_at": "2026-06-13T08:11:08.752704+00:00",
+  "mission_number": "",
+  "mission_slug": "skills-adapter-01KTYKNX",
+  "mission_type": "software-dev",
+  "summary": {
+    "approved": 0,
+    "blocked": 0,
+    "canceled": 0,
+    "claimed": 0,
+    "done": 0,
+    "for_review": 0,
+    "in_progress": 0,
+    "in_review": 0,
+    "planned": 4
+  },
+  "work_packages": {
+    "WP01": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KV00HRYMDAEZKXEZEQ32KTNE",
+      "last_transition_at": "2026-06-13T08:11:08.628923+00:00"
+    },
+    "WP02": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KV00HS22E3N6K5VNJNFA8VHE",
+      "last_transition_at": "2026-06-13T08:11:08.738426+00:00"
+    },
+    "WP03": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KV00HS29EK73712DMD9V7N2W",
+      "last_transition_at": "2026-06-13T08:11:08.745481+00:00"
+    },
+    "WP04": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KV00HS2GSHCJW927ZJ8ZZXVR",
+      "last_transition_at": "2026-06-13T08:11:08.752704+00:00"
+    }
+  }
+}

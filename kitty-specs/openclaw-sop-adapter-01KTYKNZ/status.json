@@ -1,0 +1,56 @@
+{
+  "event_count": 5,
+  "last_event_id": "01KV00HTP66X10Q5S2DTADRQQY",
+  "materialized_at": "2026-06-13T08:11:10.406721+00:00",
+  "mission_number": "",
+  "mission_slug": "openclaw-sop-adapter-01KTYKNZ",
+  "mission_type": "software-dev",
+  "summary": {
+    "approved": 0,
+    "blocked": 0,
+    "canceled": 0,
+    "claimed": 0,
+    "done": 0,
+    "for_review": 0,
+    "in_progress": 0,
+    "in_review": 0,
+    "planned": 5
+  },
+  "work_packages": {
+    "WP01": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KV00HTJ37B202N9VPVQ5CJTG",
+      "last_transition_at": "2026-06-13T08:11:10.275250+00:00"
+    },
+    "WP02": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KV00HTNFCDY1HQN8W7T8FDFR",
+      "last_transition_at": "2026-06-13T08:11:10.383998+00:00"
+    },
+    "WP03": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KV00HTNQ4VKV4Y6115ZB75FB",
+      "last_transition_at": "2026-06-13T08:11:10.391295+00:00"
+    },
+    "WP04": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KV00HTNZBXPVGRKZ0YXJ0H82",
+      "last_transition_at": "2026-06-13T08:11:10.399092+00:00"
+    },
+    "WP05": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KV00HTP66X10Q5S2DTADRQQY",
+      "last_transition_at": "2026-06-13T08:11:10.406721+00:00"
+    }
+  }
+}
