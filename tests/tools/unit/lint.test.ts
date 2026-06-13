@@ -248,4 +248,33 @@ describe("parseTOOLSFile + lintTOOLSFile", () => {
       expect(buf1.equals(buf2)).toBe(true);
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // Tools with no parameters heading (covers parseParameterBlock early-return branch)
+  // ---------------------------------------------------------------------------
+  describe("parseTOOLSFile — tools with no #### Parameters heading", () => {
+    it("parses a tool with no sub-heading as having an empty parameters map", async () => {
+      const noParamsPath = path.join(fixturesDir, "no-params-heading.md");
+      const parsed = await parseTOOLSFile(noParamsPath);
+      // ping_tool has no #### heading at all — parameters should be empty
+      const pingTool = parsed.tools.find((t) => t.name === "ping_tool");
+      expect(pingTool).toBeDefined();
+      expect(pingTool!.parameters.size).toBe(0);
+    });
+
+    it("parses a tool with a non-'parameters' #### heading as having empty parameters", async () => {
+      const noParamsPath = path.join(fixturesDir, "no-params-heading.md");
+      const parsed = await parseTOOLSFile(noParamsPath);
+      // describe_tool has #### Note (not #### Parameters) — parameters should be empty
+      const describeTool = parsed.tools.find((t) => t.name === "describe_tool");
+      expect(describeTool).toBeDefined();
+      expect(describeTool!.parameters.size).toBe(0);
+    });
+
+    it("still parses the correct tool names", async () => {
+      const noParamsPath = path.join(fixturesDir, "no-params-heading.md");
+      const parsed = await parseTOOLSFile(noParamsPath);
+      expect(parsed.tools.map((t) => t.name)).toEqual(["ping_tool", "describe_tool"]);
+    });
+  });
 });

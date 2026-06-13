@@ -1,0 +1,33 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "send_email",
+      "description": "Send an email",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recipient": { "type": "string" },
+          "subject": { "type": "string" },
+          "body": { "type": "string" }
+        },
+        "required": ["recipient", "subject"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "list_files",
+      "description": "List files",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "directory": { "type": "string" },
+          "extension": { "type": "string" }
+        },
+        "required": ["directory"]
+      }
+    }
+  }
+]

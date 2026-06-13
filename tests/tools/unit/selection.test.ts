@@ -572,3 +572,99 @@ describe("gradeControl", () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// API key is included in authorization header when provided
+// ---------------------------------------------------------------------------
+describe("runSelectionCase — apiKey is sent as Bearer token", () => {
+  let toolsFile: Awaited<ReturnType<typeof parseTOOLSFile>>;
+
+  beforeEach(async () => {
+    toolsFile = await parseTOOLSFile(wellFormedToolsPath);
+  });
+
+  it("sends Authorization header when apiKey is provided", async () => {
+    let capturedHeaders: Record<string, string> | undefined;
+    const capturingFetcher: FetchFn = vi.fn(async (_url, init) => {
+      capturedHeaders = init?.headers as Record<string, string>;
+      return makeToolCallResponse("send_email");
+    });
+
+    const testCase: ToolSelectionCase = {
+      id: "apikey-test-001",
+      scenario: "Send an email.",
+      expectedAxis: "correct-selection",
+      expectedTool: "send_email",
+      runs: 1,
+      pass_threshold: 1,
+    };
+
+    await runSelectionCase(toolsFile, testCase, {
+      endpoint: "http://localhost:11434/v1",
+      model: "test-model",
+      apiKey: "sk-test-key",
+      fetcher: capturingFetcher,
+    });
+
+    expect(capturedHeaders?.["authorization"]).toBe("Bearer sk-test-key");
+  });
+
+  it("omits Authorization header when apiKey is an empty string", async () => {
+    let capturedHeaders: Record<string, string> | undefined;
+    const capturingFetcher: FetchFn = vi.fn(async (_url, init) => {
+      capturedHeaders = init?.headers as Record<string, string>;
+      return makeToolCallResponse("send_email");
+    });
+
+    const testCase: ToolSelectionCase = {
+      id: "apikey-empty-001",
+      scenario: "Send an email.",
+      expectedAxis: "correct-selection",
+      expectedTool: "send_email",
+      runs: 1,
+      pass_threshold: 1,
+    };
+
+    await runSelectionCase(toolsFile, testCase, {
+      endpoint: "http://localhost:11434/v1",
+      model: "test-model",
+      apiKey: "",
+      fetcher: capturingFetcher,
+    });
+
+    expect(capturedHeaders?.["authorization"]).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// gradeByAxis — defensive unknown-axis fallthrough (via runSelectionCase)
+// ---------------------------------------------------------------------------
+describe("runSelectionCase — unknown expectedAxis returns passed=false (defensive)", () => {
+  let toolsFile: Awaited<ReturnType<typeof parseTOOLSFile>>;
+
+  beforeEach(async () => {
+    toolsFile = await parseTOOLSFile(wellFormedToolsPath);
+  });
+
+  it("returns passed=false for an unrecognised expectedAxis value", async () => {
+    // Use a type cast to inject an invalid axis — tests the defensive return false
+    // in gradeByAxis for any unrecognised axis string.
+    const testCase = {
+      id: "unknown-axis-001",
+      scenario: "Send an email.",
+      expectedAxis: "unknown-axis" as ToolSelectionCase["expectedAxis"],
+      expectedTool: "send_email",
+      runs: 1,
+      pass_threshold: 1,
+    };
+
+    const verdict = await runSelectionCase(toolsFile, testCase, {
+      ...BASE_OPTS,
+      fetcher: alwaysReturn(() => makeToolCallResponse("send_email")),
+    });
+
+    // The unknown axis means gradeByAxis returns false → run fails → verdict fails
+    expect(verdict.passed).toBe(false);
+    expect(verdict.runs[0]!.passed).toBe(false);
+  });
+});
