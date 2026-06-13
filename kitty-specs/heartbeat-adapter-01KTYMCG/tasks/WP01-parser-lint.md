@@ -29,7 +29,7 @@ owned_files:
 - tests/heartbeat/tick.test.ts
 tags: []
 assignee: "claude"
-agent: "claude:sonnet:implementer:implementer"
+agent: "claude:opus:reviewer:reviewer"
 ---
 
 # WP01 — HEARTBEAT.md parser + manifest + static lint
@@ -422,3 +422,4 @@ node -e "
 - 2026-06-13T15:03:16Z – claude:opus:reviewer:reviewer – FR-004 fix: tick.ts adds ACTION_OBSERVATION_CONVENTION appended AFTER the verbatim OPENCLAW_HEARTBEAT_PROMPT (constant byte-identical, untouched by fix per git diff; C-003 honored). Convention is output-format only (ACTION: <label>), does not leak which items are due. WP01-owned files (tick.ts, lint.ts, tests) within owned_files; C-004 holds (no heartbeat in src/core). Build clean, 1872 pass/3 skip/0 type errors, heartbeat coverage 94.35% (tick.ts 93.7%).
 - 2026-06-13T15:07:41Z – claude:sonnet:implementer:implementer – Reopen: tick-state semantics framing must convey due-tick meaning WITHOUT leaking the answer
 - 2026-06-13T15:09:42Z – claude:sonnet:implementer:implementer – Non-leaky tick-state semantics added to framing
+- 2026-06-13T15:11:31Z – claude:opus:reviewer:reviewer – Non-leaky tick-state framing; preserves probe integrity
