@@ -1,0 +1,13 @@
+id: contradictory-with-precedence
+testClass: static
+layers:
+  - layerType: persona
+    fixturePath: contradictory-with-precedence/SOUL.md
+  - layerType: sop
+    fixturePath: contradictory-with-precedence/AGENTS.md
+precedence:
+  order: [sop, persona]
+expected:
+  ok: false
+  findingTypes:
+    - resolved-by-precedence

@@ -1,0 +1,15 @@
+id: circular-precedence
+testClass: static
+layers:
+  - layerType: persona
+    fixturePath: circular-precedence/SOUL.md
+  - layerType: sop
+    fixturePath: circular-precedence/AGENTS.md
+  - layerType: skill
+    fixturePath: circular-precedence/SKILL.md
+precedence:
+  order: [sop, persona, sop]
+expected:
+  ok: false
+  findingTypes:
+    - circular-precedence-error

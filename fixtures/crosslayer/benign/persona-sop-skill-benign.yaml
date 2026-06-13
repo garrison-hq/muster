@@ -1,0 +1,12 @@
+id: benign-persona-sop-skill
+testClass: static
+layers:
+  - layerType: persona
+    fixturePath: benign/SOUL.md
+  - layerType: sop
+    fixturePath: benign/AGENTS.md
+  - layerType: skill
+    fixturePath: benign/SKILL.md
+expected:
+  ok: true
+  findingTypes: []

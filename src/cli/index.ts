@@ -65,6 +65,11 @@ import {
   formatReportHuman,
   globToRegExp,
 } from "./output.js";
+import {
+  runManifest as runCrossLayerManifest,
+  type EndpointManifestConfig,
+  type ManifestRunSummary,
+} from "../crosslayer/manifest-runner.js";
 
 /** Version straight from package.json (works from src/ via tsx and dist/). */
 const VERSION = (
@@ -475,6 +480,120 @@ function formatMemoryResultHuman(result: import("../adapters/memory/index.js").A
   return lines.join("\n");
 }
 
+// ─── muster crosslayer run ──────────────────────────────────────────────────
+
+/**
+ * Resolve an endpoint config from environment variables for crosslayer run.
+ *
+ * Reads MUSTER_ENDPOINT (base URL), MUSTER_MODEL (model name), and
+ * MUSTER_API_KEY / OPENAI_API_KEY (the env-var name, not the key value) from
+ * the process environment. Returns undefined when MUSTER_ENDPOINT is not set.
+ *
+ * NFR-005: never stores the key value — only the env-var name is captured so
+ * the manifest-runner can resolve it from process.env at call time.
+ */
+function endpointFromEnv(): EndpointManifestConfig | undefined {
+  const baseUrl = process.env["MUSTER_ENDPOINT"];
+  if (baseUrl === undefined || baseUrl === "") {
+    return undefined;
+  }
+  const model = process.env["MUSTER_MODEL"] ?? "gpt-4o-mini";
+  const apiKeyEnv =
+    process.env["MUSTER_API_KEY"] !== undefined && process.env["MUSTER_API_KEY"] !== ""
+      ? "MUSTER_API_KEY"
+      : "OPENAI_API_KEY";
+  return { base_url: baseUrl, model, api_key_env: apiKeyEnv };
+}
+
+/**
+ * Run the cross-layer manifest runner (FR-011, C-004).
+ *
+ * The manifest is a YAML file listing static composition/lint cases and
+ * optionally behavioral rule-survival cases. Only the static path runs when
+ * --static-only is specified (offline, deterministic — NFR-001, C-003).
+ *
+ * Behavioral endpoint resolution (NFR-005: credentials from env only):
+ *   1. --static-only: only static cases run; no endpoint needed.
+ *   2. MUSTER_ENDPOINT env var set: used as endpoint base URL; MUSTER_MODEL
+ *      overrides the model (default: gpt-4o-mini); MUSTER_API_KEY or
+ *      OPENAI_API_KEY supplies the credential name.
+ *   3. Manifest has an endpoint block: used directly (api_key_env names the
+ *      env var; the manifest runner resolves the value at call time).
+ *   4. Neither env nor manifest endpoint: behavioral cases are skipped
+ *      gracefully (static cases still run); no crash, no validation error.
+ *
+ * The manifest path is resolved to an absolute path before being passed to
+ * runManifest so that $ref includes and layer fixturePaths resolve correctly
+ * regardless of cwd (BUG-A fix: layer paths resolved against manifest dir).
+ *
+ * Normative citation: muster cross-layer conformance rubric
+ * (cross-layer-conformance-01KTYKP2), FR-011; C-001, C-004; NFR-005.
+ */
+async function doCrossLayerRun(
+  manifestPath: string,
+  opts: GlobalOpts & { staticOnly?: boolean },
+  io: Io
+): Promise<number> {
+  const absManifestPath = toAbsolute(manifestPath);
+
+  // --static-only: skip all behavioral cases regardless of endpoint config.
+  if (opts.staticOnly === true) {
+    let summary: ManifestRunSummary;
+    try {
+      summary = await runCrossLayerManifest(absManifestPath, { testClassFilter: "static" });
+    } catch (error) {
+      throw new ExecutionError(`crosslayer manifest run failed: ${errorMessage(error)}`);
+    }
+    io.outLine(opts.json === true ? JSON.stringify(summary, null, 2) : formatCrossLayerResultHuman(summary));
+    return summary.failed > 0 ? 1 : 0;
+  }
+
+  // Behavioral run: source endpoint from env (priority) or manifest.
+  const envEndpoint = endpointFromEnv();
+
+  // When neither env nor manifest provides an endpoint, skip behavioral cases
+  // gracefully (static cases still run). This avoids a hard validation error
+  // and matches `--static-only` semantics for the "no endpoint" path.
+  if (envEndpoint === undefined) {
+    // We don't know yet whether the manifest has an endpoint — attempt a full
+    // run and let validateManifest decide. If it throws the "endpoint required"
+    // error, fall back to static-only with a stderr notice.
+    let summary: ManifestRunSummary;
+    try {
+      summary = await runCrossLayerManifest(absManifestPath);
+    } catch (error) {
+      const msg = errorMessage(error);
+      if (msg.includes("endpoint") && msg.includes("required")) {
+        // No endpoint configured anywhere — skip behavioral gracefully.
+        io.errLine(
+          "muster crosslayer: no endpoint configured (MUSTER_ENDPOINT not set, manifest has no endpoint block); " +
+            "behavioral cases skipped — running static cases only"
+        );
+        try {
+          summary = await runCrossLayerManifest(absManifestPath, { testClassFilter: "static" });
+        } catch (staticError) {
+          throw new ExecutionError(`crosslayer manifest run failed: ${errorMessage(staticError)}`);
+        }
+      } else {
+        throw new ExecutionError(`crosslayer manifest run failed: ${msg}`);
+      }
+    }
+    io.outLine(opts.json === true ? JSON.stringify(summary, null, 2) : formatCrossLayerResultHuman(summary));
+    return summary.failed > 0 ? 1 : 0;
+  }
+
+  // Env endpoint present: pass as override so behavioral cases use it even
+  // when the manifest carries no endpoint block.
+  let summary: ManifestRunSummary;
+  try {
+    summary = await runCrossLayerManifest(absManifestPath, { endpointOverride: envEndpoint });
+  } catch (error) {
+    throw new ExecutionError(`crosslayer manifest run failed: ${errorMessage(error)}`);
+  }
+  io.outLine(opts.json === true ? JSON.stringify(summary, null, 2) : formatCrossLayerResultHuman(summary));
+  return summary.failed > 0 ? 1 : 0;
+}
+
 // ─── muster heartbeat run ───────────────────────────────────────────────────
 
 /**
@@ -511,6 +630,24 @@ async function doHeartbeatRun(
 }
 
 /**
+ * Human-readable formatting for cross-layer ManifestRunSummary.
+ *
+ * Normative citation: muster cross-layer conformance rubric, FR-011.
+ */
+function formatCrossLayerResultHuman(summary: ManifestRunSummary): string {
+  const status = summary.failed === 0 ? "PASS" : "FAIL";
+  const lines: string[] = [
+    `crosslayer: ${status} — ${summary.passed}/${summary.total} cases passed, ${summary.failed} failed`,
+  ];
+  for (const result of summary.results) {
+    const icon = result.passed ? "PASS" : "FAIL";
+    const detail = buildCaseDetail(result);
+    lines.push(`  [${icon}] ${result.id}${detail}`);
+  }
+  return lines.join("\n");
+}
+
+/**
  * Human-readable formatting for heartbeat ManifestSummary.
  */
 function formatHeartbeatSummaryHuman(summary: HeartbeatManifestSummary): string {
@@ -529,6 +666,20 @@ function formatHeartbeatSummaryHuman(summary: HeartbeatManifestSummary): string 
     }
   }
   return lines.join("\n");
+}
+
+/** Build the detail suffix for one case result line. */
+function buildCaseDetail(result: ManifestRunSummary["results"][number]): string {
+  if (result.error !== undefined) {
+    return `: error — ${result.error}`;
+  }
+  if (result.verdict !== undefined) {
+    return `: verdict=${result.verdict}`;
+  }
+  if (result.findings !== undefined && result.findings.length > 0) {
+    return `: findings=[${result.findings.join(", ")}]`;
+  }
+  return "";
 }
 
 // ─── program assembly ───────────────────────────────────────────────────────
@@ -663,6 +814,40 @@ function buildProgram(
     .option("--model <m>", "behavioral endpoint model (default: llama3.2)")
     .action(async (manifest: string, _local, cmd: Command) => {
       setExit(await doMemoryRun(manifest, cmd.optsWithGlobals(), io));
+    });
+
+  // ─── muster crosslayer ────────────────────────────────────────────────────
+  const crosslayer = program
+    .command("crosslayer")
+    .description(
+      "Cross-layer conformance: static composition/lint and behavioral rule-survival " +
+      "cases across persona/SOP layer stacks (FR-011, C-004, cross-layer-conformance-01KTYKP2)"
+    );
+  crosslayer
+    .command("run")
+    .description(
+      "Run the cross-layer conformance manifest. Static cases run offline. " +
+        "Behavioral cases use MUSTER_ENDPOINT / MUSTER_API_KEY env vars or " +
+        "the manifest's endpoint block; skipped gracefully when neither is set. " +
+        "Use --static-only to run only static cases explicitly."
+    )
+    .argument("<manifest>", "path to the cross-layer manifest YAML")
+    .option(
+      "--static-only",
+      "run only static composition/lint cases (no endpoint required)"
+    )
+    .addHelpText(
+      "after",
+      "\nEndpoint env vars (behavioral cases):\n" +
+        "  MUSTER_ENDPOINT   base URL of an OpenAI-compatible API\n" +
+        "  MUSTER_MODEL      model name (default: gpt-4o-mini)\n" +
+        "  MUSTER_API_KEY    API key (fallback: OPENAI_API_KEY)\n" +
+        "\nWhen MUSTER_ENDPOINT is not set and the manifest has no endpoint block,\n" +
+        "behavioral cases are skipped gracefully; static cases still run.\n" +
+        "Credentials never appear in argv or the manifest value field."
+    )
+    .action(async (manifest: string, _local, cmd: Command) => {
+      setExit(await doCrossLayerRun(manifest, cmd.optsWithGlobals(), io));
     });
 
   // ─── muster heartbeat ─────────────────────────────────────────────────────

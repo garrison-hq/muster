@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Ajv2020 } from "ajv/dist/2020.js";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runCli, type RunCliOptions } from "../../src/cli/index.js";
 import type {
   CaseVerdict,
@@ -568,5 +568,242 @@ describe("muster program (contracts/cli.md global behavior)", () => {
     expect(stdout).toContain("MUSTER_API_KEY");
     expect(stdout).toContain("OPENAI_API_KEY");
     expect(stdout).not.toMatch(/--api[-_]?key/i);
+  });
+});
+
+// ─── muster crosslayer run CLI tests ─────────────────────────────────────────
+
+/**
+ * CLI-level tests for `muster crosslayer run <manifest>`.
+ *
+ * Tests run IN-PROCESS via runCli — no subprocess spawn.
+ * Static cases run fully offline (NFR-003). Behavioral cases are NOT exercised
+ * here — that coverage lives in tests/crosslayer/integration/.
+ *
+ * Normative citation: muster cross-layer conformance rubric
+ * (cross-layer-conformance-01KTYKP2), FR-011; C-001, C-004.
+ */
+describe("muster crosslayer run (WP04, FR-011, C-004)", () => {
+  const crosslayerManifest = join(repoRoot, "fixtures/crosslayer/manifest.yaml");
+
+  it("--static-only: runs 5/5 static cases, exit 0, human summary", async () => {
+    const { code, stdout, stderr } = await run([
+      "crosslayer",
+      "run",
+      crosslayerManifest,
+      "--static-only",
+    ]);
+
+    expect(code).toBe(0);
+    // Human summary header line.
+    expect(stdout).toContain("crosslayer: PASS");
+    expect(stdout).toContain("5/5 cases passed");
+    expect(stdout).toContain("0 failed");
+    // All 5 static case IDs present in output.
+    expect(stdout).toContain("benign-persona-sop");
+    expect(stdout).toContain("benign-persona-sop-skill");
+    expect(stdout).toContain("contradictory-no-precedence");
+    expect(stdout).toContain("contradictory-with-precedence");
+    expect(stdout).toContain("circular-precedence");
+    // No noise on stderr.
+    expect(stderr).toBe("");
+  });
+
+  it("--static-only --json: exits 0, emits machine-readable JSON with correct shape", async () => {
+    const { code, stdout } = await run([
+      "crosslayer",
+      "run",
+      crosslayerManifest,
+      "--static-only",
+      "--json",
+    ]);
+
+    expect(code).toBe(0);
+    const summary = JSON.parse(stdout) as {
+      total: number;
+      passed: number;
+      failed: number;
+      results: Array<{ id: string; passed: boolean }>;
+    };
+    expect(summary.total).toBe(5);
+    expect(summary.passed).toBe(5);
+    expect(summary.failed).toBe(0);
+    expect(summary.results).toHaveLength(5);
+    // Every result is a pass.
+    for (const result of summary.results) {
+      expect(result.passed).toBe(true);
+    }
+  });
+
+  it("non-existent manifest path → exit 2 (execution error), stdout empty", async () => {
+    const { code, stdout, stderr } = await run([
+      "crosslayer",
+      "run",
+      join(repoRoot, "fixtures/crosslayer/does-not-exist.yaml"),
+      "--static-only",
+    ]);
+
+    expect(code).toBe(2);
+    expect(stdout).toBe("");
+    // Error message must appear on stderr.
+    expect(stderr).toContain("crosslayer manifest run failed");
+  });
+
+  it("--help exits 0 and documents --static-only flag", async () => {
+    const { code, stdout } = await run(["crosslayer", "run", "--help"]);
+    expect(code).toBe(0);
+    expect(stdout).toContain("--static-only");
+  });
+
+  it("human output: findings are listed in the per-case detail line", async () => {
+    const { code, stdout } = await run([
+      "crosslayer",
+      "run",
+      crosslayerManifest,
+      "--static-only",
+    ]);
+
+    expect(code).toBe(0);
+    // The contradictory-no-precedence case emits cross-layer-contradiction and undefined-precedence.
+    expect(stdout).toContain("cross-layer-contradiction");
+    expect(stdout).toContain("undefined-precedence");
+    // The circular-precedence case emits circular-precedence-error.
+    expect(stdout).toContain("circular-precedence-error");
+  });
+
+  /**
+   * BUG-A regression: cwd-independence for layer fixture paths.
+   *
+   * Before the fix, `resolveLayerPaths` resolved relative paths against
+   * process.cwd(). Running from any directory other than the project root
+   * caused all 5 static cases to ENOENT (exit 1, 0/5). This test changes cwd
+   * to a tmpdir and passes an absolute manifest path — asserts that 5/5 static
+   * cases still pass and the command exits 0, so the regression cannot return.
+   *
+   * NFR-001 / BUG-A: layer fixturePaths must be resolved against the manifest
+   * directory, not process.cwd().
+   */
+  it("BUG-A regression: --static-only 5/5 regardless of cwd (cwd-independence)", async () => {
+    const originalCwd = process.cwd();
+    try {
+      // Change to a directory that has NO fixtures sub-tree.
+      process.chdir(tmpdir());
+
+      // Use an ABSOLUTE manifest path — so the manifest is found regardless of cwd.
+      const { code, stdout, stderr } = await run([
+        "crosslayer",
+        "run",
+        crosslayerManifest,   // already absolute (join(repoRoot, ...))
+        "--static-only",
+      ]);
+
+      expect(stderr).toBe("");
+      expect(code).toBe(0);
+      expect(stdout).toContain("crosslayer: PASS");
+      expect(stdout).toContain("5/5 cases passed");
+    } finally {
+      // Restore cwd so other tests are unaffected.
+      process.chdir(originalCwd);
+    }
+  });
+
+  /**
+   * BUG-B: behavioral via CLI uses MUSTER_ENDPOINT env var.
+   *
+   * Before the fix, `crosslayer run <manifest>` with no manifest endpoint
+   * hard-errored with "endpoint is required". After the fix, setting
+   * MUSTER_ENDPOINT in the environment wires up the behavioral endpoint and
+   * cases run (or skip gracefully if the key is missing).
+   *
+   * This test mocks fetch and verifies that when MUSTER_ENDPOINT is set the
+   * command runs behavioral cases from the manifest (rather than erroring with
+   * exit 2 about a missing endpoint).
+   */
+  it("BUG-B: MUSTER_ENDPOINT env var enables behavioral run without manifest endpoint block", async () => {
+    // Mock fetch so behavioral cases return refusal responses without a live endpoint.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() => {
+      const payload = JSON.stringify({
+        choices: [{ message: { content: "I can't help with that.", role: "assistant" } }],
+      });
+      return Promise.resolve(new Response(payload, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }));
+    });
+
+    const origEndpoint = process.env["MUSTER_ENDPOINT"];
+    const origModel = process.env["MUSTER_MODEL"];
+    const origKey = process.env["MUSTER_API_KEY"];
+    try {
+      process.env["MUSTER_ENDPOINT"] = "http://mock-endpoint.local/v1";
+      process.env["MUSTER_MODEL"] = "test-model";
+      process.env["MUSTER_API_KEY"] = "test-key-stub";
+
+      // manifest.yaml has no endpoint block — pre-fix this was exit 2
+      const { code, stdout, stderr } = await run([
+        "crosslayer",
+        "run",
+        crosslayerManifest,
+      ]);
+
+      // Must NOT hard-error on missing manifest endpoint.
+      // The command runs; static cases pass; behavioral cases may pass or fail
+      // depending on mock responses — but exit code must be 0 or 1 (not 2).
+      expect(code).not.toBe(2);
+      // Human summary must appear on stdout.
+      expect(stdout).toContain("crosslayer:");
+      // No "endpoint is required" crash on stderr.
+      expect(stderr).not.toContain("endpoint is required");
+    } finally {
+      if (origEndpoint === undefined) {
+        delete process.env["MUSTER_ENDPOINT"];
+      } else {
+        process.env["MUSTER_ENDPOINT"] = origEndpoint;
+      }
+      if (origModel === undefined) {
+        delete process.env["MUSTER_MODEL"];
+      } else {
+        process.env["MUSTER_MODEL"] = origModel;
+      }
+      if (origKey === undefined) {
+        delete process.env["MUSTER_API_KEY"];
+      } else {
+        process.env["MUSTER_API_KEY"] = origKey;
+      }
+      vi.restoreAllMocks();
+    }
+  });
+
+  /**
+   * BUG-B graceful skip: without MUSTER_ENDPOINT and no manifest endpoint,
+   * behavioral cases skip gracefully; static cases still run (exit 0 or 1
+   * from static results, not exit 2 from a hard endpoint validation error).
+   */
+  it("BUG-B graceful skip: no endpoint anywhere → behavioral cases skipped, static still runs", async () => {
+    const origEndpoint = process.env["MUSTER_ENDPOINT"];
+    try {
+      delete process.env["MUSTER_ENDPOINT"];
+
+      // manifest.yaml has no endpoint block; MUSTER_ENDPOINT is unset.
+      // Pre-fix: exit 2, "endpoint is required".
+      // Post-fix: static cases run, behavioral cases skipped gracefully.
+      const { code, stdout, stderr } = await run([
+        "crosslayer",
+        "run",
+        crosslayerManifest,
+      ]);
+
+      // Must NOT be an execution error.
+      expect(code).not.toBe(2);
+      // Static cases appear in output.
+      expect(stdout).toContain("crosslayer:");
+      expect(stdout).toContain("benign-persona-sop");
+      // A notice on stderr about skipping behavioral cases.
+      expect(stderr).toContain("behavioral cases skipped");
+    } finally {
+      if (origEndpoint !== undefined) {
+        process.env["MUSTER_ENDPOINT"] = origEndpoint;
+      }
+    }
   });
 });
