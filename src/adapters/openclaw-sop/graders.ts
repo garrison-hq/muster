@@ -20,6 +20,7 @@ const Ajv = (AjvModule as any).default ?? AjvModule;
 
 import type { BinaryAssertion, SOPGrade, SOPRunVerdict, SOPCaseVerdict } from "./manifest.js";
 import type { Transcript } from "../../core/behavioral/types.js";
+import { conjunctivePassK } from "../../crosslayer/pass-k.js";
 
 // ---------------------------------------------------------------------------
 // ToolCall — minimal inline type for SOP tool-call traces.
@@ -416,13 +417,17 @@ export function gradeOutputFormat(
  * Edge case: empty verdicts array → passed: true, passCount: 0, totalRuns: 0.
  */
 export function aggregatePassK(verdicts: SOPRunVerdict[]): Omit<SOPCaseVerdict, "probeId" | "ruleId"> {
-  // Charter: errored run = failed run (error !== undefined → failed, regardless of passed field)
+  // Charter: errored run = failed run (error !== undefined → failed, regardless of passed field).
+  // Map each verdict to a boolean before delegating to the shared conjunctivePassK
+  // (Note 1: single pass^k implementation shared across adapters).
   const runPassed = (v: SOPRunVerdict): boolean => v.passed === true && v.error === undefined;
+  const passFlags = verdicts.map(runPassed);
 
-  const passCount = verdicts.filter(runPassed).length;
+  const passCount = passFlags.filter(Boolean).length;
   const totalRuns = verdicts.length;
-  const anyRunFailed = verdicts.some((v) => !runPassed(v));
-  const passed = verdicts.every(runPassed);
+  const anyRunFailed = passFlags.some((p) => !p);
+  // Delegate to shared conjunctivePassK — the single implementation of pass^k.
+  const passed = conjunctivePassK(passFlags);
 
   return {
     aggregation: "pass-k",

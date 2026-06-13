@@ -856,6 +856,168 @@ describe("credentials check", () => {
 });
 
 // ---------------------------------------------------------------------------
+// FR-008 declared-precedence observation (Note 2)
+// ---------------------------------------------------------------------------
+
+describe("FR-008 declared-precedence observation (Note 2)", () => {
+  it("survived with sop precedence → precedenceObservation.consistent = true, declaredWinner = sop", async () => {
+    // When sop outranks persona and the rule survives, the declared winner (sop)
+    // prevailed — consistent = true. Muster reports this; does not reconcile (C-006).
+    const composition: StackComposition = {
+      layers: [
+        { layerType: "persona", fixturePath: "fixtures/crosslayer/test/SOUL.md" },
+        { layerType: "sop", fixturePath: "fixtures/crosslayer/test/AGENTS.md" },
+      ],
+      precedence: { order: ["sop", "persona"] },
+      resolved: {
+        composedText: "composed text",
+        sopAloneText: "SOP alone text",
+        layerTexts: new Map([["persona", "persona text"], ["sop", "SOP alone text"]]),
+      },
+    };
+
+    const survivalCase: RuleSurvivalCase = {
+      id: "precedence-observation-survived",
+      rule: "test rule",
+      probe: "test probe",
+      baselineRuns: 3,
+      composedRuns: 3,
+      passThreshold: 0.6,
+      gradingClass: "pass-k",
+      isDiscriminationControl: false,
+    };
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      makeFetchSequence([
+        mockChatResponse(REFUSAL), mockChatResponse(REFUSAL), mockChatResponse(REFUSAL),
+        mockChatResponse(REFUSAL), mockChatResponse(REFUSAL), mockChatResponse(REFUSAL),
+      ])
+    );
+
+    const result = await runRuleSurvival(survivalCase, composition, TEST_ENDPOINT);
+
+    expect(result.verdict).toBe("survived");
+    expect(result.precedenceObservation).toBeDefined();
+    expect(result.precedenceObservation!.declaredWinner).toBe("sop");
+    expect(result.precedenceObservation!.consistent).toBe(true);
+    expect(result.precedenceObservation!.summary).toMatch(/prevailed as expected/i);
+  });
+
+  it("eroded with sop precedence → precedenceObservation.consistent = false, summary mentions inconsistency", async () => {
+    // When sop outranks persona but the rule erodes, the declared winner did NOT prevail.
+    // consistent = false; summary mentions the declared winner did not prevail.
+    const composition: StackComposition = {
+      layers: [
+        { layerType: "persona", fixturePath: "fixtures/crosslayer/test/SOUL.md" },
+        { layerType: "sop", fixturePath: "fixtures/crosslayer/test/AGENTS.md" },
+      ],
+      precedence: { order: ["sop", "persona"] },
+      resolved: {
+        composedText: "composed text",
+        sopAloneText: "SOP alone text",
+        layerTexts: new Map([["persona", "persona text"], ["sop", "SOP alone text"]]),
+      },
+    };
+
+    const survivalCase: RuleSurvivalCase = {
+      id: "precedence-observation-eroded",
+      rule: "test rule",
+      probe: "test probe",
+      baselineRuns: 3,
+      composedRuns: 3,
+      passThreshold: 0.6,
+      gradingClass: "pass-k",
+      isDiscriminationControl: false,
+    };
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      makeFetchSequence([
+        // baseline: all pass (above threshold)
+        mockChatResponse(REFUSAL), mockChatResponse(REFUSAL), mockChatResponse(REFUSAL),
+        // composed: one accommodation → eroded (pass-k)
+        mockChatResponse(REFUSAL), mockChatResponse(ACCOMMODATION), mockChatResponse(REFUSAL),
+      ])
+    );
+
+    const result = await runRuleSurvival(survivalCase, composition, TEST_ENDPOINT);
+
+    expect(result.verdict).toBe("eroded");
+    expect(result.precedenceObservation).toBeDefined();
+    expect(result.precedenceObservation!.declaredWinner).toBe("sop");
+    expect(result.precedenceObservation!.consistent).toBe(false);
+    expect(result.precedenceObservation!.summary).toMatch(/did not prevail/i);
+  });
+
+  it("no precedence declared → precedenceObservation is absent", async () => {
+    // No precedence → no observation (nothing to compare against).
+    const composition = makeComposition("SOP alone", "composed");
+
+    const survivalCase: RuleSurvivalCase = {
+      id: "no-precedence-observation",
+      rule: "test rule",
+      probe: "test probe",
+      baselineRuns: 3,
+      composedRuns: 3,
+      passThreshold: 0.6,
+      gradingClass: "pass-k",
+      isDiscriminationControl: false,
+    };
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      makeFetchSequence([
+        mockChatResponse(REFUSAL), mockChatResponse(REFUSAL), mockChatResponse(REFUSAL),
+        mockChatResponse(REFUSAL), mockChatResponse(REFUSAL), mockChatResponse(REFUSAL),
+      ])
+    );
+
+    const result = await runRuleSurvival(survivalCase, composition, TEST_ENDPOINT);
+
+    expect(result.precedenceObservation).toBeUndefined();
+  });
+
+  it("baseline-failure with precedence → observation present, consistent = false (inconclusive)", async () => {
+    // Even on baseline-failure, a precedence observation is emitted (C-006: report).
+    const composition: StackComposition = {
+      layers: [
+        { layerType: "persona", fixturePath: "test.md" },
+        { layerType: "sop", fixturePath: "test2.md" },
+      ],
+      precedence: { order: ["sop", "persona"] },
+      resolved: {
+        composedText: "composed",
+        sopAloneText: "sop",
+        layerTexts: new Map([["sop", "sop"]]),
+      },
+    };
+
+    const survivalCase: RuleSurvivalCase = {
+      id: "baseline-failure-with-precedence",
+      rule: "test rule",
+      probe: "test probe",
+      baselineRuns: 3,
+      composedRuns: 3,
+      passThreshold: 0.6,
+      gradingClass: "pass-k",
+      isDiscriminationControl: false,
+    };
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      makeFetchSequence([
+        mockChatResponse(ACCOMMODATION), mockChatResponse(ACCOMMODATION), mockChatResponse(ACCOMMODATION),
+        mockChatResponse(REFUSAL), mockChatResponse(REFUSAL), mockChatResponse(REFUSAL),
+      ])
+    );
+
+    const result = await runRuleSurvival(survivalCase, composition, TEST_ENDPOINT);
+
+    expect(result.verdict).toBe("baseline-failure");
+    expect(result.precedenceObservation).toBeDefined();
+    expect(result.precedenceObservation!.consistent).toBe(false);
+    expect(result.precedenceObservation!.summary).toMatch(/cannot assess/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Unresolved composition guard
 // ---------------------------------------------------------------------------
 
