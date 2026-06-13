@@ -3,9 +3,10 @@ import {
   gradeRefusal,
   gradeStateShift,
   gradeVerbosity,
+  passK,
   verbosityLimit,
 } from "../../src/core/behavioral/graders.js";
-import type { AxisGrade, TranscriptEntry } from "../../src/core/behavioral/types.js";
+import type { AxisGrade, RunVerdict, TranscriptEntry } from "../../src/core/behavioral/types.js";
 import { rfc1Adapter } from "../../src/adapters/rfc1/index.js";
 import {
   maxWords,
@@ -207,5 +208,55 @@ describe("FR-021 state-shift grader (§20.3.4 observable change)", () => {
     const grade = gradeStateShift("", "cold_strict", [], { turn: 0 });
     expect(grade.measured).toBe("(no active state)");
     expect(grade.passed).toBe(false);
+  });
+});
+
+// ─── passK — charter two-tier grading primitive ──────────────────────────────
+
+describe("passK — conjunctive pass^k aggregation (charter two-tier grading rule)", () => {
+  /** Minimal stub transcript — content irrelevant to passK logic. */
+  const stubTranscript: RunVerdict["transcript"] = {
+    entries: [],
+    model: "stub",
+    baseUrl: "http://localhost",
+    temperature: "default",
+    durationMs: 0,
+  };
+
+  function makeRun(run: number, passed: boolean, error?: string): RunVerdict {
+    return { run, passed, axes: [], transcript: stubTranscript, ...(error !== undefined && { error }) };
+  }
+
+  it("vacuous: empty slice is trivially true (no runs, no failures)", () => {
+    expect(passK([])).toBe(true);
+  });
+
+  it("all runs pass and no errors → true", () => {
+    expect(passK([makeRun(1, true), makeRun(2, true), makeRun(3, true)])).toBe(true);
+  });
+
+  it("one failed run → false (conjunctive: ALL must pass)", () => {
+    expect(passK([makeRun(1, true), makeRun(2, false), makeRun(3, true)])).toBe(false);
+  });
+
+  it("errored run with passed=false → false (FR-022: errored run is a failed run)", () => {
+    expect(passK([makeRun(1, true), makeRun(2, false, "timeout")])).toBe(false);
+  });
+
+  it("errored run that somehow carries passed=true still fails (error field present means it did not cleanly complete)", () => {
+    // A run with an error string is treated as failed regardless of the passed flag.
+    expect(passK([makeRun(1, true), makeRun(2, true, "partial error")])).toBe(false);
+  });
+
+  it("single passing run → true", () => {
+    expect(passK([makeRun(1, true)])).toBe(true);
+  });
+
+  it("single failing run → false", () => {
+    expect(passK([makeRun(1, false)])).toBe(false);
+  });
+
+  it("single errored run → false", () => {
+    expect(passK([makeRun(1, false, "network error")])).toBe(false);
   });
 });
