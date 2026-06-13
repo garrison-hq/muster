@@ -126,8 +126,10 @@ export function parseHeartbeat(path: string, raw: string): HeartbeatFile {
     // remaining real content lines here.)
 
     // Checklist markers: - [ ], - [x], - [X], or bare - prefix.
+    // Capture starts with \S so the trailing \s+ and the group cannot both
+    // match the same whitespace — linear, no catastrophic backtracking (S5852).
     let text: string | null = null;
-    const checkboxMatch = /^-\s+\[[ xX]\]\s+(.+)$/.exec(trimmed);
+    const checkboxMatch = /^-\s+\[[ xX]\]\s+(\S.*)$/.exec(trimmed);
     if (checkboxMatch) {
       text = checkboxMatch[1].trim();
     } else if (trimmed.startsWith("- ")) {

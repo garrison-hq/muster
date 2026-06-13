@@ -127,7 +127,9 @@ export function extractObservedActions(agentResponse: string): string[] {
     const trimmed = line.trim();
 
     // Match "ACTION: <label>" lines (case-insensitive prefix).
-    const actionMatch = /^ACTION:\s+(.+)$/i.exec(trimmed);
+    // The capture starts with \S so \s+ and the group cannot both match the
+    // same whitespace — linear, no catastrophic backtracking (S5852).
+    const actionMatch = /^ACTION:\s+(\S.*)$/i.exec(trimmed);
     if (!actionMatch) {
       continue;
     }
