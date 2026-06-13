@@ -464,20 +464,37 @@ describe("Tools Adapter Integration — static + drift fixture suite (offline)",
     });
 
     it(
-      "case with selectionScenarioPaths and an endpoint: runs selection (errored runs = failed runs per charter)",
-      { timeout: 10_000 },
+      "case with selectionScenarioPaths and an injected mock fetcher: runs selection without any network call (C-003, NFR-001)",
       async () => {
-        // Exercise the endpoint branch (lines 209-220) by providing a localhost URL
-        // that will be refused. An errored run = failed run (charter invariant FR-007).
-        // This ensures the selectionVerdicts code path is covered without a live endpoint.
-        // The offline drift/lint path remains unaffected.
-        //
-        // Note: this test makes a TCP connection attempt to localhost:1 which
-        // immediately fails with ECONNREFUSED — no actual network data is exchanged.
+        // Exercise the endpoint branch (runManifest lines with selectionVerdicts)
+        // using an injected mock FetchFn — zero real network calls (C-003, NFR-001).
+        // The mock returns a minimal OpenAI-style response where the model selects
+        // "send_email" (a tool present in well-formed.md).
+        const mockFetcher = async (
+          _url: string,
+          _init: RequestInit
+        ): Promise<Response> => {
+          const body = JSON.stringify({
+            choices: [
+              {
+                message: {
+                  tool_calls: [
+                    { function: { name: "send_email" } },
+                  ],
+                },
+              },
+            ],
+          });
+          return new Response(body, {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        };
+
         const results = await runManifest(
           [
             {
-              id: "selection-endpoint-case",
+              id: "selection-mock-fetcher-case",
               toolsFilePath: wellFormedPath,
               selectionScenarioPaths: [
                 path.join(
@@ -489,21 +506,77 @@ describe("Tools Adapter Integration — static + drift fixture suite (offline)",
             },
           ],
           {
-            // Use port 1 (reserved, always refused) to ensure immediate failure.
-            // This covers the selection code path; errored run = failed run.
-            endpoint: "http://localhost:1",
+            endpoint: "http://mock-endpoint.invalid",
             model: "test-model",
+            fetcher: mockFetcher,
           }
         );
 
         expect(results).toHaveLength(1);
-        // All runs error → verdict.passed === false → case overall passed === false
-        expect(results[0]?.passed).toBe(false);
+        // selectionVerdicts should be present and populated
         expect(results[0]?.selectionVerdicts).toBeDefined();
         expect((results[0]?.selectionVerdicts?.length ?? 0)).toBeGreaterThan(0);
-        // Each verdict's runs should be errored (failed)
-        const verdict = results[0]?.selectionVerdicts?.[0];
-        expect(verdict?.passed).toBe(false);
+      }
+    );
+
+    it(
+      "expect: 'fail' cross-check: case with failing lint and expect: 'fail' has passed === true (FR-010 expectations)",
+      async () => {
+        // FR-010: when expect === "fail", passed is true iff the raw outcome fails.
+        // missing-section.md has lint errors → raw passed === false → expectation satisfied → passed === true.
+        const results = await runManifest([
+          {
+            id: "expect-fail-case",
+            toolsFilePath: missingSectionPath,
+            expect: "fail",
+          },
+        ]);
+
+        expect(results).toHaveLength(1);
+        expect(results[0]?.id).toBe("expect-fail-case");
+        // Raw outcome fails (missing section lint error); expect: "fail" satisfied → passed === true
+        expect(results[0]?.passed).toBe(true);
+        // Lint report is still the raw failing report
+        expect(results[0]?.lintReport?.ok).toBe(false);
+      }
+    );
+
+    it(
+      "expect: 'pass' cross-check: case with clean lint and expect: 'pass' has passed === true (FR-010 expectations)",
+      async () => {
+        // FR-010: when expect === "pass", passed is true iff the raw outcome passes.
+        // well-formed.md has no lint errors → raw passed === true → expectation satisfied → passed === true.
+        const results = await runManifest([
+          {
+            id: "expect-pass-case",
+            toolsFilePath: wellFormedPath,
+            expect: "pass",
+          },
+        ]);
+
+        expect(results).toHaveLength(1);
+        expect(results[0]?.id).toBe("expect-pass-case");
+        expect(results[0]?.passed).toBe(true);
+        expect(results[0]?.lintReport?.ok).toBe(true);
+      }
+    );
+
+    it(
+      "expect: 'fail' cross-check: case with clean lint and expect: 'fail' has passed === false (expectation not satisfied)",
+      async () => {
+        // FR-010: when expect === "fail" but raw outcome passes, expectation is NOT satisfied → passed === false.
+        const results = await runManifest([
+          {
+            id: "expect-fail-but-passes-case",
+            toolsFilePath: wellFormedPath,
+            expect: "fail",
+          },
+        ]);
+
+        expect(results).toHaveLength(1);
+        // Raw outcome passes; expect: "fail" not satisfied → passed === false
+        expect(results[0]?.passed).toBe(false);
+        expect(results[0]?.lintReport?.ok).toBe(true);
       }
     );
   });

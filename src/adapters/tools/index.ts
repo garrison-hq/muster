@@ -76,12 +76,11 @@ export {
 
 import type { LintReport } from "./lint.js";
 import type { DriftReport } from "./drift.js";
-import type { ToolSelectionVerdict } from "./selection.js";
+import type { ToolSelectionVerdict, FetchFn, ToolSelectionCase } from "./selection.js";
 import { parseTOOLSFile, lintTOOLSFile } from "./lint.js";
 import { loadEnvironmentDescriptor, runDriftCheck } from "./drift.js";
 import { readFile } from "node:fs/promises";
 import { runSelectionCase } from "./selection.js";
-import type { ToolSelectionCase } from "./selection.js";
 
 /**
  * A single test case in a tools manifest run.
@@ -126,7 +125,13 @@ export interface ToolsManifestResult {
   readonly id: string;
   /**
    * True iff lint is ok AND drift is clean (if run) AND all selection verdicts
-   * passed (if run). Cross-checked against `expect` when present.
+   * passed (if run), AND (when ToolsManifestCase.expect is set) the raw outcome
+   * matches the declared expectation.
+   *
+   * When ToolsManifestCase.expect is:
+   *   - "pass": passed is true only if the raw outcome is passing.
+   *   - "fail": passed is true only if the raw outcome is failing (expectation satisfied).
+   *   - undefined: no cross-check; passed reflects the raw lint/drift/selection outcome.
    */
   readonly passed: boolean;
   /** Lint report for this case. Always present. */
@@ -152,6 +157,15 @@ export interface ManifestRunOptions {
   readonly apiKey?: string;
   /** Model identifier sent in the request body. Defaults to "gpt-4o". */
   readonly model?: string;
+  /**
+   * Optional HTTP fetch implementation for selection probes.
+   * Defaults to globalThis.fetch (the platform fetch).
+   * Tests inject a mock here; production callers omit it.
+   * This parameter exists to keep the integration test fully offline (C-003,
+   * NFR-001): tests that exercise the endpoint branch inject a mock fetcher
+   * instead of making real network calls.
+   */
+  readonly fetcher?: FetchFn;
 }
 
 // ---------------------------------------------------------------------------
@@ -163,13 +177,18 @@ export interface ManifestRunOptions {
  * per case.
  *
  * FR-010: orchestrates parse → lint → drift (if envDescriptorPath) → selection
- * (if selectionScenarioPaths and opts.endpoint).
+ * (if selectionScenarioPaths and opts.endpoint). When a case sets `expect`,
+ * the raw outcome is cross-checked: for expect === "fail", the case passes
+ * (expectation satisfied) when lint/drift/selection produce at least one failure;
+ * for expect === "pass", the case passes only when lint/drift/selection all pass.
  *
  * Charter constraints:
  * - Offline static + drift path: never calls network unless opts.endpoint is set.
  * - Selection probes require opts.endpoint; without it, they are skipped with a
  *   warning to stderr (not an error).
  * - No credentials or endpoints hardcoded here (NFR-005).
+ * - opts.fetcher is threaded to runSelectionCase so tests can inject a mock
+ *   fetcher and remain fully offline (C-003, NFR-001).
  *
  * @param cases - Array of manifest cases to run.
  * @param opts - Optional endpoint options for behavioral probes.
@@ -214,13 +233,16 @@ export async function runManifest(
             endpoint: opts.endpoint,
             apiKey: opts.apiKey,
             model: opts.model ?? "gpt-4o",
+            // Thread the injected fetcher (if any) so callers and tests can
+            // keep the selection path fully offline (C-003, NFR-001).
+            fetcher: opts.fetcher,
           });
           selectionVerdicts.push(verdict);
         }
       }
     }
 
-    // --- Step 4: Determine passed ---
+    // --- Step 4: Determine raw outcome ---
     const lintOk = lintReport.ok;
     const driftOk = driftReport === undefined ? true : driftReport.clean;
     const selectionOk =
@@ -228,7 +250,22 @@ export async function runManifest(
         ? true
         : selectionVerdicts.every((v) => v.passed);
 
-    const passed = lintOk && driftOk && selectionOk;
+    const rawPassed = lintOk && driftOk && selectionOk;
+
+    // --- Step 5: Cross-check against expect (FR-010 "expectations" element) ---
+    // When expect is set, passed reflects whether the expectation was satisfied:
+    //   expect === "pass" → passed iff raw outcome is passing
+    //   expect === "fail" → passed iff raw outcome is failing (failure was expected)
+    //   expect === undefined → passed === rawPassed (no cross-check)
+    let passed: boolean;
+    if (testCase.expect === undefined) {
+      passed = rawPassed;
+    } else if (testCase.expect === "pass") {
+      passed = rawPassed;
+    } else {
+      // expect === "fail": expectation is satisfied when the raw outcome fails
+      passed = !rawPassed;
+    }
 
     results.push({
       id: testCase.id,
