@@ -384,3 +384,4 @@ git diff -U0 -- src/core/ src/adapters/ src/cli/ | grep '^[-+]export' \
 - 2026-06-13T01:30:00Z – /spec-kitty.tasks – created
 - 2026-06-13T15:30:26Z – claude:sonnet:implementer:implementer – shell_pid=1624045 – Assigned agent via action command
 - 2026-06-13T15:33:24Z – claude:sonnet:implementer:implementer – shell_pid=1624045 – Moved to in_progress
+- 2026-06-13T15:39:26Z – claude:sonnet:implementer:implementer – shell_pid=1624045 – StackComposition types + assembleComposedContext implemented. RFC-1 strict-mode persona resolution via resolveCompositionDetailed. 25 unit tests, 85.86% coverage on src/crosslayer. Build and full test suite green.
