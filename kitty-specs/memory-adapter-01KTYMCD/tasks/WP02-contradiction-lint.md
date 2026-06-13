@@ -21,6 +21,8 @@ history:
 authoritative_surface: src/adapters/memory/
 execution_mode: code_change
 owned_files:
+- src/adapters/memory/contradiction.ts
+- tests/unit/memory/contradiction.test.ts
 - tests/fixtures/memory/contradictory/MEMORY.md
 - tests/fixtures/memory/contradictory/USER.md
 - tests/fixtures/memory/contradictory/manifest.json
@@ -31,13 +33,13 @@ tags: []
 
 ## Objective
 
-Extend `src/adapters/memory/lint.ts` with `ContradictionLinter`: flag
+Create `src/adapters/memory/contradiction.ts` with `ContradictionLinter`: flag
 contradictions between `MEMORY.md`↔`USER.md` facts and within `MEMORY.md`
 itself, while correctly distinguishing a timestamped supersession from a genuine
-contradiction. Output `ContradictionFinding[]` and `SupersessionNote[]` in
-muster's machine-readable `LintReport`, citing muster's published rubric
-(C-002). Byte-stable deterministic output (NFR-001). The linter never flags a
-valid supersession as a contradiction.
+contradiction. Output `ContradictionFinding[]` and `SupersessionNote[]`
+importable by callers that compose a full `LintReport` (defined in `lint.ts`
+by WP01), citing muster's published rubric (C-002). Byte-stable deterministic
+output (NFR-001). The linter never flags a valid supersession as a contradiction.
 
 ## Context (read first)
 
@@ -46,11 +48,12 @@ valid supersession as a contradiction.
 - Data model: `kitty-specs/memory-adapter-01KTYMCD/data-model.md` —
   `ContradictionFinding`, `SupersessionNote`, `LintReport` (full); invariants on
   the contradiction/supersession distinction.
-- Plan: `kitty-specs/memory-adapter-01KTYMCD/plan.md` — WP02 outline; note
-  `ContradictionLinter` lives in the same file as `FactParser`/`StalenessLinter`.
-- WP01 output: `FactParser` and `StalenessLinter` are complete in `lint.ts`; this
-  WP adds `ContradictionLinter` to that file and extends `LintReport` to include
-  `contradictionFindings` and `supersessionNotes`.
+- Plan: `kitty-specs/memory-adapter-01KTYMCD/plan.md` — WP02 outline.
+- WP01 output: `FactParser`, `StalenessLinter`, `MemoryFact`, and `LintReport`
+  are complete in `lint.ts`. This WP creates `contradiction.ts` as its own
+  module, importing `MemoryFact` and `LintReport` from `lint.ts` (read-only
+  import — do NOT modify `lint.ts`). A later WP (WP05) composes the staleness
+  and contradiction results into the final `LintReport`.
 
 **Hard rules for this WP**:
 1. `ContradictionLinter` must not flag a pair where the newer fact has a later
@@ -58,26 +61,32 @@ valid supersession as a contradiction.
    (data-model invariant; spec edge case). The linter must compare `timestamp`
    fields where available.
 2. All `ContradictionFinding` values carry a `rubricCitation` referencing
-   muster's published rubric (C-002); reuse the `RUBRIC_CITATION` constant from
-   WP01.
+   muster's published rubric (C-002); import and reuse the `RUBRIC_CITATION`
+   constant from `lint.ts` (WP01).
 3. Byte-stable output: findings must be sorted by `factAId` then `factBId` in
    UTF-16 code-unit order before serialisation (NFR-001).
 4. Touch only files in `owned_files`. `src/core/` boundary intact (C-001).
-5. The `contradiction` lint branch of `lint.test.ts` is additive — do not delete
-   or weaken the staleness branch tests written in WP01.
+   `lint.ts` and `lint.test.ts` are WP01's files — do NOT modify them.
+5. All contradiction tests live in `tests/unit/memory/contradiction.test.ts`
+   (owned by this WP). `lint.test.ts` staleness tests are unaffected.
 
 ## Subtasks
 
-### T006 — Implement `ContradictionLinter` in `src/adapters/memory/lint.ts`
+### T006 — Create `ContradictionLinter` in `src/adapters/memory/contradiction.ts`
 
-**Purpose**: extend `lint.ts` with `ContradictionLinter` that detects cross-file
-and intra-file contradictions, distinguishes supersession, and populates the full
-`LintReport`.
+**Purpose**: create `contradiction.ts` as its own module exporting
+`ContradictionLinter` that detects cross-file and intra-file contradictions and
+distinguishes supersession. Results are returned as a partial record that a
+caller (WP05) merges into a full `LintReport`.
 
 **Steps**:
-1. Add `ContradictionFinding` and `SupersessionNote` interfaces to `lint.ts` per
-   the data model:
+1. Create `src/adapters/memory/contradiction.ts`. Import `MemoryFact`,
+   `LintReport`, and `RUBRIC_CITATION` from `./lint` (read-only import — do NOT
+   modify `lint.ts`). Define `ContradictionFinding` and `SupersessionNote`
+   interfaces in this file per the data model:
    ```ts
+   import type { MemoryFact, LintReport, RUBRIC_CITATION } from './lint';
+
    export interface ContradictionFinding {
      kind: 'contradiction';
      factAId: string;
@@ -95,24 +104,15 @@ and intra-file contradictions, distinguishes supersession, and populates the ful
      note: string;
    }
    ```
-2. Extend `LintReport` to include the full set of fields (if WP01 left stubs,
-   fill them now):
-   ```ts
-   export interface LintReport {
-     ok: boolean;
-     stalenessFindings: StalenessFinding[];
-     stalenessSkip: StalenessSkipNote | undefined;
-     contradictionFindings: ContradictionFinding[];
-     supersessionNotes: SupersessionNote[];
-   }
-   ```
-3. Export `ContradictionLinter` with method:
+   Note: `LintReport` is defined (and owned) by WP01 in `lint.ts`; import it
+   but do not redeclare or extend it here.
+2. Export `ContradictionLinter` with method:
    ```ts
    lint(memoryFacts: MemoryFact[], userFacts: MemoryFact[]): Pick<LintReport, 'contradictionFindings' | 'supersessionNotes'>
    ```
-   The method takes the two parsed fact arrays separately so callers can combine
-   results with the staleness lint result to produce a final `LintReport`.
-4. **Contradiction detection algorithm**:
+   The method takes the two parsed fact arrays separately so callers (WP05) can
+   combine results with the staleness lint result to produce a final `LintReport`.
+3. **Contradiction detection algorithm**:
    a. Build the full set of fact pairs: MEMORY×USER (cross-file) + MEMORY×MEMORY
       (intra-file). Do not generate USER×USER pairs (USER.md does not contradict
       itself in the rubric).
@@ -128,12 +128,12 @@ and intra-file contradictions, distinguishes supersession, and populates the ful
    c. Sort `contradictionFindings` by `factAId` then `factBId` using UTF-16
       code-unit ordering (same pattern as T001's `id` generation): ensures
       byte-stable output (NFR-001).
-5. `rubricCitation` in each `ContradictionFinding` must use the `RUBRIC_CITATION`
-   constant from WP01 (C-002).
-6. The linter is deterministic: no `Math.random()`, no `Date.now()`, no
+4. `rubricCitation` in each `ContradictionFinding` must use the `RUBRIC_CITATION`
+   constant imported from `lint.ts` (C-002).
+5. The linter is deterministic: no `Math.random()`, no `Date.now()`, no
    locale-dependent collation.
 
-**Files**: `src/adapters/memory/lint.ts` (extend)
+**Files**: `src/adapters/memory/contradiction.ts` (new)
 
 **Validation (FR-004)**:
 - Cross-file contradictory fixture produces at least one `ContradictionFinding`
@@ -178,13 +178,16 @@ match manifest labels; the supersession pair has parseable timestamps.
 
 ---
 
-### T008 — Unit tests: `tests/unit/memory/lint.test.ts` (contradiction branch)
+### T008 — Unit tests: `tests/unit/memory/contradiction.test.ts`
 
 **Purpose**: exercise `ContradictionLinter` with the contradictory fixture set
-from T007. Additive — do not touch the staleness tests from WP01.
+from T007. Lives in its own file — do NOT touch `tests/unit/memory/lint.test.ts`
+(WP01's file).
 
 **Steps**:
-1. In `tests/unit/memory/lint.test.ts`, append a `describe('ContradictionLinter')` block.
+1. Create `tests/unit/memory/contradiction.test.ts`. Import `FactParser` from
+   `src/adapters/memory/lint` and `ContradictionLinter` from
+   `src/adapters/memory/contradiction`.
 2. **Cross-file contradiction test** (acceptance scenario 2, FR-004):
    - Parse `tests/fixtures/memory/contradictory/MEMORY.md` and
      `tests/fixtures/memory/contradictory/USER.md` with their manifest.
@@ -215,10 +218,10 @@ from T007. Additive — do not touch the staleness tests from WP01.
    - Assert `contradictionFindings.length === 0` — the linter cannot invent
      contradictions from unrelated facts.
 
-**Files**: `tests/unit/memory/lint.test.ts` (extend from WP01)
+**Files**: `tests/unit/memory/contradiction.test.ts` (new)
 
-**Validation**: `pnpm test -- tests/unit/memory/lint.test.ts` green; all seven
-contradiction-branch cases pass; WP01 staleness cases unaffected.
+**Validation**: `pnpm test -- tests/unit/memory/contradiction.test.ts` green;
+all seven contradiction-branch cases pass; `lint.test.ts` is unmodified.
 
 ---
 
@@ -230,10 +233,11 @@ contradiction-branch cases pass; WP01 staleness cases unaffected.
 ```bash
 pnpm build                   # strict tsc — zero errors
 pnpm test                    # full suite — zero failures, zero new skips
-pnpm test -- tests/unit/memory/lint.test.ts  # targeted confirmation
+pnpm test -- tests/unit/memory/contradiction.test.ts  # targeted confirmation
 # Byte-stability check (NFR-001):
 node -e "
-const { FactParser, ContradictionLinter } = require('./dist/adapters/memory/lint.js');
+const { FactParser } = require('./dist/adapters/memory/lint.js');
+const { ContradictionLinter } = require('./dist/adapters/memory/contradiction.js');
 const fp = new FactParser();
 const cl = new ContradictionLinter();
 const mf = require('./tests/fixtures/memory/contradictory/manifest.json');
@@ -261,7 +265,7 @@ only files from `owned_files`; WP01 staleness tests still pass.
 - [ ] Byte-stability check (T009) passes: identical JSON output on two runs
 - [ ] All `ContradictionFinding` values carry a non-empty `rubricCitation` (C-002)
 - [ ] Findings sorted deterministically (UTF-16 code-unit order on factAId/factBId)
-- [ ] `pnpm build` (strict tsc) + `pnpm test` green; WP01 staleness tests unmodified
+- [ ] `pnpm build` (strict tsc) + `pnpm test` green; `lint.ts` and `lint.test.ts` (WP01) unmodified
 - [ ] No `src/core/` modification; adapter boundary intact (C-001)
 - [ ] SonarCloud coverage gate condition: ≥ 80% line coverage on new code (NFR-006)
 
@@ -271,9 +275,11 @@ only files from `owned_files`; WP01 staleness tests still pass.
   supersession pair is flagged as a `ContradictionFinding`.
 - Verify the sorting logic: findings must be sorted by `factAId` → `factBId` in
   code-unit order; a randomly ordered output is a byte-stability failure.
-- Check that WP01 tests (staleness branch) are unmodified — run
-  `git diff HEAD -- tests/unit/memory/lint.test.ts` and confirm only new
-  `describe` blocks were added.
-- Confirm `rubricCitation` is the shared `RUBRIC_CITATION` constant, not a
-  different string.
+- Confirm `lint.ts` and `lint.test.ts` are unmodified — run
+  `git diff HEAD -- src/adapters/memory/lint.ts tests/unit/memory/lint.test.ts`
+  and confirm no changes.
+- Confirm `rubricCitation` is the shared `RUBRIC_CITATION` constant imported from
+  `lint.ts`, not a different string.
+- Confirm all new source code lives in `src/adapters/memory/contradiction.ts` and
+  all new tests live in `tests/unit/memory/contradiction.test.ts`.
 - Byte-stability evidence (T009) must appear in the activity log.
