@@ -506,3 +506,4 @@ git diff -U0 src/cli/index.ts | grep '^\+' | grep -v 'heartbeat\|HeartbeatAdapte
 - 2026-06-13T14:31:03Z – claude:sonnet:implementer:implementer – Implemented on rebased code-only lane; build+test green, coverage >=89%
 - 2026-06-13T14:34:42Z – claude:opus:reviewer:reviewer – Moved to planned
 - 2026-06-13T14:35:59Z – claude:sonnet:implementer:implementer – Moved to in_progress
+- 2026-06-13T14:41:36Z – claude:sonnet:implementer:implementer – Wired behavioral path per review; errored=failed enforced; tests assert cases run via stub client
