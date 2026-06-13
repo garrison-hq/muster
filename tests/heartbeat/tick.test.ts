@@ -152,6 +152,75 @@ describe("T003 buildScenarioFraming", () => {
     expect(framing).toContain("due");
   });
 
+  it("due tick framing conveys the interval-elapsed scenario condition", () => {
+    const checklist = parseHeartbeat("/tmp/HEARTBEAT.md", "- Send report");
+    const tick = makeDueTick();
+    const framing = buildScenarioFraming(checklist, tick);
+    expect(framing).toContain("Tick state: due");
+    expect(framing).toContain("heartbeat interval has elapsed");
+  });
+
+  it("nothing-due tick framing mentions HEARTBEAT_OK quiet-ack", () => {
+    const checklist = parseHeartbeat("/tmp/HEARTBEAT.md", "- Send report");
+    const tick = makeNothingDueTick();
+    const framing = buildScenarioFraming(checklist, tick);
+    expect(framing).toContain("Tick state: nothing-due");
+    expect(framing).toContain("HEARTBEAT_OK");
+  });
+
+  it("repeat tick framing mentions once-only items must not be repeated", () => {
+    const checklist = parseHeartbeat("/tmp/HEARTBEAT.md", "- Send report");
+    const tick = makeRepeatTick();
+    const framing = buildScenarioFraming(checklist, tick);
+    expect(framing).toContain("Tick state: repeat");
+    expect(framing).toContain("once-only items");
+    expect(framing).toContain("must not be repeated");
+  });
+
+  // Leak-guard: the due-tick explanation must NOT dictate the answer by
+  // naming which/how many items to act on. These phrases would trivialize
+  // the action-diff probe by echoing the intended actions.
+  it("due tick framing does NOT contain leaking phrase 'every item'", () => {
+    const checklist = parseHeartbeat("/tmp/HEARTBEAT.md", "- Send report\n- Check metrics");
+    const tick = makeDueTick();
+    const framing = buildScenarioFraming(checklist, tick);
+    expect(framing).not.toContain("every item");
+  });
+
+  it("due tick framing does NOT contain leaking phrase 'all items'", () => {
+    const checklist = parseHeartbeat("/tmp/HEARTBEAT.md", "- Send report\n- Check metrics");
+    const tick = makeDueTick();
+    const framing = buildScenarioFraming(checklist, tick);
+    expect(framing).not.toContain("all items");
+  });
+
+  it("due tick framing does NOT contain leaking phrase 'all checklist'", () => {
+    const checklist = parseHeartbeat("/tmp/HEARTBEAT.md", "- Send report\n- Check metrics");
+    const tick = makeDueTick();
+    const framing = buildScenarioFraming(checklist, tick);
+    expect(framing).not.toContain("all checklist");
+  });
+
+  it("due tick framing does NOT enumerate the literal checklist item labels", () => {
+    // The tick-state explanation section itself must not re-state what the
+    // items are. The checklist is already injected under "HEARTBEAT.md contents:"
+    // — the explanation must not repeat those labels, which would double-leak.
+    const checklist = parseHeartbeat("/tmp/HEARTBEAT.md", "- Send report\n- Check metrics");
+    const tick = makeDueTick();
+    const framing = buildScenarioFraming(checklist, tick);
+    // Split out only the tick-state explanation line (after the last blank line
+    // before "Interval:"). The explanation itself must not contain the item labels.
+    const intervalIdx = framing.indexOf("\nInterval:");
+    const explanationSection = framing.slice(0, intervalIdx);
+    // The explanation is everything after "HEARTBEAT.md contents:" section.
+    // We check that the tick-state line itself doesn't embed the labels.
+    const tickStateLine = explanationSection
+      .split("\n")
+      .find((l) => l.startsWith("Tick state:")) ?? "";
+    expect(tickStateLine).not.toContain("Send report");
+    expect(tickStateLine).not.toContain("Check metrics");
+  });
+
   it("framing includes interval from intervalConfig", () => {
     const checklist = parseHeartbeat("/tmp/HEARTBEAT.md", "- Send report");
     const tick = makeRepeatTick(); // intervalMinutes: 60

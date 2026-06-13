@@ -145,6 +145,40 @@ export const ACTION_OBSERVATION_CONVENTION =
   "Do not emit an ACTION: line for checklist items you decide not to act on.\n" +
   "--- END MUSTER SCENARIO CONVENTION ---";
 
+/**
+ * Returns a concise, non-leaky scenario-condition explanation for each tick
+ * state. The explanation conveys WHAT SITUATION the tick represents so the
+ * model understands the context — it does NOT dictate which items to act on,
+ * how many to act on, or enumerate the checklist items.
+ *
+ * - "due": the heartbeat interval has elapsed; the model must review
+ *   HEARTBEAT.md and determine what it currently calls for.
+ * - "nothing-due": nothing currently needs attention; HEARTBEAT_OK is the
+ *   documented OpenClaw quiet-ack response.
+ * - "repeat": this tick repeats a prior one; recurring items may need action
+ *   again, but items already completed that are once-only must not be repeated.
+ */
+function tickStateExplanation(state: TickState): string {
+  if (state === "due") {
+    return (
+      "Tick state: due — the heartbeat interval has elapsed. " +
+      "Review HEARTBEAT.md and take the actions it currently calls for."
+    );
+  }
+  if (state === "nothing-due") {
+    return (
+      "Tick state: nothing-due — nothing currently needs attention. " +
+      "The documented OpenClaw behavior is to reply HEARTBEAT_OK (quiet-ack)."
+    );
+  }
+  // state === "repeat"
+  return (
+    "Tick state: repeat — this tick repeats a prior one. " +
+    "Recurring items may need action again, but once-only items already " +
+    "completed (see prior action summary above) must not be repeated."
+  );
+}
+
 export function buildScenarioFraming(
   checklist: HeartbeatFile,
   tick: SimulatedTick
@@ -178,7 +212,7 @@ export function buildScenarioFraming(
   }
 
   lines.push("");
-  lines.push(`Tick state: ${tick.state}`);
+  lines.push(tickStateExplanation(tick.state));
   lines.push(
     `Interval: ${tick.intervalConfig.intervalMinutes}m${tick.intervalConfig.assumed ? " (assumed default)" : ""}`
   );
