@@ -178,6 +178,95 @@ function parseParametersTable(tableLines: string[]): Map<string, ParameterDescri
 }
 
 /**
+ * Collect non-heading prose lines for a tool description, starting from
+ * `startIdx` in `lines`. Stops at the next heading (###, ## , or ####).
+ *
+ * Returns the collected description lines and the updated line index.
+ */
+function collectDescriptionLines(
+  lines: string[],
+  startIdx: number
+): { descLines: string[]; nextIdx: number } {
+  const descLines: string[] = [];
+  let i = startIdx;
+  while (i < lines.length) {
+    const l = lines[i] ?? "";
+    if (l.startsWith("###") || l.startsWith("## ") || l.startsWith("####")) {
+      break;
+    }
+    if (l.trim() && !l.trim().startsWith("|")) {
+      descLines.push(l.trim());
+    }
+    i++;
+  }
+  return { descLines, nextIdx: i };
+}
+
+/**
+ * Collect raw Markdown table lines that follow a #### Parameters sub-heading,
+ * starting from `startIdx` (the line after the sub-heading).
+ *
+ * Stops at the next heading (###, ## , or ####).
+ * Returns the table lines and the updated line index.
+ */
+function collectParameterTableLines(
+  lines: string[],
+  startIdx: number
+): { tableLines: string[]; nextIdx: number } {
+  const tableLines: string[] = [];
+  let i = startIdx;
+  while (i < lines.length) {
+    const l = lines[i] ?? "";
+    if (l.startsWith("###") || l.startsWith("## ") || l.startsWith("####")) {
+      break;
+    }
+    tableLines.push(l);
+    i++;
+  }
+  return { tableLines, nextIdx: i };
+}
+
+/**
+ * Parse the parameter block that may follow a tool's description.
+ *
+ * If the current line (at `startIdx`) is a `#### Parameters` sub-heading,
+ * reads the table and returns the parsed parameters and updated index.
+ * Otherwise returns an empty parameter map and the unchanged index.
+ */
+function parseParameterBlock(
+  lines: string[],
+  startIdx: number
+): { parameters: Map<string, ParameterDescriptor>; nextIdx: number } {
+  if (startIdx >= lines.length || !(lines[startIdx] ?? "").startsWith("####")) {
+    return { parameters: new Map(), nextIdx: startIdx };
+  }
+  const subHeading = normaliseHeading((lines[startIdx] ?? "").replace(/^#+\s*/, ""));
+  if (subHeading !== "parameters") {
+    return { parameters: new Map(), nextIdx: startIdx };
+  }
+  const { tableLines, nextIdx } = collectParameterTableLines(lines, startIdx + 1);
+  return { parameters: parseParametersTable(tableLines), nextIdx };
+}
+
+/**
+ * Parse one tool block starting immediately after the `### tool_name` heading.
+ *
+ * Returns the constructed ToolDescriptor and the updated line index.
+ */
+function parseToolBlock(
+  name: string,
+  lines: string[],
+  startIdx: number
+): { tool: ToolDescriptor; nextIdx: number } {
+  const { descLines, nextIdx: afterDesc } = collectDescriptionLines(lines, startIdx);
+  const { parameters, nextIdx } = parseParameterBlock(lines, afterDesc);
+  return {
+    tool: { name, description: descLines.join(" ").trim(), parameters },
+    nextIdx,
+  };
+}
+
+/**
  * Extract ToolDescriptor entries from a section body string.
  *
  * Each tool is identified by a level-3 heading (### tool_name), followed
@@ -191,58 +280,12 @@ function extractToolsFromBody(body: string): ToolDescriptor[] {
 
   while (i < lines.length) {
     const line = lines[i] ?? "";
-    // Match level-3 heading: ### tool_name
     const toolHeadingMatch = /^###\s+(\S+)\s*$/.exec(line);
     if (toolHeadingMatch) {
       const name = toolHeadingMatch[1] ?? "";
-      i++;
-
-      // Collect description lines (non-empty, non-heading lines)
-      const descLines: string[] = [];
-      while (i < lines.length) {
-        const l = lines[i] ?? "";
-        if (l.startsWith("###") || l.startsWith("## ")) {
-          // Hit next tool or section heading — stop
-          break;
-        }
-        if (l.startsWith("####")) {
-          // Hit sub-heading (e.g. #### Parameters) — stop collecting desc
-          break;
-        }
-        if (l.trim()) {
-          // Skip table lines (they belong to description only if before Parameters)
-          if (!l.trim().startsWith("|")) {
-            descLines.push(l.trim());
-          }
-        }
-        i++;
-      }
-
-      // Check for #### Parameters sub-heading
-      let parameters = new Map<string, ParameterDescriptor>();
-      if (i < lines.length && (lines[i] ?? "").startsWith("####")) {
-        const subHeading = normaliseHeading((lines[i] ?? "").replace(/^#+\s*/, ""));
-        if (subHeading === "parameters") {
-          i++;
-          // Collect table lines
-          const tableLines: string[] = [];
-          while (i < lines.length) {
-            const l = lines[i] ?? "";
-            if (l.startsWith("###") || l.startsWith("## ") || l.startsWith("####")) {
-              break;
-            }
-            tableLines.push(l);
-            i++;
-          }
-          parameters = parseParametersTable(tableLines);
-        }
-      }
-
-      tools.push({
-        name,
-        description: descLines.join(" ").trim(),
-        parameters,
-      });
+      const { tool, nextIdx } = parseToolBlock(name, lines, i + 1);
+      tools.push(tool);
+      i = nextIdx;
     } else {
       i++;
     }
@@ -358,7 +401,7 @@ export function lintTOOLSFile(file: TOOLSFile): LintReport {
 
   // Check 3: Empty descriptions
   for (const tool of file.tools) {
-    if (!tool.description || !tool.description.trim()) {
+    if (!tool.description?.trim()) {
       findings.push({
         kind: "empty-description",
         toolName: tool.name,

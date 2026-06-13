@@ -240,6 +240,17 @@ function isOpenAiRegistry(data: unknown): boolean {
 }
 
 /**
+ * UTF-16 code-unit string comparator (locale-independent, byte-stable).
+ * Returns -1, 0, or 1. Use instead of nested ternaries (S3358) and
+ * instead of localeCompare (SC-002, NFR-001).
+ */
+function compareStrings(a: string, b: string): -1 | 0 | 1 {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
+}
+
+/**
  * Extract parameters from a JSON Schema "properties" object + "required" array.
  */
 function extractParameters(
@@ -259,6 +270,38 @@ function extractParameters(
 }
 
 /**
+ * Parse a single MCP manifest tool item into an EnvironmentToolEntry, or
+ * return null if the item is not a valid MCP tool entry.
+ */
+function parseMcpToolItem(
+  item: unknown
+): { name: string; entry: EnvironmentToolEntry } | null {
+  if (typeof item !== "object" || item === null) return null;
+  const entry = item as Record<string, unknown>;
+  const name = typeof entry["name"] === "string" ? entry["name"] : null;
+  if (!name) return null;
+
+  const inputSchema =
+    typeof entry["inputSchema"] === "object" && entry["inputSchema"] !== null
+      ? (entry["inputSchema"] as Record<string, unknown>)
+      : undefined;
+
+  const properties =
+    inputSchema !== undefined &&
+    typeof inputSchema["properties"] === "object" &&
+    inputSchema["properties"] !== null
+      ? (inputSchema["properties"] as Record<string, { type?: string }>)
+      : undefined;
+
+  const required =
+    inputSchema !== undefined && Array.isArray(inputSchema["required"])
+      ? (inputSchema["required"] as string[])
+      : undefined;
+
+  return { name, entry: { name, parameters: extractParameters(properties, required) } };
+}
+
+/**
  * Parse MCP manifest tools array into EnvironmentToolEntry records.
  */
 function parseMcpTools(
@@ -266,34 +309,52 @@ function parseMcpTools(
 ): Map<string, EnvironmentToolEntry> {
   const map = new Map<string, EnvironmentToolEntry>();
   for (const item of toolsArray) {
-    if (typeof item !== "object" || item === null) continue;
-    const entry = item as Record<string, unknown>;
-    const name = typeof entry["name"] === "string" ? entry["name"] : null;
-    if (!name) continue;
-
-    const inputSchema =
-      typeof entry["inputSchema"] === "object" && entry["inputSchema"] !== null
-        ? (entry["inputSchema"] as Record<string, unknown>)
-        : undefined;
-
-    const properties =
-      inputSchema !== undefined &&
-      typeof inputSchema["properties"] === "object" &&
-      inputSchema["properties"] !== null
-        ? (inputSchema["properties"] as Record<string, { type?: string }>)
-        : undefined;
-
-    const required =
-      inputSchema !== undefined && Array.isArray(inputSchema["required"])
-        ? (inputSchema["required"] as string[])
-        : undefined;
-
-    map.set(name, {
-      name,
-      parameters: extractParameters(properties, required),
-    });
+    const parsed = parseMcpToolItem(item);
+    if (parsed !== null) {
+      map.set(parsed.name, parsed.entry);
+    }
   }
   return map;
+}
+
+/**
+ * Parse a single OpenAI tool registry item into an EnvironmentToolEntry, or
+ * return null if the item is not a valid OpenAI function tool entry.
+ */
+function parseOpenAiToolItem(
+  item: unknown
+): { name: string; entry: EnvironmentToolEntry } | null {
+  if (typeof item !== "object" || item === null) return null;
+  const entry = item as Record<string, unknown>;
+  if (entry["type"] !== "function") return null;
+
+  const fn =
+    typeof entry["function"] === "object" && entry["function"] !== null
+      ? (entry["function"] as Record<string, unknown>)
+      : null;
+  if (!fn) return null;
+
+  const name = typeof fn["name"] === "string" ? fn["name"] : null;
+  if (!name) return null;
+
+  const params =
+    typeof fn["parameters"] === "object" && fn["parameters"] !== null
+      ? (fn["parameters"] as Record<string, unknown>)
+      : undefined;
+
+  const properties =
+    params !== undefined &&
+    typeof params["properties"] === "object" &&
+    params["properties"] !== null
+      ? (params["properties"] as Record<string, { type?: string }>)
+      : undefined;
+
+  const required =
+    params !== undefined && Array.isArray(params["required"])
+      ? (params["required"] as string[])
+      : undefined;
+
+  return { name, entry: { name, parameters: extractParameters(properties, required) } };
 }
 
 /**
@@ -304,39 +365,10 @@ function parseOpenAiTools(
 ): Map<string, EnvironmentToolEntry> {
   const map = new Map<string, EnvironmentToolEntry>();
   for (const item of toolsArray) {
-    if (typeof item !== "object" || item === null) continue;
-    const entry = item as Record<string, unknown>;
-    if (entry["type"] !== "function") continue;
-    const fn =
-      typeof entry["function"] === "object" && entry["function"] !== null
-        ? (entry["function"] as Record<string, unknown>)
-        : null;
-    if (!fn) continue;
-
-    const name = typeof fn["name"] === "string" ? fn["name"] : null;
-    if (!name) continue;
-
-    const params =
-      typeof fn["parameters"] === "object" && fn["parameters"] !== null
-        ? (fn["parameters"] as Record<string, unknown>)
-        : undefined;
-
-    const properties =
-      params !== undefined &&
-      typeof params["properties"] === "object" &&
-      params["properties"] !== null
-        ? (params["properties"] as Record<string, { type?: string }>)
-        : undefined;
-
-    const required =
-      params !== undefined && Array.isArray(params["required"])
-        ? (params["required"] as string[])
-        : undefined;
-
-    map.set(name, {
-      name,
-      parameters: extractParameters(properties, required),
-    });
+    const parsed = parseOpenAiToolItem(item);
+    if (parsed !== null) {
+      map.set(parsed.name, parsed.entry);
+    }
   }
   return map;
 }
@@ -397,6 +429,150 @@ export async function loadEnvironmentDescriptor(
 // T010 + T011 — runDriftCheck() with deterministic ordering
 // ---------------------------------------------------------------------------
 
+/** Charter rubric constant — every DriftFinding must cite this (FR-009). */
+const DRIFT_RUBRIC = "muster-rubric:tools/drift/v1";
+
+/**
+ * Build a simple (non-schema-mismatch) DriftFinding.
+ *
+ * citedRubric is DRIFT_RUBRIC (a non-empty compile-time constant), satisfying
+ * the charter invariant (FR-009) at construction without a runtime check.
+ */
+function buildSimpleFinding(
+  kind: "documented-but-missing" | "present-but-undocumented",
+  toolName: string
+): DriftFinding {
+  return { kind, toolName, citedRubric: DRIFT_RUBRIC };
+}
+
+/**
+ * Pass 1: Emit documented-but-missing findings for every documented tool
+ * that is absent from the environment.
+ */
+function collectMissingFindings(
+  documentedMap: Map<string, unknown>,
+  envNames: Set<string>
+): DriftFinding[] {
+  const findings: DriftFinding[] = [];
+  for (const [name] of documentedMap) {
+    if (!envNames.has(name)) {
+      findings.push(buildSimpleFinding("documented-but-missing", name));
+    }
+  }
+  return findings;
+}
+
+/**
+ * Pass 2: Emit present-but-undocumented findings for every environment tool
+ * that is absent from the documentation.
+ */
+function collectUndocumentedFindings(
+  envDescriptor: EnvironmentDescriptor,
+  documentedMap: Map<string, unknown>
+): DriftFinding[] {
+  const findings: DriftFinding[] = [];
+  for (const [name] of envDescriptor.tools) {
+    if (!documentedMap.has(name)) {
+      findings.push(buildSimpleFinding("present-but-undocumented", name));
+    }
+  }
+  return findings;
+}
+
+/**
+ * Collect the set of differing field identifiers between documented and
+ * environment parameters for a single tool.
+ *
+ * Returns a sorted (UTF-16 code-unit, SC-002) array of field path strings,
+ * or an empty array when the schemas are identical.
+ */
+function collectDiffFields(
+  docParams: ReadonlyMap<string, ParameterDescriptor>,
+  envParams: ReadonlyMap<string, ParameterDescriptor>
+): string[] {
+  const docParamNames = new Set(docParams.keys());
+  const envParamNames = new Set(envParams.keys());
+  const fields: string[] = [];
+
+  for (const paramName of docParamNames) {
+    if (!envParamNames.has(paramName)) {
+      fields.push(`parameters.${paramName}`);
+    }
+  }
+  for (const paramName of envParamNames) {
+    if (!docParamNames.has(paramName)) {
+      fields.push(`parameters.${paramName}`);
+    }
+  }
+  for (const paramName of docParamNames) {
+    if (!envParamNames.has(paramName)) continue;
+    const docParam = docParams.get(paramName)!;
+    const envParam = envParams.get(paramName)!;
+    if (docParam.type !== envParam.type) {
+      fields.push(`parameters.${paramName}.type`);
+    }
+    if (docParam.required !== envParam.required) {
+      fields.push(`parameters.${paramName}.required`);
+    }
+  }
+
+  fields.sort(compareStrings);
+  return fields;
+}
+
+/**
+ * Determine the schema-mismatch direction from the two disjoint param-name sets.
+ *
+ * - "docs-ahead": docs declare params not in the environment.
+ * - "reality-ahead": environment has params not in docs, or only type/required differ.
+ */
+function determineMismatchDirection(
+  docParamNames: Set<string>,
+  envParamNames: Set<string>
+): SchemaMismatchDirection {
+  const docsAheadCount = [...docParamNames].filter(
+    (n) => !envParamNames.has(n)
+  ).length;
+  const realityAheadCount = [...envParamNames].filter(
+    (n) => !docParamNames.has(n)
+  ).length;
+  if (docsAheadCount > 0 && realityAheadCount === 0) {
+    return "docs-ahead";
+  }
+  // environment has params not in docs, or only type/required differ
+  return "reality-ahead";
+}
+
+/**
+ * Pass 3: Emit schema-mismatch findings for every tool that appears in both
+ * the documentation and the environment but whose parameter schemas differ.
+ */
+function collectSchemaMismatchFindings(
+  documentedMap: Map<string, import("./lint.js").ToolDescriptor>,
+  envDescriptor: EnvironmentDescriptor
+): DriftFinding[] {
+  const findings: DriftFinding[] = [];
+  for (const [name, docTool] of documentedMap) {
+    const envTool = envDescriptor.tools.get(name);
+    if (!envTool) continue; // Already handled in Pass 1
+
+    const fields = collectDiffFields(docTool.parameters, envTool.parameters);
+    if (fields.length === 0) {
+      // No structured difference — no finding emitted for a clean match.
+      continue;
+    }
+
+    const direction = determineMismatchDirection(
+      new Set(docTool.parameters.keys()),
+      new Set(envTool.parameters.keys())
+    );
+
+    // citedRubric is DRIFT_RUBRIC (non-empty compile-time constant) — FR-009 invariant satisfied.
+    findings.push({ kind: "schema-mismatch", toolName: name, direction, fields, citedRubric: DRIFT_RUBRIC });
+  }
+  return findings;
+}
+
 /**
  * Compare the documented tool set (TOOLSFile) against a live environment
  * descriptor and emit DriftFinding entries for each divergence.
@@ -424,150 +600,23 @@ export function runDriftCheck(
   toolsFile: TOOLSFile,
   envDescriptor: EnvironmentDescriptor
 ): DriftReport {
-  const findings: DriftFinding[] = [];
-
   // Build documented tool set (name → ToolDescriptor)
   const documentedMap = new Map(toolsFile.tools.map((t) => [t.name, t]));
-
   // Build environment tool name set
   const envNames = new Set(envDescriptor.tools.keys());
 
-  // --- Pass 1: documented-but-missing ---
-  for (const [name] of documentedMap) {
-    if (!envNames.has(name)) {
-      const finding: DriftFinding = {
-        kind: "documented-but-missing",
-        toolName: name,
-        citedRubric: "muster-rubric:tools/drift/v1",
-      };
-      // Runtime assertion: citedRubric must be non-empty (charter invariant, FR-009)
-      if (!finding.citedRubric) {
-        throw new Error(
-          `DriftFinding for "${name}" (documented-but-missing) has an empty citedRubric — charter invariant violated (FR-009).`
-        );
-      }
-      findings.push(finding);
-    }
-  }
+  const findings: DriftFinding[] = [
+    ...collectMissingFindings(documentedMap, envNames),
+    ...collectUndocumentedFindings(envDescriptor, documentedMap),
+    ...collectSchemaMismatchFindings(documentedMap, envDescriptor),
+  ];
 
-  // --- Pass 2: present-but-undocumented ---
-  for (const [name] of envDescriptor.tools) {
-    if (!documentedMap.has(name)) {
-      const finding: DriftFinding = {
-        kind: "present-but-undocumented",
-        toolName: name,
-        citedRubric: "muster-rubric:tools/drift/v1",
-      };
-      // Runtime assertion: citedRubric must be non-empty (charter invariant, FR-009)
-      if (!finding.citedRubric) {
-        throw new Error(
-          `DriftFinding for "${name}" (present-but-undocumented) has an empty citedRubric — charter invariant violated (FR-009).`
-        );
-      }
-      findings.push(finding);
-    }
-  }
-
-  // --- Pass 3: schema-mismatch ---
-  for (const [name, docTool] of documentedMap) {
-    const envTool = envDescriptor.tools.get(name);
-    if (!envTool) continue; // Already handled in Pass 1
-
-    const docParams = docTool.parameters;
-    const envParams = envTool.parameters;
-
-    const docParamNames = new Set(docParams.keys());
-    const envParamNames = new Set(envParams.keys());
-
-    // Collect differing field identifiers
-    const differingFields: string[] = [];
-
-    // Parameters in docs but not in environment
-    for (const paramName of docParamNames) {
-      if (!envParamNames.has(paramName)) {
-        differingFields.push(`parameters.${paramName}`);
-      }
-    }
-
-    // Parameters in environment but not in docs
-    for (const paramName of envParamNames) {
-      if (!docParamNames.has(paramName)) {
-        differingFields.push(`parameters.${paramName}`);
-      }
-    }
-
-    // Parameters present in both — compare type and required
-    for (const paramName of docParamNames) {
-      if (!envParamNames.has(paramName)) continue; // already captured above
-      const docParam = docParams.get(paramName)!;
-      const envParam = envParams.get(paramName)!;
-      if (docParam.type !== envParam.type) {
-        differingFields.push(`parameters.${paramName}.type`);
-      }
-      if (docParam.required !== envParam.required) {
-        differingFields.push(`parameters.${paramName}.required`);
-      }
-    }
-
-    if (differingFields.length === 0) {
-      // No structured difference; could check prose (descriptions) but
-      // ToolDescriptor carries description while EnvironmentToolEntry does not —
-      // no prose comparison possible here without environment descriptions.
-      // No finding emitted for a clean match.
-      continue;
-    }
-
-    // Sort fields by UTF-16 code-unit comparator (locale-independent, SC-002)
-    differingFields.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-
-    // Determine direction:
-    // "docs-ahead": docs declare params not in environment (docs outpace reality)
-    // "reality-ahead": environment has params not in docs
-    const docsAheadParams = [...docParamNames].filter(
-      (n) => !envParamNames.has(n)
-    );
-    const realityAheadParams = [...envParamNames].filter(
-      (n) => !docParamNames.has(n)
-    );
-
-    let direction: SchemaMismatchDirection;
-    if (docsAheadParams.length > 0 && realityAheadParams.length === 0) {
-      // Docs declare more than environment; only type/required diffs where
-      // docs have params not in env
-      direction = "docs-ahead";
-    } else if (realityAheadParams.length > 0) {
-      // Environment has params not in docs
-      direction = "reality-ahead";
-    } else {
-      // Both sets have the same parameter names but type/required differ;
-      // treat as reality-ahead (environment diverges from what was documented)
-      direction = "reality-ahead";
-    }
-
-    const finding: DriftFinding = {
-      kind: "schema-mismatch",
-      toolName: name,
-      direction,
-      fields: differingFields,
-      citedRubric: "muster-rubric:tools/drift/v1",
-    };
-    // Runtime assertion: citedRubric must be non-empty (charter invariant, FR-009)
-    if (!finding.citedRubric) {
-      throw new Error(
-        `DriftFinding for "${name}" (schema-mismatch) has an empty citedRubric — charter invariant violated (FR-009).`
-      );
-    }
-    findings.push(finding);
-  }
-
-  // --- Sort findings by (kind, toolName) using UTF-16 code-unit comparator ---
-  // Do NOT use localeCompare — locale-independent ordering is required for
-  // byte-stable canonical output (SC-002, NFR-001, charter constraint).
+  // Sort by (kind, toolName) using UTF-16 code-unit comparator (SC-002, NFR-001).
+  // Do NOT use localeCompare — locale-dependent and breaks byte-stable output.
   findings.sort((a, b) => {
-    // UTF-16 code-unit string comparison (locale-independent)
-    const kindCmp = a.kind < b.kind ? -1 : a.kind > b.kind ? 1 : 0;
+    const kindCmp = compareStrings(a.kind, b.kind);
     if (kindCmp !== 0) return kindCmp;
-    return a.toolName < b.toolName ? -1 : a.toolName > b.toolName ? 1 : 0;
+    return compareStrings(a.toolName, b.toolName);
   });
 
   return {
