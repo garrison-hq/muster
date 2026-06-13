@@ -110,18 +110,12 @@ function validateExpectErrors(
   return expectErrors;
 }
 
-function validateEntry(
-  entry: unknown,
-  index: number,
-  manifestDir: string,
+/** Strict-manifest rule: every key must be a known Appendix F.1 field. */
+function reportUnknownFields(
+  entry: Record<string, unknown>,
+  where: string,
   errors: Violation[]
-): CtsCase | null {
-  const where = `manifest[${index}]`;
-  if (!isRecord(entry)) {
-    errors.push(violation(where, "manifest entry must be a mapping of Appendix F.1 fields"));
-    return null;
-  }
-
+): void {
   for (const key of Object.keys(entry)) {
     if (!KNOWN_FIELDS.has(key)) {
       errors.push(
@@ -132,9 +126,14 @@ function validateEntry(
       );
     }
   }
+}
 
-  const startCount = errors.length;
-
+/** Appendix F.1 required fields: id, root, mode, expect_ok. */
+function validateRequiredFields(
+  entry: Record<string, unknown>,
+  where: string,
+  errors: Violation[]
+): void {
   const id = entry["id"];
   if (typeof id !== "string" || id.length === 0) {
     errors.push(violation(`${where}.id`, "required field \"id\" must be a non-empty string"));
@@ -153,7 +152,14 @@ function validateEntry(
   if (typeof expectOk !== "boolean") {
     errors.push(violation(`${where}.expect_ok`, 'required field "expect_ok" must be a boolean'));
   }
+}
 
+/** Appendix F.1 optional string fields + the mutually-exclusive expect_effective_* rule. */
+function validateOptionalFields(
+  entry: Record<string, unknown>,
+  where: string,
+  errors: Violation[]
+): void {
   for (const optional of ["profile", "state", "expect_effective_yaml", "expect_effective_json"] as const) {
     const value = entry[optional];
     if (value !== undefined && typeof value !== "string") {
@@ -172,28 +178,35 @@ function validateEntry(
       )
     );
   }
+}
 
-  let expectErrors: CtsExpectedError[] | undefined;
-  const rawExpectErrors = entry["expect_errors"];
-  if (rawExpectErrors !== undefined) {
-    if (Array.isArray(rawExpectErrors)) {
-      expectErrors = validateExpectErrors(rawExpectErrors, where, errors);
-    } else {
-      errors.push(
-        violation(`${where}.expect_errors`, 'optional field "expect_errors" must be a list of {path, message}')
-      );
-    }
-  }
+/** Parse the optional expect_errors list, reporting a type error for non-lists. */
+function parseExpectErrors(
+  entry: Record<string, unknown>,
+  where: string,
+  errors: Violation[]
+): CtsExpectedError[] | undefined {
+  const raw = entry["expect_errors"];
+  if (raw === undefined) return undefined;
+  if (Array.isArray(raw)) return validateExpectErrors(raw, where, errors);
+  errors.push(
+    violation(`${where}.expect_errors`, 'optional field "expect_errors" must be a list of {path, message}')
+  );
+  return undefined;
+}
 
-  if (errors.length > startCount) {
-    return null;
-  }
-
+/** Build the validated case with paths resolved against the manifest dir.
+ *  Called only once all required fields are confirmed present and well-typed. */
+function buildCtsCase(
+  entry: Record<string, unknown>,
+  manifestDir: string,
+  expectErrors: CtsExpectedError[] | undefined
+): CtsCase {
   const ctsCase: CtsCase = {
-    id: id as string,
-    root: resolveFromManifest(manifestDir, root as string),
-    mode: mode as Mode,
-    expect_ok: expectOk as boolean,
+    id: entry["id"] as string,
+    root: resolveFromManifest(manifestDir, entry["root"] as string),
+    mode: entry["mode"] as Mode,
+    expect_ok: entry["expect_ok"] as boolean,
   };
   if (typeof entry["profile"] === "string") ctsCase.profile = entry["profile"];
   if (typeof entry["state"] === "string") ctsCase.state = entry["state"];
@@ -205,6 +218,30 @@ function validateEntry(
   }
   if (expectErrors !== undefined) ctsCase.expect_errors = expectErrors;
   return ctsCase;
+}
+
+function validateEntry(
+  entry: unknown,
+  index: number,
+  manifestDir: string,
+  errors: Violation[]
+): CtsCase | null {
+  const where = `manifest[${index}]`;
+  if (!isRecord(entry)) {
+    errors.push(violation(where, "manifest entry must be a mapping of Appendix F.1 fields"));
+    return null;
+  }
+
+  reportUnknownFields(entry, where, errors);
+  const startCount = errors.length;
+  validateRequiredFields(entry, where, errors);
+  validateOptionalFields(entry, where, errors);
+  const expectErrors = parseExpectErrors(entry, where, errors);
+
+  if (errors.length > startCount) {
+    return null;
+  }
+  return buildCtsCase(entry, manifestDir, expectErrors);
 }
 
 /**
