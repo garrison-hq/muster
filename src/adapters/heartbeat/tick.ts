@@ -127,6 +127,24 @@ export const OPENCLAW_HEARTBEAT_PROMPT =
  * Ticks are simulated via scenario framing and a supplied state; no real
  * scheduler runs and no wall-clock time is waited (C-004).
  */
+/**
+ * Muster-imposed action observation convention appended after the verbatim
+ * OpenClaw prompt. This text defines OUTPUT FORMAT only — it does NOT tell
+ * the model which items are due or leak the expected answer. The model still
+ * decides what to do from the checklist + tick state.
+ *
+ * Cited: muster heartbeat adapter spec (FR-004) — "the manifest declares how
+ * each action is observed … text-action assertions require the agent to emit
+ * ACTION: lines for each action it performs."
+ */
+export const ACTION_OBSERVATION_CONVENTION =
+  "--- MUSTER SCENARIO CONVENTION (output format only) ---\n" +
+  "For every action you decide to perform on this tick, emit exactly one line of the form:\n" +
+  "  ACTION: <label>\n" +
+  "where <label> is the action label from the checklist item you are acting on.\n" +
+  "Do not emit an ACTION: line for checklist items you decide not to act on.\n" +
+  "--- END MUSTER SCENARIO CONVENTION ---";
+
 export function buildScenarioFraming(
   checklist: HeartbeatFile,
   tick: SimulatedTick
@@ -134,7 +152,14 @@ export function buildScenarioFraming(
   const lines: string[] = [];
 
   // Verbatim OpenClaw documented default heartbeat prompt (C-003).
+  // MUST remain byte-identical — do NOT alter this text.
   lines.push(OPENCLAW_HEARTBEAT_PROMPT);
+  lines.push("");
+
+  // Muster-imposed action observation convention (FR-004). Appended AFTER
+  // the verbatim OpenClaw text, clearly delimited (C-003). Defines output
+  // format only — does not tell the model which items are due.
+  lines.push(ACTION_OBSERVATION_CONVENTION);
   lines.push("");
 
   // Inject checklist content.

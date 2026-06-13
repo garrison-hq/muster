@@ -64,6 +64,13 @@ export interface ManifestCase {
   description: string;
   checklistPath: string;
   itemRecurrence: Array<{ itemId: string; recurrence: "once-only" | "recurring" }>;
+  /**
+   * For action-diff cases: the ground-truth action labels the agent must emit
+   * via ACTION: lines (FR-004 observation contract). Each entry is the exact
+   * label string declared in the checklist item that the model should act on.
+   * When absent, the runner falls back to checklist item texts (legacy path).
+   */
+  intendedActions?: string[];
   tickState: string | null;
   intervalConfig: string;
   gradingClass: "static-lint" | "interval-config" | "action-diff" | "idempotency" | "quiet-ack";
@@ -263,7 +270,13 @@ async function runActionDiffCase(
   const tickWithInterval = { ...tick, intervalConfig };
   const framing = buildScenarioFraming(checklist, tickWithInterval);
 
-  const intendedActions = checklist.items.map((item) => item.text);
+  // Use manifest-declared intendedActions when present (FR-004 observation
+  // contract). Fall back to checklist item texts for cases without an explicit
+  // intendedActions declaration (legacy/non-action-diff cases).
+  const intendedActions =
+    Array.isArray(kase.intendedActions) && kase.intendedActions.length > 0
+      ? kase.intendedActions
+      : checklist.items.map((item) => item.text);
   const runs: ActionDiffGrader.ActionDiff[] = [];
 
   for (let i = 0; i < n; i++) {

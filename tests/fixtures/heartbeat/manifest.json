@@ -8,6 +8,7 @@
         { "itemId": "item-1", "recurrence": "recurring" },
         { "itemId": "item-2", "recurrence": "recurring" }
       ],
+      "intendedActions": ["check-error-log", "summarise-prs"],
       "tickState": "tests/fixtures/heartbeat/tick-states/due.json",
       "intervalConfig": "tests/fixtures/heartbeat/interval-configs/default-30m.json",
       "gradingClass": "action-diff",

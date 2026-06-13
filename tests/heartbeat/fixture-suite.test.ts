@@ -326,11 +326,12 @@ describe("T019 behavioral path (stub client)", () => {
     expect(detail["passCount"]).toBe(0);
   });
 
-  it("action-diff case passes when stub returns all expected actions", async () => {
-    // valid-concise.md has 2 items; stub returns them as a list.
+  it("action-diff case passes when stub returns ACTION: lines matching manifest intendedActions", async () => {
+    // hb-behavioral-001 intendedActions: ["check-error-log", "summarise-prs"]
+    // Stub emits ACTION: lines with those exact labels — grader must pass.
     const stubClient: ChatClient = {
       chat: async () =>
-        "- Check the error log for new critical entries\n- Summarise open pull requests awaiting review",
+        "I reviewed the checklist and performed the following actions:\nACTION: check-error-log\nACTION: summarise-prs",
     };
     vi.spyOn(BehavioralClient, "makeClient").mockReturnValue(stubClient);
 
@@ -341,6 +342,40 @@ describe("T019 behavioral path (stub client)", () => {
     const detail = result?.detail as Record<string, unknown>;
     // All 3 runs passed (default N=3, k=ceil(0.6*3)=2; all pass so passCount=3)
     expect((detail["passCount"] as number)).toBeGreaterThanOrEqual(2);
+  });
+
+  it("action-diff case fails when stub returns wrong ACTION: labels", async () => {
+    // Stub emits ACTION: lines with wrong labels (not in intendedActions).
+    const stubClient: ChatClient = {
+      chat: async () =>
+        "ACTION: update-calendar\nACTION: send-report",
+    };
+    vi.spyOn(BehavioralClient, "makeClient").mockReturnValue(stubClient);
+
+    const summary = await runManifest(MANIFEST_PATH, PROJECT_ROOT);
+    const result = summary.results.find((r) => r.id === "hb-behavioral-001");
+    expect(result?.skipped).toBe(false);
+    // Wrong labels → all runs fail → aggregate fails
+    expect(result?.passed).toBe(false);
+    const detail = result?.detail as Record<string, unknown>;
+    expect(detail["passCount"]).toBe(0);
+  });
+
+  it("action-diff case fails when stub emits prose (no ACTION: lines)", async () => {
+    // Model replies in prose — no ACTION: lines — grader extracts nothing → fails.
+    const stubClient: ChatClient = {
+      chat: async () =>
+        "I checked the error logs and summarised the open pull requests.",
+    };
+    vi.spyOn(BehavioralClient, "makeClient").mockReturnValue(stubClient);
+
+    const summary = await runManifest(MANIFEST_PATH, PROJECT_ROOT);
+    const result = summary.results.find((r) => r.id === "hb-behavioral-001");
+    expect(result?.skipped).toBe(false);
+    // Prose → 0 observed actions → all missing → all runs fail
+    expect(result?.passed).toBe(false);
+    const detail = result?.detail as Record<string, unknown>;
+    expect(detail["passCount"]).toBe(0);
   });
 
   it("idempotency case runs and produces pass/fail", async () => {

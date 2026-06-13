@@ -193,19 +193,20 @@ describe("buildRepeatTick", () => {
 // ---------------------------------------------------------------------------
 
 describe("gradeRun", () => {
-  it("response without once-only action → passed: true", () => {
+  it("ACTION: line for a different action → passed: true (once-only not repeated)", () => {
     const onceOnly = [makeOnceOnlyItem("item-1", "Send the setup email")];
     const priorActions = ["Send the setup email"];
-    // Response does NOT include the once-only action
-    const response = "- Check system health";
+    // Response reports a different action — once-only not repeated.
+    const response = "ACTION: check-system-health";
     const result = gradeRun(response, onceOnly, priorActions);
     expect(result.passed).toBe(true);
   });
 
-  it("response repeating once-only action → passed: false", () => {
+  it("ACTION: line repeating once-only action → passed: false", () => {
     const onceOnly = [makeOnceOnlyItem("item-1", "Send the setup email")];
     const priorActions = ["Send the setup email"];
-    const response = "- Send the setup email"; // once-only action repeated
+    // Response emits ACTION: with the once-only label — grader must detect repetition.
+    const response = "ACTION: Send the setup email";
     const result = gradeRun(response, onceOnly, priorActions);
     expect(result.passed).toBe(false);
     expect(result.repeatedActions).toContain("Send the setup email");

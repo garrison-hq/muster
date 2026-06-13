@@ -31,15 +31,34 @@ export interface ActionDiff {
 }
 
 // ---------------------------------------------------------------------------
+// T008 — normalizeActionLabel
+// ---------------------------------------------------------------------------
+
+/**
+ * Normalize an action label for case-insensitive, whitespace-collapsed comparison.
+ *
+ * Normalization rules (deterministic, no randomness):
+ * 1. Trim leading and trailing whitespace.
+ * 2. Collapse internal whitespace runs to a single space.
+ * 3. Lowercase the result.
+ *
+ * Used by gradeActionDiff for set membership so that the same label
+ * expressed with different casing or internal spacing still matches.
+ */
+function normalizeActionLabel(label: string): string {
+  return label.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+// ---------------------------------------------------------------------------
 // T008 — gradeActionDiff
 // ---------------------------------------------------------------------------
 
 /**
  * Compare intended actions against observed actions and produce an ActionDiff.
  *
- * Uses exact string match for set membership. No fuzzy matching is applied.
- * The manifest extension point for observation strategies is noted but not
- * implemented in this WP — this version remains exact and deterministic.
+ * Uses normalized label comparison (trim + collapse whitespace + lowercase)
+ * for set membership — set semantics: no missing, no extra per FR-004.
+ * The original (un-normalized) labels are preserved in the diff output.
  *
  * passed === true iff missingActions and extraActions are both empty.
  */
@@ -47,11 +66,28 @@ export function gradeActionDiff(
   intended: string[],
   observed: string[]
 ): ActionDiff {
-  const observedSet = new Set(observed);
-  const intendedSet = new Set(intended);
+  const normalizedObserved = new Map<string, string>();
+  for (const obs of observed) {
+    const key = normalizeActionLabel(obs);
+    if (!normalizedObserved.has(key)) {
+      normalizedObserved.set(key, obs);
+    }
+  }
 
-  const missingActions = intended.filter((a) => !observedSet.has(a));
-  const extraActions = observed.filter((a) => !intendedSet.has(a));
+  const normalizedIntended = new Map<string, string>();
+  for (const int of intended) {
+    const key = normalizeActionLabel(int);
+    if (!normalizedIntended.has(key)) {
+      normalizedIntended.set(key, int);
+    }
+  }
+
+  const missingActions = intended.filter(
+    (a) => !normalizedObserved.has(normalizeActionLabel(a))
+  );
+  const extraActions = observed.filter(
+    (a) => !normalizedIntended.has(normalizeActionLabel(a))
+  );
   const passed = missingActions.length === 0 && extraActions.length === 0;
 
   return {
@@ -68,13 +104,16 @@ export function gradeActionDiff(
 // ---------------------------------------------------------------------------
 
 /**
- * Extract action items from a raw agent response string.
+ * Extract observed action labels from a raw agent response string.
  *
  * Extraction strategy (deterministic, no randomness):
- * 1. Markdown list items: lines beginning with "- " or "* " or "N. " (numbered).
- * 2. Tool call summaries: lines matching "tool_call:" or "called:" patterns.
- * 3. The extracted text is trimmed and de-duplicated while preserving order
- *    of first occurrence.
+ * - Lines matching "ACTION: <label>" (case-insensitive prefix match).
+ * - The label is trimmed and internal whitespace collapsed (normalized).
+ * - De-duplicated by normalized key while preserving first-occurrence order.
+ *
+ * This is the primary extraction path for the action observation contract
+ * (FR-004, spec ~line 184). The framing convention (buildScenarioFraming)
+ * instructs the model to emit exactly one ACTION: line per action taken.
  *
  * This strategy is intentionally simple and deterministic — the same input
  * always produces the same output on any machine.
@@ -86,32 +125,19 @@ export function extractObservedActions(agentResponse: string): string[] {
 
   for (const line of lines) {
     const trimmed = line.trim();
-    let text: string | null = null;
 
-    // Markdown unordered list items: "- text" or "* text"
-    if (trimmed.startsWith("- ")) {
-      text = trimmed.slice(2).trim();
-    } else if (trimmed.startsWith("* ")) {
-      text = trimmed.slice(2).trim();
-    }
-    // Numbered list items: "1. text", "2. text", etc.
-    else {
-      const numberedMatch = /^\d+\.\s+(.+)$/.exec(trimmed);
-      if (numberedMatch) {
-        text = numberedMatch[1].trim();
-      }
-    }
-    // Tool call summaries: "tool_call: <text>" or "called: <text>"
-    if (text === null) {
-      const toolCallMatch = /^(?:tool_call|called):\s+(.+)$/i.exec(trimmed);
-      if (toolCallMatch) {
-        text = toolCallMatch[1].trim();
-      }
+    // Match "ACTION: <label>" lines (case-insensitive prefix).
+    const actionMatch = /^ACTION:\s+(.+)$/i.exec(trimmed);
+    if (!actionMatch) {
+      continue;
     }
 
-    if (text && text.length > 0 && !seen.has(text)) {
-      seen.add(text);
-      actions.push(text);
+    const rawLabel = actionMatch[1].trim().replace(/\s+/g, " ");
+    const key = rawLabel.toLowerCase();
+
+    if (rawLabel.length > 0 && !seen.has(key)) {
+      seen.add(key);
+      actions.push(rawLabel);
     }
   }
 
