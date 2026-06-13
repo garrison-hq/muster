@@ -1,18 +1,18 @@
 {
-  "event_count": 24,
-  "last_event_id": "01KV0QJ2KVANNS8SP6NZJC6HGB",
-  "materialized_at": "2026-06-13T14:53:15.771657+00:00",
+  "event_count": 25,
+  "last_event_id": "01KV0QJ45296NTYBY2DZRYXBVA",
+  "materialized_at": "2026-06-13T14:53:17.346526+00:00",
   "mission_number": "",
   "mission_slug": "heartbeat-adapter-01KTYMCG",
   "mission_type": "software-dev",
   "summary": {
-    "approved": 3,
+    "approved": 2,
     "blocked": 0,
     "canceled": 0,
     "claimed": 0,
     "done": 0,
     "for_review": 0,
-    "in_progress": 1,
+    "in_progress": 2,
     "in_review": 0,
     "planned": 0
   },
@@ -25,11 +25,11 @@
       "last_transition_at": "2026-06-13T14:53:15.771657+00:00"
     },
     "WP02": {
-      "actor": "claude:opus:reviewer:reviewer",
-      "force_count": 2,
-      "lane": "approved",
-      "last_event_id": "01KV0PET65MXBBHK2VJY709GSP",
-      "last_transition_at": "2026-06-13T14:34:00.261326+00:00"
+      "actor": "claude:sonnet:implementer:implementer",
+      "force_count": 3,
+      "lane": "in_progress",
+      "last_event_id": "01KV0QJ45296NTYBY2DZRYXBVA",
+      "last_transition_at": "2026-06-13T14:53:17.346526+00:00"
     },
     "WP03": {
       "actor": "claude:opus:reviewer:reviewer",
