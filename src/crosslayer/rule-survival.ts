@@ -250,10 +250,10 @@ function buildChatClient(endpoint: EndpointConfig): ChatClient {
   return makeClient({
     baseUrl: endpoint.baseUrl,
     model: endpoint.model,
-    // Cast required: core EndpointConfig uses a restricted union for the built-in
-    // env-var names. The cross-layer adapter allows any env-var name per NFR-005;
-    // the key is resolved at call time by makeClient from process.env[apiKeyEnv].
-    apiKeyEnv: endpoint.apiKeyEnv as "MUSTER_API_KEY" | "OPENAI_API_KEY",
+    // No cast needed: core EndpointConfig.apiKeyEnv is now a plain string
+    // (widened from the prior narrow union). Credentials are resolved at call
+    // time from process.env[apiKeyEnv] inside makeClient (NFR-005).
+    apiKeyEnv: endpoint.apiKeyEnv,
   });
 }
 

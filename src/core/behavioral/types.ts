@@ -119,11 +119,15 @@ export interface CaseVerdict {
  * OpenAI-compatible endpoint coordinates. The API key VALUE is never stored —
  * `apiKeyEnv` names the environment variable read at call time (R6,
  * charter directive 5).
+ *
+ * `apiKeyEnv` is a plain string: callers may use any env-var name (e.g.
+ * a custom CORP_API_KEY); the value is read from the environment at call
+ * time inside the client. Widened from a narrow union (Note 5, NFR-005).
  */
 export interface EndpointConfig {
   baseUrl: string;
   model: string;
-  apiKeyEnv: "MUSTER_API_KEY" | "OPENAI_API_KEY";
+  apiKeyEnv: string;
 }
 
 /** A chat message in OpenAI wire vocabulary. */

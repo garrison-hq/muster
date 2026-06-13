@@ -644,9 +644,22 @@ cases:
     expect(result.some((v) => v.path.includes("trigger_turn"))).toBe(true);
   });
 
-  it("directive 5: api_key_env limited to MUSTER_API_KEY / OPENAI_API_KEY — never a key value", async () => {
+  it("directive 5: api_key_env accepts any non-empty env-var name (widened from narrow union, Note 5)", async () => {
+    // After Note 5 widening: any non-empty string is accepted as an env-var name.
+    // The restriction was removed because callers may supply custom env-var names
+    // (e.g. CORP_API_KEY). The VALUE is still never stored — only the name.
     const path = await writeManifest(
-      validManifest.replace('model: "qwen2.5:7b-instruct"', 'model: "m"\n  api_key_env: "MY_SECRET"')
+      validManifest.replace('model: "qwen2.5:7b-instruct"', 'model: "m"\n  api_key_env: "MY_CUSTOM_API_KEY"')
+    );
+    const result = await loadBehavioralManifest(path);
+    // MY_CUSTOM_API_KEY is a valid non-empty string — should not be a manifest error.
+    expect(isBehavioralManifestError(result)).toBe(false);
+  });
+
+  it("directive 5: api_key_env rejects empty string (must name an env-var)", async () => {
+    // An empty string cannot name an env-var — this is still rejected.
+    const path = await writeManifest(
+      validManifest.replace('model: "qwen2.5:7b-instruct"', 'model: "m"\n  api_key_env: ""')
     );
     const result = await loadBehavioralManifest(path);
     expect(isBehavioralManifestError(result)).toBe(true);

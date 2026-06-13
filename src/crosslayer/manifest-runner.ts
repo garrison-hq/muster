@@ -19,7 +19,7 @@
  */
 
 import { promises as fs } from "node:fs";
-import { resolve as pathResolve, dirname } from "node:path";
+import { resolve as pathResolve, dirname, normalize, isAbsolute } from "node:path";
 import { parse as yamlParse } from "yaml";
 import { assembleComposedContext } from "./composition.js";
 import { lintComposition } from "./contradiction-lint.js";
@@ -79,6 +79,12 @@ export interface CompositionManifest {
 export interface CaseResult {
   id: string;
   passed: boolean;
+  /**
+   * When true, this case was skipped gracefully (e.g. no `expected` declaration,
+   * or no endpoint on the live behavioral path). Skipped cases do NOT count as
+   * failures — they are reported separately (Note 3).
+   */
+  skipped?: boolean;
   verdict?: RuleSurvivalVerdict;
   findings?: CrossLayerFindingType[];
   error?: string;
@@ -89,6 +95,12 @@ export interface ManifestRunSummary {
   total: number;
   passed: number;
   failed: number;
+  /**
+   * Number of gracefully-skipped cases (no `expected` declaration, or no
+   * endpoint on the live behavioral path). Skipped cases do not contribute to
+   * `failed` and do not cause a non-zero exit (Note 3).
+   */
+  skipped: number;
   results: CaseResult[];
 }
 
@@ -103,6 +115,42 @@ interface RawManifest {
 }
 
 /**
+ * Assert that a relative path, once resolved, stays within the manifest's
+ * directory tree.
+ *
+ * Absolute input paths are permitted as-is (the caller deliberately chose a
+ * specific location). Only relative paths are checked — they must not escape
+ * the manifest directory via `../` traversal (e.g. `../../etc/passwd`).
+ *
+ * This guard applies to both `$ref` case paths and layer `fixturePath` values.
+ *
+ * Pure string comparison — no I/O (NFR-001). `normalize` is called inside
+ * `pathResolve` already; we compare the canonical prefix here.
+ *
+ * @throws Error when a relative path resolves outside the manifest directory.
+ */
+function assertWithinManifestDir(
+  originalPath: string,
+  resolvedPath: string,
+  manifestDir: string,
+  field: string
+): void {
+  // Absolute paths are explicitly anchored — no traversal concern.
+  if (isAbsolute(originalPath)) {
+    return;
+  }
+  const normalizedDir = normalize(manifestDir) + "/";
+  const normalizedPath = normalize(resolvedPath);
+  if (!normalizedPath.startsWith(normalizedDir) && normalizedPath !== normalize(manifestDir)) {
+    throw new Error(
+      `Path traversal rejected: ${field} resolves outside the manifest directory. ` +
+        `Resolved: "${resolvedPath}", manifest dir: "${manifestDir}". ` +
+        `Relative paths must remain within the manifest directory tree (security guard, Note 6).`
+    );
+  }
+}
+
+/**
  * Resolves a single case entry: if it contains a `$ref` key, load and parse
  * the referenced YAML file relative to the manifest directory. Otherwise
  * return the entry as-is.
@@ -110,6 +158,9 @@ interface RawManifest {
  * Normative note: `!include` tags are not natively supported by the `yaml`
  * package; `$ref` paths achieve equivalent case-include semantics without
  * adding dependencies (T029 guidance).
+ *
+ * Path traversal guard: the resolved `$ref` path must remain within the
+ * manifest directory tree (Note 6 security guard).
  */
 async function resolveCase(
   entry: CompositionManifestCase | { $ref: string },
@@ -119,6 +170,7 @@ async function resolveCase(
     return entry;
   }
   const refPath = pathResolve(manifestDir, entry.$ref);
+  assertWithinManifestDir(entry.$ref, refPath, manifestDir, `$ref "${entry.$ref}"`);
   const raw = await fs.readFile(refPath, "utf-8");
   return yamlParse(raw) as CompositionManifestCase;
 }
@@ -258,6 +310,7 @@ async function runStaticCase(c: CompositionManifestCase, manifestDir: string): P
     return {
       id: c.id,
       passed: false,
+      skipped: true,
       error: `Static case "${c.id}" has no expected declaration — skipped (no verdict possible).`,
     };
   }
@@ -353,12 +406,13 @@ async function runBehavioralCase(
   };
 
   if (c.expected === undefined) {
-    // No expected declaration — skip gracefully (FR-008 null-safety).
+    // No expected declaration — skip gracefully (FR-008 null-safety, Note 3).
     // Per spec intent: mocked-error / integration-only cases with no expected key
-    // are not runnable on a live path. Count as skipped (passed: false, clear reason).
+    // are not runnable on a live path. Count as skipped (not failed).
     return {
       id: c.id,
       passed: false,
+      skipped: true,
       error: `Behavioral case "${c.id}" has no expected declaration — skipped on live path (integration/mocked-error case).`,
     };
   }
@@ -411,6 +465,10 @@ function buildSurvivalCase(
  * `crosslayer run <abs-path>` produces identical results regardless of the
  * working directory from which the command is invoked (NFR-001: deterministic,
  * no process.cwd() dependency on the static path).
+ *
+ * Path-traversal safety: the traversal guard for fixturePaths runs as a
+ * manifest-level preflight (before any case executes) inside runManifest.
+ * Paths already validated there; resolveLayerPaths simply resolves them.
  *
  * Pure string operation — no I/O, no clock, no RNG (NFR-001).
  */
@@ -475,6 +533,7 @@ export async function runManifest(
       total: manifest.cases.length,
       passed: 0,
       failed: 0,
+      skipped: 0,
       results: [],
     };
   }
@@ -482,6 +541,17 @@ export async function runManifest(
   const casesToRun = filter !== undefined
     ? manifest.cases.filter((c) => c.testClass === filter)
     : manifest.cases;
+
+  // Path-traversal preflight (Note 6): validate all relative layer fixturePaths
+  // before running any case. Traversal violations are security errors — they
+  // propagate as throws (not per-case errors) so the manifest as a whole is
+  // rejected rather than silently skipping the offending case.
+  for (const c of casesToRun) {
+    for (const layer of c.layers) {
+      const resolved = pathResolve(manifestDir, layer.fixturePath);
+      assertWithinManifestDir(layer.fixturePath, resolved, manifestDir, `fixturePath "${layer.fixturePath}" in case "${c.id}"`);
+    }
+  }
 
   // Resolve API key once before running any behavioral case.
   const apiKey = resolveApiKey(manifest);
@@ -503,10 +573,14 @@ export async function runManifest(
   }
 
   const passed = results.filter((r) => r.passed).length;
+  const skipped = results.filter((r) => r.skipped === true).length;
+  // failed = cases that are neither passed nor gracefully skipped (Note 3).
+  const failed = results.length - passed - skipped;
   return {
     total: results.length,
     passed,
-    failed: results.length - passed,
+    failed,
+    skipped,
     results,
   };
 }
