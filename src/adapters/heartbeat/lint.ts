@@ -12,6 +12,7 @@
  */
 
 import { readFileSync } from "node:fs";
+import { canonicalJson } from "../../core/canonical-json.js";
 
 // ---------------------------------------------------------------------------
 // Citation constants (C-003, FR-010)
@@ -364,8 +365,10 @@ export function lintHeartbeat(file: HeartbeatFile): LintReport {
 /**
  * Serialize a LintReport to a canonical, byte-stable JSON string.
  *
- * Key ordering is fixed: path, ok, isEmpty, itemCount, findings.
- * Each finding key ordering: rule, severity, message, citation, location.
+ * Uses the core RFC 8785 canonicalJson helper (FR-001 "reuse canonical-JSON").
+ * Object keys are sorted by UTF-16 code-unit ordering — so the report output
+ * key order is: findings, isEmpty, itemCount, ok, path.
+ * Each finding key order: citation, location (if present), message, rule, severity.
  *
  * Output is byte-identical across:
  * - Repeated calls with the same input
@@ -375,10 +378,10 @@ export function lintHeartbeat(file: HeartbeatFile): LintReport {
 export function serializeLintReport(report: LintReport): string {
   const findingsJson = report.findings.map((f) => {
     const finding: Record<string, unknown> = {
+      citation: f.citation,
+      message: f.message,
       rule: f.rule,
       severity: f.severity,
-      message: f.message,
-      citation: f.citation,
     };
     if (f.location !== undefined) {
       finding["location"] = f.location;
@@ -386,14 +389,14 @@ export function serializeLintReport(report: LintReport): string {
     return finding;
   });
 
-  // Build the output object with explicit key ordering (byte-stability, NFR-001).
+  // canonicalJson sorts keys by UTF-16 code units (RFC 8785, NFR-001).
   const output = {
-    path: report.path,
-    ok: report.ok,
+    findings: findingsJson,
     isEmpty: report.isEmpty,
     itemCount: report.itemCount,
-    findings: findingsJson,
+    ok: report.ok,
+    path: report.path,
   };
 
-  return JSON.stringify(output, null, 2);
+  return canonicalJson(output);
 }

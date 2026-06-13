@@ -33,6 +33,12 @@ export interface IntervalConfig {
    * The report records this flag so operators know the default was used.
    */
   assumed: boolean;
+  /**
+   * Maximum characters allowed in a quiet-ack reply (FR-006, FR-007).
+   * When absent, the quiet-ack grader defaults to DEFAULT_ACK_MAX_CHARS (300)
+   * per OpenClaw heartbeat docs.
+   */
+  ackMaxChars?: number;
 }
 
 export type TickState = "due" | "repeat" | "nothing-due";

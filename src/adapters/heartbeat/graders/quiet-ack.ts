@@ -116,7 +116,7 @@ export function assertNothingDueTick(tick: SimulatedTick): void {
  */
 export function gradeQuietAck(
   observedReply: string,
-  intervalConfig: IntervalConfig & { ackMaxChars?: number }
+  intervalConfig: IntervalConfig
 ): QuietAckCheck {
   const ackMaxChars = intervalConfig.ackMaxChars ?? DEFAULT_ACK_MAX_CHARS;
   const startsWithAck = observedReply.startsWith("HEARTBEAT_OK");
@@ -150,7 +150,7 @@ export function gradeQuietAck(
  */
 export function gradeRun(
   observedReply: string | null | undefined,
-  intervalConfig: IntervalConfig & { ackMaxChars?: number },
+  intervalConfig: IntervalConfig,
   tick: SimulatedTick
 ): QuietAckCheck {
   // Guard: this grader applies only to nothing-due ticks.
@@ -232,7 +232,7 @@ export function buildAssumedIntervalNote(): string {
  */
 export function loadIntervalConfig(
   configPath: string | undefined
-): IntervalConfig & { ackMaxChars?: number } {
+): IntervalConfig {
   if (configPath === undefined) {
     return buildIntervalConfig();
   }
