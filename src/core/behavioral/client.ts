@@ -15,6 +15,23 @@
  * Error hygiene: messages carry the endpoint HOSTNAME (never the full URL or
  * its query), the HTTP status, and a short response-body excerpt — never
  * request headers.
+ *
+ * Extension — chatWithTools (WP03, Option B):
+ *   A generic `chatWithTools` method is exported from `makeClientWithTools`.
+ *   It accepts `tools: unknown[]` (no skill-specific types — C-001 compliant).
+ *   Callers cast their typed tool arrays to unknown[] at the call site; core
+ *   never imports ToolDefinition or any concrete tool type. This extension
+ *   adds a second factory (`makeClientWithTools`) so the original `makeClient`
+ *   is unchanged and all existing callers are unaffected.
+ *
+ *   C-001 justification for Option B (recorded before WP03 code was written):
+ *   The `chatWithTools` method signature uses `tools: unknown[]` — a completely
+ *   generic parameter with no reference to any concrete tool type. The method
+ *   returns `unknown` (the raw response payload) rather than a parsed type, so
+ *   core has no knowledge of ToolDefinition, TriggerCase, or any skill concept.
+ *   The parsing of the returned payload is done in the trigger conformance
+ *   module (skill layer). Core never imports from src/skills/ or src/rfc1/.
+ *   The NI-002 invariant test confirms this at every test run.
  */
 
 import type { ChatClient, ChatMessage, EndpointConfig } from "./types.js";
@@ -70,6 +87,100 @@ function stripTrailingSlashes(s: string): string {
     end--;
   }
   return end === s.length ? s : s.slice(0, end);
+}
+
+/**
+ * A minimal extension of ChatClient that also supports tool-calling.
+ *
+ * The `tools` parameter is `unknown[]` so this interface carries no
+ * adapter-specific knowledge (C-001 compliant). Callers cast their typed
+ * tool arrays to `unknown[]` at the call site; core never imports adapter types.
+ *
+ * `chatWithTools` returns `unknown` — the raw JSON-parsed response payload.
+ * Callers extract what they need (e.g., `choices[0].message.tool_calls`).
+ *
+ * Errors: network failure, non-2xx status, or non-JSON response all throw.
+ * An errored run counts as a failed run in the adapter's accounting (FR-011).
+ */
+export interface ToolChatClient extends ChatClient {
+  chatWithTools(
+    messages: ChatMessage[],
+    tools: unknown[]
+  ): Promise<unknown>;
+}
+
+/**
+ * Build a ChatClient+ToolChatClient for one OpenAI-compatible endpoint.
+ *
+ * This is an Option B extension of `makeClient` (WP03): the added
+ * `chatWithTools` method uses only generic types so core stays adapter-agnostic.
+ *
+ * C-001: no adapter types imported here; `tools: unknown[]` keeps this generic.
+ */
+export function makeClientWithTools(endpoint: EndpointConfig): ToolChatClient {
+  const base = makeClient(endpoint);
+  const url = `${stripTrailingSlashes(endpoint.baseUrl)}/chat/completions`;
+  const host = hostnameOf(endpoint.baseUrl);
+
+  return {
+    ...base,
+    async chatWithTools(
+      messages: ChatMessage[],
+      tools: unknown[]
+    ): Promise<unknown> {
+      const headers: Record<string, string> = {
+        "content-type": "application/json",
+      };
+      const apiKey = process.env[endpoint.apiKeyEnv];
+      if (apiKey !== undefined && apiKey !== "") {
+        headers["authorization"] = `Bearer ${apiKey}`;
+      }
+
+      const body = JSON.stringify({
+        model: endpoint.model,
+        messages,
+        tools,
+        tool_choice: "auto",
+      });
+
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          method: "POST",
+          headers,
+          body,
+          signal: AbortSignal.timeout(TIMEOUT_MS),
+        });
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        throw new Error(`tool-call request to ${host} failed: ${reason}`);
+      }
+
+      if (!response.ok) {
+        let excerpt = "";
+        try {
+          excerpt = (await response.text()).slice(0, BODY_EXCERPT_CHARS);
+        } catch {
+          // Body unreadable — status alone will have to do.
+        }
+        throw new Error(
+          `tool-call request to ${host} failed: HTTP ${response.status}` +
+            (excerpt.length > 0 ? ` — ${excerpt}` : "")
+        );
+      }
+
+      let payload: unknown;
+      try {
+        payload = await response.json();
+      } catch {
+        throw new Error(
+          `tool-call response from ${host} is not valid JSON (counts as errored run, FR-011)`
+        );
+      }
+
+      return payload;
+    },
+  };
 }
 
 export function makeClient(endpoint: EndpointConfig): ChatClient {

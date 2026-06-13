@@ -1,0 +1,27 @@
+{
+  "tools": [
+    {
+      "name": "send_email",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "recipient": { "type": "string" },
+          "subject": { "type": "string" },
+          "body": { "type": "string" }
+        },
+        "required": ["recipient", "subject"]
+      }
+    },
+    {
+      "name": "list_files",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "directory": { "type": "string" },
+          "extension": { "type": "string" }
+        },
+        "required": ["directory"]
+      }
+    }
+  ]
+}
