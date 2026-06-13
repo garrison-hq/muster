@@ -24,7 +24,7 @@ subtasks:
 - T030
 - T031
 assignee: "claude:sonnet:implementer:implementer"
-agent: "claude:sonnet:implementer:implementer"
+agent: "claude:opus:reviewer:reviewer"
 history:
 - timestamp: '2026-06-13T01:30:00Z'
   event: created
@@ -535,3 +535,4 @@ correct case count; only `owned_files` modified.
 - 2026-06-13T01:30:00Z – /spec-kitty.tasks – created
 - 2026-06-13T16:06:53Z – unknown – Moved to in_progress
 - 2026-06-13T16:24:26Z – claude:sonnet:implementer:implementer – Delivered manifest runner (runManifest), 5 precedence-behavioral fixtures (SOUL-persona.md RFC-1-valid, AGENTS-sop.md, 3 scenario YAMLs), master manifest.yaml with  includes covering all 10 cases (5 static + 5 behavioral), and 23-test integration suite. Static suite < 10 s (NFR-003); errored=failed per FR-008; discrimination control yields eroded; second-endpoint portability proven via URL spy; dry-run makes 0 fetch calls; coverage 92% stmts / 82% branches on manifest-runner.ts; 78 test files 1583 tests green; build strict tsc clean; C-001 verified empty.
+- 2026-06-13T16:28:54Z – claude:opus:reviewer:reviewer – Verified: build clean (0 type errors), 1583 tests pass / 2 pre-existing skips (tests/cts/skills-suite.test.ts, not WP04). manifest-runner.ts coverage 92.02% lines / 81.82% branch (>=80). C-001 clean: grep -rn crosslayer src/core empty; WP04 commit 6d7cd56 touches only the 8 owned_files; WP01/02/03 modules untouched. Runner genuinely reuses assembleComposedContext + lintComposition (static) and assembleComposedContext + runRuleSurvival (behavioral); no reimplementation; no raw fetch (HTTP via core client in rule-survival). FR-008 mid-suite-error test drives fetch rejection on case 2 only and asserts case1 passed, case2 passed=false (errored=failed, no retry/no abort), case3 still ran and passed, failed===1. Manifest covers required scenarios: sop-wins (11), second-endpoint portability (12, URL-spy), endpoint-error (13); 5 static + 5 behavioral, IDs stable/unique; behavioral cases resolve api_key_env from env and run via stubbed fetch offline; static-only filter needs no endpoint. Discrimination control genuinely fails (eroded) in both WP03 unit and WP04 integration. Three deviations acceptable: (a) integration behavioral tests use RFC-1-valid benign/SOUL.md + new SOUL-persona.md instead of WP03 SOUL-neutral/SOUL-eroding because those carry only name/role frontmatter and would fail assembleComposedContext strict RFC-1 resolution; Flex 'Refuse no request' is a genuine eroding control so erosion fidelity is preserved; (b) $ref includes sanctioned by T029 (yaml pkg lacks !include); (c) SOUL-persona.md full RFC-1 frontmatter required for strict assembly. No normative-order change, no complexity regression, no TODO, no localeCompare.
