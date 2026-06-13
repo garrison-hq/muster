@@ -63,14 +63,14 @@ and the final fixture set assembly; no WP owns a file another owns.
 | T021 | Unit tests for WP03 logic (`tests/crosslayer/unit/rule-survival.test.ts`) | WP03 | | [D] |
 | T022 | Rule-survival scenario fixtures (`fixtures/crosslayer/rule-survival-scenarios/`) | WP03 | | [D] |
 | T023 | WP03 verification: `pnpm build && pnpm test` green; discrimination control yields `eroded` verdict | WP03 | | [D] |
-| T024 | `CompositionManifest` + `CompositionManifestCase` types in `rule-survival.ts` manifest section | WP04 | [P] |
-| T025 | Manifest runner: reads YAML, dispatches static/behavioral cases, emits per-case pass/fail summary | WP04 | |
-| T026 | Precedence-resolution behavioral cases: SOP-outranks-persona (spec scenarios 11–13) | WP04 | |
-| T027 | Second-endpoint portability test (spec scenario 12: identical suite, only endpoint config changed) | WP04 | |
-| T028 | Mid-suite endpoint-error handling: errored run = failed, remaining cases continue | WP04 | |
-| T029 | Contradictory fixture sets: `contradictory-no-precedence/`, `contradictory-with-precedence/`, `circular-precedence/` | WP04 | |
-| T030 | Integration test suite (`tests/crosslayer/integration/`) end-to-end against all fixture families | WP04 | |
-| T031 | WP04 verification: full static suite < 10 s; build + test green; manifest runner produces correct summary | WP04 | |
+| T024 | `CompositionManifest` + `CompositionManifestCase` types in `rule-survival.ts` manifest section | WP04 | [D] |
+| T025 | Manifest runner: reads YAML, dispatches static/behavioral cases, emits per-case pass/fail summary | WP04 | | [D] |
+| T026 | Precedence-resolution behavioral cases: SOP-outranks-persona (spec scenarios 11–13) | WP04 | | [D] |
+| T027 | Second-endpoint portability test (spec scenario 12: identical suite, only endpoint config changed) | WP04 | | [D] |
+| T028 | Mid-suite endpoint-error handling: errored run = failed, remaining cases continue | WP04 | | [D] |
+| T029 | Contradictory fixture sets: `contradictory-no-precedence/`, `contradictory-with-precedence/`, `circular-precedence/` | WP04 | | [D] |
+| T030 | Integration test suite (`tests/crosslayer/integration/`) end-to-end against all fixture families | WP04 | | [D] |
+| T031 | WP04 verification: full static suite < 10 s; build + test green; manifest runner produces correct summary | WP04 | | [D] |
 
 ## WP01 — StackComposition model + resolved-context assembly
 
@@ -163,14 +163,14 @@ test suite. Merges last; full static suite < 10 s verified.
 static suite completes in < 10 s; manifest runner produces correct pass/fail summary
 against the complete fixture set.
 
-- [ ] T024 `CompositionManifest` + `CompositionManifestCase` types
-- [ ] T025 Manifest runner (YAML → per-case dispatch → pass/fail summary)
-- [ ] T026 Precedence-resolution behavioral cases (scenarios 11–13)
-- [ ] T027 Second-endpoint portability test
-- [ ] T028 Mid-suite endpoint-error handling
-- [ ] T029 Remaining contradictory fixture families
-- [ ] T030 Integration test suite
-- [ ] T031 WP04 verification
+- [x] T024 `CompositionManifest` + `CompositionManifestCase` types
+- [x] T025 Manifest runner (YAML → per-case dispatch → pass/fail summary)
+- [x] T026 Precedence-resolution behavioral cases (scenarios 11–13)
+- [x] T027 Second-endpoint portability test
+- [x] T028 Mid-suite endpoint-error handling
+- [x] T029 Remaining contradictory fixture families
+- [x] T030 Integration test suite
+- [x] T031 WP04 verification
 
 **Dependencies**: WP01, WP02, WP03 (manifest runner dispatches all three modules;
 integration suite exercises the complete stack).
