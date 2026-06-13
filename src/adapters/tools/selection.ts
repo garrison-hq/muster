@@ -385,6 +385,103 @@ export interface SelectionRunOptions {
 }
 
 /**
+ * Grade a single tool-call result against the expected axis.
+ *
+ * Returns true iff the selected tool satisfies the axis criterion.
+ * Returns false for unrecognized axes (defensive).
+ */
+function gradeByAxis(
+  selectedTool: string | null,
+  testCase: ToolSelectionCase
+): boolean {
+  if (testCase.expectedAxis === "correct-selection") {
+    return gradeCorrectSelection({ selectedTool }, testCase);
+  }
+  if (testCase.expectedAxis === "abstain") {
+    return gradeAbstention({ selectedTool });
+  }
+  if (testCase.expectedAxis === "control") {
+    return gradeControl({ selectedTool }, testCase);
+  }
+  return false;
+}
+
+/**
+ * Process a successful callWithTools result for a single run.
+ *
+ * Returns the resolved { selectedTool, passed, error } triple.
+ * Handles: no-tool-calling endpoints, out-of-set selections, axis grading.
+ */
+function processCallResult(
+  result: { selectedTool: string | null; hasToolCallsKey: boolean },
+  testCase: ToolSelectionCase,
+  registeredToolNames: Set<string>
+): { selectedTool: string | null; passed: boolean; error?: string } {
+  if (result.hasToolCallsKey) {
+    // Endpoint supports tool-calling — grade the run
+    const selectedTool = result.selectedTool;
+    if (selectedTool !== null && !registeredToolNames.has(selectedTool)) {
+      // Tool not in registered set — run fails (spec edge case);
+      // selectedTool still recorded so tests can inspect it.
+      return { selectedTool, passed: false };
+    }
+    return { selectedTool, passed: gradeByAxis(selectedTool, testCase) };
+  }
+  // Endpoint doesn't support tool-calling — error the run (charter)
+  return {
+    selectedTool: null,
+    passed: false,
+    error:
+      "endpoint does not support tool-calling: tool_calls key absent in response",
+  };
+}
+
+/**
+ * Execute a single numbered run and return its result.
+ *
+ * Errored run = failed run (charter: never skipped, never retried).
+ */
+async function executeSingleRun(
+  runIndex: number,
+  httpFetch: FetchFn,
+  testCase: ToolSelectionCase,
+  opts: SelectionRunOptions,
+  functionDefs: OpenAIFunctionDef[],
+  registeredToolNames: Set<string>
+): Promise<ToolSelectionRunResult> {
+  const start = Date.now();
+  let selectedTool: string | null = null;
+  let passed = false;
+  let error: string | undefined;
+
+  try {
+    const result = await callWithTools(httpFetch, {
+      endpoint: opts.endpoint,
+      apiKey: opts.apiKey,
+      model: opts.model,
+      messages: [{ role: "user", content: testCase.scenario }],
+      tools: functionDefs,
+    });
+    const resolved = processCallResult(result, testCase, registeredToolNames);
+    selectedTool = resolved.selectedTool;
+    passed = resolved.passed;
+    error = resolved.error;
+  } catch (err) {
+    // Errored run = failed run (charter: never skipped, never retried)
+    error = err instanceof Error ? err.message : String(err);
+  }
+
+  const durationMs = Date.now() - start;
+  return {
+    run: runIndex,
+    passed,
+    selectedTool,
+    durationMs,
+    ...(error !== undefined && { error }),
+  };
+}
+
+/**
  * Run a ToolSelectionCase against a BYOM endpoint.
  *
  * FR-006: Registers tools from toolsFile as OpenAI-compatible function definitions
@@ -420,62 +517,14 @@ export async function runSelectionCase(
   const runResults: ToolSelectionRunResult[] = [];
 
   for (let runIndex = 1; runIndex <= testCase.runs; runIndex++) {
-    const start = Date.now();
-    let selectedTool: string | null = null;
-    let passed = false;
-    let error: string | undefined;
-
-    try {
-      const result = await callWithTools(httpFetch, {
-        endpoint: opts.endpoint,
-        apiKey: opts.apiKey,
-        model: opts.model,
-        messages: [{ role: "user", content: testCase.scenario }],
-        tools: functionDefs,
-      });
-
-      if (!result.hasToolCallsKey) {
-        // Endpoint doesn't support tool-calling — error the run (charter)
-        passed = false;
-        error =
-          "endpoint does not support tool-calling: tool_calls key absent in response";
-        selectedTool = null;
-      } else {
-        selectedTool = result.selectedTool;
-
-        // Check tool-not-in-registered-set: if model selected a tool that is not
-        // in the registered set, the run fails (spec edge case)
-        if (selectedTool !== null && !registeredToolNames.has(selectedTool)) {
-          passed = false;
-          // selectedTool still recorded so tests can inspect it
-        } else {
-          // Grade the run based on the axis
-          if (testCase.expectedAxis === "correct-selection") {
-            passed = gradeCorrectSelection({ selectedTool }, testCase);
-          } else if (testCase.expectedAxis === "abstain") {
-            passed = gradeAbstention({ selectedTool });
-          } else if (testCase.expectedAxis === "control") {
-            passed = gradeControl({ selectedTool }, testCase);
-          }
-        }
-      }
-    } catch (err) {
-      // Errored run = failed run (charter: never skipped, never retried)
-      passed = false;
-      error = err instanceof Error ? err.message : String(err);
-      selectedTool = null;
-    }
-
-    const durationMs = Date.now() - start;
-
-    const runResult: ToolSelectionRunResult = {
-      run: runIndex,
-      passed,
-      selectedTool,
-      durationMs,
-      ...(error !== undefined && { error }),
-    };
-
+    const runResult = await executeSingleRun(
+      runIndex,
+      httpFetch,
+      testCase,
+      opts,
+      functionDefs,
+      registeredToolNames
+    );
     runResults.push(runResult);
   }
 

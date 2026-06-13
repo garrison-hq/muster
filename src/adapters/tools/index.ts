@@ -172,6 +172,110 @@ export interface ManifestRunOptions {
 // Manifest runner implementation (T023)
 // ---------------------------------------------------------------------------
 
+/** Run drift check for a case if envDescriptorPath is present. */
+async function runCaseDrift(
+  toolsFile: import("./lint.js").TOOLSFile,
+  testCase: ToolsManifestCase
+): Promise<DriftReport | undefined> {
+  if (testCase.envDescriptorPath === undefined) {
+    return undefined;
+  }
+  const envDescriptor = await loadEnvironmentDescriptor(
+    testCase.envDescriptorPath
+  );
+  return runDriftCheck(toolsFile, envDescriptor);
+}
+
+/** Run selection probes for a case if scenarioPaths and endpoint are present. */
+async function runCaseSelectionProbes(
+  toolsFile: import("./lint.js").TOOLSFile,
+  testCase: ToolsManifestCase,
+  opts: ManifestRunOptions | undefined
+): Promise<ToolSelectionVerdict[] | undefined> {
+  if (
+    testCase.selectionScenarioPaths === undefined ||
+    testCase.selectionScenarioPaths.length === 0
+  ) {
+    return undefined;
+  }
+  if (opts?.endpoint === undefined) {
+    // No endpoint — skip with warning (charter: offline path stays offline)
+    process.stderr.write(
+      `[runManifest] Warning: case "${testCase.id}" has selectionScenarioPaths but no endpoint is configured — selection probes skipped.\n`
+    );
+    return undefined;
+  }
+  const verdicts: ToolSelectionVerdict[] = [];
+  for (const scenarioPath of testCase.selectionScenarioPaths) {
+    const raw = await readFile(scenarioPath, "utf-8");
+    const scenario = JSON.parse(raw) as ToolSelectionCase;
+    const verdict = await runSelectionCase(toolsFile, scenario, {
+      endpoint: opts.endpoint,
+      apiKey: opts.apiKey,
+      model: opts.model ?? "gpt-4o",
+      // Thread the injected fetcher (if any) so callers and tests can
+      // keep the selection path fully offline (C-003, NFR-001).
+      fetcher: opts.fetcher,
+    });
+    verdicts.push(verdict);
+  }
+  return verdicts;
+}
+
+/** Determine whether the raw outcome matches the declared expectation. */
+function resolveExpectation(
+  rawPassed: boolean,
+  expect: ToolsManifestCase["expect"]
+): boolean {
+  if (expect === "fail") {
+    // Expectation satisfied when the raw outcome fails
+    return !rawPassed;
+  }
+  // expect === "pass" or undefined: passed reflects the raw outcome
+  return rawPassed;
+}
+
+/** Run a single ToolsManifestCase through lint → drift → selection. */
+async function runManifestCase(
+  testCase: ToolsManifestCase,
+  opts: ManifestRunOptions | undefined
+): Promise<ToolsManifestResult> {
+  // Step 1: Parse and lint TOOLS.md
+  const toolsFile = await parseTOOLSFile(testCase.toolsFilePath);
+  const lintReport = lintTOOLSFile(toolsFile);
+
+  // Step 2: Drift check (if envDescriptorPath present)
+  const driftReport = await runCaseDrift(toolsFile, testCase);
+
+  // Step 3: Selection probes (if selectionScenarioPaths and endpoint)
+  const selectionVerdicts = await runCaseSelectionProbes(
+    toolsFile,
+    testCase,
+    opts
+  );
+
+  // Step 4: Determine raw outcome
+  const lintOk = lintReport.ok;
+  const driftOk = driftReport === undefined ? true : driftReport.clean;
+  const selectionOk =
+    selectionVerdicts === undefined
+      ? true
+      : selectionVerdicts.every((v) => v.passed);
+
+  const rawPassed = lintOk && driftOk && selectionOk;
+
+  // Step 5: Cross-check against expect (FR-010 "expectations" element)
+  const passed = resolveExpectation(rawPassed, testCase.expect);
+
+  return {
+    id: testCase.id,
+    passed,
+    lintReport,
+    ...(driftReport !== undefined && { driftReport }),
+    ...(selectionVerdicts !== undefined && { selectionVerdicts }),
+  };
+}
+
 /**
  * Run a manifest of ToolsManifestCase entries and return a structured result
  * per case.
@@ -198,83 +302,8 @@ export async function runManifest(
   opts?: ManifestRunOptions
 ): Promise<readonly ToolsManifestResult[]> {
   const results: ToolsManifestResult[] = [];
-
   for (const testCase of cases) {
-    // --- Step 1: Parse and lint TOOLS.md ---
-    const toolsFile = await parseTOOLSFile(testCase.toolsFilePath);
-    const lintReport = lintTOOLSFile(toolsFile);
-
-    // --- Step 2: Drift check (if envDescriptorPath present) ---
-    let driftReport: DriftReport | undefined;
-    if (testCase.envDescriptorPath !== undefined) {
-      const envDescriptor = await loadEnvironmentDescriptor(
-        testCase.envDescriptorPath
-      );
-      driftReport = runDriftCheck(toolsFile, envDescriptor);
-    }
-
-    // --- Step 3: Selection probes (if selectionScenarioPaths and endpoint) ---
-    let selectionVerdicts: ToolSelectionVerdict[] | undefined;
-    if (
-      testCase.selectionScenarioPaths !== undefined &&
-      testCase.selectionScenarioPaths.length > 0
-    ) {
-      if (opts?.endpoint === undefined) {
-        // No endpoint — skip with warning (charter: offline path stays offline)
-        process.stderr.write(
-          `[runManifest] Warning: case "${testCase.id}" has selectionScenarioPaths but no endpoint is configured — selection probes skipped.\n`
-        );
-      } else {
-        selectionVerdicts = [];
-        for (const scenarioPath of testCase.selectionScenarioPaths) {
-          const raw = await readFile(scenarioPath, "utf-8");
-          const scenario = JSON.parse(raw) as ToolSelectionCase;
-          const verdict = await runSelectionCase(toolsFile, scenario, {
-            endpoint: opts.endpoint,
-            apiKey: opts.apiKey,
-            model: opts.model ?? "gpt-4o",
-            // Thread the injected fetcher (if any) so callers and tests can
-            // keep the selection path fully offline (C-003, NFR-001).
-            fetcher: opts.fetcher,
-          });
-          selectionVerdicts.push(verdict);
-        }
-      }
-    }
-
-    // --- Step 4: Determine raw outcome ---
-    const lintOk = lintReport.ok;
-    const driftOk = driftReport === undefined ? true : driftReport.clean;
-    const selectionOk =
-      selectionVerdicts === undefined
-        ? true
-        : selectionVerdicts.every((v) => v.passed);
-
-    const rawPassed = lintOk && driftOk && selectionOk;
-
-    // --- Step 5: Cross-check against expect (FR-010 "expectations" element) ---
-    // When expect is set, passed reflects whether the expectation was satisfied:
-    //   expect === "pass" → passed iff raw outcome is passing
-    //   expect === "fail" → passed iff raw outcome is failing (failure was expected)
-    //   expect === undefined → passed === rawPassed (no cross-check)
-    let passed: boolean;
-    if (testCase.expect === undefined) {
-      passed = rawPassed;
-    } else if (testCase.expect === "pass") {
-      passed = rawPassed;
-    } else {
-      // expect === "fail": expectation is satisfied when the raw outcome fails
-      passed = !rawPassed;
-    }
-
-    results.push({
-      id: testCase.id,
-      passed,
-      lintReport,
-      ...(driftReport !== undefined && { driftReport }),
-      ...(selectionVerdicts !== undefined && { selectionVerdicts }),
-    });
+    results.push(await runManifestCase(testCase, opts));
   }
-
   return results;
 }
