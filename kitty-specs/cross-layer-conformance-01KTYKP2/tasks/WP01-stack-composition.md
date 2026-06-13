@@ -20,7 +20,7 @@ subtasks:
 - T006
 - T007
 shell_pid: "1624045"
-agent: "claude:sonnet:implementer:implementer"
+agent: "claude:opus:reviewer:reviewer"
 assignee: "claude"
 history:
 - timestamp: '2026-06-13T01:30:00Z'
@@ -385,3 +385,4 @@ git diff -U0 -- src/core/ src/adapters/ src/cli/ | grep '^[-+]export' \
 - 2026-06-13T15:30:26Z – claude:sonnet:implementer:implementer – shell_pid=1624045 – Assigned agent via action command
 - 2026-06-13T15:33:24Z – claude:sonnet:implementer:implementer – shell_pid=1624045 – Moved to in_progress
 - 2026-06-13T15:39:26Z – claude:sonnet:implementer:implementer – shell_pid=1624045 – StackComposition types + assembleComposedContext implemented. RFC-1 strict-mode persona resolution via resolveCompositionDetailed. 25 unit tests, 85.86% coverage on src/crosslayer. Build and full test suite green.
+- 2026-06-13T15:41:41Z – claude:opus:reviewer:reviewer – shell_pid=1624045 – Build clean (0 tsc errors), full suite 1435 passed/2 pre-existing skips, src/crosslayer coverage 85.86% stmt / 85% branch (>=80 gate). Types match data-model.md exactly (LayerType, LayerEntry, PrecedenceDeclaration, ResolvedContext, StackComposition). assembleComposedContext genuinely reuses resolveCompositionDetailed with mode:strict and propagates error-severity violations; does not reimplement resolution. git diff main on src/adapters/rfc1/ and src/core/ both empty; no 'crosslayer' in src/core. Deterministic: no localeCompare/clock/RNG on static path. C-005 guard rejects unsupported layers citing C-005; invariants enforce >=1 persona + >=1 sop, at-most-one-per-type. Benign fixtures RFC-1-valid (SOUL.md passes strict via happy-path test). Only owned_files + spec-kitty bookkeeping changed; no test weakened/skipped; no any/non-null assertions.
