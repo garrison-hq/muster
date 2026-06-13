@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "mission_slug": "tools-adapter-01KTYMCB",
+  "mission_id": "01KTYMCB7SJAC3G323W1Z673RQ",
+  "mission_branch": "kitty/mission-tools-adapter-01KTYMCB",
+  "target_branch": "main",
+  "lanes": [
+    {
+      "lane_id": "lane-a",
+      "wp_ids": [
+        "WP01",
+        "WP02",
+        "WP03",
+        "WP04"
+      ],
+      "write_scope": [
+        "src/adapters/tools/drift.ts",
+        "src/adapters/tools/index.ts",
+        "src/adapters/tools/lint.ts",
+        "src/adapters/tools/selection.ts",
+        "tests/tools/fixtures/env-descriptors/documented-but-missing.json",
+        "tests/tools/fixtures/env-descriptors/matching-mcp.json",
+        "tests/tools/fixtures/env-descriptors/matching-openai.json",
+        "tests/tools/fixtures/env-descriptors/present-but-undocumented.json",
+        "tests/tools/fixtures/env-descriptors/schema-mismatch-sub.json",
+        "tests/tools/fixtures/env-descriptors/schema-mismatch-super.json",
+        "tests/tools/fixtures/env-descriptors/unknown-format.json",
+        "tests/tools/fixtures/selection-scenarios/abstain.json",
+        "tests/tools/fixtures/selection-scenarios/control.json",
+        "tests/tools/fixtures/selection-scenarios/correct-tool.json",
+        "tests/tools/fixtures/tools-md/duplicate-tool.md",
+        "tests/tools/fixtures/tools-md/missing-section.md",
+        "tests/tools/fixtures/tools-md/well-formed.md",
+        "tests/tools/integration/tools-adapter.test.ts",
+        "tests/tools/unit/drift.test.ts",
+        "tests/tools/unit/lint.test.ts",
+        "tests/tools/unit/selection.test.ts"
+      ],
+      "predicted_surfaces": [
+        "api",
+        "artifact-rendering",
+        "tests",
+        "tracker-integration"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    }
+  ],
+  "computed_at": "2026-06-13T08:00:04.325481+00:00",
+  "computed_from": "dependency_graph+ownership",
+  "planning_artifact_wps": [],
+  "collapse_report": {
+    "events": [
+      {
+        "wp_a": "WP02",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP02 depends on WP01"
+      },
+      {
+        "wp_a": "WP03",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP03 depends on WP01"
+      },
+      {
+        "wp_a": "WP04",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP04 depends on WP01"
+      }
+    ],
+    "total_merges": 3,
+    "independent_wps_collapsed": 0,
+    "by_rule": {
+      "dependency": 3
+    }
+  }
+}
