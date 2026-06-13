@@ -8,9 +8,7 @@ requirement_refs:
 planning_base_branch: main
 merge_target_branch: main
 branch_strategy: Planning artifacts for this feature were generated on main. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into main unless the human explicitly redirects the landing branch.
-base_branch: kitty/mission-cross-layer-conformance-01KTYKP2
-base_commit: 1b4a9988d632e4e74d79cc2b77dc09cbd202fd04
-created_at: '2026-06-13T15:30:25.777352+00:00'
+created_at: '2026-06-13T01:30:00Z'
 subtasks:
 - T001
 - T002
@@ -19,9 +17,6 @@ subtasks:
 - T005
 - T006
 - T007
-shell_pid: "1624045"
-agent: "claude:opus:reviewer:reviewer"
-assignee: "claude"
 history:
 - timestamp: '2026-06-13T01:30:00Z'
   event: created
@@ -382,7 +377,3 @@ git diff -U0 -- src/core/ src/adapters/ src/cli/ | grep '^[-+]export' \
 ## Activity Log
 
 - 2026-06-13T01:30:00Z – /spec-kitty.tasks – created
-- 2026-06-13T15:30:26Z – claude:sonnet:implementer:implementer – shell_pid=1624045 – Assigned agent via action command
-- 2026-06-13T15:33:24Z – claude:sonnet:implementer:implementer – shell_pid=1624045 – Moved to in_progress
-- 2026-06-13T15:39:26Z – claude:sonnet:implementer:implementer – shell_pid=1624045 – StackComposition types + assembleComposedContext implemented. RFC-1 strict-mode persona resolution via resolveCompositionDetailed. 25 unit tests, 85.86% coverage on src/crosslayer. Build and full test suite green.
-- 2026-06-13T15:41:41Z – claude:opus:reviewer:reviewer – shell_pid=1624045 – Build clean (0 tsc errors), full suite 1435 passed/2 pre-existing skips, src/crosslayer coverage 85.86% stmt / 85% branch (>=80 gate). Types match data-model.md exactly (LayerType, LayerEntry, PrecedenceDeclaration, ResolvedContext, StackComposition). assembleComposedContext genuinely reuses resolveCompositionDetailed with mode:strict and propagates error-severity violations; does not reimplement resolution. git diff main on src/adapters/rfc1/ and src/core/ both empty; no 'crosslayer' in src/core. Deterministic: no localeCompare/clock/RNG on static path. C-005 guard rejects unsupported layers citing C-005; invariants enforce >=1 persona + >=1 sop, at-most-one-per-type. Benign fixtures RFC-1-valid (SOUL.md passes strict via happy-path test). Only owned_files + spec-kitty bookkeeping changed; no test weakened/skipped; no any/non-null assertions.

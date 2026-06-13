@@ -38,7 +38,7 @@ owned_files:
 - tests/fixtures/heartbeat/manifest.json
 tags: []
 assignee: "claude"
-agent: "claude:opus:reviewer:reviewer"
+agent: "claude:sonnet:implementer:implementer"
 ---
 
 # WP04 — Fixtures + manifest runner + CLI wiring
@@ -503,14 +503,3 @@ git diff -U0 src/cli/index.ts | grep '^\+' | grep -v 'heartbeat\|HeartbeatAdapte
 
 - 2026-06-13T01:30:00Z – /spec-kitty.tasks – created
 - 2026-06-13T14:26:33Z – claude:sonnet:implementer:implementer – Moved to in_progress
-- 2026-06-13T14:31:03Z – claude:sonnet:implementer:implementer – Implemented on rebased code-only lane; build+test green, coverage >=89%
-- 2026-06-13T14:34:42Z – claude:opus:reviewer:reviewer – Moved to planned
-- 2026-06-13T14:35:59Z – claude:sonnet:implementer:implementer – Moved to in_progress
-- 2026-06-13T14:41:36Z – claude:sonnet:implementer:implementer – Wired behavioral path per review; errored=failed enforced; tests assert cases run via stub client
-- 2026-06-13T14:43:47Z – claude:opus:reviewer:reviewer – Behavioral path wired through core client; FR-008 enforced; tests exercise the wired path
-- 2026-06-13T14:53:18Z – claude:sonnet:implementer:implementer – Reopen: action-diff live observation contract fix (FR-004)
-- 2026-06-13T14:59:45Z – claude:sonnet:implementer:implementer – Action observation contract implemented; action-diff matches ACTION: lines
-- 2026-06-13T15:03:34Z – claude:opus:reviewer:reviewer – FR-004 fix: index.ts adds optional intendedActions:string[] to ManifestCase; runActionDiffCase uses manifest-declared labels (falls back to item texts). Behavioral path now WIRED through core/behavioral/client makeClient (removed prior 'not yet implemented' stub — no hidden TODO). FR-008 errored=failed enforced (per-run try/catch pushes passed:false; verified by stub tests showing passCount 0 on throw). manifest.json declares intendedActions [check-error-log,summarise-prs]; valid-concise.md labels match. Stub-client tests prove BOTH directions: matching ACTION lines -> passed:true passCount>=2; wrong-labels/prose/HEARTBEAT_OK/errored -> passed:false passCount 0. NFR-001 determinism + UTF-16 sort kept, no localeCompare. runManifest async change breaks no production caller. All WP04-owned files + minimal CLI wiring. Build clean, 1872 pass/3 skip, coverage 94.35%.
-- 2026-06-13T19:21:46Z – claude:sonnet:implementer:implementer – Reopen: add muster heartbeat run CLI command (completes WP04 CLI wiring / FR-011)
-- 2026-06-13T19:25:54Z – claude:sonnet:implementer:implementer – Added muster heartbeat run CLI command
-- 2026-06-13T19:29:19Z – claude:opus:reviewer:reviewer – muster heartbeat run CLI: thin, correct exit codes, C-004 intact

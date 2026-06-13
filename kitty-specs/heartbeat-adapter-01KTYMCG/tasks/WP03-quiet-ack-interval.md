@@ -26,7 +26,7 @@ owned_files:
 - tests/heartbeat/quiet-ack.test.ts
 tags: []
 assignee: "claude"
-agent: "claude:opus:reviewer:reviewer"
+agent: "claude:sonnet:implementer:implementer"
 ---
 
 # WP03 — Quiet-ack probe + interval-config awareness + controls
@@ -316,5 +316,3 @@ node -e "
 
 - 2026-06-13T01:30:00Z – /spec-kitty.tasks – created
 - 2026-06-13T14:26:31Z – claude:sonnet:implementer:implementer – Moved to in_progress
-- 2026-06-13T14:31:01Z – claude:sonnet:implementer:implementer – Implemented on rebased code-only lane; build+test green, coverage >=89%
-- 2026-06-13T14:34:02Z – claude:opus:reviewer:reviewer – quiet-ack grader correct; ackMaxChars from config (no bare literal in logic), no hardcoded 60; assertNothingDueTick guard in gradeRun; 300/301 boundary + overflow + noisy-non-ack controls fail as designed; real pinned SHA

@@ -40,37 +40,37 @@ and the final fixture set assembly; no WP owns a file another owns.
 
 | ID | Description | WP | Parallel |
 |---|---|---|---|
-| T001 | `StackComposition` type + `LayerEntry` / `PrecedenceDeclaration` type defs | WP01 | [P] | [D] |
-| T002 | Layer-type guard: reject unsupported `LayerType` values (C-005) | WP01 | [D] |
-| T003 | `assembleComposedContext()`: persona via `resolveCompositionDetailed`, SOP + skill concat in injection order | WP01 | | [D] |
-| T004 | `sopAloneText` extraction + `layerTexts` map population for static lint | WP01 | | [D] |
-| T005 | Unit tests for WP01 logic (`tests/crosslayer/unit/composition.test.ts`) | WP01 | | [D] |
-| T006 | Benign-composition fixture set (`fixtures/crosslayer/benign/`) | WP01 | | [D] |
-| T007 | WP01 verification: `pnpm build && pnpm test` green; no files outside `owned_files` | WP01 | | [D] |
-| T008 | `CrossLayerFinding` + `CrossLayerLintReport` types in `contradiction-lint.ts` | WP02 | [D] |
-| T009 | Refinement-vs-contradiction distinguisher (SOP narrowing a persona generality is NOT flagged) | WP02 | | [D] |
-| T010 | `undefined-precedence` / `resolved-by-precedence` emission path + `winner` field | WP02 | | [D] |
-| T011 | Circular-precedence detection → `circular-precedence-error` static error, halts further analysis | WP02 | | [D] |
-| T012 | Byte-stable output: sort findings by (type, layerA, layerB, clauseA) in UTF-16 code-unit order (NFR-001) | WP02 | | [D] |
-| T013 | Fixture tests: scenarios 1–5 incl. discrimination control (benign → `ok: true`) | WP02 | | [D] |
-| T014 | WP02 verification: `pnpm build && pnpm test` green; byte-stability confirmed across two runs | WP02 | | [D] |
-| T015 | `RuleSurvivalCase` / `RuleSurvivalResult` types + `GradingClass` in `rule-survival.ts` | WP03 | [D] |
-| T016 | Baseline runner (SOP-alone context, N runs via plain `fetch`, errored run = failed) | WP03 | | [D] |
-| T017 | Composed runner (persona + SOP context, same probes), baseline-failure guard | WP03 | | [D] |
-| T018 | `pass^k` aggregation for safety-critical rules; `k-of-n` aggregation for stylistic | WP03 | | [D] |
-| T019 | Erosion-persona control fixture (`fixtures/crosslayer/erosion-persona-control/`) + discrimination control test | WP03 | | [D] |
-| T020 | Adversarial probe cases in composed context (spec scenario 10, FR-007) | WP03 | | [D] |
-| T021 | Unit tests for WP03 logic (`tests/crosslayer/unit/rule-survival.test.ts`) | WP03 | | [D] |
-| T022 | Rule-survival scenario fixtures (`fixtures/crosslayer/rule-survival-scenarios/`) | WP03 | | [D] |
-| T023 | WP03 verification: `pnpm build && pnpm test` green; discrimination control yields `eroded` verdict | WP03 | | [D] |
-| T024 | `CompositionManifest` + `CompositionManifestCase` types in `rule-survival.ts` manifest section | WP04 | [D] |
-| T025 | Manifest runner: reads YAML, dispatches static/behavioral cases, emits per-case pass/fail summary | WP04 | | [D] |
-| T026 | Precedence-resolution behavioral cases: SOP-outranks-persona (spec scenarios 11–13) | WP04 | | [D] |
-| T027 | Second-endpoint portability test (spec scenario 12: identical suite, only endpoint config changed) | WP04 | | [D] |
-| T028 | Mid-suite endpoint-error handling: errored run = failed, remaining cases continue | WP04 | | [D] |
-| T029 | Contradictory fixture sets: `contradictory-no-precedence/`, `contradictory-with-precedence/`, `circular-precedence/` | WP04 | | [D] |
-| T030 | Integration test suite (`tests/crosslayer/integration/`) end-to-end against all fixture families | WP04 | | [D] |
-| T031 | WP04 verification: full static suite < 10 s; build + test green; manifest runner produces correct summary | WP04 | | [D] |
+| T001 | `StackComposition` type + `LayerEntry` / `PrecedenceDeclaration` type defs | WP01 | [P] |
+| T002 | Layer-type guard: reject unsupported `LayerType` values (C-005) | WP01 | [P] |
+| T003 | `assembleComposedContext()`: persona via `resolveCompositionDetailed`, SOP + skill concat in injection order | WP01 | |
+| T004 | `sopAloneText` extraction + `layerTexts` map population for static lint | WP01 | |
+| T005 | Unit tests for WP01 logic (`tests/crosslayer/unit/composition.test.ts`) | WP01 | |
+| T006 | Benign-composition fixture set (`fixtures/crosslayer/benign/`) | WP01 | |
+| T007 | WP01 verification: `pnpm build && pnpm test` green; no files outside `owned_files` | WP01 | |
+| T008 | `CrossLayerFinding` + `CrossLayerLintReport` types in `contradiction-lint.ts` | WP02 | [P] |
+| T009 | Refinement-vs-contradiction distinguisher (SOP narrowing a persona generality is NOT flagged) | WP02 | |
+| T010 | `undefined-precedence` / `resolved-by-precedence` emission path + `winner` field | WP02 | |
+| T011 | Circular-precedence detection → `circular-precedence-error` static error, halts further analysis | WP02 | |
+| T012 | Byte-stable output: sort findings by (type, layerA, layerB, clauseA) in UTF-16 code-unit order (NFR-001) | WP02 | |
+| T013 | Fixture tests: scenarios 1–5 incl. discrimination control (benign → `ok: true`) | WP02 | |
+| T014 | WP02 verification: `pnpm build && pnpm test` green; byte-stability confirmed across two runs | WP02 | |
+| T015 | `RuleSurvivalCase` / `RuleSurvivalResult` types + `GradingClass` in `rule-survival.ts` | WP03 | [P] |
+| T016 | Baseline runner (SOP-alone context, N runs via plain `fetch`, errored run = failed) | WP03 | |
+| T017 | Composed runner (persona + SOP context, same probes), baseline-failure guard | WP03 | |
+| T018 | `pass^k` aggregation for safety-critical rules; `k-of-n` aggregation for stylistic | WP03 | |
+| T019 | Erosion-persona control fixture (`fixtures/crosslayer/erosion-persona-control/`) + discrimination control test | WP03 | |
+| T020 | Adversarial probe cases in composed context (spec scenario 10, FR-007) | WP03 | |
+| T021 | Unit tests for WP03 logic (`tests/crosslayer/unit/rule-survival.test.ts`) | WP03 | |
+| T022 | Rule-survival scenario fixtures (`fixtures/crosslayer/rule-survival-scenarios/`) | WP03 | |
+| T023 | WP03 verification: `pnpm build && pnpm test` green; discrimination control yields `eroded` verdict | WP03 | |
+| T024 | `CompositionManifest` + `CompositionManifestCase` types in `rule-survival.ts` manifest section | WP04 | [P] |
+| T025 | Manifest runner: reads YAML, dispatches static/behavioral cases, emits per-case pass/fail summary | WP04 | |
+| T026 | Precedence-resolution behavioral cases: SOP-outranks-persona (spec scenarios 11–13) | WP04 | |
+| T027 | Second-endpoint portability test (spec scenario 12: identical suite, only endpoint config changed) | WP04 | |
+| T028 | Mid-suite endpoint-error handling: errored run = failed, remaining cases continue | WP04 | |
+| T029 | Contradictory fixture sets: `contradictory-no-precedence/`, `contradictory-with-precedence/`, `circular-precedence/` | WP04 | |
+| T030 | Integration test suite (`tests/crosslayer/integration/`) end-to-end against all fixture families | WP04 | |
+| T031 | WP04 verification: full static suite < 10 s; build + test green; manifest runner produces correct summary | WP04 | |
 
 ## WP01 — StackComposition model + resolved-context assembly
 
@@ -81,13 +81,13 @@ and the final fixture set assembly; no WP owns a file another owns.
 **Independent test**: `pnpm build && pnpm test` green; benign composition fixture
 assembles correctly; layer-type guard rejects `"memory"` with a static error.
 
-- [x] T001 `StackComposition` type + sub-types
-- [x] T002 Layer-type guard rejects unsupported layers (C-005)
-- [x] T003 `assembleComposedContext()`: RFC-1 persona resolve + SOP + skill concat
-- [x] T004 `sopAloneText` + `layerTexts` map
-- [x] T005 Unit tests for composition logic
-- [x] T006 Benign-composition fixture set
-- [x] T007 WP01 verification
+- [ ] T001 `StackComposition` type + sub-types
+- [ ] T002 Layer-type guard rejects unsupported layers (C-005)
+- [ ] T003 `assembleComposedContext()`: RFC-1 persona resolve + SOP + skill concat
+- [ ] T004 `sopAloneText` + `layerTexts` map
+- [ ] T005 Unit tests for composition logic
+- [ ] T006 Benign-composition fixture set
+- [ ] T007 WP01 verification
 
 **Dependencies**: none within-mission (requires skills + SOP adapters merged — see DEPENDENCY header above).
 **Parallel**: T001/T002 are type-only and can be written together before T003.
@@ -106,13 +106,13 @@ Fixture tests covering all five acceptance scenarios.
 **Independent test**: `pnpm build && pnpm test` green; benign composition → `ok: true`
 zero findings; byte-stability confirmed by running lint twice and diffing output.
 
-- [x] T008 `CrossLayerFinding` + `CrossLayerLintReport` types
-- [x] T009 Refinement-vs-contradiction distinguisher
-- [x] T010 `undefined-precedence` / `resolved-by-precedence` emission path
-- [x] T011 Circular-precedence detection
-- [x] T012 Byte-stable output ordering
-- [x] T013 Fixture tests (scenarios 1–5 + discrimination control)
-- [x] T014 WP02 verification
+- [ ] T008 `CrossLayerFinding` + `CrossLayerLintReport` types
+- [ ] T009 Refinement-vs-contradiction distinguisher
+- [ ] T010 `undefined-precedence` / `resolved-by-precedence` emission path
+- [ ] T011 Circular-precedence detection
+- [ ] T012 Byte-stable output ordering
+- [ ] T013 Fixture tests (scenarios 1–5 + discrimination control)
+- [ ] T014 WP02 verification
 
 **Dependencies**: WP01 (lint consumes `StackComposition.resolved.layerTexts`).
 **Parallel**: T008 (types) is independent of WP01's assembly code; lint logic (T009–T012) requires WP01 complete.
@@ -133,15 +133,15 @@ safety-critical rules, ships the erosion-persona discrimination control fixture.
 yields `verdict === "eroded"`; `pass^k` aggregation fails on a single composed
 violation.
 
-- [x] T015 `RuleSurvivalCase` / `RuleSurvivalResult` types
-- [x] T016 Baseline runner (SOP-alone, errored = failed)
-- [x] T017 Composed runner + baseline-failure guard
-- [x] T018 `pass^k` / `k-of-n` aggregation
-- [x] T019 Erosion-persona control fixture + discrimination test
-- [x] T020 Adversarial probe cases in composed context
-- [x] T021 Unit tests for rule-survival logic
-- [x] T022 Rule-survival scenario fixtures
-- [x] T023 WP03 verification
+- [ ] T015 `RuleSurvivalCase` / `RuleSurvivalResult` types
+- [ ] T016 Baseline runner (SOP-alone, errored = failed)
+- [ ] T017 Composed runner + baseline-failure guard
+- [ ] T018 `pass^k` / `k-of-n` aggregation
+- [ ] T019 Erosion-persona control fixture + discrimination test
+- [ ] T020 Adversarial probe cases in composed context
+- [ ] T021 Unit tests for rule-survival logic
+- [ ] T022 Rule-survival scenario fixtures
+- [ ] T023 WP03 verification
 
 **Dependencies**: WP01 (context assembly for composed runs); SOP adapter merged
 (probe set + grader reuse per plan.md key design decision).
@@ -163,14 +163,14 @@ test suite. Merges last; full static suite < 10 s verified.
 static suite completes in < 10 s; manifest runner produces correct pass/fail summary
 against the complete fixture set.
 
-- [x] T024 `CompositionManifest` + `CompositionManifestCase` types
-- [x] T025 Manifest runner (YAML → per-case dispatch → pass/fail summary)
-- [x] T026 Precedence-resolution behavioral cases (scenarios 11–13)
-- [x] T027 Second-endpoint portability test
-- [x] T028 Mid-suite endpoint-error handling
-- [x] T029 Remaining contradictory fixture families
-- [x] T030 Integration test suite
-- [x] T031 WP04 verification
+- [ ] T024 `CompositionManifest` + `CompositionManifestCase` types
+- [ ] T025 Manifest runner (YAML → per-case dispatch → pass/fail summary)
+- [ ] T026 Precedence-resolution behavioral cases (scenarios 11–13)
+- [ ] T027 Second-endpoint portability test
+- [ ] T028 Mid-suite endpoint-error handling
+- [ ] T029 Remaining contradictory fixture families
+- [ ] T030 Integration test suite
+- [ ] T031 WP04 verification
 
 **Dependencies**: WP01, WP02, WP03 (manifest runner dispatches all three modules;
 integration suite exercises the complete stack).

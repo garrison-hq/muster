@@ -6,8 +6,6 @@
   "mission_slug": "cross-layer-conformance-01KTYKP2",
   "mission_type": "software-dev",
   "slug": "cross-layer-conformance-01KTYKP2",
-  "source_description": "Cross-layer test class: static contradiction/precedence lint across composed layers plus behavioral rule-survival (persona-vs-SOP erosion, pass^k). The headline feature. v1-extended layer 3 of 3.",
   "target_branch": "main",
-  "vcs": "git",
-  "vcs_locked_at": "2026-06-13T15:30:25.687910+00:00"
+  "source_description": "Cross-layer test class: static contradiction/precedence lint across composed layers plus behavioral rule-survival (persona-vs-SOP erosion, pass^k). The headline feature. v1-extended layer 3 of 3."
 }

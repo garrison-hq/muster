@@ -1,0 +1,6 @@
+{
+  "id": "tick-due-001",
+  "state": "due",
+  "priorActionSummary": null,
+  "intervalConfig": { "intervalMinutes": 30, "assumed": false }
+}

@@ -18,8 +18,6 @@ subtasks:
 - T012
 - T013
 - T014
-assignee: "claude"
-agent: "claude:opus:reviewer:reviewer"
 history:
 - timestamp: '2026-06-13T01:30:00Z'
   event: created
@@ -452,6 +450,3 @@ git diff --stat | grep -v 'src/crosslayer/contradiction-lint.ts' \
 ## Activity Log
 
 - 2026-06-13T01:30:00Z – /spec-kitty.tasks – created
-- 2026-06-13T15:42:57Z – claude:sonnet:implementer:implementer – Moved to in_progress
-- 2026-06-13T15:49:49Z – claude:sonnet:implementer:implementer – Implemented lintComposition() with all 5 CrossLayerFindingType values, refinement distinguisher, circular-precedence detection, byte-stable UTF-16 sort, 3 fixture sets, 35 tests, 93% stmt/81% branch coverage. pnpm build + pnpm test green.
-- 2026-06-13T15:53:11Z – claude:opus:reviewer:reviewer – Static cross-layer lint verified. Discrimination control genuine: benign fixture (persona+SOP+skill) -> ok:true/0 findings; contradictory-no-precedence -> ok:false with cross-layer-contradiction + undefined-precedence. Heuristic distinguishes refinement from contradiction (warm-tone + formal-for-legal NOT flagged; accommodation+non-negating-SOP NOT flagged; always-accommodate vs refuse-X flagged; safety-biased on dual-negation). Precedence semantics correct: undefined-precedence(error)/resolved-by-precedence(warning, winner=lower-index)/circular(duplicate layer -> exactly one circular-precedence-error, halts precedence path, contradiction scan continues). C-003 honored: reads resolved.layerTexts, throws with C-003 when resolved null. No localeCompare (UTF-16 <,> comparator). No core leak. WP01 composition.ts byte-identical to approved state. Only owned_files touched. pnpm build clean, pnpm test 1505 passing/2 pre-existing skips/0 type errors, contradiction-lint.ts coverage 93.43% stmt / 80.68% branch / 100% func.
