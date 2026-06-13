@@ -26,6 +26,8 @@ history:
 authoritative_surface: src/adapters/openclaw-sop/
 execution_mode: code_change
 owned_files:
+- src/adapters/openclaw-sop/runner.ts
+- tests/adapters/openclaw-sop/runner.test.ts
 - docs/rubric/sop-rule-taxonomy.md
 tags: []
 ---
@@ -35,16 +37,17 @@ tags: []
 ## Objective
 
 Publish `docs/rubric/sop-rule-taxonomy.md` (the versioned normative source all
-graders cite via `source.normative`), complete the manifest runner in `index.ts`
-(load YAML test manifest → dispatch compliance and adversarial probes through the
-behavioral runner → aggregate verdicts → emit `SOPSuiteReport`), and verify the
-full adapter end-to-end with fixtures only (no live endpoint). Covers FR-011,
-FR-012, FR-013.
+graders cite via `source.normative`), create the manifest runner in
+`src/adapters/openclaw-sop/runner.ts` (load YAML test manifest → dispatch compliance
+and adversarial probes through the behavioral runner → aggregate verdicts → emit
+`SOPSuiteReport`), and verify the full adapter end-to-end with fixtures only (no live
+endpoint). Covers FR-011, FR-012, FR-013.
 
 This WP is the **integration and assembly** step. It stacks on top of all previous
 WPs (WP01 schema, WP02 binary graders, WP03 judge grader, WP04 adversarial loader)
 and must merge last. After WP05 merges, the full adapter is feature-complete and
-all 13 FRs are covered.
+all 13 FRs are covered. WP05 does **not** modify `index.ts` — the runner is a
+separate module (`runner.ts`) that imports from WP01–WP04.
 
 The rubric doc (T019) retroactively validates every `source.normative` URL used in
 WP01–WP04 fixture YAML files — the implementer must verify consistency as part of T022.
@@ -69,9 +72,10 @@ WP01–WP04 fixture YAML files — the implementer must verify consistency as pa
 2. The rubric doc path `docs/rubric/sop-rule-taxonomy.md` is the canonical URL that
    all `source.normative` fields in fixtures must point to. Any fixture using a
    different path is a citation drift bug — T022 checks this.
-3. `index.ts` (WP01 created it for static lint) is extended in this WP with the
-   manifest runner. The runner is additive — no changes to the static lint code
-   already shipped.
+3. The manifest runner lives in `runner.ts` (a new file owned by WP05). `index.ts`
+   (WP01 created it for static lint) is **not** modified — no changes to WP01's
+   static lint code. `runner.ts` imports from `index.ts`, `graders.ts`, `judge.ts`,
+   and `probes.ts` as needed.
 4. `SOPSuiteReport.passed = true` iff zero lint errors AND all probes passed. The
    runner must not short-circuit on first failure; all probes run regardless.
 
@@ -141,11 +145,11 @@ exists upstream — muster publishes its own).
 
 ---
 
-### T020 — `index.ts` manifest runner: load → dispatch → aggregate → emit `SOPSuiteReport`
+### T020 — `runner.ts` manifest runner: load → dispatch → aggregate → emit `SOPSuiteReport`
 
-**Purpose**: Extend `src/adapters/openclaw-sop/index.ts` (WP01 created the static lint
-orchestration) with the manifest runner: a function that runs the full compliance +
-adversarial probe suite from a YAML test manifest and returns an `SOPSuiteReport`.
+**Purpose**: Create `src/adapters/openclaw-sop/runner.ts` as a new standalone module
+containing the manifest runner: a function that runs the full compliance + adversarial
+probe suite from a YAML test manifest and returns an `SOPSuiteReport`.
 
 **Steps**:
 
@@ -153,12 +157,14 @@ adversarial probe suite from a YAML test manifest and returns an `SOPSuiteReport
    where `SuiteRunOptions = { client: ChatClient; k?: number; vendoredRoot?: string }`.
 
 2. **Load phase**:
-   - Call `runStaticLint(sopFilePath, manifestPath)` (already implemented in WP01).
+   - Import and call `runStaticLint(sopFilePath, manifestPath)` from `./index.js`
+     (WP01's export; read-only import, `index.ts` is not modified).
      If lint returns any `severity: "error"` finding, populate `lintFindings` and
      set `passed: false` in the report — but still proceed to run probes (the spec
      does not short-circuit on lint errors).
-   - Load adversarial corpora via `loadProbeCorpus` for each corpus referenced by
-     adversarial probes in the manifest. Cache loaded corpora to avoid re-reading.
+   - Load adversarial corpora via `loadProbeCorpus` from `./probes.js` (WP04) for
+     each corpus referenced by adversarial probes in the manifest. Cache loaded
+     corpora to avoid re-reading.
 
 3. **Dispatch phase** (iterate over manifest entries):
    For each `SOPRuleManifestEntry`:
@@ -166,16 +172,16 @@ adversarial probe suite from a YAML test manifest and returns an `SOPSuiteReport
       `ruleId` in the probe registry): run the scenario through the behavioral runner
       (`runBehavioralScenario` from `src/core/behavioral/runner.ts` — import, do not
       modify). For each run result, apply the appropriate grader(s):
-      - `gradingClass: "binary"` → select the grader by `assertion.kind`.
-      - `gradingClass: "judge"` → call `gradeJudgeCompliance`.
+      - `gradingClass: "binary"` → select the grader by `assertion.kind` (import from `./graders.js`).
+      - `gradingClass: "judge"` → call `gradeJudgeCompliance` (import from `./judge.js`).
       Collect `SOPRunVerdict` per run.
    b. **Adversarial probes** (entries with associated `AdversarialProbe` matching
       `ruleId`): same pattern; the hostile payload is injected into the scenario turns
       via the probe's `scenario` field. Always use `aggregatePassK`.
-   c. **Aggregation**: call `aggregatePassK` for pass^k entries; call a new
-      `aggregateKofN(verdicts, passThreshold)` helper for k-of-n entries. Add this
-      helper to `graders.ts` if not already present (it mirrors `aggregatePassK`
-      for k-of-n; may be a 5-line function — WP03 may have left a stub).
+   c. **Aggregation**: call `aggregatePassK` (from `./graders.js`) for pass^k entries;
+      call a new `aggregateKofN(verdicts, passThreshold)` helper for k-of-n entries.
+      Add this helper to `runner.ts` itself if not already exported from `graders.ts`
+      or `judge.ts` (it mirrors `aggregatePassK` for k-of-n; may be a 5-line function).
 
 4. **Report assembly**:
    ```typescript
@@ -197,8 +203,8 @@ adversarial probe suite from a YAML test manifest and returns an `SOPSuiteReport
    with `error` field set. The suite continues with the next probe (FR-012: remaining
    cases still run after an error — spec acceptance scenario 12).
 
-**Files**: `src/adapters/openclaw-sop/index.ts` (append to existing file; no changes to
-the static lint code already in this file)
+**Files**: `src/adapters/openclaw-sop/runner.ts` (new file created by this WP; `index.ts`
+is NOT modified)
 
 **Validation referencing FR-011, FR-012**:
 - `runManifestSuite` returns a `SOPSuiteReport` with all required fields.
@@ -247,13 +253,7 @@ This is the primary acceptance test for the completed mission.
    Call `runManifestSuite` → `lintFindings` contains the error; `verdicts` is
    non-empty (probes still ran). `passed: false` due to lint error.
 
-**Files**: add a new test file `tests/adapters/openclaw-sop/runner.test.ts`
-
-Note: `runner.test.ts` is not listed in WP05's `owned_files` because the test file
-was not anticipated in the initial owned-files plan — the implementer should add it to
-the owned_files field at implementation time (this is a planning artifact, not a hard
-constraint on file creation; the no-overlap rule requires it not to be listed in another
-WP, which it is not).
+**Files**: `tests/adapters/openclaw-sop/runner.test.ts` (listed in WP05's `owned_files`)
 
 **Validation referencing SC-001, SC-002, SC-003, SC-004**:
 - All 6 test groups pass; zero live network calls; `pnpm test` green.
@@ -266,7 +266,7 @@ WP, which it is not).
 
 **Steps** (in order):
 ```bash
-pnpm build              # strict tsc; zero errors; all five adapter files compile together
+pnpm build              # strict tsc; zero errors; all six adapter files compile together (manifest.ts, index.ts, graders.ts, judge.ts, probes.ts, runner.ts)
 pnpm test               # full suite; zero failures; zero new skips
 # Static fixture suite timing
 time pnpm test --reporter=verbose --testPathPattern="adapters/openclaw-sop"
@@ -288,18 +288,18 @@ git diff --stat
 
 Manually verify: open `docs/rubric/sop-rule-taxonomy.md` and confirm it lists all
 7 rule classes and the citation format section. Check that the rubric version field
-matches `SOPSuiteReport.rubricVersion` hardcoded in `index.ts`.
+matches `SOPSuiteReport.rubricVersion` hardcoded in `runner.ts`.
 
 ## Definition of Done
 
 - [ ] `docs/rubric/sop-rule-taxonomy.md` published; version `"1.0.0"`; all 7 rule classes documented with grading method + aggregation strategy + discrimination controls policy
-- [ ] Manifest runner `runManifestSuite` implemented in `index.ts`; does not short-circuit on probe errors
+- [ ] Manifest runner `runManifestSuite` implemented in `runner.ts`; does not short-circuit on probe errors; `index.ts` NOT modified
 - [ ] All 6 `runner.test.ts` test groups pass (SC-001/SC-002/SC-003/SC-004 + citation drift + lint-no-abort)
 - [ ] Zero live network calls in any test (mock `ChatClient` throughout)
 - [ ] Citation drift check passes: all WP01–WP04 fixtures' `source.normative` point to `"docs/rubric/sop-rule-taxonomy.md"`
-- [ ] `pnpm build` + `pnpm test` fully green; C-001 boundary clean (grep check `OK`)
+- [ ] `pnpm build` + `pnpm test` fully green; C-001 boundary clean (grep check `OK`); `index.ts` unchanged from WP01
 - [ ] Static fixture suite ≤10 s (NFR-003)
-- [ ] ≥80% new-code coverage on runner additions to `index.ts` (SonarCloud gate, NFR-006)
+- [ ] ≥80% new-code coverage on `runner.ts` (SonarCloud gate, NFR-006)
 - [ ] `docs/rubric/sop-rule-taxonomy.md` present (FR-013 complete)
 - [ ] All 13 FRs covered: FR coverage map in `plan.md` verified against completed code
 
@@ -307,6 +307,8 @@ matches `SOPSuiteReport.rubricVersion` hardcoded in `index.ts`.
 
 - **Reject if** any test in this WP makes a live network call — all `ChatClient` usage
   must be mocked. The adapter's tests must run fully offline.
+- **Reject if** `index.ts` is modified — the runner lives in `runner.ts`; WP01's static
+  lint code must remain untouched.
 - Verify `SOPSuiteReport.passed` aggregation: must be `false` if ANY verdict has
   `passed: false` OR any lint finding has `severity: "error"`. Do not accept an
   implementation that ignores lint errors in the final `passed` value.

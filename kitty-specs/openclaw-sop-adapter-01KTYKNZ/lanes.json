@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "mission_slug": "openclaw-sop-adapter-01KTYKNZ",
+  "mission_id": "01KTYKNZK2T6MBY0HCGKRMF12T",
+  "mission_branch": "kitty/mission-openclaw-sop-adapter-01KTYKNZ",
+  "target_branch": "main",
+  "lanes": [
+    {
+      "lane_id": "lane-a",
+      "wp_ids": [
+        "WP01",
+        "WP02",
+        "WP03",
+        "WP04",
+        "WP05"
+      ],
+      "write_scope": [
+        "docs/rubric/sop-rule-taxonomy.md",
+        "src/adapters/openclaw-sop/graders.ts",
+        "src/adapters/openclaw-sop/index.ts",
+        "src/adapters/openclaw-sop/judge.ts",
+        "src/adapters/openclaw-sop/manifest.ts",
+        "src/adapters/openclaw-sop/probes.ts",
+        "src/adapters/openclaw-sop/runner.ts",
+        "tests/adapters/openclaw-sop/fixtures/agents-tool-drift.md",
+        "tests/adapters/openclaw-sop/fixtures/agents-undefined-precedence.md",
+        "tests/adapters/openclaw-sop/fixtures/agents-wellformed.md",
+        "tests/adapters/openclaw-sop/fixtures/rule-manifest-drift.yaml",
+        "tests/adapters/openclaw-sop/fixtures/rule-manifest-valid.yaml",
+        "tests/adapters/openclaw-sop/fixtures/scenario-adversarial.yaml",
+        "tests/adapters/openclaw-sop/fixtures/scenario-compliant.yaml",
+        "tests/adapters/openclaw-sop/fixtures/scenario-violating-format.yaml",
+        "tests/adapters/openclaw-sop/fixtures/scenario-violating-leak.yaml",
+        "tests/adapters/openclaw-sop/fixtures/scenario-violating-refusal.yaml",
+        "tests/adapters/openclaw-sop/fixtures/scenario-violating-tool.yaml",
+        "tests/adapters/openclaw-sop/graders.test.ts",
+        "tests/adapters/openclaw-sop/judge.test.ts",
+        "tests/adapters/openclaw-sop/manifest.test.ts",
+        "tests/adapters/openclaw-sop/probes.test.ts",
+        "tests/adapters/openclaw-sop/runner.test.ts",
+        "vendored/openclaw-sop/agentdojo/CITATION.md",
+        "vendored/openclaw-sop/agentdojo/LICENSE",
+        "vendored/openclaw-sop/agentdojo/data/cases.json",
+        "vendored/openclaw-sop/deepset/CITATION.md",
+        "vendored/openclaw-sop/deepset/LICENSE",
+        "vendored/openclaw-sop/deepset/data/cases.json",
+        "vendored/openclaw-sop/gandalf/CITATION.md",
+        "vendored/openclaw-sop/gandalf/LICENSE",
+        "vendored/openclaw-sop/gandalf/data/cases.json",
+        "vendored/openclaw-sop/injecagent/CITATION.md",
+        "vendored/openclaw-sop/injecagent/LICENSE",
+        "vendored/openclaw-sop/injecagent/data/cases.json"
+      ],
+      "predicted_surfaces": [
+        "api",
+        "artifact-rendering",
+        "tests",
+        "tracker-integration"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    }
+  ],
+  "computed_at": "2026-06-13T08:11:10.418070+00:00",
+  "computed_from": "dependency_graph+ownership",
+  "planning_artifact_wps": [],
+  "collapse_report": {
+    "events": [
+      {
+        "wp_a": "WP02",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP02 depends on WP01"
+      },
+      {
+        "wp_a": "WP03",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP03 depends on WP01"
+      },
+      {
+        "wp_a": "WP04",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP04 depends on WP01"
+      },
+      {
+        "wp_a": "WP05",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP05 depends on WP01"
+      }
+    ],
+    "total_merges": 4,
+    "independent_wps_collapsed": 0,
+    "by_rule": {
+      "dependency": 4
+    }
+  }
+}

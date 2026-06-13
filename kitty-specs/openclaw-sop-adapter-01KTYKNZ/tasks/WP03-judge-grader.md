@@ -22,6 +22,8 @@ history:
 authoritative_surface: src/adapters/openclaw-sop/
 execution_mode: code_change
 owned_files:
+- src/adapters/openclaw-sop/judge.ts
+- tests/adapters/openclaw-sop/judge.test.ts
 - tests/adapters/openclaw-sop/fixtures/scenario-violating-refusal.yaml
 tags: []
 ---
@@ -30,21 +32,17 @@ tags: []
 
 ## Objective
 
-Add `gradeJudgeCompliance` to `src/adapters/openclaw-sop/graders.ts` (the file
-WP02 created). This grader handles the fuzzy compliance axes — refusal quality and
-tone — where binary trace inspection is insufficient (FR-005, RQ-08). It must apply
-two documented bias mitigations (position/order-swap and rubric anchoring), aggregate
-results as k-of-n, and ship a rigged-impossible discrimination control plus the
-all-refuse guard.
+Implement `gradeJudgeCompliance` in `src/adapters/openclaw-sop/judge.ts` (a new file
+owned exclusively by this WP). This grader handles the fuzzy compliance axes — refusal
+quality and tone — where binary trace inspection is insufficient (FR-005, RQ-08). It
+must apply two documented bias mitigations (position/order-swap and rubric anchoring),
+aggregate results as k-of-n, and ship a rigged-impossible discrimination control plus
+the all-refuse guard.
 
-**Important**: WP03 *extends* `graders.ts` (WP02 already created it). WP03's single
-new source file is the judge grader function appended to that file. The only new
-file WP03 creates is the `scenario-violating-refusal.yaml` fixture and the judge
-tests section in `graders.test.ts` (which WP02 already created). Since WP02 owns
-`graders.ts` and `graders.test.ts`, WP03 adds to them under WP02's ownership —
-the implementer must coordinate that WP02 is merged before WP03 branches, or that
-WP03 stacks on WP02's branch. The `owned_files` list for WP03 records only the
-net-new file unique to this WP.
+WP03 creates `src/adapters/openclaw-sop/judge.ts` as a standalone module that imports
+types from `manifest.ts` (WP01) and re-uses `aggregatePassK` from `graders.ts` (WP02).
+It does not modify `graders.ts` or `graders.test.ts` — those remain exclusively owned
+by WP02. The judge tests live in `tests/adapters/openclaw-sop/judge.test.ts`.
 
 ## Context (read first)
 
@@ -74,9 +72,9 @@ net-new file unique to this WP.
 
 ## Subtasks
 
-### T010 — `graders.ts` judge function: `gradeJudgeCompliance` + bias mitigations + `TRIVIAL_REFUSAL` guard
+### T010 — `judge.ts`: `gradeJudgeCompliance` + bias mitigations + `TRIVIAL_REFUSAL` guard
 
-**Purpose**: Extend `src/adapters/openclaw-sop/graders.ts` with the judge grader
+**Purpose**: Create `src/adapters/openclaw-sop/judge.ts` with the judge grader
 function. This function calls the judge endpoint twice (order-swap), anchors the
 judge with the rubric verbatim, and returns two `SOPGrade` records (one per swap
 position) plus a final k-of-n aggregated verdict.
@@ -93,6 +91,7 @@ position) plus a final k-of-n aggregated verdict.
    ): Promise<{ grades: SOPGrade[]; passed: boolean; passCount: number }>
    ```
    Import `ChatClient` type from `src/core/behavioral/types.ts` (read-only, C-001).
+   Import `aggregatePassK` from `./graders.js` (WP02's export) for the k-of-n path.
 
 2. **All-refuse guard** (first check, before any judge call):
    Scan the transcript for assistant turns. If ALL assistant turns begin with a
@@ -143,7 +142,7 @@ position) plus a final k-of-n aggregated verdict.
    response) counts as a FAIL vote (charter errored-run = failed run). Set
    `error` on the corresponding `SOPGrade`.
 
-**Files**: `src/adapters/openclaw-sop/graders.ts` (append to existing file)
+**Files**: `src/adapters/openclaw-sop/judge.ts` (new file created by this WP)
 
 **Validation referencing FR-005, FR-008**:
 - Order-swap produces two grade records with `judgePosition: "A"` and `"B"`.
@@ -186,10 +185,10 @@ the `rubricText` field is non-empty.
 
 ---
 
-### T012 — `graders.test.ts` (judge section): scenario 7 + order-swap + rubric-anchor + all-refuse tests
+### T012 — `judge.test.ts`: scenario 7 + order-swap + rubric-anchor + all-refuse tests
 
-**Purpose**: Extend `tests/adapters/openclaw-sop/graders.test.ts` with the judge
-grader test section. All tests mock the `ChatClient` — no live endpoint calls.
+**Purpose**: Create `tests/adapters/openclaw-sop/judge.test.ts` with the judge
+grader test suite. All tests mock the `ChatClient` — no live endpoint calls.
 
 **Steps**:
 
@@ -219,7 +218,7 @@ grader test section. All tests mock the `ChatClient` — no live endpoint calls.
    `gradeJudgeCompliance` → the errored call contributes a FAIL grade (not a skip).
    `passCount` is `0` for that run.
 
-**Files**: `tests/adapters/openclaw-sop/graders.test.ts` (append new describe block)
+**Files**: `tests/adapters/openclaw-sop/judge.test.ts` (new file created by this WP)
 
 **Validation referencing FR-005, FR-008**:
 - All 5 test groups pass with mocked `ChatClient` (zero live calls).
@@ -236,31 +235,34 @@ grader test section. All tests mock the `ChatClient` — no live endpoint calls.
 pnpm build              # strict tsc; zero errors
 pnpm test               # full suite; zero failures
 # Confirm judge grader discrimination control test passes
-pnpm test --reporter=verbose --testPathPattern="graders.test" 2>&1 | grep -i "trivial\|FAIL\|discrimination"
-# Confirm no src/core/ modifications
+pnpm test --reporter=verbose --testPathPattern="judge.test" 2>&1 | grep -i "trivial\|FAIL\|discrimination"
+# Confirm no src/core/ modifications and no graders.ts/graders.test.ts modifications
 git diff --name-only | grep "src/core" && echo "CORE MODIFIED" || echo "OK"
+git diff --name-only | grep "graders\." && echo "GRADERS MODIFIED - REJECT" || echo "OK"
 # Confirm all-refuse guard fires before ChatClient call
 # (visible as a note in test output: "ChatClient not called" assertion passes)
 ```
-Manual check: read the judge system prompt construction in `graders.ts` and confirm
+Manual check: read the judge system prompt construction in `judge.ts` and confirm
 `rubricText` is inserted between `<RUBRIC>` tags verbatim (not via a template that
 could paraphrase it).
 
 ## Definition of Done
 
-- [ ] `gradeJudgeCompliance` implemented in `graders.ts`; order-swap always fires; rubric text injected verbatim
+- [ ] `gradeJudgeCompliance` implemented in `judge.ts`; order-swap always fires; rubric text injected verbatim
 - [ ] `TRIVIAL_REFUSAL` guard fires before any judge call when all assistant turns are refusals
 - [ ] `scenario-violating-refusal.yaml` fixture created; `expectedVerdicts.judge: false`
-- [ ] All 5 judge test groups pass with mocked `ChatClient`; zero live network calls in tests
+- [ ] All 5 `judge.test.ts` test groups pass with mocked `ChatClient`; zero live network calls in tests
 - [ ] Discrimination control returns `passed: false` (judge correctly fails the rigged transcript)
 - [ ] `orderSwap: true` invariant: order-swap cannot be disabled; reviewer verifies no conditional skip
-- [ ] `pnpm build` + `pnpm test` green; no `src/core/` files touched
-- [ ] ≥80% new-code coverage on judge grader additions (SonarCloud gate, NFR-006)
+- [ ] `pnpm build` + `pnpm test` green; no `src/core/` files touched; `graders.ts` and `graders.test.ts` NOT modified
+- [ ] ≥80% new-code coverage on `judge.ts` (SonarCloud gate, NFR-006)
 
 ## Reviewer guidance
 
 - **Reject if** the order-swap is conditional on `assertion.orderSwap`. It must always
   fire — the `true` value in the type is a documentation invariant, not a runtime switch.
+- **Reject if** `graders.ts` or `graders.test.ts` are modified — WP03 creates `judge.ts`
+  and `judge.test.ts` as separate, independently owned files.
 - Verify the rubric text appears verbatim in the judge system prompt: a `grep` for
   the exact `rubricText` string from the fixture in the captured prompt will do.
 - All-refuse guard: confirm the mock `ChatClient` is **not** called when the guard
