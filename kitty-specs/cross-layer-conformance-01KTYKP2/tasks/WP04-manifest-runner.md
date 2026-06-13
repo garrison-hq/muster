@@ -24,6 +24,7 @@ subtasks:
 - T030
 - T031
 assignee: "claude:sonnet:implementer:implementer"
+agent: "claude:sonnet:implementer:implementer"
 history:
 - timestamp: '2026-06-13T01:30:00Z'
   event: created
@@ -533,3 +534,4 @@ correct case count; only `owned_files` modified.
 
 - 2026-06-13T01:30:00Z – /spec-kitty.tasks – created
 - 2026-06-13T16:06:53Z – unknown – Moved to in_progress
+- 2026-06-13T16:24:26Z – claude:sonnet:implementer:implementer – Delivered manifest runner (runManifest), 5 precedence-behavioral fixtures (SOUL-persona.md RFC-1-valid, AGENTS-sop.md, 3 scenario YAMLs), master manifest.yaml with  includes covering all 10 cases (5 static + 5 behavioral), and 23-test integration suite. Static suite < 10 s (NFR-003); errored=failed per FR-008; discrimination control yields eroded; second-endpoint portability proven via URL spy; dry-run makes 0 fetch calls; coverage 92% stmts / 82% branches on manifest-runner.ts; 78 test files 1583 tests green; build strict tsc clean; C-001 verified empty.
