@@ -1,0 +1,90 @@
+{
+  "cases": [
+    {
+      "id": "hb-behavioral-001",
+      "description": "Due tick: action-diff probe (requires BYOM endpoint)",
+      "checklistPath": "tests/fixtures/heartbeat/checklists/valid-concise.md",
+      "itemRecurrence": [
+        { "itemId": "item-1", "recurrence": "recurring" },
+        { "itemId": "item-2", "recurrence": "recurring" }
+      ],
+      "tickState": "tests/fixtures/heartbeat/tick-states/due.json",
+      "intervalConfig": "tests/fixtures/heartbeat/interval-configs/default-30m.json",
+      "gradingClass": "action-diff",
+      "expectation": { "passThreshold": 0.6 }
+    },
+    {
+      "id": "hb-behavioral-002",
+      "description": "Repeat tick: idempotency probe (requires BYOM endpoint)",
+      "checklistPath": "tests/fixtures/heartbeat/checklists/mixed-recurrence.md",
+      "itemRecurrence": [
+        { "itemId": "item-1", "recurrence": "once-only" },
+        { "itemId": "item-2", "recurrence": "recurring" }
+      ],
+      "tickState": "tests/fixtures/heartbeat/tick-states/repeat.json",
+      "intervalConfig": "tests/fixtures/heartbeat/interval-configs/default-30m.json",
+      "gradingClass": "idempotency",
+      "expectation": { "passThreshold": 0.6 }
+    },
+    {
+      "id": "hb-behavioral-003",
+      "description": "Nothing-due tick: quiet-ack probe (requires BYOM endpoint)",
+      "checklistPath": "tests/fixtures/heartbeat/checklists/valid-concise.md",
+      "itemRecurrence": [],
+      "tickState": "tests/fixtures/heartbeat/tick-states/nothing-due.json",
+      "intervalConfig": "tests/fixtures/heartbeat/interval-configs/default-30m.json",
+      "gradingClass": "quiet-ack",
+      "expectation": { "passThreshold": 0.6 }
+    },
+    {
+      "id": "hb-config-001",
+      "description": "Absent interval config defaults to 30m (assumed: true)",
+      "checklistPath": "tests/fixtures/heartbeat/checklists/valid-concise.md",
+      "itemRecurrence": [],
+      "tickState": null,
+      "intervalConfig": "tests/fixtures/heartbeat/interval-configs/absent.json",
+      "gradingClass": "interval-config",
+      "expectation": { "assumed": true, "intervalMinutes": 30 }
+    },
+    {
+      "id": "hb-static-001",
+      "description": "Concise well-formed HEARTBEAT.md passes static lint",
+      "checklistPath": "tests/fixtures/heartbeat/checklists/valid-concise.md",
+      "itemRecurrence": [],
+      "tickState": null,
+      "intervalConfig": "tests/fixtures/heartbeat/interval-configs/default-30m.json",
+      "gradingClass": "static-lint",
+      "expectation": { "ok": true, "findings": [] }
+    },
+    {
+      "id": "hb-static-002",
+      "description": "Empty HEARTBEAT.md produces empty-file-skip info finding",
+      "checklistPath": "tests/fixtures/heartbeat/checklists/empty.md",
+      "itemRecurrence": [],
+      "tickState": null,
+      "intervalConfig": "tests/fixtures/heartbeat/interval-configs/default-30m.json",
+      "gradingClass": "static-lint",
+      "expectation": { "ok": true, "isEmpty": true, "hasRule": "heartbeat/empty-file-skip" }
+    },
+    {
+      "id": "hb-static-003",
+      "description": "Comment-only HEARTBEAT.md produces empty-file-skip info finding",
+      "checklistPath": "tests/fixtures/heartbeat/checklists/comment-only.md",
+      "itemRecurrence": [],
+      "tickState": null,
+      "intervalConfig": "tests/fixtures/heartbeat/interval-configs/default-30m.json",
+      "gradingClass": "static-lint",
+      "expectation": { "ok": true, "isEmpty": true, "hasRule": "heartbeat/empty-file-skip" }
+    },
+    {
+      "id": "hb-static-004",
+      "description": "Over-length HEARTBEAT.md triggers length advisory",
+      "checklistPath": "tests/fixtures/heartbeat/checklists/over-length.md",
+      "itemRecurrence": [],
+      "tickState": null,
+      "intervalConfig": "tests/fixtures/heartbeat/interval-configs/default-30m.json",
+      "gradingClass": "static-lint",
+      "expectation": { "hasRule": "heartbeat/length-advisory" }
+    }
+  ]
+}

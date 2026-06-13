@@ -52,6 +52,7 @@ import type { Violation } from "../core/report.js";
 import { rfc1Adapter } from "../adapters/rfc1/index.js";
 // Memory adapter registration (FR-001, C-001: only the factory is imported here).
 import { createMemoryAdapter, type AdapterManifest, type AdapterOptions } from "../adapters/memory/index.js";
+import { HeartbeatAdapter, checkHeartbeatFile, serializeLintReport } from "../adapters/heartbeat/index.js";
 import {
   formatBehaveHuman,
   formatCtsHuman,
@@ -181,13 +182,25 @@ function parseFiniteNumber(value: string): number {
   return parsed;
 }
 
+// Adapter registry: maps --adapter values to adapter factory functions (C-004).
+const ADAPTER_REGISTRY: Record<string, () => InstanceType<typeof HeartbeatAdapter>> = {
+  heartbeat: () => new HeartbeatAdapter(),
+};
+
 // ─── muster check ───────────────────────────────────────────────────────────
 
 async function doCheck(
   soul: string,
-  opts: GlobalOpts & { profile?: string; state?: string; restrictRefs?: RestrictRefsFlag },
+  opts: GlobalOpts & { adapter?: string; profile?: string; state?: string; restrictRefs?: RestrictRefsFlag },
   io: Io
 ): Promise<number> {
+  // Heartbeat adapter path: runs the heartbeat lint pipeline (not Soul.md RFC-1).
+  if (opts.adapter === "heartbeat") {
+    const abs = toAbsolute(soul);
+    const report = await checkHeartbeatFile(abs);
+    io.outLine(serializeLintReport(report));
+    return report.ok ? 0 : 1;
+  }
   const { report } = await checkSoulFile(soul, {
     mode: opts.mode,
     ...(opts.profile !== undefined && { profile: opts.profile }),
@@ -484,6 +497,7 @@ function buildProgram(
       "Static conformance of one Soul.md document (§25.1 report). Never touches the network."
     )
     .argument("<soul>", "path to the Soul.md document")
+    .addOption(new Option("--adapter <name>", "adapter to use (default: rfc1)").choices(["rfc1", "heartbeat"]))
     .option("--profile <p>", "profile to apply (default: default)")
     .option("--state <s>", "runtime-requested state (§20.1)")
     .option("--restrict-refs [dir]", RESTRICT_REFS_HELP)

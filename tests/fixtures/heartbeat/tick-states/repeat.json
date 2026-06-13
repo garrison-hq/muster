@@ -1,0 +1,6 @@
+{
+  "id": "tick-repeat-001",
+  "state": "repeat",
+  "priorActionSummary": "Sent the daily summary email at 09:00.",
+  "intervalConfig": { "intervalMinutes": 30, "assumed": false }
+}

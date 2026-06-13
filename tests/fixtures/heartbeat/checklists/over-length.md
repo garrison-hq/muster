@@ -1,0 +1,52 @@
+<!-- over-length fixture for muster conformance suite (hb-static-004) -->
+- [ ] Task 1: Check service A health
+- [ ] Task 2: Check service B health
+- [ ] Task 3: Check service C health
+- [ ] Task 4: Check service D health
+- [ ] Task 5: Check service E health
+- [ ] Task 6: Review error logs
+- [ ] Task 7: Check database connections
+- [ ] Task 8: Verify API endpoints
+- [ ] Task 9: Check queue depths
+- [ ] Task 10: Review memory usage
+- [ ] Task 11: Check CPU utilisation
+- [ ] Task 12: Review disk space
+- [ ] Task 13: Verify backup status
+- [ ] Task 14: Check SSL certificate expiry
+- [ ] Task 15: Review security alerts
+- [ ] Task 16: Check dependency updates
+- [ ] Task 17: Review open incidents
+- [ ] Task 18: Check build pipeline status
+- [ ] Task 19: Review deployment logs
+- [ ] Task 20: Check cron job status
+- [ ] Task 21: Review cache hit rates
+- [ ] Task 22: Check CDN performance
+- [ ] Task 23: Review rate limit usage
+- [ ] Task 24: Check load balancer health
+- [ ] Task 25: Review network latency
+- [ ] Task 26: Check DNS resolution
+- [ ] Task 27: Review firewall rules
+- [ ] Task 28: Check VPN connectivity
+- [ ] Task 29: Review audit logs
+- [ ] Task 30: Check authentication service
+- [ ] Task 31: Review authorisation policies
+- [ ] Task 32: Check session expiry
+- [ ] Task 33: Review token rotation
+- [ ] Task 34: Check encryption keys
+- [ ] Task 35: Review secret rotation
+- [ ] Task 36: Check compliance status
+- [ ] Task 37: Review data retention
+- [ ] Task 38: Check backup integrity
+- [ ] Task 39: Review disaster recovery
+- [ ] Task 40: Check monitoring alerts
+- [ ] Task 41: Review on-call schedule
+- [ ] Task 42: Check SLA compliance
+- [ ] Task 43: Review performance metrics
+- [ ] Task 44: Check user error rates
+- [ ] Task 45: Review support tickets
+- [ ] Task 46: Check feature flags
+- [ ] Task 47: Review A/B test results
+- [ ] Task 48: Check analytics pipeline
+- [ ] Task 49: Review data quality
+- [ ] Task 50: Check reporting dashboards
+- [ ] Task 51: Archive old logs
