@@ -38,7 +38,7 @@ owned_files:
 - tests/fixtures/heartbeat/manifest.json
 tags: []
 assignee: "claude"
-agent: "claude:sonnet:implementer:implementer"
+agent: "claude:opus:reviewer:reviewer"
 ---
 
 # WP04 — Fixtures + manifest runner + CLI wiring
@@ -504,3 +504,4 @@ git diff -U0 src/cli/index.ts | grep '^\+' | grep -v 'heartbeat\|HeartbeatAdapte
 - 2026-06-13T01:30:00Z – /spec-kitty.tasks – created
 - 2026-06-13T14:26:33Z – claude:sonnet:implementer:implementer – Moved to in_progress
 - 2026-06-13T14:31:03Z – claude:sonnet:implementer:implementer – Implemented on rebased code-only lane; build+test green, coverage >=89%
+- 2026-06-13T14:34:42Z – claude:opus:reviewer:reviewer – Moved to planned
