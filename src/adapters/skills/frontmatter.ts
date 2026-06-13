@@ -50,11 +50,14 @@ export function extractFrontmatter(
   // We search for the SECOND occurrence of `---` at the start of a line.
   const afterOpening = stripped.slice(3); // everything after opening `---`
   // Normalize: skip a single trailing newline on the opening line.
-  const searchIn = afterOpening.startsWith("\n")
-    ? afterOpening.slice(1)
-    : afterOpening.startsWith("\r\n")
-      ? afterOpening.slice(2)
-      : afterOpening;
+  let searchIn: string;
+  if (afterOpening.startsWith("\r\n")) {
+    searchIn = afterOpening.slice(2);
+  } else if (afterOpening.startsWith("\n")) {
+    searchIn = afterOpening.slice(1);
+  } else {
+    searchIn = afterOpening;
+  }
 
   const closingIdx = findClosingDelimiter(searchIn);
   if (closingIdx === -1) {
@@ -70,22 +73,23 @@ export function extractFrontmatter(
 
   // Everything after the closing `---` (skip the `---` itself plus its newline).
   const afterClosing = searchIn.slice(closingIdx + 3);
-  const body = afterClosing.startsWith("\n")
-    ? afterClosing.slice(1)
-    : afterClosing.startsWith("\r\n")
-      ? afterClosing.slice(2)
-      : afterClosing;
+  let body: string;
+  if (afterClosing.startsWith("\r\n")) {
+    body = afterClosing.slice(2);
+  } else if (afterClosing.startsWith("\n")) {
+    body = afterClosing.slice(1);
+  } else {
+    body = afterClosing;
+  }
 
   // Parse the YAML block. Use strict:false to avoid parser throws; null → {}.
   let parsed: unknown;
   try {
-    parsed = parseYaml(yamlText, { strict: false }) ?? {};
+    parsed = parseYaml(yamlText, { strict: false });
   } catch {
     parsed = {};
   }
-  if (parsed === null || parsed === undefined) {
-    parsed = {};
-  }
+  parsed ??= {};
 
   return {
     path: skillMdPath,

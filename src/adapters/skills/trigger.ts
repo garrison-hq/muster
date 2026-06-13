@@ -98,7 +98,7 @@ function extractToolCallName(payload: unknown): string | null {
   const p = payload as Record<string, unknown>;
   const choices = p["choices"];
   if (!Array.isArray(choices)) {
-    throw new Error("tool-call response missing 'choices' array (counts as errored run, FR-011)");
+    throw new TypeError("tool-call response missing 'choices' array (counts as errored run, FR-011)");
   }
   if (choices.length === 0) {
     throw new Error("tool-call response has empty 'choices' array (counts as errored run, FR-011)");
@@ -138,10 +138,10 @@ export function makeToolClient(endpoint: EndpointConfig): TriggerChatClient {
       userMessage: string,
       tools: ToolDefinition[]
     ): Promise<string | null> {
-      // Cast ToolDefinition[] to unknown[] — core accepts generic tools (C-001).
+      // ToolDefinition[] is assignable to unknown[] — core accepts generic tools (C-001).
       const payload = await coreClient.chatWithTools(
         [{ role: "user" as const, content: userMessage }],
-        tools as unknown[]
+        tools
       );
       // Parse the tool call name from the raw payload (adapter-layer concern).
       return extractToolCallName(payload);
@@ -314,9 +314,9 @@ export function createDiscriminationControl(queries: string[]): TriggerCase {
       baseUrl: process.env["MUSTER_BASE_URL"] ?? "http://localhost:11434/v1",
       model: process.env["MUSTER_MODEL"] ?? "llama3",
       apiKeyEnv:
-        process.env["MUSTER_API_KEY"] !== undefined
-          ? "MUSTER_API_KEY"
-          : "OPENAI_API_KEY",
+        process.env["MUSTER_API_KEY"] === undefined
+          ? "OPENAI_API_KEY"
+          : "MUSTER_API_KEY",
     },
   };
 }

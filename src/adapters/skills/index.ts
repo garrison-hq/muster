@@ -22,6 +22,7 @@ import type {
 } from "../../core/adapter.js";
 import type { Violation } from "../../core/report.js";
 import { extractFrontmatter } from "./frontmatter.js";
+import { checkLayout } from "./layout.js";
 import { validateStatic } from "./validate.js";
 import type { SkillDocument, SkillProfile } from "./types.js";
 
@@ -88,10 +89,11 @@ export function validateSkill(
 ): Violation[] {
   const violations: Violation[] = [];
 
-  // Static semantic checks (name, description).
+  // Static semantic checks (name, description, optional fields, Anthropic profile).
   violations.push(...validateStatic(doc, profile));
 
-  // TODO WP02: layout drift check (checkLayout) — bundled file references, path-traversal guard.
+  // Layout drift check: bundled file references, path-traversal guard (FR-006).
+  violations.push(...checkLayout(doc));
 
   return violations;
 }
@@ -160,7 +162,7 @@ export const skillsAdapter = {
     return validateSkill(skillDoc, "base");
   },
 
-  /** Skills have no cross-file composition; return empty config. TODO WP02 */
+  /** Skills have no cross-file composition; return empty config. */
   async resolve(
     _doc: unknown,
     _opts: unknown,
@@ -173,7 +175,7 @@ export const skillsAdapter = {
 
   thresholds: SKILLS_THRESHOLDS,
 
-  /** Skills have no runtime trigger evaluation. TODO WP03 */
+  /** Skills trigger evaluation runs via the async runTriggerConformance API (trigger.ts), not this sync hook. */
   evaluateTriggers(
     _effective: EffectiveConfig,
     _facts: Record<string, boolean | string>,
@@ -203,5 +205,4 @@ export const skillsAdapter = {
 };
 
 // C-001 enforcement: SpecAdapter contract satisfied at compile time.
-const _contractCheck: SpecAdapter = skillsAdapter;
-void _contractCheck;
+skillsAdapter satisfies SpecAdapter;
