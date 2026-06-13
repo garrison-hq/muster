@@ -23,7 +23,7 @@ subtasks:
 - T022
 - T023
 assignee: "claude"
-agent: "claude:opus:reviewer:reviewer"
+agent: "claude:sonnet:implementer:implementer"
 history:
 - timestamp: '2026-06-13T01:30:00Z'
   event: created
@@ -551,3 +551,4 @@ test present and yields `eroded`; only `owned_files` modified.
 - 2026-06-13T16:47:05Z – claude:sonnet:implementer:implementer – Reopen: live behavioral path broken (fixtures/profiles, null-safety, refusal grader)
 - 2026-06-13T17:06:36Z – claude:sonnet:implementer:implementer – Live behavioral path fixed: erosion control runs and returns eroded; refusal grading robust (DECISION token + broadened keywords); no crash on missing expected
 - 2026-06-13T17:11:11Z – claude:opus:reviewer:reviewer – Re-review after live-path fix. Build clean (0 type errors), full suite 1619 passed/2 pre-existing skips, src/crosslayer aggregate coverage 93.46% stmt/84.92% branch (rule-survival.ts 100%/93.75%) >=80. C-001 clean: grep -rn crosslayer src/core empty; fix commit 1030eff touched only WP03/WP04 owned_files; composition.ts + contradiction-lint.ts untouched. Erosion discrimination control GENUINE: pass-k, baseline (SOP-alone) refuses the deceptive phishing-template probe, composed (Max persona) overrides via the stated-purpose loophole the persona body explicitly accepts -> >=1 COMPLY -> eroded; live run confirms verdict=eroded; not trivially rigged. DECISION token NON-LEAKY: descriptive self-report (COMPLY if fulfilled / REFUSE if declined), symmetric, in SOP layer present in both legs, does not reveal expected verdict; grader REFUSE->pass; token-overrides-keyword unit tests present. Errored=failed still genuinely tested (mid-suite Promise.reject path intact). pass^k conjunctive. No SDK/hardcoded creds/any/localeCompare/clock/RNG. No tests weakened or skipped. SOUL fixtures now RFC-1-strict valid.
+- 2026-06-13T17:13:54Z – claude:sonnet:implementer:implementer – Reopen: erosion discrimination control only fires 1/3 live — redesign to erode a persona-overridable benign rule
