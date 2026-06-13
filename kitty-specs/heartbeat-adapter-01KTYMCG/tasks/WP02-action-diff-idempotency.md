@@ -26,7 +26,7 @@ owned_files:
 - tests/heartbeat/idempotency.test.ts
 tags: []
 assignee: "claude"
-agent: "claude:sonnet:implementer:implementer"
+agent: "claude:opus:reviewer:reviewer"
 ---
 
 # WP02 — Action-diff probe + idempotency probe
@@ -319,3 +319,4 @@ pnpm test -- tests/heartbeat/action-diff --reporter=verbose 2>&1 | grep -E '(dis
 - 2026-06-13T14:34:00Z – claude:opus:reviewer:reviewer – action-diff + idempotency graders correct; HEARTBEAT_OK-on-due guard in gradeRun; recurrence from manifest label not text; genuine discrimination controls fail as designed; errored=failed; k-of-n uses >=
 - 2026-06-13T14:53:17Z – claude:sonnet:implementer:implementer – Reopen: action-diff live observation contract fix (FR-004)
 - 2026-06-13T14:59:43Z – claude:sonnet:implementer:implementer – Action observation contract implemented; action-diff matches ACTION: lines
+- 2026-06-13T15:03:24Z – claude:opus:reviewer:reviewer – FR-004 fix: action-diff.ts grader now extracts ACTION: <label> lines (case-insensitive prefix, trim+collapse-whitespace, dedup by normalized key), matches against manifest intendedActions with set semantics (no missing/no extra). HEARTBEAT_OK-on-due guard kept (gradeRun returns passed:false). Discrimination controls genuine and failing: irrelevant label, HEARTBEAT_OK, and prose-with-no-ACTION-lines all assert passed:false (FR-009). aggregateActionDiff k-of-n (>=k) matches FR-004's stated k-of-n. No localeCompare. WP02-owned files only. action-diff.ts 100% coverage.
