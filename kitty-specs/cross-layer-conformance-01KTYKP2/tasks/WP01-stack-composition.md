@@ -21,6 +21,7 @@ subtasks:
 - T007
 shell_pid: "1624045"
 agent: "claude:sonnet:implementer:implementer"
+assignee: "claude"
 history:
 - timestamp: '2026-06-13T01:30:00Z'
   event: created
@@ -382,3 +383,4 @@ git diff -U0 -- src/core/ src/adapters/ src/cli/ | grep '^[-+]export' \
 
 - 2026-06-13T01:30:00Z – /spec-kitty.tasks – created
 - 2026-06-13T15:30:26Z – claude:sonnet:implementer:implementer – shell_pid=1624045 – Assigned agent via action command
+- 2026-06-13T15:33:24Z – claude:sonnet:implementer:implementer – shell_pid=1624045 – Moved to in_progress
