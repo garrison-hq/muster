@@ -40,13 +40,13 @@ and the final fixture set assembly; no WP owns a file another owns.
 
 | ID | Description | WP | Parallel |
 |---|---|---|---|
-| T001 | `StackComposition` type + `LayerEntry` / `PrecedenceDeclaration` type defs | WP01 | [P] |
-| T002 | Layer-type guard: reject unsupported `LayerType` values (C-005) | WP01 | [P] |
-| T003 | `assembleComposedContext()`: persona via `resolveCompositionDetailed`, SOP + skill concat in injection order | WP01 | |
-| T004 | `sopAloneText` extraction + `layerTexts` map population for static lint | WP01 | |
-| T005 | Unit tests for WP01 logic (`tests/crosslayer/unit/composition.test.ts`) | WP01 | |
-| T006 | Benign-composition fixture set (`fixtures/crosslayer/benign/`) | WP01 | |
-| T007 | WP01 verification: `pnpm build && pnpm test` green; no files outside `owned_files` | WP01 | |
+| T001 | `StackComposition` type + `LayerEntry` / `PrecedenceDeclaration` type defs | WP01 | [P] | [D] |
+| T002 | Layer-type guard: reject unsupported `LayerType` values (C-005) | WP01 | [D] |
+| T003 | `assembleComposedContext()`: persona via `resolveCompositionDetailed`, SOP + skill concat in injection order | WP01 | | [D] |
+| T004 | `sopAloneText` extraction + `layerTexts` map population for static lint | WP01 | | [D] |
+| T005 | Unit tests for WP01 logic (`tests/crosslayer/unit/composition.test.ts`) | WP01 | | [D] |
+| T006 | Benign-composition fixture set (`fixtures/crosslayer/benign/`) | WP01 | | [D] |
+| T007 | WP01 verification: `pnpm build && pnpm test` green; no files outside `owned_files` | WP01 | | [D] |
 | T008 | `CrossLayerFinding` + `CrossLayerLintReport` types in `contradiction-lint.ts` | WP02 | [P] |
 | T009 | Refinement-vs-contradiction distinguisher (SOP narrowing a persona generality is NOT flagged) | WP02 | |
 | T010 | `undefined-precedence` / `resolved-by-precedence` emission path + `winner` field | WP02 | |
@@ -81,13 +81,13 @@ and the final fixture set assembly; no WP owns a file another owns.
 **Independent test**: `pnpm build && pnpm test` green; benign composition fixture
 assembles correctly; layer-type guard rejects `"memory"` with a static error.
 
-- [ ] T001 `StackComposition` type + sub-types
-- [ ] T002 Layer-type guard rejects unsupported layers (C-005)
-- [ ] T003 `assembleComposedContext()`: RFC-1 persona resolve + SOP + skill concat
-- [ ] T004 `sopAloneText` + `layerTexts` map
-- [ ] T005 Unit tests for composition logic
-- [ ] T006 Benign-composition fixture set
-- [ ] T007 WP01 verification
+- [x] T001 `StackComposition` type + sub-types
+- [x] T002 Layer-type guard rejects unsupported layers (C-005)
+- [x] T003 `assembleComposedContext()`: RFC-1 persona resolve + SOP + skill concat
+- [x] T004 `sopAloneText` + `layerTexts` map
+- [x] T005 Unit tests for composition logic
+- [x] T006 Benign-composition fixture set
+- [x] T007 WP01 verification
 
 **Dependencies**: none within-mission (requires skills + SOP adapters merged — see DEPENDENCY header above).
 **Parallel**: T001/T002 are type-only and can be written together before T003.
