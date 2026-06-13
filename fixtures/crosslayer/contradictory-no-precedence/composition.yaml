@@ -1,0 +1,12 @@
+id: contradictory-no-precedence
+testClass: static
+layers:
+  - layerType: persona
+    fixturePath: fixtures/crosslayer/contradictory-no-precedence/SOUL.md
+  - layerType: sop
+    fixturePath: fixtures/crosslayer/contradictory-no-precedence/AGENTS.md
+expected:
+  ok: false
+  findingTypes:
+    - cross-layer-contradiction
+    - undefined-precedence
