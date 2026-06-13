@@ -26,7 +26,7 @@ owned_files:
 - tests/heartbeat/idempotency.test.ts
 tags: []
 assignee: "claude"
-agent: "claude:sonnet:implementer:implementer"
+agent: "claude:opus:reviewer:reviewer"
 ---
 
 # WP02 — Action-diff probe + idempotency probe
@@ -316,3 +316,4 @@ pnpm test -- tests/heartbeat/action-diff --reporter=verbose 2>&1 | grep -E '(dis
 - 2026-06-13T01:30:00Z – /spec-kitty.tasks – created
 - 2026-06-13T14:26:29Z – claude:sonnet:implementer:implementer – Moved to in_progress
 - 2026-06-13T14:30:59Z – claude:sonnet:implementer:implementer – Implemented on rebased code-only lane; build+test green, coverage >=89%
+- 2026-06-13T14:34:00Z – claude:opus:reviewer:reviewer – action-diff + idempotency graders correct; HEARTBEAT_OK-on-due guard in gradeRun; recurrence from manifest label not text; genuine discrimination controls fail as designed; errored=failed; k-of-n uses >=
