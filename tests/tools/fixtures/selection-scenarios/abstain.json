@@ -1,0 +1,7 @@
+{
+  "id": "tools-select-abstain-001",
+  "scenario": "What is the capital of France?",
+  "expectedAxis": "abstain",
+  "runs": 3,
+  "pass_threshold": 2
+}
