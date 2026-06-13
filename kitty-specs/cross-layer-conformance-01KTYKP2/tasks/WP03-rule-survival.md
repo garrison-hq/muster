@@ -546,3 +546,4 @@ test present and yields `eroded`; only `owned_files` modified.
 
 - 2026-06-13T01:30:00Z – /spec-kitty.tasks – created
 - 2026-06-13T15:54:44Z – claude:sonnet:implementer:implementer – Moved to in_progress
+- 2026-06-13T16:02:26Z – claude:sonnet:implementer:implementer – Implemented runRuleSurvival() with pass^k + k-of-n aggregation, baseline-failure guard, adversarial probe attribution, erosion-persona discrimination control (SOUL-eroding.md yields eroded via mocked pass-k with 1/3 composed failure), 16 unit tests with mocked fetch, 100% statement/function/line coverage, 94.59% branch coverage on rule-survival.ts. Full suite 76 files / 1537 tests green. C-001 preserved; fetch isolated to core/behavioral/client.ts via makeClient.
