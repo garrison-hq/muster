@@ -50,6 +50,8 @@ import type {
 import type { Violation } from "../core/report.js";
 // The single core↔adapter composition point (C-004).
 import { rfc1Adapter } from "../adapters/rfc1/index.js";
+// Memory adapter registration (FR-001, C-001: only the factory is imported here).
+import { createMemoryAdapter, type AdapterManifest, type AdapterOptions } from "../adapters/memory/index.js";
 import {
   formatBehaveHuman,
   formatCtsHuman,
@@ -377,6 +379,83 @@ async function doBehaveRun(
   return verdicts.every((verdict) => verdict.passed) ? 0 : 1;
 }
 
+// ─── muster memory run ──────────────────────────────────────────────────────
+
+/**
+ * Run the memory adapter manifest runner (FR-001, FR-011).
+ *
+ * The manifest is a JSON file that lists static lint cases and optionally
+ * behavioral recall / privacy probe cases. Only the static path runs by
+ * default (offline, deterministic, byte-stable — NFR-001, C-003).
+ */
+async function doMemoryRun(
+  manifestPath: string,
+  opts: GlobalOpts & { behavioral?: boolean; baseUrl?: string; model?: string },
+  io: Io
+): Promise<number> {
+  let manifest: AdapterManifest;
+  try {
+    const raw = await readFileOrThrow(toAbsolute(manifestPath), "memory manifest");
+    manifest = JSON.parse(raw) as AdapterManifest;
+  } catch (error) {
+    throw new ExecutionError(
+      `memory manifest read/parse error: ${errorMessage(error)}`
+    );
+  }
+
+  const adapterOptions: AdapterOptions = {
+    behavioral: opts.behavioral === true,
+  };
+
+  if (opts.behavioral === true) {
+    adapterOptions.endpoint = {
+      baseUrl: opts.baseUrl ?? "http://localhost:11434/v1",
+      model: opts.model ?? "llama3.2",
+      apiKeyEnv: "MUSTER_API_KEY" as const,
+    };
+  }
+
+  const adapter = createMemoryAdapter();
+  let result;
+  try {
+    result = await adapter.run(manifest, adapterOptions);
+  } catch (error) {
+    throw new ExecutionError(
+      `memory adapter run failed: ${errorMessage(error)}`
+    );
+  }
+
+  io.outLine(opts.json === true ? JSON.stringify(result, null, 2) : formatMemoryResultHuman(result));
+  return result.ok ? 0 : 1;
+}
+
+/**
+ * Human-readable formatting for memory AdapterResult.
+ */
+function formatMemoryResultHuman(result: import("../adapters/memory/index.js").AdapterResult): string {
+  const lines: string[] = [];
+  lines.push(`memory: ${result.ok ? "PASS" : "FAIL"} — ${result.summary}`);
+  if (result.findings.length > 0) {
+    lines.push(`findings (${result.findings.length}):`);
+    for (const f of result.findings) {
+      if (f.kind === "staleness") {
+        lines.push(
+          `  [staleness] ${f.factId}: age=${f.ageInDays}d — ${f.factText.slice(0, 60)}`
+        );
+      } else if (f.kind === "contradiction") {
+        lines.push(
+          `  [contradiction] ${f.factAId} ↔ ${f.factBId}`
+        );
+      } else if (f.kind === "recall" || f.kind === "privacy") {
+        lines.push(
+          `  [${f.kind}] ${f.probeId}: ${f.pass ? "PASS" : "FAIL"}`
+        );
+      }
+    }
+  }
+  return lines.join("\n");
+}
+
 // ─── program assembly ───────────────────────────────────────────────────────
 
 function buildProgram(
@@ -484,6 +563,30 @@ function buildProgram(
     )
     .action(async (manifest: string, _local, cmd: Command) => {
       setExit(await doBehaveRun(manifest, cmd.optsWithGlobals(), io, clientFactory));
+    });
+
+  // ─── muster memory ──────────────────────────────────────────────────────
+  const memory = program
+    .command("memory")
+    .description(
+      "Memory adapter: static lint (staleness/contradiction) and behavioral probes " +
+      "for MEMORY.md / USER.md conformance (FR-001, FR-011, FR-012)"
+    );
+  memory
+    .command("run")
+    .description(
+      "Run the memory conformance manifest (static lint by default; " +
+        "--behavioral adds recall and privacy probe cases)."
+    )
+    .argument("<manifest>", "path to memory adapter manifest JSON")
+    .option(
+      "--behavioral",
+      "also run behavioral recall and privacy/leak probe cases (requires endpoint)"
+    )
+    .option("--base-url <url>", "behavioral endpoint base URL (default: http://localhost:11434/v1)")
+    .option("--model <m>", "behavioral endpoint model (default: llama3.2)")
+    .action(async (manifest: string, _local, cmd: Command) => {
+      setExit(await doMemoryRun(manifest, cmd.optsWithGlobals(), io));
     });
 
   return program;
