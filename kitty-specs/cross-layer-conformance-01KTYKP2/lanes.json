@@ -8,7 +8,10 @@
     {
       "lane_id": "lane-a",
       "wp_ids": [
-        "WP01"
+        "WP01",
+        "WP02",
+        "WP03",
+        "WP04"
       ],
       "write_scope": [
         "fixtures/crosslayer/benign/AGENTS.md",
@@ -17,23 +20,7 @@
         "fixtures/crosslayer/benign/persona-sop-benign.yaml",
         "fixtures/crosslayer/benign/persona-sop-skill-benign.yaml",
         "src/crosslayer/composition.ts",
-        "tests/crosslayer/unit/composition.test.ts"
-      ],
-      "predicted_surfaces": [
-        "api",
-        "app-shell",
-        "tests",
-        "tracker-integration"
-      ],
-      "depends_on_lanes": [],
-      "parallel_group": 0
-    },
-    {
-      "lane_id": "lane-b",
-      "wp_ids": [
-        "WP02"
-      ],
-      "write_scope": [
+        "tests/crosslayer/unit/composition.test.ts",
         "fixtures/crosslayer/circular-precedence/AGENTS.md",
         "fixtures/crosslayer/circular-precedence/SKILL.md",
         "fixtures/crosslayer/circular-precedence/SOUL.md",
@@ -45,21 +32,7 @@
         "fixtures/crosslayer/contradictory-with-precedence/SOUL.md",
         "fixtures/crosslayer/contradictory-with-precedence/composition.yaml",
         "src/crosslayer/contradiction-lint.ts",
-        "tests/crosslayer/unit/contradiction-lint.test.ts"
-      ],
-      "predicted_surfaces": [
-        "api",
-        "tests"
-      ],
-      "depends_on_lanes": [],
-      "parallel_group": 0
-    },
-    {
-      "lane_id": "lane-c",
-      "wp_ids": [
-        "WP03"
-      ],
-      "write_scope": [
+        "tests/crosslayer/unit/contradiction-lint.test.ts",
         "fixtures/crosslayer/erosion-persona-control/AGENTS-refusal-rule.md",
         "fixtures/crosslayer/erosion-persona-control/SOUL-eroding.md",
         "fixtures/crosslayer/erosion-persona-control/erosion-control.yaml",
@@ -68,22 +41,7 @@
         "fixtures/crosslayer/rule-survival-scenarios/scenario-kofn.yaml",
         "fixtures/crosslayer/rule-survival-scenarios/scenario-passk.yaml",
         "src/crosslayer/rule-survival.ts",
-        "tests/crosslayer/unit/rule-survival.test.ts"
-      ],
-      "predicted_surfaces": [
-        "api",
-        "tests",
-        "tracker-integration"
-      ],
-      "depends_on_lanes": [],
-      "parallel_group": 0
-    },
-    {
-      "lane_id": "lane-d",
-      "wp_ids": [
-        "WP04"
-      ],
-      "write_scope": [
+        "tests/crosslayer/unit/rule-survival.test.ts",
         "fixtures/crosslayer/manifest.yaml",
         "fixtures/crosslayer/precedence-behavioral/AGENTS-sop.md",
         "fixtures/crosslayer/precedence-behavioral/SOUL-persona.md",
@@ -95,6 +53,7 @@
       ],
       "predicted_surfaces": [
         "api",
+        "app-shell",
         "tests",
         "tracker-integration"
       ],
@@ -103,6 +62,6 @@
     }
   ],
   "computed_at": "2026-06-13T08:00:02.370425+00:00",
-  "computed_from": "dependency_graph+ownership",
+  "computed_from": "dependency_graph+ownership (collapsed to one lane: WP02/03 import WP01, WP04 imports WP01-03)",
   "planning_artifact_wps": []
 }
