@@ -24,7 +24,7 @@ subtasks:
 - T030
 - T031
 assignee: "claude"
-agent: "claude:opus:reviewer:reviewer"
+agent: "claude:sonnet:implementer:implementer"
 history:
 - timestamp: '2026-06-13T01:30:00Z'
   event: created
@@ -542,3 +542,4 @@ correct case count; only `owned_files` modified.
 - 2026-06-13T19:21:47Z – claude:sonnet:implementer:implementer – Reopen: add muster crosslayer run CLI command (completes manifest-runner UX / FR-011)
 - 2026-06-13T19:25:49Z – claude:sonnet:implementer:implementer – Added muster crosslayer run CLI command: mirrors memory run, supports --static-only flag, --json output, non-zero exit on failures, 4 new CLI tests, all 78 test files green, coverage >=80%
 - 2026-06-13T19:30:28Z – claude:opus:reviewer:reviewer – Moved to planned
+- 2026-06-13T19:34:05Z – claude:sonnet:implementer:implementer – Moved to in_progress
