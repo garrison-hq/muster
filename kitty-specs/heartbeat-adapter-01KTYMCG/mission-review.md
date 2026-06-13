@@ -83,3 +83,16 @@ No FR gaps.
 ## Verdict
 
 **PASS-WITH-NOTES.** Build green, full suite green, coverage well above gate, core boundary clean, determinism and citations sound, discrimination controls genuine, errored-run-as-failed enforced and tested. The three notes are LOW and do not block. reviewPass = true.
+
+---
+
+## Addendum — post-review action-diff live fix (2026-06-13)
+
+The mission review above was unit-level and rated PASS-WITH-NOTES. A subsequent **live** smoke run against OpenAI (gpt-4o-mini) exposed a gap the unit suite could not: the action-diff probe (FR-004) scored 0/3 because the scenario framing never told the model how to report actions and the manifest declared no per-action observation. This was fixed in three reviewed+approved commits:
+
+- `ec8947e` — action observation contract: framing appends an `ACTION: <label>` output convention (verbatim OpenClaw prompt unchanged), manifest gains `intendedActions`, grader matches `ACTION:` lines as a set (no missing/no extra).
+- `68f84a0` — non-leaky tick-state semantics in framing: a "due" tick is explained as "the interval has elapsed; review HEARTBEAT.md and take the actions it currently calls for" — deliberately WITHOUT enumerating items or saying "every item", preserving the probe's behavioral judgment. Leak-guard tests assert the framing contains no answer-leaking phrases.
+
+**Live result after fix:** action-diff PASS 9/9 (3 manifest runs × 3 inner calls), idempotency/quiet-ack/static all PASS, no flakiness. The model emitted exactly `ACTION: check-error-log` and `ACTION: summarise-prs` with zero missing/extra.
+
+**Known follow-up (non-blocking):** the behavioral manifest runs only via the programmatic `runManifest` entry (MUSTER_ENDPOINT env), not a CLI subcommand. `quickstart.md` documents `muster check --adapter heartbeat --file <path>` (the CLI uses a positional arg, not `--file`) and `muster behavioral --adapter heartbeat ...` (no such subcommand). Recommend a follow-up adding a `muster heartbeat run <manifest>` CLI command (mirroring `muster memory run`) and correcting quickstart.md.
