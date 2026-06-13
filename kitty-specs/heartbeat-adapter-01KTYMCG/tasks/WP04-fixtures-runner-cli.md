@@ -509,3 +509,4 @@ git diff -U0 src/cli/index.ts | grep '^\+' | grep -v 'heartbeat\|HeartbeatAdapte
 - 2026-06-13T14:41:36Z – claude:sonnet:implementer:implementer – Wired behavioral path per review; errored=failed enforced; tests assert cases run via stub client
 - 2026-06-13T14:43:47Z – claude:opus:reviewer:reviewer – Behavioral path wired through core client; FR-008 enforced; tests exercise the wired path
 - 2026-06-13T14:53:18Z – claude:sonnet:implementer:implementer – Reopen: action-diff live observation contract fix (FR-004)
+- 2026-06-13T14:59:45Z – claude:sonnet:implementer:implementer – Action observation contract implemented; action-diff matches ACTION: lines
