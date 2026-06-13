@@ -1,0 +1,13 @@
+id: recall-addressing-01
+description: Model must recall USER.md addressing preference for the user
+requiredFactId: user-addressing-0
+memoryPath: tests/fixtures/memory/consistent/MEMORY.md
+userPath: tests/fixtures/memory/consistent/USER.md
+manifestPath: tests/fixtures/memory/consistent/manifest.json
+runsN: 3
+passThresholdK: 2
+rubricCitation: "muster rubric §recall-probe"
+scenario:
+  turns:
+    - role: user
+      content: "How should you address me in greetings?"
