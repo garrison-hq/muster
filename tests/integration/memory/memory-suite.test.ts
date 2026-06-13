@@ -21,6 +21,11 @@ import { resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { MemoryAdapter, type AdapterManifest } from "../../../src/adapters/memory/index.js";
+import type { ChatClient } from "../../../src/core/behavioral/types.js";
+import { RecallProbeRunner } from "../../../src/adapters/memory/recall.js";
+import { readFileSync } from "node:fs";
+import { parse as parseYaml } from "yaml";
+import type { RecallProbe, RecallVerdict } from "../../../src/adapters/memory/recall.js";
 
 // ---------------------------------------------------------------------------
 // Fixture paths (relative to the repo root, resolved at test run time).
@@ -183,48 +188,33 @@ describe("memory adapter fixture suite (WP05 T021)", () => {
 
   // ── Coverage: behavioral path — recall probe with mock client ─────────────
 
-  it("6. behavioral recall probe: manifest runner executes recall cases with mock client", async () => {
-    // Create a mock ChatClient that always returns text containing the required fact.
+  it("6. behavioral recall probe: RecallProbeRunner executes recall with mock ChatClient", async () => {
+    // Create a mock ChatClient that always returns text containing the required fact
+    // (TypeScript programming language preference).
     const mockClient: ChatClient = {
       chat: async (_messages, _opts) => "The user prefers TypeScript for all new projects.",
     };
 
-    // Create a MemoryAdapter subclass that injects the mock client into RecallProbeRunner.
-    // We test the behavioral manifest path by using a manifest with recall cases.
-    // The recall probe YAML path is the fixture file; we bypass the actual network call.
+    // Load the recall probe YAML fixture directly.
+    const probeYaml = readFileSync(fixturePath("recall-scenarios", "fact-recall.yaml"), "utf8");
+    const probe = parseYaml(probeYaml) as RecallProbe;
 
-    // To test the behavioral path without a network call, we use the internal
-    // RecallProbeRunner.run overload that accepts a ChatClient directly.
-    // Here we verify the manifest runner properly wires recall cases.
+    // Drive the behavioral recall path by calling RecallProbeRunner.run() directly
+    // with the mock ChatClient (implementation overload that bypasses endpoint + network).
+    // The public TypeScript overload only exposes EndpointConfig; the implementation
+    // accepts EndpointConfig | ChatClient — we cast via `as Parameters` to reach the
+    // implementation-level union overload without network access.
+    // This exercises the behavioral recall path (RecallProbeRunner.run body, k-of-n loop).
+    const runner = new RecallProbeRunner();
+    const verdict = await (runner.run as unknown as (probe: RecallProbe, client: ChatClient) => Promise<RecallVerdict>).call(runner, probe, mockClient);
 
-    // Build a minimal manifest with recall cases using the fixture probe YAML.
-    const recallManifest: AdapterManifest = {
-      cases: [
-        {
-          id: "consistent-for-recall",
-          memoryPath: fixturePath("consistent", "MEMORY.md"),
-          userPath: fixturePath("consistent", "USER.md"),
-          manifestPath: fixturePath("consistent", "manifest.json"),
-          referenceDate: FIXED_REFERENCE_DATE,
-        },
-      ],
-      recallCases: [
-        {
-          id: "recall-fact-01",
-          probePath: fixturePath("recall-scenarios", "fact-recall.yaml"),
-        },
-      ],
-    };
-
-    // The behavioral path requires an endpoint config. We test the error path:
-    // behavioral=true without endpoint should propagate through the probe path.
-    // Since we can't inject a mock client via the manifest runner's public API,
-    // we verify that the behavioral path is entered and an appropriate error is
-    // thrown when no endpoint is provided (exercises lines 263-285).
-    const result = await adapter.run(recallManifest, { behavioral: false });
-    // In non-behavioral mode, recall cases are ignored.
-    expect(result.ok).toBe(true);
-    expect(result.findings.length).toBe(0);
+    // The mock always returns the required fact text, so passCount should equal runsN
+    // and the verdict must pass (passCount >= passThresholdK).
+    expect(verdict.probeId).toBe(probe.id);
+    expect(verdict.pass).toBe(true);
+    expect(verdict.passCount).toBeGreaterThanOrEqual(probe.passThresholdK);
+    expect(verdict.totalRuns).toBe(probe.runsN);
+    expect(verdict.rubricCitation).toBeTruthy();
   });
 
   it("7. behavioral path entry: manifest without behavioral flag skips probe cases", async () => {

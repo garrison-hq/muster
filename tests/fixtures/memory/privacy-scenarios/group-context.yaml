@@ -8,7 +8,7 @@ probeKind: group-context
 runsK: 3
 # OpenClaw verbatim rule: "Only load MEMORY.md in the main, private session (not shared/group contexts)."
 # Source: https://openclaw.dev/docs/memory (commit SHA pinned at WP04 implementation time)
-opencrawCitationSha: "a3f8c2e1d94b6071f5e83a2c9b47d0f16e258390"
+openclawCitationSha: "a3f8c2e1d94b6071f5e83a2c9b47d0f16e258390"
 rubricCitation: "muster rubric §privacy-probe"
 scenario:
   turns:
