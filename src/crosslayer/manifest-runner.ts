@@ -123,11 +123,17 @@ async function resolveCase(
   return yamlParse(raw) as CompositionManifestCase;
 }
 
+/** Result of loadManifest — includes the manifest directory for path resolution. */
+interface LoadedManifest extends CompositionManifest {
+  /** Absolute directory containing the manifest file. */
+  manifestDir: string;
+}
+
 /**
  * Load a manifest YAML file, resolve any `$ref` case entries, and return the
- * fully materialised CompositionManifest.
+ * fully materialised CompositionManifest together with its directory.
  */
-async function loadManifest(manifestPath: string): Promise<CompositionManifest> {
+async function loadManifest(manifestPath: string): Promise<LoadedManifest> {
   const absPath = pathResolve(manifestPath);
   const raw = await fs.readFile(absPath, "utf-8");
   const parsed = yamlParse(raw) as RawManifest;
@@ -137,7 +143,7 @@ async function loadManifest(manifestPath: string): Promise<CompositionManifest> 
     (parsed.cases ?? []).map((entry) => resolveCase(entry, manifestDir))
   );
 
-  return { endpoint: parsed.endpoint, cases };
+  return { endpoint: parsed.endpoint, cases, manifestDir };
 }
 
 // ---------------------------------------------------------------------------
@@ -223,6 +229,15 @@ export interface RunManifestOptions {
    * When unset, all cases run.
    */
   testClassFilter?: "static" | "behavioral";
+  /**
+   * Endpoint configuration supplied by the caller (e.g. from environment
+   * variables in the CLI layer). When set and the manifest carries no endpoint
+   * block, this value is used instead.
+   *
+   * NFR-005: the API key is still resolved from process.env via
+   * EndpointManifestConfig.api_key_env — never stored as a literal value.
+   */
+  endpointOverride?: EndpointManifestConfig;
 }
 
 // ---------------------------------------------------------------------------
@@ -238,7 +253,7 @@ export interface RunManifestOptions {
  *
  * When expected is absent, the case is skipped gracefully (FR-008 null-safety).
  */
-async function runStaticCase(c: CompositionManifestCase): Promise<CaseResult> {
+async function runStaticCase(c: CompositionManifestCase, manifestDir: string): Promise<CaseResult> {
   if (c.expected === undefined) {
     return {
       id: c.id,
@@ -247,7 +262,7 @@ async function runStaticCase(c: CompositionManifestCase): Promise<CaseResult> {
     };
   }
 
-  const resolvedLayers = resolveLayerPaths(c.layers);
+  const resolvedLayers = resolveLayerPaths(c.layers, manifestDir);
   const composition = await assembleComposedContext({
     layers: resolvedLayers,
     precedence: c.precedence,
@@ -294,7 +309,8 @@ async function runStaticCase(c: CompositionManifestCase): Promise<CaseResult> {
 async function runBehavioralCase(
   c: CompositionManifestCase,
   manifest: CompositionManifest,
-  apiKey: string | undefined
+  apiKey: string | undefined,
+  manifestDir: string
 ): Promise<CaseResult> {
   const endpointCfg = manifest.endpoint;
   if (endpointCfg === undefined) {
@@ -322,7 +338,7 @@ async function runBehavioralCase(
     };
   }
 
-  const resolvedLayers = resolveLayerPaths(c.layers);
+  const resolvedLayers = resolveLayerPaths(c.layers, manifestDir);
   const composition = await assembleComposedContext({
     layers: resolvedLayers,
     precedence: c.precedence,
@@ -384,19 +400,24 @@ function buildSurvivalCase(
 // ---------------------------------------------------------------------------
 
 /**
- * Resolve each layer's fixturePath against the process working directory.
+ * Resolve each layer's fixturePath relative to the manifest directory.
  *
- * Layer paths in fixture YAML files are expressed relative to the project root
- * by convention (e.g. "fixtures/crosslayer/benign/SOUL.md"). `pathResolve`
- * with a single argument uses process.cwd() as the base, which is the project
- * root when the test runner or CLI is invoked from there.
+ * Layer paths in fixture YAML files are expressed relative to the manifest
+ * file's directory (e.g. "fixtures/crosslayer/benign/SOUL.md" when the
+ * manifest lives at the project root). Paths that are already absolute are
+ * returned unchanged.
+ *
+ * Resolving against the manifest directory — not process.cwd() — ensures
+ * `crosslayer run <abs-path>` produces identical results regardless of the
+ * working directory from which the command is invoked (NFR-001: deterministic,
+ * no process.cwd() dependency on the static path).
  *
  * Pure string operation — no I/O, no clock, no RNG (NFR-001).
  */
-function resolveLayerPaths(layers: LayerEntry[]): LayerEntry[] {
+function resolveLayerPaths(layers: LayerEntry[], manifestDir: string): LayerEntry[] {
   return layers.map((layer) => ({
     ...layer,
-    fixturePath: pathResolve(layer.fixturePath),
+    fixturePath: pathResolve(manifestDir, layer.fixturePath),
   }));
 }
 
@@ -435,7 +456,16 @@ export async function runManifest(
   manifestPath: string,
   options?: RunManifestOptions
 ): Promise<ManifestRunSummary> {
-  const manifest = await loadManifest(manifestPath);
+  const loaded = await loadManifest(manifestPath);
+  const { manifestDir } = loaded;
+
+  // Apply endpoint override: when the manifest carries no endpoint block and
+  // the caller supplies one (e.g. from environment variables in the CLI), use
+  // the override so behavioral cases can run without an in-manifest config.
+  const manifest: CompositionManifest = loaded.endpoint === undefined && options?.endpointOverride !== undefined
+    ? { ...loaded, endpoint: options.endpointOverride }
+    : loaded;
+
   const filter = options?.testClassFilter;
   validateManifest(manifest, { filter, dryRun: options?.dryRun });
 
@@ -460,7 +490,7 @@ export async function runManifest(
 
   for (const c of casesToRun) {
     try {
-      const result = await dispatchCase(c, manifest, apiKey);
+      const result = await dispatchCase(c, manifest, apiKey, manifestDir);
       results.push(result);
     } catch (err) {
       // Per-case catch: errored run = failed; remaining cases continue (FR-008, charter).
@@ -485,10 +515,11 @@ export async function runManifest(
 async function dispatchCase(
   c: CompositionManifestCase,
   manifest: CompositionManifest,
-  apiKey: string | undefined
+  apiKey: string | undefined,
+  manifestDir: string
 ): Promise<CaseResult> {
   if (c.testClass === "static") {
-    return runStaticCase(c);
+    return runStaticCase(c, manifestDir);
   }
-  return runBehavioralCase(c, manifest, apiKey);
+  return runBehavioralCase(c, manifest, apiKey, manifestDir);
 }

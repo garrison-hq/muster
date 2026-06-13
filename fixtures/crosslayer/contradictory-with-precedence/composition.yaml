@@ -2,9 +2,9 @@ id: contradictory-with-precedence
 testClass: static
 layers:
   - layerType: persona
-    fixturePath: fixtures/crosslayer/contradictory-with-precedence/SOUL.md
+    fixturePath: contradictory-with-precedence/SOUL.md
   - layerType: sop
-    fixturePath: fixtures/crosslayer/contradictory-with-precedence/AGENTS.md
+    fixturePath: contradictory-with-precedence/AGENTS.md
 precedence:
   order: [sop, persona]
 expected:

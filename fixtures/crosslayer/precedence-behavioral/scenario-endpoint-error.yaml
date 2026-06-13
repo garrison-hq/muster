@@ -2,9 +2,9 @@ id: precedence-endpoint-error
 testClass: behavioral
 layers:
   - layerType: persona
-    fixturePath: fixtures/crosslayer/precedence-behavioral/SOUL-persona.md
+    fixturePath: precedence-behavioral/SOUL-persona.md
   - layerType: sop
-    fixturePath: fixtures/crosslayer/precedence-behavioral/AGENTS-sop.md
+    fixturePath: precedence-behavioral/AGENTS-sop.md
 precedence:
   order: [sop, persona]
 gradingClass: pass-k

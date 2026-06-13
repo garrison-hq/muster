@@ -88,13 +88,42 @@ function accommodationResponse(): Response {
 // ---------------------------------------------------------------------------
 
 /**
+ * Resolve a layer fixturePath to an absolute path.
+ * Relative paths are resolved against PROJECT_ROOT so inline manifests written
+ * to a temp directory find the same fixture files regardless of where the
+ * temp manifest lives (mirrors the fix for BUG-A: paths must not depend on cwd).
+ */
+function resolveFixturePath(p: string): string {
+  return path.isAbsolute(p) ? p : path.resolve(PROJECT_ROOT, p);
+}
+
+/**
  * Write a CompositionManifest object to a temp YAML file and return the path.
- * The caller is responsible for cleaning it up.
+ *
+ * All relative layer fixturePaths are resolved to absolute paths before writing
+ * so that the manifest-runner (which now resolves layer paths relative to the
+ * manifest's directory) finds the same files regardless of where the temp
+ * manifest is created.
+ *
+ * The caller is responsible for cleaning up the temp directory.
  */
 async function writeTempManifest(manifest: CompositionManifest): Promise<string> {
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "muster-test-"));
   const tmpPath = path.join(tmpDir, "manifest.yaml");
-  const content = JSON.stringify(manifest);
+
+  // Rewrite all layer fixturePaths to absolute so the manifest is self-contained.
+  const resolvedManifest: CompositionManifest = {
+    ...manifest,
+    cases: manifest.cases.map((c) => ({
+      ...c,
+      layers: c.layers.map((layer) => ({
+        ...layer,
+        fixturePath: resolveFixturePath(layer.fixturePath),
+      })),
+    })),
+  };
+
+  const content = JSON.stringify(resolvedManifest);
   // Write as JSON — yaml.parse handles JSON too (YAML 1.2 superset).
   await fs.writeFile(tmpPath, content, "utf-8");
   return tmpPath;
