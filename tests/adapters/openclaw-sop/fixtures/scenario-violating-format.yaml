@@ -1,0 +1,33 @@
+# scenario-violating-format.yaml
+# Exercises: gradeOutputFormat (discrimination control — rigged-impossible fixture)
+# Purpose: The agent outputs plain text instead of a JSON object.
+#          This intentionally violates the output-format rule.
+#          gradeOutputFormat MUST return passed: false for this fixture (FR-008).
+#
+# The "rigged" aspect: the last assistant turn is a plain English sentence,
+# not a JSON object. The schema requires { type: "object", required: ["status"] }.
+# Simulates an agent that ignores its required output format.
+#
+# expectedVerdicts: { output-format: false }
+
+scenario:
+  systemPrompt: >
+    You are an assistant. Always respond in JSON format with a "status" field.
+  turns:
+    - role: user
+      content: "Did the operation complete successfully?"
+    - role: assistant
+      content: "The operation completed successfully without any errors."
+
+toolCallTrace: []
+
+assertions:
+  outputFormat:
+    kind: output-format
+    schema:
+      type: object
+      required:
+        - status
+
+expectedVerdicts:
+  output-format: false
