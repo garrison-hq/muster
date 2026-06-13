@@ -1,18 +1,16 @@
 /**
- * pass-k.ts — Shared pass^k conjunctive aggregation helper.
+ * pass-k.ts — Shared pass^k conjunctive aggregation helper (core module).
  *
- * Provides a single implementation of pass^k aggregation used by both the
- * cross-layer conformance adapter (rule-survival.ts) and the SOP adapter
- * (graders.ts). Eliminates the "two divergent implementations" concern from
- * the mission review (Note 1).
+ * Provides a single spec-agnostic implementation of pass^k aggregation used
+ * by conformance layers (cross-layer, SOP, etc.). Placing this in src/core/
+ * ensures dependencies point inward — conformance layers depend on core,
+ * never on each other.
  *
  * Charter rule (non-negotiable): an errored run counts as a FAILED run —
  * never skipped, never retried (FR-006, tau-bench pass^k convention).
  *
  * Callers are responsible for mapping their run-result type to a `boolean`
  * (passed/failed); this function only performs the conjunction.
- *
- * C-001: this module is in src/crosslayer/ — it does not modify src/core/.
  *
  * Normative citations:
  *   - muster cross-layer conformance rubric, FR-006

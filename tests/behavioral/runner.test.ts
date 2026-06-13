@@ -666,4 +666,16 @@ cases:
     if (!isBehavioralManifestError(result)) return;
     expect(result.some((v) => v.path === "endpoint.api_key_env")).toBe(true);
   });
+
+  it("directive 5: api_key_env rejects whitespace-only string (must name a real env-var)", async () => {
+    // A whitespace-only string trims to empty — it cannot name an env-var.
+    // Normative: charter directive 5, NFR-005; validateEndpoint uses apiKeyEnv.trim().length === 0.
+    const path = await writeManifest(
+      validManifest.replace('model: "qwen2.5:7b-instruct"', 'model: "m"\n  api_key_env: "   "')
+    );
+    const result = await loadBehavioralManifest(path);
+    expect(isBehavioralManifestError(result)).toBe(true);
+    if (!isBehavioralManifestError(result)) return;
+    expect(result.some((v) => v.path === "endpoint.api_key_env")).toBe(true);
+  });
 });

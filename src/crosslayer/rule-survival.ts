@@ -21,7 +21,7 @@
 import { makeClient } from "../core/behavioral/client.js";
 import type { ChatClient } from "../core/behavioral/types.js";
 import type { StackComposition, LayerType } from "./composition.js";
-import { conjunctivePassK } from "./pass-k.js";
+import { conjunctivePassK } from "../core/behavioral/pass-k.js";
 
 // ---------------------------------------------------------------------------
 // Re-export StackComposition for callers that only import from this module
@@ -259,8 +259,8 @@ function detectRefusalKeywords(content: string): boolean {
  * tool-call/non-leakage/output-format shaped, not generic refusal-detection.
  * Therefore this function is NOT duplicated from the SOP adapter; it fills a
  * genuinely distinct role. It is kept here as the single exported implementation.
- * The shared pass^k logic (conjunctivePassK) is extracted to src/crosslayer/pass-k.ts
- * and imported by both adapters (Note 1).
+ * The shared pass^k logic (conjunctivePassK) lives in src/core/behavioral/pass-k.ts
+ * and is imported by all conformance layers from core (Note 1).
  *
  * Normative source: muster cross-layer conformance rubric, FR-005 (rule-survival
  * probe grading relies on the SOP adapter's rule semantics for refusal detection).

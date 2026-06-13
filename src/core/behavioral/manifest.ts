@@ -111,7 +111,7 @@ function validateEndpoint(raw: unknown, errors: Violation[]): EndpointConfig | n
     errors.push(violation("endpoint.model", 'required field "model" must be a non-empty string'));
   }
   const apiKeyEnv = raw["api_key_env"] ?? "MUSTER_API_KEY";
-  if (typeof apiKeyEnv !== "string" || apiKeyEnv.length === 0) {
+  if (typeof apiKeyEnv !== "string" || apiKeyEnv.trim().length === 0) {
     errors.push(
       violation(
         "endpoint.api_key_env",

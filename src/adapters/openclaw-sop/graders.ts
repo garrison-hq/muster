@@ -20,7 +20,7 @@ const Ajv = (AjvModule as any).default ?? AjvModule;
 
 import type { BinaryAssertion, SOPGrade, SOPRunVerdict, SOPCaseVerdict } from "./manifest.js";
 import type { Transcript } from "../../core/behavioral/types.js";
-import { conjunctivePassK } from "../../crosslayer/pass-k.js";
+import { conjunctivePassK } from "../../core/behavioral/pass-k.js";
 
 // ---------------------------------------------------------------------------
 // ToolCall — minimal inline type for SOP tool-call traces.
