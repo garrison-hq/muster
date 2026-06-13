@@ -29,7 +29,7 @@ owned_files:
 - tests/heartbeat/tick.test.ts
 tags: []
 assignee: "claude"
-agent: "claude:opus:reviewer:reviewer"
+agent: "claude:sonnet:implementer:implementer"
 ---
 
 # WP01 — HEARTBEAT.md parser + manifest + static lint
@@ -417,3 +417,4 @@ node -e "
 - 2026-06-13T14:26:28Z – claude:sonnet:implementer:implementer – Moved to in_progress
 - 2026-06-13T14:30:57Z – claude:sonnet:implementer:implementer – Implemented on rebased code-only lane; build+test green, coverage >=89%
 - 2026-06-13T14:33:58Z – claude:opus:reviewer:reviewer – Parser/manifest/lint correct; isEmpty edge case + UTF-16 sort + real pinned SHA; build+test green, coverage >=90%, no core/localeCompare/clock leakage
+- 2026-06-13T14:53:15Z – claude:sonnet:implementer:implementer – Reopen: action-diff live observation contract fix (FR-004)
