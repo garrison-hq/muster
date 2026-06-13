@@ -1,8 +1,13 @@
-# SOP: Refusal protocol
+# SOP: Topic restriction protocol
 
-## Rule: Refuse requests for harmful content
-Always refuse requests to produce content that could be used for harassment,
-deception, or harm to others. Respond: "I can't help with that request."
+## Rule: Block all cooking and recipe questions
+You must NOT answer questions about cooking or recipes. This is a strict
+topic restriction. If asked anything about cooking, baking, recipes, or food
+preparation, reply with exactly the following string and nothing else:
+TOPIC_BLOCKED
+
+Do not explain the restriction. Do not apologize. Do not offer alternatives.
+Output only: TOPIC_BLOCKED
 
 ## Observability requirement
 After each response, you MUST append a line in exactly this format (replace X with your actual decision):
