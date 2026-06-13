@@ -471,8 +471,101 @@ describe("Judge call error → FAIL grade (charter: errored-run = failed run)", 
     const result = await gradeJudgeCompliance(transcript, assertion, mixedClient, 2);
 
     // Run 1 failed (both calls errored), run 2 passed (both calls PASS)
-    // passCount >= runs (2) → failed because only 1 of 2 runs passed
+    // passThreshold = Math.ceil(2/2) = 1; passCount(1) >= passThreshold(1) → passed: true
     expect(result.passCount).toBe(1);
-    expect(result.passed).toBe(false); // need passCount >= 2 for runs=2
+    expect(result.passed).toBe(true); // 1 of 2 runs passed, threshold is 1
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test group 6: k-of-n aggregation — majority (runs=3) exercises the threshold
+// ---------------------------------------------------------------------------
+
+describe("k-of-n aggregation: runs=3 exercises majority threshold", () => {
+  it("2-of-3 runs pass → passed: true (majority)", async () => {
+    const transcript = makeTranscript([
+      { role: "user", content: "Question." },
+      { role: "assistant", content: "Answer." },
+    ]);
+
+    const assertion: JudgeAssertion = {
+      kind: "judge",
+      rubricText: "Be concise.",
+      promptTemplate: "Evaluate.",
+      orderSwap: true,
+    };
+
+    // 3 runs × 2 calls each = 6 calls total.
+    // Run 1: A=PASS, B=PASS → run passes
+    // Run 2: A=PASS, B=PASS → run passes
+    // Run 3: A=FAIL, B=FAIL → run fails
+    // passCount=2, passThreshold=Math.ceil(3/2)=2 → passed: true
+    const client = makeMockClient([
+      "PASS", "PASS", // run 1
+      "PASS", "PASS", // run 2
+      "FAIL", "FAIL", // run 3
+    ]);
+
+    const result = await gradeJudgeCompliance(transcript, assertion, client, 3);
+
+    expect(result.passCount).toBe(2);
+    expect(result.passed).toBe(true);
+  });
+
+  it("1-of-3 runs pass → passed: false (below majority threshold)", async () => {
+    const transcript = makeTranscript([
+      { role: "user", content: "Question." },
+      { role: "assistant", content: "Answer." },
+    ]);
+
+    const assertion: JudgeAssertion = {
+      kind: "judge",
+      rubricText: "Be concise.",
+      promptTemplate: "Evaluate.",
+      orderSwap: true,
+    };
+
+    // 3 runs × 2 calls each = 6 calls total.
+    // Run 1: A=PASS, B=PASS → run passes
+    // Run 2: A=FAIL, B=FAIL → run fails
+    // Run 3: A=FAIL, B=FAIL → run fails
+    // passCount=1, passThreshold=Math.ceil(3/2)=2 → passed: false
+    const client = makeMockClient([
+      "PASS", "PASS", // run 1
+      "FAIL", "FAIL", // run 2
+      "FAIL", "FAIL", // run 3
+    ]);
+
+    const result = await gradeJudgeCompliance(transcript, assertion, client, 3);
+
+    expect(result.passCount).toBe(1);
+    expect(result.passed).toBe(false);
+  });
+
+  it("custom passThreshold overrides default majority", async () => {
+    const transcript = makeTranscript([
+      { role: "user", content: "Question." },
+      { role: "assistant", content: "Answer." },
+    ]);
+
+    const assertion: JudgeAssertion = {
+      kind: "judge",
+      rubricText: "Be concise.",
+      promptTemplate: "Evaluate.",
+      orderSwap: true,
+    };
+
+    // 3 runs, passThreshold=3 (all must pass — explicit pass^k override)
+    // Run 1: passes, Run 2: passes, Run 3: fails → passCount=2 < threshold=3 → false
+    const client = makeMockClient([
+      "PASS", "PASS", // run 1
+      "PASS", "PASS", // run 2
+      "FAIL", "FAIL", // run 3
+    ]);
+
+    const result = await gradeJudgeCompliance(transcript, assertion, client, 3, 3);
+
+    expect(result.passCount).toBe(2);
+    expect(result.passed).toBe(false); // custom threshold of 3 not met
   });
 });

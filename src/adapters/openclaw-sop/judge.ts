@@ -19,8 +19,6 @@
 import type { JudgeAssertion, SOPGrade } from "./manifest.js";
 import type { Transcript } from "../../core/behavioral/types.js";
 import type { ChatClient } from "../../core/behavioral/types.js";
-import { aggregatePassK } from "./graders.js";
-import type { SOPRunVerdict } from "./manifest.js";
 
 // ---------------------------------------------------------------------------
 // Refusal vocabulary — fixed list of opener phrases for the all-refuse guard.
@@ -120,13 +118,15 @@ function serializeTranscript(transcript: Transcript): string {
  *
  * Error handling: a judge call that throws counts as a FAIL vote (charter).
  *
- * k-of-n aggregation: passed = passCount >= runs (majority of runs, not
- * individual calls). Each run produces 2 judge calls (one per swap position).
+ * k-of-n aggregation: passed = passCount >= passThreshold, where
+ * passThreshold defaults to Math.ceil(runs / 2) (majority). Each run
+ * produces 2 judge calls (one per swap position).
  *
- * @param transcript - The full run transcript (read-only; never mutated).
- * @param assertion  - The JudgeAssertion; rubricText injected verbatim.
- * @param client     - ChatClient from core/behavioral/types.ts (no new credential surface).
- * @param runs       - Number of k-of-n runs; each run makes 2 judge calls.
+ * @param transcript    - The full run transcript (read-only; never mutated).
+ * @param assertion     - The JudgeAssertion; rubricText injected verbatim.
+ * @param client        - ChatClient from core/behavioral/types.ts (no new credential surface).
+ * @param runs          - Number of k-of-n runs; each run makes 2 judge calls.
+ * @param passThreshold - Minimum passing runs required. Defaults to Math.ceil(runs / 2).
  * @returns grades (SOPGrade[]), passed (boolean), passCount (number).
  */
 export async function gradeJudgeCompliance(
@@ -134,6 +134,7 @@ export async function gradeJudgeCompliance(
   assertion: JudgeAssertion,
   client: ChatClient,
   runs: number,
+  passThreshold: number = Math.ceil(runs / 2),
 ): Promise<{ grades: SOPGrade[]; passed: boolean; passCount: number }> {
   // -------------------------------------------------------------------
   // All-refuse guard (fires BEFORE any ChatClient call)
@@ -261,9 +262,10 @@ export async function gradeJudgeCompliance(
   }
 
   // -------------------------------------------------------------------
-  // Final aggregation: passed = passCount >= runs (charter k-of-n)
+  // Final aggregation: k-of-n — passed = passCount >= passThreshold
+  // (data-model.md:325; spec scenario 7: majority of runs must pass)
   // -------------------------------------------------------------------
-  const passed = passCount >= runs;
+  const passed = passCount >= passThreshold;
 
   return { grades: allGrades, passed, passCount };
 }
