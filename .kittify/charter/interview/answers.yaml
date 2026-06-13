@@ -2,102 +2,114 @@ schema_version: 1.0.0
 mission: software-dev
 profile: comprehensive
 answers:
-  project_intent: muster is the conformance test harness for the agent-file
-    stack, still inside the v1 pre-release line - there is no v2 major; the
-    agent-file-stack work is the v1-extended milestone of the same release.
-    v1 shipped the reference CTS-1 harness for Soul.md RFC-1 (static
-    conformance spine end-to-end plus a thin behavioral slice on three
-    objectively-gradable axes); muster tracks RFC-1 at 1.0.0-rc1 as-is - a
-    faithful CTS, not a spec fork. v1-extended grows the same spec-agnostic
-    core with per-layer adapters in research-locked order (see
-    kitty-specs/v2-agent-stack-research-01KTYA4C/research.md RQ-10) - first
-    the Agent Skills adapter (agentskills.io specification; static frontmatter
-    and directory-layout conformance plus behavioral trigger conformance),
-    second the OpenClaw SOP adapter (AGENTS.md compliance probes plus
-    adversarial injection and scope-escape probes from vendored corpora),
-    third the cross-layer test class (rule survival under persona,
-    precedence-conflict findings, cross-file contradiction lint); and the three
-    remaining OpenClaw convention layers - tools (TOOLS.md static lint plus the
-    new drift test class: documented tools vs the live environment descriptor),
-    memory (MEMORY.md/USER.md staleness and contradiction lint, recall probes,
-    and the privacy/leak probe citing OpenClaw's verbatim private-session rule),
-    and schedule (HEARTBEAT.md action-diff, idempotency, and quiet-when-nothing-
-    to-do probes). Together these six adapters - skills, SOP, cross-layer, tools,
-    memory, schedule - on top of v1's persona constitute the v1.0.0 release
-    scope. Each layer ships as its own spec-kitty mission of roughly 2-3 days,
-    independently releasable within the v1 pre-release series, and shaped to be
-    upstreamable as the CTS for its spec. The SoulSpec persona-package adapter,
-    the thin cross-vendor agents.md adapter, and the A2A manifest layer wait for
-    a post-1.0.0 milestone - A2A specifically because the official a2a-tck
-    already covers the center of that ground.
-  languages_frameworks: TypeScript on Node 22 LTS, pnpm, single package.
-    Minimal dependencies (yaml for AST-level parsing, Ajv for JSON Schema
-    Draft 2020-12, commander for CLI, Vitest for tests; @vitest/coverage-v8
-    as a dev dependency for coverage upload only). No model-provider SDKs -
-    models are reached via plain fetch against OpenAI-compatible endpoints
-    only, key via environment. Adversarial probe corpora are vendored data,
-    not dependencies, and only under MIT/Apache/CC-BY licenses verified at
-    vendoring time with upstream LICENSE and citation files included.
-  testing_requirements: Vitest is the test runner. The CTS fixture suite plus
-    each layer's fixture suite is the primary acceptance surface and must pass
-    fully. Every check cites a normative source - an upstream spec clause or a
-    muster-published rubric, never an unwritten opinion; unversioned upstream
-    sources (agentskills.io specification, OpenClaw docs) are pinned to repo
-    commit SHAs with a documented drift-watch practice. Behavioral grading is
-    two-tier - safety-critical rules (injection resistance, never-call-tool,
-    privacy boundaries) aggregate as pass^k requiring all k runs to pass;
-    stylistic axes keep k-of-n thresholds. An errored run counts as a failed
-    run everywhere - never skipped, never retried. Every judge-backed grader
-    ships with a rigged-impossible control case proving it can fail. New-code
-    test coverage must meet the SonarCloud quality-gate threshold of at least
-    80% (the default Sonar way gate); coverage is uploaded as lcov and the gate
-    enforces it on changed code in every PR. There is no whole-project coverage
-    floor - the threshold applies to new code only.
-  quality_gates: Before merge - strict TypeScript type-check (tsc) passes,
-    full Vitest suite green including all fixture suites, SonarCloud quality
-    gate passes as a blocking PR check, no implementation code lands before
-    spec, plan, and tasks are locked through the spec-kitty checklist.
-  review_policy: Solo developer driving an AI pair. Each work package is
-    reviewed via spec-kitty review before acceptance (implementing and
-    reviewing agents may differ); one approval (the project owner) before
-    merge.
-  performance_targets: Single-file static check completes in under 5 seconds.
-    Full static fixture suite completes in under 10 seconds. The static path
-    is fully offline and byte-stable deterministic - canonical output ordering
-    is UTF-16 code-unit based and locale-independent. Behavioral suite per
-    layer completes in under 15 minutes against a local 7B model.
-  deployment_constraints: Linux (Fedora) is the primary developer environment;
-    CI is GitHub Actions on ubuntu-latest. Static checking must work fully
-    offline. No hardcoded model providers and no credentials in the repository
-    - endpoints are configured at run time, tokens live in CI secrets. CLI
-    plus CI exit codes are the product surface; no hosted service in this
-    milestone.
-  documentation_policy: The Astro Starlight docs site is updated in the same
-    mission that ships a layer - every check is documented with its citation
-    (upstream clause or muster rubric), and muster-published rubrics are
-    versioned pages on the site, since checks cite them as normative sources.
-    README stays a landing page; deep reference lives on the site.
-  risk_boundaries: The scope guard from BRIEF.md is binding - muster is not an
-    agent framework or runtime, not a prompt optimizer or generator, not a
-    registry or marketplace, and not a hosted service in this milestone. No
-    new layer lands without a citable normative source or documented
-    convention; layers without one wait. Positioning claims must stay within
-    what the research evidence supports - the defensible claim is that no eval
-    harness combines file-spec conformance, cross-layer composition analysis,
-    and behavioral verification in one surface. Upstream spec drift
-    (unversioned agentskills.io spec, OpenClaw docs tracking main, dormant
-    RFC-1) is an accepted risk managed by SHA-pinned citations.
-  amendment_process: Charter amendments go through the /spec-kitty.charter
-    interview-and-regenerate flow and are committed like any other change.
-    Material technical and governance decisions are captured with rationale at
-    decision time (mission research.md or ADR) so future contributors know why
-    a path was chosen and which constraints must remain true.
-  exception_policy: Deviations from approved specs or from upstream
-    tooling suggestions require a written one-line justification recorded in
-    the mission work log before acceptance - the same rule muster applies to
-    its own checks applies to its own exceptions (for example, lint findings
-    accepted instead of fixed, or upstream fix suggestions rejected because
-    they conflict with the byte-stable determinism constraint).
+  project_intent: >-
+    muster is the conformance test harness for the agent-file stack, still
+    inside the v1 pre-release line - there is no v2 major; the agent-file-stack
+    work is the v1-extended milestone of the same release. v1 shipped the
+    reference CTS-1 harness for Soul.md RFC-1 (static conformance spine
+    end-to-end plus a thin behavioral slice on three objectively-gradable
+    axes); muster tracks RFC-1 at 1.0.0-rc1 as-is - a faithful CTS, not a spec
+    fork. v1-extended grows the same spec-agnostic core with per-layer adapters
+    in research-locked order (see kitty-specs/v2-agent-stack-research-01KTYA4C
+    research.md RQ-10) - first the Agent Skills adapter (agentskills.io
+    specification; static frontmatter and directory-layout conformance plus
+    behavioral trigger conformance), second the OpenClaw SOP adapter (AGENTS.md
+    compliance probes plus adversarial injection and scope-escape probes from
+    vendored corpora), third the cross-layer test class (rule survival under
+    persona, precedence-conflict findings, cross-file contradiction lint); and
+    the three remaining OpenClaw convention layers - tools (TOOLS.md static
+    lint plus the new drift test class, documented tools vs the live
+    environment descriptor), memory (MEMORY.md/USER.md staleness and
+    contradiction lint, recall probes, and the privacy/leak probe citing
+    OpenClaw's verbatim private-session rule), and schedule (HEARTBEAT.md
+    action-diff, idempotency, and quiet-when-nothing-to-do probes). Together
+    these six adapters - skills, SOP, cross-layer, tools, memory, schedule - on
+    top of v1's persona constitute the v1.0.0 release scope. Each layer ships
+    as its own spec-kitty mission of roughly 2-3 days, independently releasable
+    within the v1 pre-release series, and shaped to be upstreamable as the CTS
+    for its spec. The SoulSpec persona-package adapter, the thin cross-vendor
+    agents.md adapter, and the A2A manifest layer wait for a post-1.0.0
+    milestone - A2A specifically because the official a2a-tck already covers
+    the center of that ground.
+  languages_frameworks: >-
+    TypeScript on Node 22 LTS, pnpm, single package. Minimal dependencies (yaml
+    for AST-level parsing, Ajv for JSON Schema Draft 2020-12, commander for CLI,
+    Vitest for tests; @vitest/coverage-v8 as a dev dependency for coverage
+    upload only). No model-provider SDKs - models are reached via plain fetch
+    against OpenAI-compatible endpoints only, key via environment. Adversarial
+    probe corpora are vendored data, not dependencies, and only under
+    MIT/Apache/CC-BY licenses verified at vendoring time with upstream LICENSE
+    and citation files included.
+  testing_requirements: >-
+    Vitest is the test runner. The CTS fixture suite plus each layer's fixture
+    suite is the primary acceptance surface and must pass fully. Every check
+    cites a normative source - an upstream spec clause or a muster-published
+    rubric, never an unwritten opinion; unversioned upstream sources
+    (agentskills.io specification, OpenClaw docs) are pinned to repo commit SHAs
+    with a documented drift-watch practice. Behavioral grading is two-tier -
+    safety-critical rules (injection resistance, never-call-tool, privacy
+    boundaries) aggregate as pass^k requiring all k runs to pass; stylistic axes
+    keep k-of-n thresholds. An errored run counts as a failed run everywhere -
+    never skipped, never retried. Every judge-backed grader ships with a
+    rigged-impossible control case proving it can fail. New-code test coverage
+    must meet the SonarCloud quality-gate threshold of at least 80% (the default
+    Sonar way gate); coverage is uploaded as lcov and the gate enforces it on
+    changed code in every PR. There is no whole-project coverage floor - the
+    80% threshold applies to new code only.
+  quality_gates: >-
+    Before merge - strict TypeScript type-check (tsc) passes, full Vitest suite
+    green including all fixture suites, SonarCloud quality gate passes as a
+    blocking PR check (including the at-least-80% new-code coverage condition),
+    no implementation code lands before spec, plan, and tasks are locked through
+    the spec-kitty checklist.
+  review_policy: >-
+    Solo developer driving an AI pair. Each work package is reviewed via
+    spec-kitty review before acceptance (implementing and reviewing agents may
+    differ); one approval (the project owner) before merge. All changes land on
+    main through a pull request - branch protection requires the build+test and
+    SonarCloud checks to pass before merge.
+  performance_targets: >-
+    Single-file static check completes in under 5 seconds. Full static fixture
+    suite completes in under 10 seconds. The static path is fully offline and
+    byte-stable deterministic - canonical output ordering is UTF-16 code-unit
+    based and locale-independent. Behavioral suite per layer completes in under
+    15 minutes against a local 7B model.
+  deployment_constraints: >-
+    Linux (Fedora) is the primary developer environment; CI is GitHub Actions on
+    ubuntu-latest. Static checking must work fully offline. No hardcoded model
+    providers and no credentials in the repository - endpoints are configured at
+    run time, tokens live in CI secrets. CLI plus CI exit codes are the product
+    surface; no hosted service in this milestone.
+  documentation_policy: >-
+    The Astro Starlight docs site is updated in the same mission that ships a
+    layer - every check is documented with its citation (upstream clause or
+    muster rubric), and muster-published rubrics are versioned pages on the
+    site, since checks cite them as normative sources. README stays a landing
+    page; deep reference lives on the site.
+  risk_boundaries: >-
+    The scope guard from BRIEF.md is binding - muster is not an agent framework
+    or runtime, not a prompt optimizer or generator, not a registry or
+    marketplace, and not a hosted service in this milestone. No new layer lands
+    without a citable normative source or documented convention; layers without
+    one wait. Positioning claims must stay within what the research evidence
+    supports - the defensible claim is that no eval harness combines file-spec
+    conformance, cross-layer composition analysis, and behavioral verification
+    in one surface. Upstream spec drift (unversioned agentskills.io spec,
+    OpenClaw docs tracking main, dormant RFC-1) is an accepted risk managed by
+    SHA-pinned citations.
+  amendment_process: >-
+    Charter amendments go through the /spec-kitty.charter interview-and-
+    regenerate flow and are committed like any other change. Material technical
+    and governance decisions are captured with rationale at decision time
+    (mission research.md or ADR) so future contributors know why a path was
+    chosen and which constraints must remain true.
+  exception_policy: >-
+    Deviations from approved specs or from upstream tooling suggestions require
+    a written one-line justification recorded in the mission work log before
+    acceptance - the same rule muster applies to its own checks applies to its
+    own exceptions (for example, lint findings accepted instead of fixed, or
+    upstream fix suggestions rejected because they conflict with the byte-stable
+    determinism constraint).
 selected_paradigms: []
 selected_directives: []
 available_tools:
