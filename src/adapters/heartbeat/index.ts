@@ -273,6 +273,20 @@ async function runActionDiffCase(
   // Use manifest-declared intendedActions when present (FR-004 observation
   // contract). Fall back to checklist item texts for cases without an explicit
   // intendedActions declaration (legacy/non-action-diff cases).
+  //
+  // ACTION-DIFF INDIRECTION CONTRACT (FR-004, data-model invariant):
+  // The manifest's intendedActions MUST be consistent with the checklist item
+  // texts shown to the model — because the model is instructed (via
+  // ACTION_OBSERVATION_CONVENTION in tick.ts) to emit "ACTION: <label> where
+  // <label> is the action label from the checklist item". If intendedActions
+  // diverges silently from the checklist, the model cannot emit matching labels
+  // and every run will fail, making the grading result meaningless.
+  //
+  // SAFE BECAUSE: manifest authorship is a deliberate coupling step — the
+  // manifest author is responsible for keeping intendedActions aligned with
+  // the checklist item texts they want to observe. The fixture-suite test
+  // "action-diff intendedActions aligns with checklist item texts" documents
+  // and verifies this contract for all action-diff cases in manifest.json.
   const intendedActions =
     Array.isArray(kase.intendedActions) && kase.intendedActions.length > 0
       ? kase.intendedActions
