@@ -1,0 +1,226 @@
+# Skills CTS manifest — FR-013, FR-014, SC-001 through SC-006.
+#
+# Each static case maps to exactly one fixture directory and states what the
+# harness must find. Each violation entry carries the rule ID for traceability.
+#
+# Behavioral cases require MUSTER_BASE_URL; they are skipped in offline CI
+# (SC-005: endpoint-agnostic design — only env vars change between endpoints).
+
+cases:
+  # ── Valid fixtures (happy path, profile: base) ─────────────────────────────
+
+  - id: valid-minimal
+    type: static
+    # Rule: FR-014 minimal conforming SKILL.md — only required fields.
+    skillDir: fixtures/skills/valid/minimal
+    profile: base
+    expectations:
+      ok: true
+      violations: []
+
+  - id: valid-full-optional
+    type: static
+    # Rule: FR-014 / FR-005 — all optional fields present (license, compatibility,
+    # metadata with string values). No allowed-tools field → no experimental warning.
+    skillDir: fixtures/skills/valid/full-optional
+    profile: base
+    expectations:
+      ok: true
+      violations: []
+
+  - id: valid-anthropic-profile-clean
+    type: static
+    # Rule: FR-014 — a skill with a clean name and description, no violations.
+    # Note: the directory/name "anthropic-profile-clean" contains the reserved
+    # word "anthropic"; this fixture is therefore tested under profile: base
+    # (where reserved-word checks do NOT apply). Anthropic-profile violations
+    # are covered by broken-anthropic-reserved-word and broken-anthropic-xml-tag.
+    skillDir: fixtures/skills/valid/anthropic-profile-clean
+    profile: base
+    expectations:
+      ok: true
+      violations: []
+
+  # ── Broken fixtures: name rules (FR-003) ───────────────────────────────────
+
+  - id: broken-name-missing
+    type: static
+    # Rule: name-missing — frontmatter has no `name` key (schema required).
+    skillDir: fixtures/skills/broken/name-missing
+    profile: base
+    expectations:
+      ok: false
+      violations:
+        - path: name
+          severity: error
+
+  - id: broken-name-too-long
+    type: static
+    # Rule: name-too-long — name is 65 chars; exceeds 64-char limit (FR-003).
+    # Also triggers dir-mismatch (name ≠ "name-too-long"). Both violations expected.
+    skillDir: fixtures/skills/broken/name-too-long
+    profile: base
+    expectations:
+      ok: false
+      violations:
+        - path: name
+          severity: error
+
+  - id: broken-name-bad-charset
+    type: static
+    # Rule: name-bad-charset — name contains uppercase letters (FR-003).
+    # Also triggers dir-mismatch (name ≠ "name-bad-charset"). Both expected.
+    skillDir: fixtures/skills/broken/name-bad-charset
+    profile: base
+    expectations:
+      ok: false
+      violations:
+        - path: name
+          severity: error
+
+  - id: broken-name-leading-hyphen
+    type: static
+    # Rule: name-leading-hyphen — name starts with a hyphen (FR-003).
+    skillDir: fixtures/skills/broken/name-leading-hyphen
+    profile: base
+    expectations:
+      ok: false
+      violations:
+        - path: name
+          severity: error
+
+  - id: broken-name-dir-mismatch
+    type: static
+    # Rule: name-dir-mismatch — name ("completely-different") ≠ dir basename (FR-003).
+    skillDir: fixtures/skills/broken/name-dir-mismatch
+    profile: base
+    expectations:
+      ok: false
+      violations:
+        - path: name
+          severity: error
+
+  # ── Broken fixtures: description rules (FR-004) ────────────────────────────
+
+  - id: broken-description-missing
+    type: static
+    # Rule: description-missing — frontmatter has no `description` key (FR-004).
+    skillDir: fixtures/skills/broken/description-missing
+    profile: base
+    expectations:
+      ok: false
+      violations:
+        - path: description
+          severity: error
+
+  - id: broken-description-too-long
+    type: static
+    # Rule: description-too-long — description is exactly 1025 chars; exceeds 1024 (FR-004).
+    skillDir: fixtures/skills/broken/description-too-long
+    profile: base
+    expectations:
+      ok: false
+      violations:
+        - path: description
+          severity: error
+
+  # ── Broken fixtures: optional field rules (FR-005) ─────────────────────────
+
+  - id: broken-metadata-bad-value
+    type: static
+    # Rule: metadata-bad-value — metadata.count is a number; metadata values must
+    # be strings only (FR-005). Schema violation path: metadata/count.
+    skillDir: fixtures/skills/broken/metadata-bad-value
+    profile: base
+    expectations:
+      ok: false
+      violations:
+        - path: metadata/count
+          severity: error
+
+  # ── Broken fixtures: layout rules (FR-006) ─────────────────────────────────
+
+  - id: broken-bundled-file-missing
+    type: static
+    # Rule: bundled-file-missing — body references scripts/missing.sh which
+    # does not exist on disk (FR-006).
+    skillDir: fixtures/skills/broken/bundled-file-missing
+    profile: base
+    expectations:
+      ok: false
+      violations:
+        - path: "(layout)"
+          severity: error
+
+  - id: broken-bundled-file-escape
+    type: static
+    # Rule: bundled-file-escape — body references scripts/../../../etc/passwd;
+    # lexical path-traversal guard rejects it without I/O (FR-006, NFR-001).
+    skillDir: fixtures/skills/broken/bundled-file-escape
+    profile: base
+    expectations:
+      ok: false
+      violations:
+        - path: "(layout)"
+          severity: error
+
+  # ── Broken fixtures: Anthropic profile gate (FR-007) ──────────────────────
+
+  - id: broken-anthropic-reserved-word
+    type: static
+    # Rule: anthropic-reserved-word — name "claude-helper" contains reserved
+    # word "claude" under the Anthropic platform profile (FR-007).
+    # Also triggers dir-mismatch (name ≠ "anthropic-reserved-word"). Both expected.
+    skillDir: fixtures/skills/broken/anthropic-reserved-word
+    profile: anthropic
+    expectations:
+      ok: false
+      violations:
+        - path: name
+          severity: error
+
+  - id: broken-anthropic-xml-tag
+    type: static
+    # Rule: anthropic-xml-tag — description contains <instructions>…</instructions>;
+    # XML tags are forbidden under the Anthropic platform profile (FR-007).
+    # Also: name "anthropic-xml-tag" contains reserved word "anthropic" → two
+    # violations under profile=anthropic. Both expected.
+    skillDir: fixtures/skills/broken/anthropic-xml-tag
+    profile: anthropic
+    expectations:
+      ok: false
+      violations:
+        - path: name
+          severity: error
+        - path: description
+          severity: error
+
+  # ── Behavioral cases (require MUSTER_BASE_URL; skipped in offline CI) ──────
+  # SC-005: behavioral suite is endpoint-agnostic — only MUSTER_BASE_URL /
+  # MUSTER_API_KEY / MUSTER_MODEL env vars change between runs against different
+  # endpoints. The suite itself is unchanged.
+
+  - id: behavioral-weather-skill
+    type: behavioral
+    # Uses the minimal valid skill as the target tool; weather queries are the
+    # labeled trigger set. A real model endpoint grades trigger routing.
+    skillDir: fixtures/skills/valid/minimal
+    profile: base
+    querySetPath: fixtures/skills/trigger-queries/weather-skill-queries.yaml
+    runsPerQuery: 3
+    threshold: 0.5
+    isControl: false
+
+  - id: behavioral-rigged-control
+    type: behavioral
+    # Discrimination control (SC-004): the skill tool description is overridden
+    # in the test runner with RIGGED_IMPOSSIBLE_DESCRIPTION from trigger.ts.
+    # The shouldTrigger queries are normal, plausible tasks — a well-functioning
+    # model will NOT invoke the rigged tool. Expected: passed: false.
+    # skillDir is a placeholder; the runner replaces the description at runtime.
+    skillDir: fixtures/skills/broken/name-missing
+    profile: base
+    querySetPath: fixtures/skills/trigger-queries/rigged-impossible-queries.yaml
+    runsPerQuery: 3
+    threshold: 0.5
+    isControl: true

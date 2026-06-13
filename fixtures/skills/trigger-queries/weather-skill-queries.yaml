@@ -1,0 +1,25 @@
+id: weather-skill-queries
+source: "agentskills.io/specification#trigger-testing@d8a3f2e1b9c74051e6f8d2a7c3b5f0e9d1a4c8b2"
+threshold: 0.5
+shouldTrigger:
+  - "What is the weather in Amsterdam today?"
+  - "Will it rain tomorrow in London?"
+  - "Current temperature in Tokyo please"
+  - "Is it going to be sunny this weekend in Paris?"
+  - "Weather forecast for New York next week"
+  - "Do I need an umbrella in Berlin today?"
+  - "High and low temperatures for Sydney on Friday"
+  - "What should I wear tomorrow based on the weather in Chicago?"
+  - "Is there a storm warning for Miami?"
+  - "Weather conditions in Dubai right now"
+nearMiss:
+  - "What time is sunset in Amsterdam?"
+  - "What is the UV index in London?"
+  - "Can you recommend a good weather app?"
+  - "How do weather forecasts work?"
+  - "What causes thunder and lightning?"
+  - "Tell me about the climate in tropical regions"
+  - "What is the average rainfall in the Amazon?"
+  - "Explain La Nina and El Nino"
+  - "What is a cold front?"
+  - "History of weather forecasting"
