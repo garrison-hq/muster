@@ -90,10 +90,8 @@ export function validateSkill(
   const violations: Violation[] = [];
 
   // Static semantic checks (name, description, optional fields, Anthropic profile).
-  violations.push(...validateStatic(doc, profile));
-
   // Layout drift check: bundled file references, path-traversal guard (FR-006).
-  violations.push(...checkLayout(doc));
+  violations.push(...validateStatic(doc, profile), ...checkLayout(doc));
 
   return violations;
 }

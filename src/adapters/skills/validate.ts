@@ -221,9 +221,11 @@ export function validateStatic(
 
   const fm = isRecord(doc.frontmatter) ? doc.frontmatter : {};
 
-  violations.push(...validateName(fm["name"], doc.skillDir));
-  violations.push(...validateDescription(fm["description"]));
-  violations.push(...validateOptionalFields(fm));
+  violations.push(
+    ...validateName(fm["name"], doc.skillDir),
+    ...validateDescription(fm["description"]),
+    ...validateOptionalFields(fm)
+  );
 
   if (profile === "anthropic") {
     violations.push(...validateAnthropicProfile(fm["name"], fm["description"]));
