@@ -1,7 +1,7 @@
 {
-  "event_count": 12,
-  "last_event_id": "01KV0TZSSBP4Y3R08FXRB50QWX",
-  "materialized_at": "2026-06-13T15:53:11.211451+00:00",
+  "event_count": 13,
+  "last_event_id": "01KV0V2N2EKPK7CY95R3KQ3FGP",
+  "materialized_at": "2026-06-13T15:54:44.686897+00:00",
   "mission_number": "",
   "mission_slug": "cross-layer-conformance-01KTYKP2",
   "mission_type": "software-dev",
@@ -12,9 +12,9 @@
     "claimed": 0,
     "done": 0,
     "for_review": 0,
-    "in_progress": 0,
+    "in_progress": 1,
     "in_review": 0,
-    "planned": 2
+    "planned": 1
   },
   "work_packages": {
     "WP01": {
@@ -32,11 +32,11 @@
       "last_transition_at": "2026-06-13T15:53:11.211451+00:00"
     },
     "WP03": {
-      "actor": "finalize-tasks",
-      "force_count": 1,
-      "lane": "planned",
-      "last_event_id": "01KTZZXE9FAWY3VPND6FP31RC0",
-      "last_transition_at": "2026-06-13T08:00:02.351050+00:00"
+      "actor": "claude:sonnet:implementer:implementer",
+      "force_count": 2,
+      "lane": "in_progress",
+      "last_event_id": "01KV0V2N2EKPK7CY95R3KQ3FGP",
+      "last_transition_at": "2026-06-13T15:54:44.686897+00:00"
     },
     "WP04": {
       "actor": "finalize-tasks",

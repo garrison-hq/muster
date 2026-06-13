@@ -22,6 +22,8 @@ subtasks:
 - T021
 - T022
 - T023
+assignee: "claude"
+agent: "claude:sonnet:implementer:implementer"
 history:
 - timestamp: '2026-06-13T01:30:00Z'
   event: created
@@ -543,3 +545,4 @@ test present and yields `eroded`; only `owned_files` modified.
 ## Activity Log
 
 - 2026-06-13T01:30:00Z – /spec-kitty.tasks – created
+- 2026-06-13T15:54:44Z – claude:sonnet:implementer:implementer – Moved to in_progress
