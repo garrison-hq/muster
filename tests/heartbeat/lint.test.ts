@@ -312,6 +312,27 @@ describe("T004 lintHeartbeat", () => {
     expect(report.findings.some((f) => f.rule === "heartbeat/length-advisory")).toBe(true);
   });
 
+  it("OR-branch: ONLY lines threshold exceeded (>50 lines, ≤2000 chars) → length-advisory fires", () => {
+    // 51 short items: 51 lines, ≤600 chars — trips lines threshold only (NFR-001 OR-branch).
+    const raw = Array.from({ length: 51 }, (_, i) => `- Item ${String(i + 1).padStart(2, "0")}`).join("\n");
+    const file = parseHeartbeat("/tmp/HEARTBEAT.md", raw);
+    expect(file.raw.split("\n").length).toBe(51); // lines > 50
+    expect(file.raw.length).toBeLessThanOrEqual(2000); // chars ≤ 2000
+    const report = lintHeartbeat(file);
+    expect(report.findings.some((f) => f.rule === "heartbeat/length-advisory")).toBe(true);
+  });
+
+  it("OR-branch: ONLY chars threshold exceeded (≤50 lines, >2000 chars) → length-advisory fires", () => {
+    // 3 items: 4 lines, >2000 chars — trips chars threshold only (NFR-001 OR-branch).
+    const longItem = "- " + "a".repeat(2001);
+    const raw = longItem + "\n- Check system status\n- Verify connections";
+    const file = parseHeartbeat("/tmp/HEARTBEAT.md", raw);
+    expect(file.raw.split("\n").length).toBeLessThanOrEqual(50); // lines ≤ 50
+    expect(file.raw.length).toBeGreaterThan(2000); // chars > 2000
+    const report = lintHeartbeat(file);
+    expect(report.findings.some((f) => f.rule === "heartbeat/length-advisory")).toBe(true);
+  });
+
   it("advisory finding sets ok: false (advisory is a blocking severity per spec)", () => {
     // Per spec T004: "ok is true when there are no advisory or higher-severity findings."
     // Advisory findings DO set ok: false. Only 'info' findings are non-blocking.
@@ -404,12 +425,13 @@ describe("T005 serializeLintReport", () => {
     );
   });
 
-  it("key order in serialized output is: path, ok, isEmpty, itemCount, findings", () => {
+  it("key order in serialized output is RFC 8785 canonical: findings, isEmpty, itemCount, ok, path", () => {
+    // canonicalJson sorts keys by UTF-16 code units (RFC 8785, NFR-001, FR-001).
     const report = buildReport();
     const serialized = serializeLintReport(report);
     const parsed = JSON.parse(serialized) as Record<string, unknown>;
     const keys = Object.keys(parsed);
-    expect(keys).toEqual(["path", "ok", "isEmpty", "itemCount", "findings"]);
+    expect(keys).toEqual(["findings", "isEmpty", "itemCount", "ok", "path"]);
   });
 
   it("finding with location field is included in output", () => {

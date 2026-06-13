@@ -71,6 +71,18 @@ describe("T018 fixture files", () => {
     expect(items.length).toBeGreaterThanOrEqual(51);
   });
 
+  it("over-lines-only.md: lines > 50 AND chars ≤ 2000 (single-threshold fixture, lines only)", () => {
+    const content = readFileSync(checklistPath("over-lines-only.md"), "utf-8");
+    expect(content.split("\n").length).toBeGreaterThan(50);
+    expect(content.length).toBeLessThanOrEqual(2000);
+  });
+
+  it("over-chars-only.md: lines ≤ 50 AND chars > 2000 (single-threshold fixture, chars only)", () => {
+    const content = readFileSync(checklistPath("over-chars-only.md"), "utf-8");
+    expect(content.split("\n").length).toBeLessThanOrEqual(50);
+    expect(content.length).toBeGreaterThan(2000);
+  });
+
   it("mixed-recurrence.md has content for both once-only and recurring items", () => {
     const content = readFileSync(checklistPath("mixed-recurrence.md"), "utf-8");
     expect(content).toContain("once-only");
@@ -158,6 +170,41 @@ describe("T019 manifest.json", () => {
     for (const kase of manifest.cases) {
       if (["action-diff", "idempotency", "quiet-ack"].includes(kase.gradingClass)) {
         expect(kase.tickState).not.toBeNull();
+      }
+    }
+  });
+
+  it("action-diff contract: intendedActions aligns with checklist item texts (FR-004 indirection)", () => {
+    // The action-diff grader compares model ACTION: lines against intendedActions.
+    // The model is shown the checklist item texts via buildScenarioFraming and
+    // instructed to emit ACTION: <label> matching each item. For the grading
+    // result to be meaningful, every entry in intendedActions MUST appear as the
+    // text of a checklist item the model is shown — otherwise the model cannot
+    // emit the correct labels.
+    //
+    // This test verifies that for every action-diff case in manifest.json,
+    // each declared intendedAction is a subset of the checklist item texts
+    // (case-insensitive trim, matching the normalizeActionLabel contract).
+    // If this test fails, the manifest intendedActions have drifted from the
+    // checklist and will produce meaningless all-fail results at runtime.
+    const manifest = loadManifestFile(MANIFEST_PATH);
+    for (const kase of manifest.cases) {
+      if (kase.gradingClass !== "action-diff") continue;
+      if (!Array.isArray(kase.intendedActions) || kase.intendedActions.length === 0) continue;
+
+      const checklistRaw = readFileSync(resolvePath(PROJECT_ROOT, kase.checklistPath), "utf-8");
+      const heartbeatFile = parseHeartbeat(kase.checklistPath, checklistRaw);
+      const checklistTexts = new Set(
+        heartbeatFile.items.map((item) => item.text.trim().toLowerCase())
+      );
+
+      for (const action of kase.intendedActions) {
+        const normalized = action.trim().toLowerCase();
+        expect(
+          checklistTexts.has(normalized),
+          `intendedAction "${action}" in case "${kase.id}" must match a checklist item text ` +
+          `(checklist items: ${[...checklistTexts].join(", ")})`
+        ).toBe(true);
       }
     }
   });
@@ -526,6 +573,22 @@ describe("T020 HeartbeatAdapter SpecAdapter boundary", () => {
   it("checkHeartbeatFile: over-length → length-advisory", async () => {
     const report = await checkHeartbeatFile(checklistPath("over-length.md"));
     expect(report.findings.some((f) => f.rule === "heartbeat/length-advisory")).toBe(true);
+  });
+
+  it("checkHeartbeatFile: over-lines-only → length-advisory (lines OR-branch, chars within limit)", async () => {
+    const report = await checkHeartbeatFile(checklistPath("over-lines-only.md"));
+    expect(report.findings.some((f) => f.rule === "heartbeat/length-advisory")).toBe(true);
+    // Verify it is the lines threshold that fires, not the chars threshold
+    const raw = readFileSync(checklistPath("over-lines-only.md"), "utf-8");
+    expect(raw.length).toBeLessThanOrEqual(2000);
+  });
+
+  it("checkHeartbeatFile: over-chars-only → length-advisory (chars OR-branch, lines within limit)", async () => {
+    const report = await checkHeartbeatFile(checklistPath("over-chars-only.md"));
+    expect(report.findings.some((f) => f.rule === "heartbeat/length-advisory")).toBe(true);
+    // Verify it is the chars threshold that fires, not the lines threshold
+    const raw = readFileSync(checklistPath("over-chars-only.md"), "utf-8");
+    expect(raw.split("\n").length).toBeLessThanOrEqual(50);
   });
 });
 
