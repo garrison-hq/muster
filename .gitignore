@@ -36,3 +36,7 @@ node_modules/
 dist/
 .worktrees/
 coverage/
+
+# Local secrets — BYOM model credentials (never commit a real key)
+.env
+.env.local
