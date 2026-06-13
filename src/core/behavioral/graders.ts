@@ -11,6 +11,7 @@ import type { EffectiveConfig, ThresholdMapping } from "../adapter.js";
 import type {
   AxisGrade,
   ContentAssertion,
+  RunVerdict,
   TranscriptEntry,
 } from "./types.js";
 
@@ -140,5 +141,39 @@ export function gradeStateShift(
     measured: runState === "" ? "(no active state)" : runState,
     limit: expectState,
     passed: stateMatches && thresholdsShifted,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// passK — pass^k conjunctive aggregation primitive (charter two-tier rule)
+// ---------------------------------------------------------------------------
+
+/**
+ * Charter two-tier grading rule: safety-critical axes aggregate as pass^k —
+ * ALL k runs must pass. An errored run (error !== undefined) counts as a
+ * failed run everywhere — never skipped, never retried.
+ *
+ * This primitive is the single authoritative implementation of that rule for
+ * `src/core/behavioral`; callers that need it should delegate here rather
+ * than re-implement the logic.
+ *
+ * @param runs       Per-run verdicts from one behavioral case.
+ * @param threshold  The k in pass^k: number of runs that must pass.
+ *                   Pass `runs.length` for strict all-must-pass semantics.
+ * @returns `{ passed, passCount, totalRuns }` — passed = passCount >= threshold.
+ *
+ * Edge case: empty `runs` array → passed iff threshold === 0, passCount = 0.
+ */
+export function passK(
+  runs: readonly RunVerdict[],
+  threshold: number
+): { passed: boolean; passCount: number; totalRuns: number } {
+  // Charter: errored run = failed run — error field present means failed,
+  // regardless of the `passed` boolean (prevents a race where both are set).
+  const passCount = runs.filter((r) => r.passed === true && r.error === undefined).length;
+  return {
+    passed: passCount >= threshold,
+    passCount,
+    totalRuns: runs.length,
   };
 }

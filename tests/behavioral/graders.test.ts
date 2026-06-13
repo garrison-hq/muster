@@ -3,9 +3,10 @@ import {
   gradeRefusal,
   gradeStateShift,
   gradeVerbosity,
+  passK,
   verbosityLimit,
 } from "../../src/core/behavioral/graders.js";
-import type { AxisGrade, TranscriptEntry } from "../../src/core/behavioral/types.js";
+import type { AxisGrade, RunVerdict, TranscriptEntry } from "../../src/core/behavioral/types.js";
 import { rfc1Adapter } from "../../src/adapters/rfc1/index.js";
 import {
   maxWords,
@@ -207,5 +208,71 @@ describe("FR-021 state-shift grader (§20.3.4 observable change)", () => {
     const grade = gradeStateShift("", "cold_strict", [], { turn: 0 });
     expect(grade.measured).toBe("(no active state)");
     expect(grade.passed).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// passK — charter two-tier grading rule
+// ---------------------------------------------------------------------------
+
+/** Minimal stub RunVerdict for passK tests. */
+function runVerdict(run: number, passed: boolean, error?: string): RunVerdict {
+  return {
+    run,
+    passed,
+    axes: [],
+    transcript: { entries: [], model: "test", baseUrl: "http://localhost", temperature: "default", durationMs: 0 },
+    ...(error !== undefined && { error }),
+  };
+}
+
+describe("passK — charter two-tier conjunctive aggregation (errored run = failed run)", () => {
+  it("all runs pass → passed: true", () => {
+    const result = passK([runVerdict(1, true), runVerdict(2, true), runVerdict(3, true)], 3);
+    expect(result.passed).toBe(true);
+    expect(result.passCount).toBe(3);
+    expect(result.totalRuns).toBe(3);
+  });
+
+  it("one run fails → passed: false for strict threshold", () => {
+    const result = passK([runVerdict(1, true), runVerdict(2, false), runVerdict(3, true)], 3);
+    expect(result.passed).toBe(false);
+    expect(result.passCount).toBe(2);
+  });
+
+  it("charter rule: errored run counts as failed even when passed=true", () => {
+    const result = passK(
+      [runVerdict(1, true), runVerdict(2, true, "network timeout"), runVerdict(3, true)],
+      3
+    );
+    expect(result.passed).toBe(false);
+    expect(result.passCount).toBe(2);
+  });
+
+  it("k-of-n mode: 2-of-3 with one failure still passes when threshold is 2", () => {
+    const result = passK([runVerdict(1, true), runVerdict(2, false), runVerdict(3, true)], 2);
+    expect(result.passed).toBe(true);
+    expect(result.passCount).toBe(2);
+  });
+
+  it("all runs errored → passed: false", () => {
+    const result = passK(
+      [runVerdict(1, false, "err"), runVerdict(2, false, "err")],
+      1
+    );
+    expect(result.passed).toBe(false);
+    expect(result.passCount).toBe(0);
+  });
+
+  it("empty runs array with threshold 0 → passed: true (vacuous)", () => {
+    const result = passK([], 0);
+    expect(result.passed).toBe(true);
+    expect(result.passCount).toBe(0);
+    expect(result.totalRuns).toBe(0);
+  });
+
+  it("empty runs array with threshold 1 → passed: false", () => {
+    const result = passK([], 1);
+    expect(result.passed).toBe(false);
   });
 });
