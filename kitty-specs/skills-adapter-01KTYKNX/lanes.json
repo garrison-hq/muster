@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "mission_slug": "skills-adapter-01KTYKNX",
+  "mission_id": "01KTYKNX2ATCYA9H8SG1N3ZCMA",
+  "mission_branch": "kitty/mission-skills-adapter-01KTYKNX",
+  "target_branch": "main",
+  "lanes": [
+    {
+      "lane_id": "lane-a",
+      "wp_ids": [
+        "WP01",
+        "WP02",
+        "WP03",
+        "WP04"
+      ],
+      "write_scope": [
+        "fixtures/skills/broken/anthropic-reserved-word/SKILL.md",
+        "fixtures/skills/broken/anthropic-xml-tag/SKILL.md",
+        "fixtures/skills/broken/bundled-file-escape/SKILL.md",
+        "fixtures/skills/broken/bundled-file-missing/SKILL.md",
+        "fixtures/skills/broken/description-missing/SKILL.md",
+        "fixtures/skills/broken/description-too-long/SKILL.md",
+        "fixtures/skills/broken/metadata-bad-value/SKILL.md",
+        "fixtures/skills/broken/name-bad-charset/SKILL.md",
+        "fixtures/skills/broken/name-dir-mismatch/SKILL.md",
+        "fixtures/skills/broken/name-leading-hyphen/SKILL.md",
+        "fixtures/skills/broken/name-missing/SKILL.md",
+        "fixtures/skills/broken/name-too-long/SKILL.md",
+        "fixtures/skills/skills-manifest.yaml",
+        "fixtures/skills/trigger-queries/rigged-impossible-queries.yaml",
+        "fixtures/skills/trigger-queries/weather-skill-queries.yaml",
+        "fixtures/skills/valid/anthropic-profile-clean/SKILL.md",
+        "fixtures/skills/valid/full-optional/SKILL.md",
+        "fixtures/skills/valid/full-optional/assets/icon.png",
+        "fixtures/skills/valid/full-optional/scripts/helper.sh",
+        "fixtures/skills/valid/minimal/SKILL.md",
+        "src/adapters/skills/frontmatter.ts",
+        "src/adapters/skills/index.ts",
+        "src/adapters/skills/layout.ts",
+        "src/adapters/skills/schema.ts",
+        "src/adapters/skills/trigger.ts",
+        "src/adapters/skills/types.ts",
+        "src/adapters/skills/validate.ts",
+        "tests/cts/skills-suite.test.ts",
+        "tests/unit/skills-frontmatter.test.ts",
+        "tests/unit/skills-layout.test.ts",
+        "tests/unit/skills-trigger.test.ts",
+        "tests/unit/skills-validate.test.ts"
+      ],
+      "predicted_surfaces": [
+        "api",
+        "app-shell",
+        "legacy-cleanup",
+        "tests",
+        "tracker-integration"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    }
+  ],
+  "computed_at": "2026-06-13T08:11:08.763895+00:00",
+  "computed_from": "dependency_graph+ownership",
+  "planning_artifact_wps": [],
+  "collapse_report": {
+    "events": [
+      {
+        "wp_a": "WP02",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP02 depends on WP01"
+      },
+      {
+        "wp_a": "WP03",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP03 depends on WP01"
+      },
+      {
+        "wp_a": "WP04",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP04 depends on WP01"
+      }
+    ],
+    "total_merges": 3,
+    "independent_wps_collapsed": 0,
+    "by_rule": {
+      "dependency": 3
+    }
+  }
+}

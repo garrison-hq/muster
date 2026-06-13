@@ -10,7 +10,7 @@ requirement_refs:
 - FR-014
 planning_base_branch: main
 merge_target_branch: main
-branch_strategy: Planning artifacts for this feature were generated on main. During /spec-kitty.implement this WP may branch from a dependency-specific base computed in lanes.json, but completed changes must merge back into main unless the human explicitly redirects the landing branch.
+branch_strategy: Planning artifacts for this feature were generated on main. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into main unless the human explicitly redirects the landing branch.
 created_at: '2026-06-13T01:30:00Z'
 subtasks:
 - T019
@@ -22,7 +22,7 @@ history:
 - timestamp: '2026-06-13T01:30:00Z'
   event: created
   by: /spec-kitty.tasks
-authoritative_surface: src/adapters/skills/
+authoritative_surface: tests/cts/
 execution_mode: code_change
 owned_files:
 - fixtures/skills/valid/minimal/SKILL.md
