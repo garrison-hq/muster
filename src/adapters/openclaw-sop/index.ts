@@ -141,7 +141,7 @@ export async function runStaticLint(
   const precedenceFindings = detectUndefinedPrecedence(manifest);
   // Only run tool drift check when envTools is provided (not null)
   const toolDriftFindings =
-    envTools !== null ? detectToolDrift(manifest, sopFile, envTools) : [];
+    envTools === null ? [] : detectToolDrift(manifest, sopFile, envTools);
 
   // Collect all findings in deterministic order:
   // RULE_DRIFT (sorted by location), UNDEFINED_PRECEDENCE (sorted by location),

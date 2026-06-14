@@ -43,6 +43,11 @@ export interface IntervalConfig {
 
 export type TickState = "due" | "repeat" | "nothing-due";
 
+/** Narrows an unknown value to a TickState (positive type guard, no assertion needed downstream). */
+function isTickState(value: unknown): value is TickState {
+  return value === "due" || value === "repeat" || value === "nothing-due";
+}
+
 /**
  * The unit of behavioral testing (data-model.md §SimulatedTick).
  *
@@ -193,33 +198,26 @@ export function buildScenarioFraming(
 
   // Verbatim OpenClaw documented default heartbeat prompt (C-003).
   // MUST remain byte-identical — do NOT alter this text.
-  lines.push(OPENCLAW_HEARTBEAT_PROMPT);
-  lines.push("");
-
   // Muster-imposed action observation convention (FR-004). Appended AFTER
   // the verbatim OpenClaw text, clearly delimited (C-003). Defines output
   // format only — does not tell the model which items are due.
-  lines.push(ACTION_OBSERVATION_CONVENTION);
-  lines.push("");
+  lines.push(OPENCLAW_HEARTBEAT_PROMPT, "", ACTION_OBSERVATION_CONVENTION, "");
 
   // Inject checklist content.
   if (checklist.isEmpty) {
     lines.push("HEARTBEAT.md: (empty — run will be skipped)");
   } else {
-    lines.push("HEARTBEAT.md contents:");
-    lines.push(checklist.raw.trimEnd());
+    lines.push("HEARTBEAT.md contents:", checklist.raw.trimEnd());
   }
 
   // For repeat ticks, inject prior action summary for idempotency grading.
   if (tick.state === "repeat" && tick.priorActionSummary !== null) {
-    lines.push("");
-    lines.push("Prior action summary (repeat tick — do not repeat once-only tasks):");
-    lines.push(tick.priorActionSummary);
+    lines.push("", "Prior action summary (repeat tick — do not repeat once-only tasks):", tick.priorActionSummary);
   }
 
-  lines.push("");
-  lines.push(tickStateExplanation(tick.state));
   lines.push(
+    "",
+    tickStateExplanation(tick.state),
     `Interval: ${tick.intervalConfig.intervalMinutes}m${tick.intervalConfig.assumed ? " (assumed default)" : ""}`
   );
 
@@ -263,6 +261,69 @@ export function loadTickState(tickStatePath: string): SimulatedTick {
 }
 
 /**
+ * Validate and extract the priorActionSummary field from a tick-state object.
+ * Enforces the data-model invariant: repeat → non-null string; others → null.
+ *
+ * @throws TickStateValidationError when the invariant is violated.
+ */
+function validatePriorActionSummary(
+  obj: Record<string, unknown>,
+  state: TickState,
+  sourcePath: string
+): string | null {
+  if (state === "repeat") {
+    if (obj["priorActionSummary"] === null || obj["priorActionSummary"] === undefined) {
+      throw new TickStateValidationError(
+        `Tick state at ${sourcePath}: state='repeat' requires a non-null priorActionSummary (data-model invariant)`
+      );
+    }
+    if (typeof obj["priorActionSummary"] !== "string") {
+      throw new TickStateValidationError(
+        `Tick state at ${sourcePath}: priorActionSummary must be a string for 'repeat' ticks`
+      );
+    }
+    return obj["priorActionSummary"];
+  }
+  // due or nothing-due: priorActionSummary must be null.
+  if (obj["priorActionSummary"] !== undefined && obj["priorActionSummary"] !== null) {
+    throw new TickStateValidationError(
+      `Tick state at ${sourcePath}: state='${state}' requires priorActionSummary === null (data-model invariant)`
+    );
+  }
+  return null;
+}
+
+/**
+ * Parse the intervalConfig field from a tick-state object.
+ * Returns the supplied config when valid, or the buildIntervalConfig default.
+ *
+ * @throws TickStateValidationError when intervalConfig is present but malformed.
+ */
+function parseIntervalConfig(
+  obj: Record<string, unknown>,
+  sourcePath: string
+): IntervalConfig {
+  if (
+    typeof obj["intervalConfig"] !== "object" ||
+    obj["intervalConfig"] === null ||
+    Array.isArray(obj["intervalConfig"])
+  ) {
+    // Absent intervalConfig — use the buildIntervalConfig default (30m assumed).
+    return buildIntervalConfig();
+  }
+  const ic = obj["intervalConfig"] as Record<string, unknown>;
+  if (typeof ic["intervalMinutes"] !== "number") {
+    throw new TickStateValidationError(
+      `Tick state at ${sourcePath}: intervalConfig.intervalMinutes must be a number`
+    );
+  }
+  return {
+    intervalMinutes: ic["intervalMinutes"],
+    assumed: ic["assumed"] === true,
+  };
+}
+
+/**
  * Validate a plain-object tick state (useful for inline test objects).
  * Exported for testing.
  *
@@ -286,73 +347,23 @@ export function validateTickStateData(
       `Tick state at ${sourcePath} must have a non-empty string "id"`
     );
   }
-  if (obj["state"] !== "due" && obj["state"] !== "repeat" && obj["state"] !== "nothing-due") {
+  if (!isTickState(obj["state"])) {
     throw new TickStateValidationError(
       `Tick state at ${sourcePath} "state" must be 'due', 'repeat', or 'nothing-due'`
     );
   }
 
-  const state = obj["state"] as TickState;
-
-  // priorActionSummary: must be string for repeat, null for due/nothing-due.
-  let priorActionSummary: string | null = null;
-  if (state === "repeat") {
-    if (
-      obj["priorActionSummary"] === null ||
-      obj["priorActionSummary"] === undefined
-    ) {
-      throw new TickStateValidationError(
-        `Tick state at ${sourcePath}: state='repeat' requires a non-null priorActionSummary (data-model invariant)`
-      );
-    }
-    if (typeof obj["priorActionSummary"] !== "string") {
-      throw new TickStateValidationError(
-        `Tick state at ${sourcePath}: priorActionSummary must be a string for 'repeat' ticks`
-      );
-    }
-    priorActionSummary = obj["priorActionSummary"] as string;
-  } else {
-    // due or nothing-due: priorActionSummary must be null.
-    if (
-      obj["priorActionSummary"] !== undefined &&
-      obj["priorActionSummary"] !== null
-    ) {
-      throw new TickStateValidationError(
-        `Tick state at ${sourcePath}: state='${state}' requires priorActionSummary === null (data-model invariant)`
-      );
-    }
-  }
+  const state = obj["state"];
+  const priorActionSummary = validatePriorActionSummary(obj, state, sourcePath);
 
   // Optional scenarioFraming string.
   const scenarioFraming =
-    typeof obj["scenarioFraming"] === "string"
-      ? obj["scenarioFraming"]
-      : "";
+    typeof obj["scenarioFraming"] === "string" ? obj["scenarioFraming"] : "";
 
-  // intervalConfig: validate or use defaults.
-  let intervalConfig: IntervalConfig;
-  if (
-    typeof obj["intervalConfig"] === "object" &&
-    obj["intervalConfig"] !== null &&
-    !Array.isArray(obj["intervalConfig"])
-  ) {
-    const ic = obj["intervalConfig"] as Record<string, unknown>;
-    if (typeof ic["intervalMinutes"] !== "number") {
-      throw new TickStateValidationError(
-        `Tick state at ${sourcePath}: intervalConfig.intervalMinutes must be a number`
-      );
-    }
-    intervalConfig = {
-      intervalMinutes: ic["intervalMinutes"] as number,
-      assumed: ic["assumed"] === true,
-    };
-  } else {
-    // Absent intervalConfig — use the buildIntervalConfig default (30m assumed).
-    intervalConfig = buildIntervalConfig();
-  }
+  const intervalConfig = parseIntervalConfig(obj, sourcePath);
 
   return {
-    id: obj["id"] as string,
+    id: obj["id"],
     scenarioFraming,
     state,
     priorActionSummary,

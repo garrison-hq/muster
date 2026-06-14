@@ -324,6 +324,16 @@ export async function loadAndValidateManifest(manifestPath: string): Promise<SOP
 }
 
 /**
+ * Heuristic: extract trigger prefix = text up to first comma or period, lowercased.
+ * Used by detectUndefinedPrecedence to compare rule triggers for overlap.
+ */
+function triggerPrefix(ruleText: string): string {
+  const TRIGGER_RE = /^([^,.]*)/;
+  const match = TRIGGER_RE.exec(ruleText) ?? ["", ruleText];
+  return match[1].trim().toLowerCase();
+}
+
+/**
  * FR-003: Detect pairs of manifest entries that share overlapping triggers but
  * declare conflicting gradingClass or aggregation without a precedence field.
  * Returns SOPLintFinding[] with kind "UNDEFINED_PRECEDENCE".
@@ -332,12 +342,6 @@ export async function loadAndValidateManifest(manifestPath: string): Promise<SOP
  */
 export function detectUndefinedPrecedence(manifest: SOPRuleManifest): SOPLintFinding[] {
   const findings: SOPLintFinding[] = [];
-
-  // Heuristic: extract trigger prefix = text up to first comma or period, lowercased
-  function triggerPrefix(ruleText: string): string {
-    const match = ruleText.match(/^([^,.]*)/) ?? ["", ruleText];
-    return match[1].trim().toLowerCase();
-  }
 
   const entries = manifest.rules;
   for (let i = 0; i < entries.length; i++) {
@@ -409,7 +413,7 @@ export function detectToolDrift(
   // Deterministic order: sort by location then message
   return findings.sort((a, b) => {
     const loc = a.location.localeCompare(b.location);
-    return loc !== 0 ? loc : a.message.localeCompare(b.message);
+    return loc === 0 ? a.message.localeCompare(b.message) : loc;
   });
 }
 

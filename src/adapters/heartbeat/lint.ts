@@ -97,6 +97,29 @@ function stripComments(raw: string): string {
  * (non-whitespace, non-comment line) is NOT empty even if all other lines are
  * blank or comments — this is the spec edge case documented in data-model.md.
  */
+/**
+ * Extract the instruction text from a single non-empty, non-heading, non-comment line.
+ * Returns the text string, or null when the line should be skipped.
+ *
+ * Handles checklist markers (- [ ], - [x], - [X], bare - or * prefix) and
+ * bare non-list lines. Regex capture starts with \S to avoid catastrophic
+ * backtracking (S5852 safe).
+ */
+function extractLineText(trimmed: string): string | null {
+  const checkboxMatch = /^-\s+\[[ xX]\]\s+(\S.*)$/.exec(trimmed);
+  if (checkboxMatch) {
+    return checkboxMatch[1].trim();
+  }
+  if (trimmed.startsWith("- ")) {
+    return trimmed.slice(2).trim();
+  }
+  if (trimmed.startsWith("* ")) {
+    return trimmed.slice(2).trim();
+  }
+  // Bare non-blank, non-comment, non-heading line.
+  return trimmed;
+}
+
 export function parseHeartbeat(path: string, raw: string): HeartbeatFile {
   // Determine isEmpty: strip comments and check if only whitespace remains.
   const stripped = stripComments(raw);
@@ -119,29 +142,7 @@ export function parseHeartbeat(path: string, raw: string): HeartbeatFile {
     if (trimmed.startsWith("<!--")) continue;
     if (trimmed.startsWith("#")) continue;
 
-    // Skip lines that are entirely within a multi-line comment block.
-    // (Already handled by being inside the <!-- ... --> span — those lines
-    // appear in the stripped output as empty; we parse from raw. A simple
-    // heuristic: skip lines that look like they're inside a comment. Since
-    // strip already handled multi-line blocks, we only need to handle the
-    // remaining real content lines here.)
-
-    // Checklist markers: - [ ], - [x], - [X], or bare - prefix.
-    // Capture starts with \S so the trailing \s+ and the group cannot both
-    // match the same whitespace — linear, no catastrophic backtracking (S5852).
-    let text: string | null = null;
-    const checkboxMatch = /^-\s+\[[ xX]\]\s+(\S.*)$/.exec(trimmed);
-    if (checkboxMatch) {
-      text = checkboxMatch[1].trim();
-    } else if (trimmed.startsWith("- ")) {
-      text = trimmed.slice(2).trim();
-    } else if (trimmed.startsWith("* ")) {
-      text = trimmed.slice(2).trim();
-    } else {
-      // Bare non-blank, non-comment, non-heading line.
-      text = trimmed;
-    }
-
+    const text = extractLineText(trimmed);
     if (text && text.length > 0) {
       ordinal++;
       items.push({ id: `item-${ordinal}`, text });
@@ -247,7 +248,7 @@ export function validateManifestData(
         `Manifest at ${sourcePath} items[${i}].recurrence must be 'once-only' or 'recurring'`
       );
     }
-    items.push({ itemId: e["itemId"] as string, recurrence: e["recurrence"] as Recurrence });
+    items.push({ itemId: e["itemId"], recurrence: e["recurrence"] });
   }
 
   return { checklistPath, items };
@@ -343,7 +344,11 @@ export function lintHeartbeat(file: HeartbeatFile): LintReport {
 
   // Sort findings by rule string using UTF-16 code-unit ordering (NFR-001).
   // DO NOT use localeCompare — it is locale-dependent and breaks byte-stability.
-  findings.sort((a, b) => (a.rule < b.rule ? -1 : a.rule > b.rule ? 1 : 0));
+  findings.sort((a, b) => {
+    if (a.rule < b.rule) return -1;
+    if (a.rule > b.rule) return 1;
+    return 0;
+  });
 
   // ok is true when there are no 'advisory' or higher-severity findings.
   // 'info' findings are informational only and do not set ok: false.

@@ -520,7 +520,7 @@ async function runAdversarialProbe(
 
   // Attribution: if the probe also fails against SOP-alone, it is attributed to SOP (FR-007)
   const sopAlonePassRate = computePassRate(sopAloneAdversarialResults);
-  const sopAloneAlsoFails = sopAlonePassRate < 1.0;
+  const sopAloneAlsoFails = sopAlonePassRate < 1;
 
   return {
     adversarialResult: composedAdversarialResults,

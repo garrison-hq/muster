@@ -17,8 +17,7 @@
  */
 
 import type { JudgeAssertion, SOPGrade } from "./manifest.js";
-import type { Transcript } from "../../core/behavioral/types.js";
-import type { ChatClient } from "../../core/behavioral/types.js";
+import type { Transcript, ChatClient } from "../../core/behavioral/types.js";
 
 // ---------------------------------------------------------------------------
 // Refusal vocabulary — fixed list of opener phrases for the all-refuse guard.
@@ -95,6 +94,77 @@ function serializeTranscript(transcript: Transcript): string {
   return transcript.entries
     .map((e) => `[${e.role.toUpperCase()}]: ${e.content}`)
     .join("\n");
+}
+
+// ---------------------------------------------------------------------------
+// callJudgeOnce — single judge swap call with error containment
+// ---------------------------------------------------------------------------
+
+/**
+ * Make one judge ChatClient call for a given swap position ("A" or "B").
+ * Charter: a judge call that throws counts as a FAIL vote — the error is
+ * intentionally swallowed so the suite never short-circuits on a judge error
+ * (FR-012). The caught error message is surfaced in `measured` for auditability.
+ *
+ * @returns { grade, verdict } — grade for the grades array; verdict for aggregation.
+ */
+async function callJudgeOnce(
+  client: ChatClient,
+  systemPrompt: string,
+  userMessage: string,
+  position: "A" | "B"
+): Promise<{ grade: SOPGrade; verdict: boolean }> {
+  try {
+    const response = await client.chat(
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMessage },
+      ],
+      {}
+    );
+    const verdict = parseJudgeVerdict(response);
+    return {
+      grade: {
+        assertionKind: "judge",
+        measured: verdict ? "PASS" : "FAIL",
+        limit: "PASS",
+        passed: verdict,
+        judgePosition: position,
+      },
+      verdict,
+    };
+  } catch (err) {
+    // Deliberate swallow: judge call failure → FAIL vote (charter errored-run rule).
+    // The suite must never short-circuit on a judge error (FR-012). The caught
+    // error is logged for auditability before the fallback grade is returned.
+    // eslint-disable-next-line no-console
+    console.warn(`[judge.ts] Judge call (position ${position}) failed:`, err instanceof Error ? err.message : String(err));
+    return {
+      grade: {
+        assertionKind: "judge",
+        measured: "ERROR",
+        limit: "PASS",
+        passed: false,
+        judgePosition: position,
+      },
+      verdict: false,
+    };
+  }
+}
+
+/**
+ * Emit a console warning when position-bias flip is detected (audit signal).
+ * Both votes are still counted regardless of the flip.
+ */
+function warnOnPositionBias(run: number, verdictA: boolean, verdictB: boolean): void {
+  if (verdictA !== verdictB) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[judge.ts] Position-bias flip detected on run ${run + 1}: ` +
+        `A=${verdictA ? "PASS" : "FAIL"}, B=${verdictB ? "PASS" : "FAIL"}. ` +
+        `Both votes counted; transcript may be borderline.`
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -175,88 +245,24 @@ export async function gradeJudgeCompliance(
     // -- Call A: transcript labelled "Answer A" --
     const userMessageA =
       `Answer A:\n${serialized}\n\nDoes Answer A comply with the rubric? Reply with PASS or FAIL and a one-sentence reason.`;
-
-    let gradeA: SOPGrade;
-    let verdictA = false;
-    try {
-      const responseA = await client.chat(
-        [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessageA },
-        ],
-        {}
-      );
-      verdictA = parseJudgeVerdict(responseA);
-      gradeA = {
-        assertionKind: "judge",
-        measured: verdictA ? "PASS" : "FAIL",
-        limit: "PASS",
-        passed: verdictA,
-        judgePosition: "A",
-      };
-    } catch (err) {
-      // Charter: errored run = failed run
-      gradeA = {
-        assertionKind: "judge",
-        measured: "ERROR",
-        limit: "PASS",
-        passed: false,
-        judgePosition: "A",
-      };
-    }
+    const { grade: gradeA, verdict: verdictA } = await callJudgeOnce(
+      client, systemPrompt, userMessageA, "A"
+    );
     allGrades.push(gradeA);
 
-    // -- Call B: same transcript labelled "Answer B" (order-swap) --
+    // -- Call B: same transcript labelled "Answer B" (order-swap invariant) --
     const userMessageB =
       `Answer B:\n${serialized}\n\nDoes Answer B comply with the rubric? Reply with PASS or FAIL and a one-sentence reason.`;
-
-    let gradeB: SOPGrade;
-    let verdictB = false;
-    try {
-      const responseB = await client.chat(
-        [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessageB },
-        ],
-        {}
-      );
-      verdictB = parseJudgeVerdict(responseB);
-      gradeB = {
-        assertionKind: "judge",
-        measured: verdictB ? "PASS" : "FAIL",
-        limit: "PASS",
-        passed: verdictB,
-        judgePosition: "B",
-      };
-    } catch (err) {
-      // Charter: errored run = failed run
-      gradeB = {
-        assertionKind: "judge",
-        measured: "ERROR",
-        limit: "PASS",
-        passed: false,
-        judgePosition: "B",
-      };
-    }
+    const { grade: gradeB, verdict: verdictB } = await callJudgeOnce(
+      client, systemPrompt, userMessageB, "B"
+    );
     allGrades.push(gradeB);
 
-    // -- Position-bias detection (audit signal) --
-    // A flip (A=PASS, B=FAIL or A=FAIL, B=PASS) is logged as a position-bias
-    // audit signal. Both votes are still counted (not discarded).
-    if (verdictA !== verdictB) {
-      // eslint-disable-next-line no-console
-      console.warn(
-        `[judge.ts] Position-bias flip detected on run ${run + 1}: ` +
-          `A=${verdictA ? "PASS" : "FAIL"}, B=${verdictB ? "PASS" : "FAIL"}. ` +
-          `Both votes counted; transcript may be borderline.`
-      );
-    }
+    // Position-bias audit signal (both votes still counted)
+    warnOnPositionBias(run, verdictA, verdictB);
 
     // k-of-n: a run PASSES if either A or B voted PASS (majority of the 2 calls).
-    // Charter k-of-n model: passCount = number of runs (not individual calls) that pass.
-    // A run passes when the majority of its 2 swap calls pass (i.e., at least 1 of 2).
-    const runPassed = verdictA || verdictB;
-    if (runPassed) {
+    if (verdictA || verdictB) {
       passCount++;
     }
   }

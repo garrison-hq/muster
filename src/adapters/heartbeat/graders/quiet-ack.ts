@@ -263,11 +263,11 @@ export function loadIntervalConfig(
     return buildIntervalConfig();
   }
 
-  const base = buildIntervalConfig({ intervalMinutes: obj["intervalMinutes"] as number });
+  const base = buildIntervalConfig({ intervalMinutes: obj["intervalMinutes"] });
 
   // Pass through optional ackMaxChars field if present and a number.
   if (typeof obj["ackMaxChars"] === "number") {
-    return { ...base, ackMaxChars: obj["ackMaxChars"] as number };
+    return { ...base, ackMaxChars: obj["ackMaxChars"] };
   }
 
   return base;
