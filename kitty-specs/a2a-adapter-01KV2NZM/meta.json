@@ -1,6 +1,8 @@
 {
   "created_at": "2026-06-14T09:04:12.687036+00:00",
-  "friendly_name": "a2a adapter",
+  "friendly_name": "A2A Agent Cards (Manifests) Conformance Adapter",
+  "source_description": "A2A Agent Cards adapter (7th layer, manifests). Residual-gap scope per RQ-05: offline+live signed-card verification, skill-level behavioral probing vs declared skills, auth-enforcement negatives, and a CI exit-code/JSON monitoring contract. Two-class (offline static lint + live conformance probes against MUSTER_A2A_ENDPOINT) behind SpecAdapter; CLI `muster a2a run`. Cedes generic card-schema validation to a2a-tck. v1-extended.",
+  "vcs": "git",
   "mission_id": "01KV2NZMSYZKM7B3AYH8QW13QP",
   "mission_number": null,
   "mission_slug": "a2a-adapter-01KV2NZM",
