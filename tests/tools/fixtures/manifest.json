@@ -1,0 +1,14 @@
+{
+  "cases": [
+    {
+      "id": "tools-well-formed",
+      "toolsFilePath": "tools-md/well-formed.md",
+      "expect": "pass"
+    },
+    {
+      "id": "tools-missing-section",
+      "toolsFilePath": "tools-md/missing-section.md",
+      "expect": "fail"
+    }
+  ]
+}

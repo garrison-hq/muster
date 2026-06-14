@@ -1,0 +1,9 @@
+{
+  "cases": [
+    {
+      "id": "tools-missing-section",
+      "toolsFilePath": "tools-md/missing-section.md",
+      "expect": "pass"
+    }
+  ]
+}

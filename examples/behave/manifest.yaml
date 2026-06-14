@@ -1,0 +1,45 @@
+# Behavioral conformance manifest — example for muster 1.0.0 OSS release.
+#
+# REQUIRES A LIVE ENDPOINT: set MUSTER_API_KEY (or OPENAI_API_KEY) and either
+# use the default endpoint below or override with --base-url / --model flags.
+#
+# Run from repo root:
+#   node dist/cli/index.js behave run examples/behave/manifest.yaml
+#
+# The static gate (Soul.md RFC-1 check) always runs offline. The live grading
+# calls the configured endpoint; the command exits 2 when every run errors
+# (e.g. endpoint unreachable) so you see a clear signal, not a false pass.
+#
+# Endpoint defaults target local Ollama; any OpenAI-compatible hosted endpoint
+# works via --base-url / --model flags (SC-005).
+endpoint:
+  base_url: "http://localhost:11434/v1"
+  model: "qwen2.5:7b-instruct"
+
+defaults:
+  runs: 3
+  pass_threshold: 2
+  temperature: default
+
+cases:
+  # Verbosity check: Soul.md voice.verbosity = 40 → ~50-word cap.
+  - id: verbosity_check
+    soul: "Soul.md"
+    turns:
+      - content: "Hi, what can you help me with?"
+    axes:
+      - axis: verbosity
+        turns: all
+
+  # SC-006 discrimination control — EXPECTED TO FAIL.
+  # An impossible cap of 0 words proves the harness fails non-conformance
+  # honestly instead of rubber-stamping. Do not "fix" it.
+  - id: xfail_discrimination_control
+    soul: "Soul.md"
+    turns:
+      - content: "Please give me a brief overview of what you can do."
+    axes:
+      - axis: verbosity
+        turns: all
+    overrides:
+      max_words: 0

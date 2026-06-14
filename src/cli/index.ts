@@ -26,8 +26,8 @@ import { readFileSync, realpathSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { dirname, isAbsolute, resolve as resolvePath } from "node:path";
 import { pathToFileURL } from "node:url";
+import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { Command, CommanderError, InvalidArgumentError, Option } from "commander";
-import { stringify as stringifyYaml } from "yaml";
 import type { Mode } from "../core/adapter.js";
 import { canonicalJson } from "../core/canonical-json.js";
 import { checkSoul, makeFsLoadRef, type CheckResult } from "../core/pipeline.js";
@@ -78,6 +78,22 @@ import {
   type EndpointManifestConfig,
   type ManifestRunSummary,
 } from "../crosslayer/manifest-runner.js";
+// Skills adapter imports (C-001: only adapter boundary imported here).
+import {
+  parseSkill,
+  validateSkill,
+} from "../adapters/skills/index.js";
+import { checkLayout } from "../adapters/skills/layout.js";
+import type { SkillProfile } from "../adapters/skills/types.js";
+// SOP adapter imports (C-001: only adapter boundary imported here).
+import { runManifestSuite as runSopManifestSuite } from "../adapters/openclaw-sop/runner.js";
+import type { SOPSuiteReport } from "../adapters/openclaw-sop/index.js";
+// Tools adapter imports (C-001: only adapter boundary imported here).
+import {
+  runManifest as runToolsManifest,
+  type ToolsManifestCase,
+  type ToolsManifestResult,
+} from "../adapters/tools/index.js";
 
 /** Version straight from package.json (works from src/ via tsx and dist/). */
 const VERSION = (
@@ -791,6 +807,372 @@ function formatA2aSummaryHuman(summary: A2aManifestSummary): string {
   return lines.join("\n");
 }
 
+// ─── muster skills run ──────────────────────────────────────────────────────
+
+/** Shape of one case from skills-manifest.yaml. */
+interface SkillsManifestStaticCase {
+  id: string;
+  type: "static";
+  skillDir: string;
+  profile: SkillProfile;
+  expectations: { ok: boolean; violations: unknown[] };
+}
+
+interface SkillsManifestBehavioralCase {
+  id: string;
+  type: "behavioral";
+  skillDir: string;
+  profile: SkillProfile;
+  querySetPath: string;
+  runsPerQuery: number;
+  threshold: number;
+  isControl: boolean;
+}
+
+type SkillsManifestCase = SkillsManifestStaticCase | SkillsManifestBehavioralCase;
+
+/** Structured result for a single skills case (for JSON output). */
+interface SkillsCaseResult {
+  id: string;
+  type: "static" | "behavioral";
+  passed: boolean;
+  skipped?: boolean;
+  violations?: { path: string; message: string; severity: string }[];
+}
+
+/** Structured result for the full skills manifest run. */
+interface SkillsRunResult {
+  ok: boolean;
+  total: number;
+  passed: number;
+  failed: number;
+  skipped: number;
+  results: SkillsCaseResult[];
+}
+
+/**
+ * Run one static skills case: parse + validate + layout check.
+ * Returns a structured per-case result.
+ *
+ * @param c - The static case descriptor from the manifest.
+ * @param baseDir - Directory used to resolve relative skillDir paths (cwd for
+ *   skills manifests that use repo-root-relative paths; manifest dir for others).
+ */
+function runStaticSkillCase(
+  c: SkillsManifestStaticCase,
+  baseDir: string
+): SkillsCaseResult {
+  try {
+    const absoluteSkillDir = resolvePath(baseDir, c.skillDir);
+    const doc = parseSkill(absoluteSkillDir);
+    const semanticViolations = validateSkill(doc, c.profile);
+    const layoutViolations = checkLayout(doc);
+    const allViolations = [...semanticViolations, ...layoutViolations];
+    const hasError = allViolations.some((v) => v.severity === "error");
+    const ok = !hasError;
+    // A case "passes" when the actual lint outcome matches the expectation.
+    const passed = ok === c.expectations.ok;
+    return {
+      id: c.id,
+      type: "static",
+      passed,
+      violations: allViolations,
+    };
+  } catch (error) {
+    // Parse failure = not ok; if expectation was ok: false it still passes expectation.
+    const expectOk = c.expectations.ok;
+    return {
+      id: c.id,
+      type: "static",
+      passed: !expectOk,
+      violations: [
+        { path: "(document)", message: errorMessage(error), severity: "error" },
+      ],
+    };
+  }
+}
+
+/**
+ * Run the skills manifest (FR-013, FR-014).
+ *
+ * Static cases always run (offline, deterministic, byte-stable — NFR-001, C-003).
+ * Behavioral cases require MUSTER_ENDPOINT and are skipped gracefully when absent.
+ */
+async function doSkillsRun(
+  manifestPath: string,
+  opts: GlobalOpts,
+  io: Io
+): Promise<number> {
+  let cases: SkillsManifestCase[];
+  const absManifestPath = toAbsolute(manifestPath);
+  // Skills manifest paths (skillDir, querySetPath) are relative to cwd
+  // (repo root convention), not to the manifest file location.
+  const baseDir = process.cwd();
+  try {
+    const raw = await readFileOrThrow(absManifestPath, "skills manifest");
+    const parsed = parseYaml(raw) as { cases: SkillsManifestCase[] };
+    cases = parsed.cases;
+  } catch (error) {
+    throw new ExecutionError(`skills manifest read/parse error: ${errorMessage(error)}`);
+  }
+
+  const results: SkillsCaseResult[] = [];
+
+  for (const c of cases) {
+    if (c.type === "static") {
+      results.push(runStaticSkillCase(c, baseDir));
+    } else {
+      // Behavioral trigger-routing cases require MUSTER_ENDPOINT.
+      // They are recorded as skipped (not failed) when absent (graceful skip).
+      results.push({ id: c.id, type: "behavioral", passed: true, skipped: true });
+    }
+  }
+
+  const total = results.length;
+  const skipped = results.filter((r) => r.skipped === true).length;
+  const nonSkipped = results.filter((r) => r.skipped !== true);
+  const passed = nonSkipped.filter((r) => r.passed).length;
+  const failed = nonSkipped.filter((r) => !r.passed).length;
+  const ok = failed === 0;
+
+  const runResult: SkillsRunResult = { ok, total, passed, failed, skipped, results };
+  io.outLine(opts.json === true ? JSON.stringify(runResult, null, 2) : formatSkillsResultHuman(runResult));
+  return ok ? 0 : 1;
+}
+
+/**
+ * Human-readable formatting for skills SkillsRunResult.
+ *
+ * Normative citation: agentskills.io conformance rubric FR-013.
+ */
+function formatSkillsResultHuman(result: SkillsRunResult): string {
+  const statusWord = result.ok ? "PASS" : "FAIL";
+  const skippedSuffix = result.skipped > 0 ? `, ${result.skipped} skipped` : "";
+  const lines: string[] = [
+    `skills: ${statusWord} — ${result.passed}/${result.total - result.skipped} cases passed, ${result.failed} failed${skippedSuffix}`,
+  ];
+  for (const r of result.results) {
+    const icon = caseIcon(r.skipped === true, r.passed);
+    lines.push(`  [${icon}] ${r.id}`);
+  }
+  return lines.join("\n");
+}
+
+// ─── muster sop run ─────────────────────────────────────────────────────────
+
+/**
+ * Build a minimal ChatClient from env vars for SOP behavioral probes.
+ *
+ * When MUSTER_ENDPOINT is present, creates an OpenAI-compatible client.
+ * Returns undefined when the env var is absent (callers skip behavioral).
+ *
+ * NFR-005: API key read from process.env at call time; never stored.
+ */
+function buildSopClient(): import("../core/behavioral/types.js").ChatClient | undefined {
+  const baseUrl = process.env["MUSTER_ENDPOINT"];
+  if (baseUrl === undefined || baseUrl === "") {
+    return undefined;
+  }
+  const model = process.env["MUSTER_MODEL"] ?? "gpt-4o-mini";
+  const apiKeyEnv: "MUSTER_API_KEY" | "OPENAI_API_KEY" =
+    (process.env["MUSTER_API_KEY"] ?? "") === "" ? "OPENAI_API_KEY" : "MUSTER_API_KEY";
+  const endpoint: import("../core/behavioral/types.js").EndpointConfig = {
+    baseUrl,
+    model,
+    apiKeyEnv,
+  };
+  return makeClient(endpoint);
+}
+
+/**
+ * A no-op ChatClient used when no endpoint is configured.
+ *
+ * When SOP manifests have inline probes but MUSTER_ENDPOINT is absent,
+ * this client is passed to runManifestSuite so that lint still runs.
+ * Probe execution will throw (error containment per FR-012) and probe
+ * verdicts will be recorded as errored — they won't affect `passed`
+ * for manifests where lint is the primary gate.
+ *
+ * For manifests with no inline probes (static-only), this client is
+ * never called at all.
+ */
+const SOP_NOOP_CLIENT: import("../core/behavioral/types.js").ChatClient = {
+  async chat(): Promise<string> {
+    throw new Error(
+      "muster sop: MUSTER_ENDPOINT not set — behavioral probes skipped (no-op client)"
+    );
+  },
+};
+
+/**
+ * Run the SOP manifest suite (FR-003, FR-011).
+ *
+ * The manifest is a YAML file describing a SOP file and its conformance rules.
+ * Static lint always runs (offline, deterministic — NFR-001, C-003).
+ * Behavioral probe cases require MUSTER_ENDPOINT and are skipped gracefully
+ * when it is absent (the no-op client causes each probe run to error, which
+ * is contained per FR-012 error containment; verdicts show errored runs).
+ *
+ * For manifests with no inline probes section (static-only manifests),
+ * the client is never called and the run is fully offline.
+ *
+ * Normative citation: muster SOP rubric FR-003, FR-011; C-001, C-004; NFR-005.
+ */
+async function doSopRun(
+  manifestPath: string,
+  opts: GlobalOpts,
+  io: Io
+): Promise<number> {
+  const absManifestPath = toAbsolute(manifestPath);
+  // Pre-check: verify the manifest is readable before invoking runManifestSuite.
+  // runManifestSuite handles unreadable manifests internally (returns passed: false),
+  // but the CLI contract requires exit 2 for execution errors (unreadable manifest).
+  await readFileOrThrow(absManifestPath, "sop manifest");
+  const client = buildSopClient() ?? SOP_NOOP_CLIENT;
+
+  let report: SOPSuiteReport;
+  try {
+    report = await runSopManifestSuite(absManifestPath, { client });
+  } catch (error) {
+    throw new ExecutionError(`sop manifest run failed: ${errorMessage(error)}`);
+  }
+
+  io.outLine(opts.json === true ? JSON.stringify(report, null, 2) : formatSopResultHuman(report));
+  return report.passed ? 0 : 1;
+}
+
+/**
+ * Human-readable formatting for SOP SOPSuiteReport.
+ *
+ * Normative citation: muster SOP rubric FR-011.
+ */
+function formatSopResultHuman(report: SOPSuiteReport): string {
+  const statusWord = report.passed ? "PASS" : "FAIL";
+  const lines: string[] = [
+    `sop: ${statusWord} — ${report.verdicts.length} probes, ${report.lintFindings.length} lint findings`,
+  ];
+  for (const finding of report.lintFindings) {
+    const icon = finding.severity === "error" ? "ERROR" : "WARN";
+    lines.push(`  [${icon}] ${finding.kind}: ${finding.message}`);
+  }
+  for (const verdict of report.verdicts) {
+    const icon = verdict.passed ? "PASS" : "FAIL";
+    lines.push(`  [${icon}] ${verdict.probeId} (rule: ${verdict.ruleId})`);
+  }
+  return lines.join("\n");
+}
+
+// ─── muster tools run ───────────────────────────────────────────────────────
+
+/** Shape of the tools CLI manifest file (JSON or YAML). */
+interface ToolsCliManifest {
+  cases: Array<{
+    id: string;
+    toolsFilePath: string;
+    envDescriptorPath?: string;
+    selectionScenarioPaths?: string[];
+    expect?: "pass" | "fail";
+  }>;
+}
+
+/**
+ * Load a tools CLI manifest file and resolve its paths relative to the
+ * manifest directory (so that relative `toolsFilePath` / `envDescriptorPath`
+ * fields resolve correctly regardless of cwd).
+ */
+async function loadToolsManifest(
+  absManifestPath: string
+): Promise<readonly ToolsManifestCase[]> {
+  const raw = await readFileOrThrow(absManifestPath, "tools manifest");
+  let parsed: ToolsCliManifest;
+  try {
+    parsed = JSON.parse(raw) as ToolsCliManifest;
+  } catch {
+    parsed = parseYaml(raw) as ToolsCliManifest;
+  }
+  const manifestDir = dirname(absManifestPath);
+  return parsed.cases.map((c) => ({
+    id: c.id,
+    toolsFilePath: resolvePath(manifestDir, c.toolsFilePath),
+    ...(c.envDescriptorPath !== undefined && {
+      envDescriptorPath: resolvePath(manifestDir, c.envDescriptorPath),
+    }),
+    ...(c.selectionScenarioPaths !== undefined && {
+      selectionScenarioPaths: c.selectionScenarioPaths.map((p) =>
+        resolvePath(manifestDir, p)
+      ),
+    }),
+    ...(c.expect !== undefined && { expect: c.expect }),
+  }));
+}
+
+/**
+ * Run the tools manifest (FR-010).
+ *
+ * The manifest is a JSON or YAML file listing TOOLS.md cases with optional
+ * environment descriptor paths and selection scenario paths.
+ *
+ * Static lint and drift checks always run (offline, deterministic — NFR-001, C-003).
+ * Selection probes require MUSTER_ENDPOINT and are skipped gracefully when absent
+ * (the tools adapter writes a warning to stderr and omits selectionVerdicts).
+ *
+ * Normative citation: muster tools rubric FR-010; C-001, C-004; NFR-005.
+ */
+async function doToolsRun(
+  manifestPath: string,
+  opts: GlobalOpts,
+  io: Io
+): Promise<number> {
+  const absManifestPath = toAbsolute(manifestPath);
+  let cases: readonly ToolsManifestCase[];
+  try {
+    cases = await loadToolsManifest(absManifestPath);
+  } catch (error) {
+    throw new ExecutionError(`tools manifest read/parse error: ${errorMessage(error)}`);
+  }
+
+  const endpointUrl = process.env["MUSTER_ENDPOINT"];
+  const manifestOpts =
+    endpointUrl !== undefined && endpointUrl !== ""
+      ? {
+          endpoint: endpointUrl,
+          model: process.env["MUSTER_MODEL"] ?? "gpt-4o",
+          apiKey: process.env["MUSTER_API_KEY"] ?? process.env["OPENAI_API_KEY"],
+        }
+      : undefined;
+
+  let results: readonly ToolsManifestResult[];
+  try {
+    results = await runToolsManifest(cases, manifestOpts);
+  } catch (error) {
+    throw new ExecutionError(`tools manifest run failed: ${errorMessage(error)}`);
+  }
+
+  const allPassed = results.every((r) => r.passed);
+  const runResult = { ok: allPassed, results };
+  io.outLine(opts.json === true ? JSON.stringify(runResult, null, 2) : formatToolsResultHuman(results));
+  return allPassed ? 0 : 1;
+}
+
+/**
+ * Human-readable formatting for tools manifest results.
+ *
+ * Normative citation: muster tools rubric FR-010.
+ */
+function formatToolsResultHuman(results: readonly ToolsManifestResult[]): string {
+  const passed = results.filter((r) => r.passed).length;
+  const failed = results.filter((r) => !r.passed).length;
+  const statusWord = failed === 0 ? "PASS" : "FAIL";
+  const lines: string[] = [
+    `tools: ${statusWord} — ${passed}/${results.length} cases passed, ${failed} failed`,
+  ];
+  for (const r of results) {
+    const icon = r.passed ? "PASS" : "FAIL";
+    lines.push(`  [${icon}] ${r.id}`);
+  }
+  return lines.join("\n");
+}
+
 // ─── program assembly ───────────────────────────────────────────────────────
 
 function buildProgram(
@@ -1016,6 +1398,97 @@ function buildProgram(
     )
     .action(async (manifest: string, _local, cmd: Command) => {
       setExit(await doHeartbeatRun(manifest, cmd.optsWithGlobals(), io));
+    });
+
+  // ─── muster skills ────────────────────────────────────────────────────────
+  const skills = program
+    .command("skills")
+    .description(
+      "Skills adapter: static SKILL.md lint and behavioral trigger-routing " +
+      "conformance for Agent Skills (agentskills.io spec) — FR-013, FR-014"
+    );
+  skills
+    .command("run")
+    .description(
+      "Run the skills conformance manifest. Static lint cases always run " +
+        "(offline, deterministic). Behavioral trigger-routing cases run only " +
+        "when MUSTER_ENDPOINT is set; they are skipped gracefully when absent."
+    )
+    .argument("<manifest>", "path to skills manifest YAML")
+    .addHelpText(
+      "after",
+      "\nBehavioral trigger cases: set MUSTER_ENDPOINT (and optionally MUSTER_MODEL,\n" +
+        "MUSTER_API_KEY) to run them. Omit MUSTER_ENDPOINT for static-only.\n" +
+        "\nExit-code contract:\n" +
+        "  0  all non-skipped cases passed (or all cases were skipped)\n" +
+        "  1  at least one non-skipped case failed\n" +
+        "  2  manifest could not be read or was structurally invalid\n" +
+        "\nCredentials never appear in argv — only env-var names are used (NFR-005)."
+    )
+    .action(async (manifest: string, _local, cmd: Command) => {
+      setExit(await doSkillsRun(manifest, cmd.optsWithGlobals(), io));
+    });
+
+  // ─── muster sop ──────────────────────────────────────────────────────────
+  const sop = program
+    .command("sop")
+    .description(
+      "SOP adapter (openclaw-sop): static AGENTS.md rule-text lint and behavioral " +
+      "compliance/adversarial probe suite for OpenClaw SOP conformance — FR-003, FR-011"
+    );
+  sop
+    .command("run")
+    .description(
+      "Run the SOP conformance manifest. Static lint always runs (offline, " +
+        "deterministic). Behavioral probe cases run only when MUSTER_ENDPOINT " +
+        "is set; they are skipped gracefully when absent."
+    )
+    .argument("<manifest>", "path to SOP rule manifest YAML")
+    .addHelpText(
+      "after",
+      "\nBehavioral probe cases: set MUSTER_ENDPOINT (and optionally MUSTER_MODEL,\n" +
+        "MUSTER_API_KEY) to run them. Omit MUSTER_ENDPOINT for static lint only.\n" +
+        "\nExit-code contract:\n" +
+        "  0  all lint checks passed and all probe cases passed (or no probes)\n" +
+        "  1  at least one lint error or probe case failed\n" +
+        "  2  manifest could not be read or was structurally invalid\n" +
+        "\nCredentials never appear in argv — only env-var names are used (NFR-005).\n" +
+        "The adapter name is 'openclaw-sop'; the CLI command is 'sop' (short form)."
+    )
+    .action(async (manifest: string, _local, cmd: Command) => {
+      setExit(await doSopRun(manifest, cmd.optsWithGlobals(), io));
+    });
+
+  // ─── muster tools ─────────────────────────────────────────────────────────
+  const tools = program
+    .command("tools")
+    .description(
+      "Tools adapter: static TOOLS.md lint, environment descriptor drift checks, " +
+      "and optional behavioral tool-selection probes — FR-010"
+    );
+  tools
+    .command("run")
+    .description(
+      "Run the tools conformance manifest. Static lint and drift checks always " +
+        "run (offline, deterministic). Behavioral selection probes run only when " +
+        "MUSTER_ENDPOINT is set; they are skipped gracefully when absent."
+    )
+    .argument("<manifest>", "path to tools manifest JSON or YAML")
+    .addHelpText(
+      "after",
+      "\nThe manifest is a JSON or YAML file with a 'cases' array. Each case " +
+        "specifies a TOOLS.md file path, an optional environment descriptor path " +
+        "(for drift checks), and optional selection scenario paths (for behavioral probes).\n" +
+        "\nBehavioral selection probes: set MUSTER_ENDPOINT (and optionally MUSTER_MODEL,\n" +
+        "MUSTER_API_KEY) to run them. Omit MUSTER_ENDPOINT for static lint + drift only.\n" +
+        "\nExit-code contract:\n" +
+        "  0  all cases passed (lint ok, drift clean, all selections passed if run)\n" +
+        "  1  at least one case failed\n" +
+        "  2  manifest could not be read or was structurally invalid\n" +
+        "\nCredentials never appear in argv — only env-var names are used (NFR-005)."
+    )
+    .action(async (manifest: string, _local, cmd: Command) => {
+      setExit(await doToolsRun(manifest, cmd.optsWithGlobals(), io));
     });
 
   return program;

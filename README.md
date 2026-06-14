@@ -6,57 +6,140 @@
 [![Soul.md RFC-1](https://img.shields.io/badge/Soul.md-RFC--1%20(1.0.0--rc1)-8a2be2.svg)](https://github.com/rokoss21/soul.md)
 [![Docs](https://img.shields.io/badge/docs-garrison--hq.github.io%2Fmuster-blue.svg)](https://garrison-hq.github.io/muster)
 
-**muster** (`@garrison-hq/muster`) is a reference **CTS-1 conformance harness**
-for [Soul.md RFC-1](https://github.com/rokoss21/soul.md) (`1.0.0-rc1`), the
-portable persona-definition format. It checks two things:
+**muster** (`@garrison-hq/muster`) is a conformance harness for the
+**agent-file stack** — the growing set of plain-text files that define how an
+AI agent behaves. A modern agent isn't one persona file; it's a persona, a set
+of skills, a standard-operating-procedure, a tool manifest, a memory store, a
+heartbeat checklist, and an inter-agent card — each with its own emerging spec.
+muster checks every one of them, two ways:
 
-- **The file** — parses a `SOUL.md`, validates it against the RFC-1 schema and
-  the §25 conformance rules, resolves composition (extends / mixins / profiles /
-  dynamic state) to a byte-stable canonical form, and reports every violation by
+- **The files** — parse each document, validate it against its spec, resolve
+  composition to a byte-stable canonical form, and report every violation by
   path and section. Fully offline and deterministic.
-- **The model** — grades a bring-your-own model against a soul's declared axes
-  (verbosity, brief refusals, dynamic state shifts) over multi-turn
-  conversations, against any OpenAI-compatible endpoint.
+- **The model** — grade a bring-your-own model against what each file *declares*
+  (persona axes, skill triggers, SOP rules, tool selection, memory recall,
+  heartbeat actions, A2A skills) over real conversations, against any
+  OpenAI-compatible endpoint.
+
+It started as the reference **CTS-1** harness for
+[Soul.md RFC-1](https://github.com/rokoss21/soul.md) and grew a spec-agnostic
+core that now drives **seven conformance layers plus cross-layer composition.**
 
 📖 **Full documentation: [garrison-hq.github.io/muster](https://garrison-hq.github.io/muster)**
 
-## Quickstart
+## The layers
 
-Requires Node ≥ 22 and [pnpm](https://pnpm.io).
+Each layer has a **static** mode (offline, deterministic, byte-stable) and most
+add a **behavioral** mode (grade a live model). Static always runs; behavioral
+runs only when an endpoint is configured, and is skipped gracefully otherwise.
+
+| Layer | File / spec | What muster checks | Command |
+| --- | --- | --- | --- |
+| **Persona** | `Soul.md` — [Soul.md RFC-1](https://github.com/rokoss21/soul.md) / CTS-1 | RFC-1 schema, §25 rules, composition (extends / mixins / profiles / dynamic state) → canonical form; behavioral verbosity / refusal / state-shift axes | `check`, `resolve`, `cts run`, `behave run` |
+| **Skills** | `SKILL.md` — [agentskills.io](https://agentskills.io) | frontmatter, directory layout, bundled-file safety; behavioral trigger-routing | `skills run` |
+| **SOP** | `AGENTS.md` — OpenClaw SOP | rule-text presence, precedence definition, tool drift; behavioral compliance + adversarial probes | `sop run` |
+| **Tools** | `TOOLS.md` | manifest lint, environment drift; behavioral tool-selection | `tools run` |
+| **Memory** | `MEMORY.md` / `USER.md` | staleness + contradiction lint; behavioral recall + privacy/leak probes | `memory run` |
+| **Heartbeat** | `HEARTBEAT.md` | static lint + interval-config checks; behavioral action-diff / idempotency / quiet-ack | `heartbeat run` |
+| **A2A** | Agent Card (JSON) — Agent-to-Agent | card schema + offline signature lint; live skill-behavior / auth-negative / signed-card conformance | `a2a run` |
+| **Cross-layer** | composition of the above | precedence, contradiction, and **rule survival** across a full layer stack | `crosslayer run` |
+
+## Install
+
+Requires Node ≥ 22.
 
 ```bash
+# As a CLI tool
+npm install -g @garrison-hq/muster
+muster --help
+```
+
+Or run from source with [pnpm](https://pnpm.io):
+
+```bash
+git clone https://github.com/garrison-hq/muster.git && cd muster
 pnpm install
 pnpm build          # tsc (strict) + schema copy → dist/
-pnpm test           # vitest: unit tests + the full CTS fixture suite, fully offline
+pnpm test           # vitest: the full offline suite (unit + CTS + adapters)
 ```
 
-The CLI is one binary with four subcommands. Global flags: `--mode
-<strict|permissive>` (default `strict`) and `--json`. Exit codes are uniform:
-`0` conforming / all passed, `1` violations / ≥ 1 case failed, `2` execution
-error.
+From a source checkout, run the CLI with `node dist/cli/index.js …` or
+`pnpm dev …` instead of the global `muster` binary.
+
+## Quickstart
+
+Every command shares two global flags — `--mode <strict|permissive>` (default
+`strict`) and `--json` — and a uniform exit-code contract: `0` conforming / all
+passed, `1` violations / ≥ 1 case failed, `2` execution error (unreadable or
+invalid manifest).
+
+The package ships a runnable [`examples/`](./examples) directory with one
+self-contained example per layer. Run them from the repository (or installed
+package) root:
 
 ```bash
-# Static conformance of one document (§25.1 report; never touches the network)
-muster check souls/voice-frontdesk/Soul.md --json
+# Persona — static conformance of one document (§25.1 report; never touches the network)
+muster check examples/soul/Soul.md --json
 
-# Effective configuration after full §7.5 resolution
+# Persona — effective configuration after full §7.5 resolution
 # (canonical-json = byte-stable RFC 8785, the CTS-1 comparison form)
-muster resolve souls/voice-frontdesk/Soul.md --output-format canonical-json
+muster resolve examples/soul/Soul.md --output-format canonical-json
 
-# The CTS-1 static fixture suite (Appendix F manifest)
-muster cts run cts/manifest.yaml
+# Persona — the CTS-1 static fixture suite (Appendix F manifest)
+muster cts run examples/cts/manifest.yaml
 
-# Behavioral conformance against a live OpenAI-compatible endpoint
-muster behave run behave/voice-frontdesk.yaml
+# Skills — lint SKILL.md frontmatter, layout, and bundled-file safety
+muster skills run examples/skills/manifest.yaml
+
+# SOP — lint AGENTS.md rule-text presence, precedence, and tool drift
+muster sop run examples/sop/manifest.yaml
+
+# Tools — lint a TOOLS.md manifest and check it against the environment
+muster tools run examples/tools/manifest.json
+
+# Memory — lint MEMORY.md / USER.md for staleness and contradiction
+muster memory run examples/memory/manifest.json
+
+# Heartbeat — lint HEARTBEAT.md and its interval configuration
+muster heartbeat run examples/heartbeat/manifest.json
+
+# A2A — lint an Agent Card and verify its signature offline
+muster a2a run examples/a2a/manifest.json
+
+# Cross-layer — check composition / precedence / rule-survival across a stack
+muster crosslayer run examples/crosslayer/manifest.yaml
 ```
 
-Without a global install, run `node dist/cli/index.js …` or `pnpm dev …`.
+See [`examples/README.md`](./examples/README.md) for the full table.
 
-`behave run` talks to any OpenAI-compatible `/chat/completions` endpoint —
-local Ollama, NVIDIA NIM, OpenAI, anything. Only `--base-url` / `--model`
-change between providers. The API key is read from `MUSTER_API_KEY` (fallback
-`OPENAI_API_KEY`) at request time: there is deliberately no key flag, no key
-file, and no key field in manifests, and keys must never be committed.
+### Behavioral mode (bring your own model)
+
+The static commands above are fully offline. To grade a live model, point a
+layer at any OpenAI-compatible `/chat/completions` endpoint — local Ollama,
+NVIDIA NIM, OpenAI, anything:
+
+```bash
+# Persona axes, k-of-n graded over multi-turn conversations
+muster behave run examples/behave/manifest.yaml --base-url https://api.openai.com/v1 --model gpt-4o
+
+# Adapter behavioral cases switch on via environment variables
+MUSTER_ENDPOINT=https://api.openai.com/v1 muster heartbeat run examples/heartbeat/manifest.json
+MUSTER_ENDPOINT=https://api.openai.com/v1 muster crosslayer run examples/crosslayer/manifest.yaml
+MUSTER_A2A_ENDPOINT=https://my-agent.example.com muster a2a run examples/a2a/manifest.json
+```
+
+| Layer | Endpoint variable(s) | Model variable | Default model |
+| --- | --- | --- | --- |
+| `behave` | `--base-url` / manifest `base_url` | `--model` / manifest `model` | (manifest) |
+| `memory` | `--base-url` (with `--behavioral`) | `--model` | `llama3.2` |
+| `heartbeat`, `crosslayer` | `MUSTER_ENDPOINT` | `MUSTER_MODEL` | `gpt-4o-mini` |
+| `a2a` | `MUSTER_A2A_ENDPOINT` (+ `MUSTER_A2A_TOKEN`) | — | — |
+
+The API key is read from `MUSTER_API_KEY` (fallback `OPENAI_API_KEY`) at request
+time — and A2A from its own isolated namespace. There is deliberately **no key
+flag, no key file, and no key field in any manifest**; manifests carry only the
+*name* of the environment variable, never the value. Keys must never be
+committed (a repository invariant test enforces this).
 
 ## Documentation
 
@@ -64,50 +147,57 @@ The deep material lives on the docs site:
 
 - **[Getting started](https://garrison-hq.github.io/muster/getting-started/)** — install and first checks.
 - **[Static conformance](https://garrison-hq.github.io/muster/guides/static-conformance/)** — the parse → validate → resolve → report pipeline.
-- **[Behavioral conformance](https://garrison-hq.github.io/muster/guides/behavioral-conformance/)** — the three axes, k-of-n grading, and BYOM endpoints.
+- **[Behavioral conformance](https://garrison-hq.github.io/muster/guides/behavioral-conformance/)** — the axes, k-of-n grading, and BYOM endpoints.
 - **[Reference resolution](https://garrison-hq.github.io/muster/guides/reference-resolution/)** — supported schemes, the `--restrict-refs` flag, and the trust model (RFC-1 §7.2).
 - **[CLI reference](https://garrison-hq.github.io/muster/reference/cli/)** — every command and flag.
 - **[CTS-1 coverage](https://garrison-hq.github.io/muster/reference/cts-1-coverage/)** — how the fixtures map onto the nine §25.2 categories.
-- **[Behavioral thresholds](https://garrison-hq.github.io/muster/reference/thresholds/)** — the word-count mapping and overrides.
-- **[Architecture](https://garrison-hq.github.io/muster/reference/architecture/)** — the spec-agnostic core and the RFC-1 adapter.
+- **[Architecture](https://garrison-hq.github.io/muster/reference/architecture/)** — the spec-agnostic core and the adapters.
 
 ## Repository layout
 
 ```
 src/
   core/            spec-agnostic engine: merge, pipeline, canonical JSON,
-                   CTS runner, behavioral runner/graders/client
-  adapters/rfc1/   the RFC-1 adapter: Soul-YAML, keyspace (§25), composition,
-                   profiles, state (§20), evaluation (§21), thresholds
+                   CTS runner, behavioral runner / graders / client, pass^k
+  adapters/        the seven conformance adapters, each self-contained:
+    rfc1/            Soul.md: Soul-YAML, keyspace (§25), composition,
+                     profiles, state (§20), evaluation (§21), thresholds
+    skills/          SKILL.md: frontmatter, layout, trigger routing
+    openclaw-sop/    AGENTS.md: rule lint, precedence, probes
+    tools/           TOOLS.md: manifest lint, drift, selection
+    memory/          MEMORY.md / USER.md: staleness + contradiction
+    heartbeat/       HEARTBEAT.md: lint, interval config, behavioral probes
+    a2a/             Agent Card: schema, signatures, live conformance
+  crosslayer/      cross-layer composition and rule-survival checks
   cli/             the thin `muster` CLI (the only core↔adapter meeting point)
+examples/          one runnable example per layer (shipped with the package)
 cts/               the CTS-1 fixture corpus (Appendix F layout: manifest + fixtures)
 souls/             the voice-frontdesk example soul
 behave/            behavioral manifests + committed acceptance evidence
 site/              the documentation site (Astro + Starlight; standalone package)
-tests/             vitest suites (unit, cts, behavioral) — fully offline
+tests/             vitest suites (unit, cts, adapters, behavioral) — fully offline
 ```
-
-The `cts/` tree is laid out per RFC-1 **Appendix F**; each fixture's Markdown
-body explains the normative clause it exercises.
 
 ## How it was built
 
-muster was built with a spec-driven workflow; the complete trail —
-specification, plan, work-package tasks, acceptance matrices, and a post-merge
-mission review — is preserved under [`kitty-specs/`](./kitty-specs) as a worked
-example of the methodology. The normative Soul.md RFC-1 text is vendored at
+muster was built with a spec-driven, multi-agent workflow; the complete trail
+for every layer — specification, plan, work-package tasks, acceptance matrices,
+and post-merge mission reviews — is preserved under
+[`kitty-specs/`](./kitty-specs), alongside the Claude Code agent definitions and
+mission orchestration under [`.claude/`](./.claude), as a worked example of the
+methodology. The normative Soul.md RFC-1 text is vendored at
 `.kittify/reference/soul-spec.md` (see [`NOTICE`](./NOTICE) for its attribution;
 it remains the property of its upstream author) and is the single source of
-truth for every check — each test cites the section it enforces.
+truth for every RFC-1 check — each test cites the section it enforces.
 
 ## Contributing
 
 Issues and PRs are welcome. The one rule that matters most: **every conformance
-behavior traces to a section of the vendored spec**, cited in the code and the
-test name. See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the architecture
-invariants (spec-agnostic core, determinism, no baked-in providers, minimal
-dependencies) and the PR checklist. By participating you agree to the
-[Code of Conduct](./CODE_OF_CONDUCT.md).
+behavior traces to a section of the spec it enforces**, cited in the code and
+the test name. See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the architecture
+invariants (spec-agnostic core, the core↔adapter boundary, determinism, no
+baked-in providers, minimal dependencies) and the PR checklist. By participating
+you agree to the [Code of Conduct](./CODE_OF_CONDUCT.md).
 
 Security-sensitive reports go through the private channel in
 [`SECURITY.md`](./SECURITY.md), not public issues.

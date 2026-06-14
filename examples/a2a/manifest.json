@@ -1,0 +1,12 @@
+{
+  "adapter": "a2a",
+  "cases": [
+    {
+      "id": "static-discovery-ok",
+      "description": "valid card at the well-known URI passes discovery lint",
+      "cardSource": "cards/example-agent.json",
+      "gradingClass": "static-lint",
+      "expectation": { "ok": true }
+    }
+  ]
+}

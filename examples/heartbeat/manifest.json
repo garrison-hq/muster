@@ -1,0 +1,14 @@
+{
+  "cases": [
+    {
+      "id": "hb-static-example-001",
+      "description": "Well-formed HEARTBEAT.md passes static lint",
+      "checklistPath": "examples/heartbeat/checklists/daily-tasks.md",
+      "itemRecurrence": [],
+      "tickState": null,
+      "intervalConfig": "examples/heartbeat/interval-configs/default-30m.json",
+      "gradingClass": "static-lint",
+      "expectation": { "ok": true, "findings": [] }
+    }
+  ]
+}
