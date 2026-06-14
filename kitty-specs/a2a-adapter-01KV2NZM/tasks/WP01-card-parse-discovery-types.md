@@ -7,9 +7,9 @@ requirement_refs:
 - FR-003
 - FR-005
 - FR-013
-planning_base_branch: main
-merge_target_branch: main
-branch_strategy: Planning artifacts were generated on feat/a2a-adapter (main is protected). During implementation this WP builds on the single mission lane; completed changes merge into main via one PR unless the human redirects the landing branch.
+planning_base_branch: feat/a2a-adapter
+merge_target_branch: feat/a2a-adapter
+branch_strategy: Planning artifacts for this feature were generated on feat/a2a-adapter. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into feat/a2a-adapter unless the human explicitly redirects the landing branch.
 created_at: '2026-06-14T09:11:11Z'
 subtasks:
 - T001
