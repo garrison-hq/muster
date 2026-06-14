@@ -160,11 +160,10 @@ function gradeStaticLintCase(
 /**
  * Grade a skill-behavior case against a live A2A endpoint (FR-006).
  *
- * The manifest `expect` field in skillProbe is DESCRIPTIVE-ONLY — it documents
- * the intended behavior but is NOT used to construct the grader assertion.
- * The actual grader checks response-contains-input (non-leaky consistency
- * check in skill-behavior.ts). Do NOT wire `expect` as a string-match
- * assertion here — that would reveal the expected answer to the live agent.
+ * The manifest `expect` field in skillProbe is the NON-LEAKY consistency matcher
+ * (FIX 5): it is checked against the received response AFTER invoking the skill,
+ * never sent in the request. If `expect` is empty, falls back to checking that
+ * the response contains the `input` string.
  *
  * k is the integer passThreshold from the manifest case. Defaults to ceil(0.8 * runs).
  *
@@ -222,8 +221,9 @@ async function gradeSkillBehaviorCase(
       runs,
       k,
       passCount,
-      // `expect` is descriptive only — the grader uses response-contains-input, not expect matching.
-      expectDescriptive: skillProbe.expect,
+      // `expect` is the (non-leaky) consistency matcher — checked against the response
+      // AFTER receiving it (FIX 5). Never sent to the agent in the request.
+      expectMatcher: skillProbe.expect,
     },
   };
 }
@@ -263,6 +263,19 @@ async function gradeAuthNegativeCase(
     auth.method,
     token
   );
+
+  // FIX 4: unsupported scheme type → SKIPPED (not a false pass, not a misleading failure).
+  if (authCheck.schemeTypeUnsupported !== undefined) {
+    return {
+      id: kase.id,
+      description: kase.description,
+      gradingClass: kase.gradingClass,
+      passed: false,
+      skipped: true,
+      skipReason: `scheme type '${authCheck.schemeTypeUnsupported}' is not exercised by this residual-gap adapter (only bearer-style schemes)`,
+      detail: authCheck.detail,
+    };
+  }
 
   return {
     id: kase.id,

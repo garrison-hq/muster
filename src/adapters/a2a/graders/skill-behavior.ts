@@ -58,7 +58,7 @@ export interface SkillProbeResult {
 // ---------------------------------------------------------------------------
 
 /**
- * Check whether a response body is consistent with the expected behavior framing.
+ * Check whether a response body satisfies the non-leaky consistency matcher.
  *
  * NON-LEAKY CONTRACT: this check is applied ONLY to the response received from
  * the live agent. The `expect` string is NEVER included in the request sent to
@@ -66,25 +66,24 @@ export interface SkillProbeResult {
  * from revealing the "correct answer" in the request, which would allow any
  * model to trivially pass by repeating back the expect phrase.
  *
- * Consistency rule: the response body must contain the `input` string as a
- * substring. For an echo skill, this verifies the agent returned the input
- * verbatim. The `expect` parameter is surfaced in the probe result as evidence
- * but is NOT used to construct the request.
+ * Consistency rule (FIX 5): if `expect` is non-empty, the response body must
+ * contain `expect` as a substring. If `expect` is empty or not provided, fall
+ * back to checking that the response contains `input`. This makes `expect` a
+ * first-class wired assertion rather than dead-weight documentation.
  *
- * Rationale: §8.3.1 says the response must be consistent with the *declared*
- * skill (interface accuracy). For the "echo" skill fixture the declared behavior
- * is "Returns the input message verbatim" — so we verify the input appears in
- * the response. This is a shape/substring match, not an LLM evaluation, which
- * keeps it deterministic and non-leaky.
+ * For the echo skill the manifest sets expect = input (e.g. "ping"), so:
+ * - honest echo server returns the input → response.includes(expect) = true → pass
+ * - drift server returns "DRIFT_RESPONSE_UNRELATED_TO_INPUT" → false → fail
+ * - control remains fully discriminating (drift server never fires expect)
  *
  * @param responseBody - The raw JSON-RPC response string from invokeSkill.
  * @param input        - The message that was sent to the skill.
+ * @param expect       - The required post-response matcher (non-leaky; never sent).
+ *                       Fallback: if empty, use `input` as the matcher.
  */
-function isResponseConsistent(responseBody: string, input: string): boolean {
-  // For the echo skill the response should contain the input string.
-  // We check the raw body string for the input substring — simple, deterministic,
-  // and never reveals the expected answer to the agent.
-  return responseBody.includes(input);
+function isResponseConsistent(responseBody: string, input: string, expect: string): boolean {
+  const matcher = expect.length > 0 ? expect : input;
+  return responseBody.includes(matcher);
 }
 
 // ---------------------------------------------------------------------------
@@ -157,24 +156,27 @@ export async function probeSkill(
 /**
  * Per-run consistency conjunction: uses conjunctivePassK for multi-check runs.
  *
- * Currently each run has a single consistency check (response contains input).
+ * Each run has a single consistency check (response satisfies the expect matcher).
  * conjunctivePassK is called with the per-run check flags to allow future
  * multi-check extension without changing the aggregation logic.
  *
+ * `expect` is the (non-leaky) consistency matcher — checked against the response
+ * AFTER receiving it, never sent to the agent in the request. If `expect` is empty,
+ * falls back to checking that the response contains `input` (FIX 5).
+ *
  * @param responseBody - Raw response string from invokeSkill.
- * @param input        - The sent message (for echo-skill verification).
- * @param _expect      - Expected behavior framing (not sent to agent; future use
- *                       for richer per-run checks, e.g. sentiment/format).
+ * @param input        - The sent message (non-leaky fallback matcher).
+ * @param expect       - The required post-response matcher (non-leaky; never sent to agent).
  */
 function checkRunConsistency(
   responseBody: string,
   input: string,
-  _expect: string
+  expect: string
 ): boolean {
   // Per-run checks: each flag is one sub-check. conjunctivePassK returns true
   // iff ALL sub-checks pass (pass^k conjunction per run).
   const perRunChecks: boolean[] = [
-    isResponseConsistent(responseBody, input),
+    isResponseConsistent(responseBody, input, expect),
   ];
   return conjunctivePassK(perRunChecks);
 }

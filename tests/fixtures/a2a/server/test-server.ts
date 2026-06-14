@@ -71,6 +71,15 @@ export interface TestServerOptions {
    * Citation: muster FR-014; A2A spec v1.0.0 §8.x (signed cards).
    */
   healthy?: boolean;
+  /**
+   * When set to a positive number, ALL routes delay their response by this many
+   * milliseconds before sending any data. Used by transport-timeout tests to
+   * verify that AbortSignal.timeout(...) in the transport converts a hung
+   * endpoint into a thrown error (failed run, FR-010).
+   *
+   * The delay is implemented with a simple setTimeout — no external dependency.
+   */
+  delayMs?: number;
 }
 
 export interface RunningServer {
@@ -268,6 +277,11 @@ function isAuthorized(req: IncomingMessage): boolean {
 // Request body helper
 // ---------------------------------------------------------------------------
 
+/** Delay helper for delayMs mode — resolves after the given number of ms. */
+function delayFor(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -331,6 +345,11 @@ async function handleRequest(
   serverUrl: string,
   healthyState: HealthyState | null
 ): Promise<void> {
+  // delayMs mode: simulate a hung endpoint for transport-timeout tests (FR-010).
+  if (opts.delayMs !== undefined && opts.delayMs > 0) {
+    await delayFor(opts.delayMs);
+  }
+
   const method = req.method ?? "GET";
   const url = req.url ?? "/";
 

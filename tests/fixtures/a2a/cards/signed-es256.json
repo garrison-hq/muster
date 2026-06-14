@@ -1,0 +1,17 @@
+{
+  "name": "Test ES256 Signed Agent",
+  "securitySchemes": [],
+  "signatures": [
+    {
+      "protected": "eyJhbGciOiJFUzI1NiIsImtpZCI6Im11c3Rlci10ZXN0LWtleS1lczI1Ni12MSJ9",
+      "signature": "sKOUXGFO_HWwdhUzGPBvRHe4-fynuxyrHZ2rak70tfm2i8AB6tAhKAsn0vN6K_oNdL5YyT7LIw3-XD6Ghovi6A"
+    }
+  ],
+  "skills": [
+    {
+      "description": "Returns the input message verbatim.",
+      "id": "echo"
+    }
+  ],
+  "version": "1.0.0"
+}

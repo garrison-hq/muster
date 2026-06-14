@@ -26,6 +26,22 @@ import { parseAgentCard } from "./card.js";
 import type { Jwks } from "./signature.js";
 
 // ---------------------------------------------------------------------------
+// Timeout helper — read at call time so tests can override MUSTER_A2A_TIMEOUT_MS
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the HTTP timeout in milliseconds for each fetch call.
+ *
+ * Reads MUSTER_A2A_TIMEOUT_MS at call time (not module-load time) so that
+ * tests can set the env var after import and it will take effect immediately.
+ * Default: 10 000 ms (10 s). A hung endpoint will abort after this duration
+ * and the transport caller records a failed run (FR-010).
+ */
+function timeoutMs(): number {
+  return Number(process.env["MUSTER_A2A_TIMEOUT_MS"]) || 10000;
+}
+
+// ---------------------------------------------------------------------------
 // Env access — read at call time, never stored
 // ---------------------------------------------------------------------------
 
@@ -70,9 +86,9 @@ export async function discoverCard(endpoint: string): Promise<AgentCard> {
   const url = `${endpoint}/.well-known/agent-card.json`;
   let response: Response;
   try {
-    response = await fetch(url);
+    response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs()) });
   } catch (err) {
-    throw new Error(`A2A discoverCard: network error fetching ${url}: ${String(err)}`);
+    throw new Error(`A2A discoverCard: timeout-or-network error fetching ${url}: ${String(err)}`);
   }
 
   if (!response.ok) {
@@ -161,9 +177,10 @@ export async function invokeSkill(
       method: "POST",
       headers,
       body: JSON.stringify(rpcRequest),
+      signal: AbortSignal.timeout(timeoutMs()),
     });
   } catch (err) {
-    throw new Error(`A2A invokeSkill: network error posting to ${endpoint}: ${String(err)}`);
+    throw new Error(`A2A invokeSkill: timeout-or-network error posting to ${endpoint}: ${String(err)}`);
   }
 
   if (!response.ok) {
@@ -244,9 +261,10 @@ export async function probeAuth(
       method: "POST",
       headers,
       body: JSON.stringify(rpcRequest),
+      signal: AbortSignal.timeout(timeoutMs()),
     });
   } catch (err) {
-    throw new Error(`A2A probeAuth: network error posting to ${endpoint}: ${String(err)}`);
+    throw new Error(`A2A probeAuth: timeout-or-network error posting to ${endpoint}: ${String(err)}`);
   }
 
   const status = response.status;
@@ -306,9 +324,9 @@ export async function fetchJwks(endpoint: string): Promise<Jwks> {
   const url = `${endpoint}/.well-known/jwks.json`;
   let response: Response;
   try {
-    response = await fetch(url);
+    response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs()) });
   } catch (err) {
-    throw new Error(`A2A fetchJwks: network error fetching ${url}: ${String(err)}`);
+    throw new Error(`A2A fetchJwks: timeout-or-network error fetching ${url}: ${String(err)}`);
   }
 
   if (!response.ok) {

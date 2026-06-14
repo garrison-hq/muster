@@ -30,7 +30,7 @@
       "skillProbe": {
         "skillId": "echo",
         "input": "ping",
-        "expect": "responds as the echo skill declares"
+        "expect": "ping"
       },
       "runs": 5,
       "passThreshold": 4,

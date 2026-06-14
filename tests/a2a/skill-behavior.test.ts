@@ -257,11 +257,12 @@ describe("probeSkill: honest server → k-of-n passes", () => {
     const skill = card.skills[0];
     if (!skill) throw new Error("No skill in test card");
 
+    // expect = "ping" (same as input): echo server returns input → response.includes("ping") = true (FIX 5)
     const results = await probeSkill(
       server.url,
       skill,
       "ping",
-      "Agent responds with the exact text of the input message.",
+      "ping",
       3
     );
 
@@ -277,11 +278,12 @@ describe("probeSkill: honest server → k-of-n passes", () => {
     const skill = card.skills[0];
     if (!skill) throw new Error("No skill in test card");
 
+    // expect = "hello" (same as input): echo server echoes it back (FIX 5)
     const results = await probeSkill(
       server.url,
       skill,
       "hello",
-      "Agent responds with the exact text of the input message.",
+      "hello",
       3
     );
 
@@ -294,11 +296,12 @@ describe("probeSkill: honest server → k-of-n passes", () => {
     const skill = card.skills[0];
     if (!skill) throw new Error("No skill in test card");
 
+    // expect = "world" (same as input): echo server echoes it back (FIX 5)
     const results = await probeSkill(
       server.url,
       skill,
       "world",
-      "Agent responds with the exact text of the input message.",
+      "world",
       3
     );
 
@@ -326,11 +329,12 @@ describe("probeSkill: drift server → k-of-n fails", () => {
     const skill = card.skills[0];
     if (!skill) throw new Error("No skill in test card");
 
+    // expect = "ping": drift server returns DRIFT_RESPONSE_UNRELATED_TO_INPUT, not "ping" → consistent:false (FIX 5)
     const results = await probeSkill(
       server.url,
       skill,
       "ping",
-      "Agent responds with the exact text of the input message.",
+      "ping",
       3
     );
 
@@ -345,11 +349,12 @@ describe("probeSkill: drift server → k-of-n fails", () => {
     const skill = card.skills[0];
     if (!skill) throw new Error("No skill in test card");
 
+    // expect = "ping": drift server never returns it → all consistent:false (FIX 5)
     const results = await probeSkill(
       server.url,
       skill,
       "ping",
-      "Agent responds with the exact text of the input message.",
+      "ping",
       3
     );
 
@@ -397,23 +402,23 @@ describe("discrimination control: grader must fail impossible cases (T017, FR-01
 
   it("CONTROL: drift server makes aggregateSkillBehavior return false (rigged-impossible)", async () => {
     // Discrimination control: points at drift server. The drifted response
-    // (DRIFT_RESPONSE_UNRELATED_TO_INPUT) will never contain the input "ping",
+    // (DRIFT_RESPONSE_UNRELATED_TO_INPUT) will never contain expect="ping",
     // so all runs are consistent:false. aggregateSkillBehavior MUST return false.
+    // FIX 5: expect is now the wired matcher — drift server never returns "ping".
     const skill = {
       id: "echo",
       description: "Returns the input message verbatim.",
-      expectedBehavior: "Agent responds with the exact text of the input message.",
     };
 
     const results = await probeSkill(
       driftServer.url,
       skill,
       "ping",
-      "Agent responds with the exact text of the input message.",
+      "ping",
       5
     );
 
-    // All 5 runs must fail
+    // All 5 runs must fail (drift response never contains "ping")
     expect(results.every((r) => !r.consistent)).toBe(true);
     // Aggregate fails even at threshold k=1
     expect(aggregateSkillBehavior(results, 1)).toBe(false);
@@ -421,24 +426,22 @@ describe("discrimination control: grader must fail impossible cases (T017, FR-01
     expect(aggregateSkillBehavior(results, 4)).toBe(false);
   });
 
-  it("CONTROL: impossible input string never in response → aggregateSkillBehavior false", async () => {
-    // Control: send an input that the honest server will echo, but use a
-    // different impossible string as the "input" to check consistency against.
-    // We achieve this by crafting a skill that expects a different input than sent.
-    // Actually: the consistency check is input-substring based, so we use an input
-    // that the drift server never echoes. We simply send to the drift server.
+  it("CONTROL: impossible expect string never in response → aggregateSkillBehavior false", async () => {
+    // Control: the expect string is something the drift server will never return.
+    // FIX 5: expect is the matcher; drift server returns DRIFT_RESPONSE_UNRELATED_TO_INPUT
+    // which never contains the impossible phrase.
     const skill = {
       id: "echo",
       description: "Returns the input message verbatim.",
     };
 
-    // Use a unique input that the drift server will never return
+    // Use a unique expect that the drift server will never return
     const impossibleInput = "IMPOSSIBLE_NEVER_ECHOED_INPUT_PHRASE_XYZ987";
     const results = await probeSkill(
       driftServer.url,
       skill,
       impossibleInput,
-      "Agent responds with the exact text of the input message.",
+      impossibleInput,
       3
     );
 

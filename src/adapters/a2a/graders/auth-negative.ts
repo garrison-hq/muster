@@ -10,7 +10,14 @@
  * - probeAuth(endpoint, method, token) must return rejected:false when a valid token
  *   is supplied (authorized request accepted).
  * - A thrown transport error → passed:false (failed run, FR-010 — never a skip).
- * - The ONE nested skip is in signed-card.ts (live JWKS down). This grader has NO skip path.
+ * - The ONE nested skip is in signed-card.ts (live JWKS down). This grader also
+ *   produces a skip for unsupported scheme types (see schemeTypeUnsupported below).
+ *
+ * Unsupported scheme types (FIX 4):
+ * Non-bearer-style schemes (e.g. apiKey) are NOT probed. The grader returns a
+ * result with schemeTypeUnsupported set so the runManifest caller maps it to a
+ * SKIPPED case with a diagnostic reason. This prevents a false pass and prevents
+ * a misleading failure from probing Bearer when a non-bearer scheme is declared.
  *
  * Discrimination control (T020, FR-011):
  * Pointing this grader at an enforceAuth:false server (declared-but-unenforced)
@@ -31,16 +38,19 @@ import type { SecurityScheme } from "../card.js";
 /**
  * The result of an auth-enforcement negative check.
  *
- * - `rejectedUnauthorized` — true when an unauthenticated request was correctly rejected.
- * - `acceptedAuthorized`   — true when an authorized request was correctly accepted,
- *                            or true (not-applicable) when no authorizedToken was supplied.
- * - `passed`               — true iff rejectedUnauthorized AND acceptedAuthorized.
- * - `detail`               — optional diagnostic detail (status codes, not-applicable notes).
+ * - `rejectedUnauthorized`  — true when an unauthenticated request was correctly rejected.
+ * - `acceptedAuthorized`    — true when an authorized request was correctly accepted,
+ *                             or true (not-applicable) when no authorizedToken was supplied.
+ * - `passed`                — true iff rejectedUnauthorized AND acceptedAuthorized.
+ * - `schemeTypeUnsupported` — when set, this scheme type is not exercised by this grader
+ *                             (e.g. apiKey). The caller should map this to a SKIPPED case.
+ * - `detail`                — optional diagnostic detail (status codes, not-applicable notes).
  */
 export interface AuthCheck {
   rejectedUnauthorized: boolean;
   acceptedAuthorized: boolean;
   passed: boolean;
+  schemeTypeUnsupported?: string;
   detail?: Record<string, unknown>;
 }
 
@@ -73,12 +83,34 @@ export interface AuthCheck {
  *
  * Citation: A2A spec v1.0.0 protobuf a2a.proto §7; muster rubric FR-007.
  */
+/** Scheme types this grader exercises with a Bearer probe. */
+const BEARER_STYLE_SCHEMES = new Set(["bearer", "oauth2", "http"]);
+
 export async function checkAuthEnforcement(
   endpoint: string,
   scheme: SecurityScheme,
   method: string,
   authorizedToken: string | null
 ): Promise<AuthCheck> {
+  // FIX 4: Only probe bearer-style schemes. Non-bearer schemes (e.g. apiKey) are
+  // not exercised — probing them with Bearer would produce a misleading result.
+  // Return an explicit unsupported-scheme signal so the caller skips the case.
+  if (!BEARER_STYLE_SCHEMES.has(scheme.type)) {
+    return {
+      rejectedUnauthorized: false,
+      acceptedAuthorized: false,
+      passed: false,
+      schemeTypeUnsupported: scheme.type,
+      detail: {
+        schemeTypeUnsupported: scheme.type,
+        note: "only bearer-style schemes are exercised by this residual-gap adapter",
+        schemeId: scheme.id,
+        method,
+        citation: "A2A spec v1.0.0 §7; muster rubric FR-007",
+      },
+    };
+  }
+
   let rejectedUnauthorized: boolean;
   let unauthStatus: number | undefined;
 

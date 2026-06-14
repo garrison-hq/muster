@@ -1,0 +1,11 @@
+{
+  "keys": [
+    {
+      "kty": "EC",
+      "x": "Vwpl3tYtkRqU-wywDw6NrP3Ys2O3GHUHNup8go5zuak",
+      "y": "KCGzkEGFfCeZVvS-tUD46fWmXh2FeMKpxllM_YxgvZE",
+      "crv": "P-256",
+      "kid": "muster-test-key-es256-v1"
+    }
+  ]
+}

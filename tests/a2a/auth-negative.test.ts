@@ -275,3 +275,80 @@ describe("auth-negative: interface shape", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// FIX 4 — unsupported scheme type (apiKey) → skipped path, never Bearer-probed
+// ---------------------------------------------------------------------------
+
+/**
+ * FIX 4 (mission-review open item 4):
+ *
+ * checkAuthEnforcement must NOT silently probe Bearer when the declared security
+ * scheme is not bearer-style. For a scheme type like "apiKey", probing with Bearer
+ * would produce a misleading result (any server would likely reject a Bearer token
+ * on an apiKey-protected endpoint, making the check appear to pass for the wrong reason).
+ *
+ * Expected: the function returns an AuthCheck with schemeTypeUnsupported set, and
+ * the gradeAuthNegativeCase dispatcher in runManifest maps this to a SKIPPED case.
+ */
+describe("FIX 4: unsupported scheme type → unsupported signal, never Bearer-probed", () => {
+  it("checkAuthEnforcement with apiKey scheme returns schemeTypeUnsupported (does not probe Bearer)", async () => {
+    // We use a server that would reject unauthenticated requests — but we must NOT
+    // reach it for an apiKey scheme. The endpoint is irrelevant; the check must
+    // return early with schemeTypeUnsupported before any network call.
+    const apiKeyScheme = {
+      id: "apikey-auth",
+      type: "apiKey",
+      protectedMethods: ["message/send"],
+    };
+
+    // Use a refused port to prove no network call is made (would throw if reached)
+    const result = await checkAuthEnforcement(
+      "http://127.0.0.1:1",
+      apiKeyScheme,
+      "message/send",
+      null
+    );
+
+    // Must return early with schemeTypeUnsupported set (no network call made)
+    expect(result.schemeTypeUnsupported).toBe("apiKey");
+    expect(result.passed).toBe(false);
+    expect(result.rejectedUnauthorized).toBe(false);
+    expect(result.acceptedAuthorized).toBe(false);
+  });
+
+  it("checkAuthEnforcement with apiKey scheme: detail includes unsupported note and citation", async () => {
+    const apiKeyScheme = {
+      id: "apikey-auth",
+      type: "apiKey",
+      protectedMethods: ["message/send"],
+    };
+
+    const result = await checkAuthEnforcement(
+      "http://127.0.0.1:1",
+      apiKeyScheme,
+      "message/send",
+      null
+    );
+
+    expect(typeof result.detail?.["note"]).toBe("string");
+    expect(result.detail?.["note"]).toContain("bearer-style");
+    expect(typeof result.detail?.["citation"]).toBe("string");
+    expect(result.detail?.["schemeTypeUnsupported"]).toBe("apiKey");
+  });
+
+  it("bearer and oauth2 schemes still probe (not short-circuited)", async () => {
+    // bearer → probes (reaches network; use a refused port → transport error → passed:false)
+    const bearerScheme = { id: "b", type: "bearer", protectedMethods: ["message/send"] };
+    const bearerResult = await checkAuthEnforcement("http://127.0.0.1:1", bearerScheme, "message/send", null);
+    // Must NOT have schemeTypeUnsupported — it reached the network path (transport error)
+    expect(bearerResult.schemeTypeUnsupported).toBeUndefined();
+    expect(bearerResult.detail?.["unauthProbeError"]).toBeDefined();
+
+    // oauth2 → also probes
+    const oauth2Scheme = { id: "o", type: "oauth2", protectedMethods: ["message/send"] };
+    const oauth2Result = await checkAuthEnforcement("http://127.0.0.1:1", oauth2Scheme, "message/send", null);
+    expect(oauth2Result.schemeTypeUnsupported).toBeUndefined();
+    expect(oauth2Result.detail?.["unauthProbeError"]).toBeDefined();
+  });
+});

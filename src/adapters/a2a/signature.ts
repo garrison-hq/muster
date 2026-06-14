@@ -179,8 +179,12 @@ function verifyOneSignature(
     if (digest === null) {
       // EdDSA (Ed25519): null digest
       verified = cryptoVerify(null, Buffer.from(signingInput), publicKey, sigBuf);
+    } else if (alg === "ES256") {
+      // ES256 (ECDSA P-256): JWS uses IEEE-P1363 (raw r||s), NOT DER encoding.
+      // Node crypto defaults to DER for EC, so we must explicitly request ieee-p1363.
+      verified = cryptoVerify(digest, Buffer.from(signingInput), { key: publicKey, dsaEncoding: "ieee-p1363" }, sigBuf);
     } else {
-      // RS256 / ES256
+      // RS256: standard PKCS#1 v1.5 (no special encoding needed)
       verified = cryptoVerify(digest, Buffer.from(signingInput), publicKey, sigBuf);
     }
   } catch {
