@@ -1,0 +1,24 @@
+{
+  "labels": {
+    "memory-project-preferences-0": {
+      "private": false,
+      "timeSensitive": false
+    },
+    "memory-project-preferences-1": {
+      "private": false,
+      "timeSensitive": false
+    },
+    "memory-communication-style-0": {
+      "private": false,
+      "timeSensitive": false
+    },
+    "user-identity-0": {
+      "private": false,
+      "timeSensitive": false
+    },
+    "user-addressing-0": {
+      "private": false,
+      "timeSensitive": false
+    }
+  }
+}

@@ -1,0 +1,9 @@
+# CTS-1 example manifest — Soul.md RFC-1 conformance suite
+# Run from repo root: node dist/cli/index.js cts run examples/cts/manifest.yaml
+#
+# Paths are relative to this manifest file's directory.
+
+- id: "example-minimal-valid"
+  root: "fixtures/minimal/valid/Soul.md"
+  mode: strict
+  expect_ok: true

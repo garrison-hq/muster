@@ -1,0 +1,9 @@
+{
+  "cases": [
+    {
+      "id": "tools-example-well-formed",
+      "toolsFilePath": "TOOLS.md",
+      "expect": "pass"
+    }
+  ]
+}

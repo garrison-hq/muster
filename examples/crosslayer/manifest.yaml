@@ -1,0 +1,10 @@
+# Cross-layer conformance example manifest — muster 1.0.0 OSS release.
+# Run from repo root: node dist/cli/index.js crosslayer run examples/crosslayer/manifest.yaml
+#
+# Static cases run offline. Behavioral cases require MUSTER_ENDPOINT and are
+# skipped gracefully when it is absent.
+#
+# Paths are relative to this manifest file's directory.
+
+cases:
+  - $ref: benign/persona-sop-benign.yaml
