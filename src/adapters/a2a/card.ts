@@ -121,6 +121,51 @@ function parseJwsSignature(raw: unknown): JwsSignature | null {
 // T001 — Parse AgentCard (FR-002)
 // ---------------------------------------------------------------------------
 
+/** Return a minimal empty AgentCard for unparseable input. Never throws. */
+function emptyCard(discoveredFrom: string, raw: unknown): AgentCard {
+  return {
+    name: "",
+    version: "",
+    skills: [],
+    securitySchemes: [],
+    discoveredFrom,
+    raw,
+  };
+}
+
+/** Parse the `skills` array from a raw card object. Returns [] for non-array. */
+function parseSkillsList(obj: Record<string, unknown>): DeclaredSkill[] {
+  if (!Array.isArray(obj["skills"])) return [];
+  const skills: DeclaredSkill[] = [];
+  for (const s of obj["skills"] as unknown[]) {
+    const skill = parseDeclaredSkill(s);
+    if (skill !== null) skills.push(skill);
+  }
+  return skills;
+}
+
+/** Parse the `securitySchemes` array from a raw card object. Returns [] for non-array. */
+function parseSchemesList(obj: Record<string, unknown>): SecurityScheme[] {
+  if (!Array.isArray(obj["securitySchemes"])) return [];
+  const schemes: SecurityScheme[] = [];
+  for (const s of obj["securitySchemes"] as unknown[]) {
+    const scheme = parseSecurityScheme(s);
+    if (scheme !== null) schemes.push(scheme);
+  }
+  return schemes;
+}
+
+/** Parse the `signatures` array from a raw card object. Returns undefined for non-array. */
+function parseSignaturesList(obj: Record<string, unknown>): JwsSignature[] | undefined {
+  if (!Array.isArray(obj["signatures"])) return undefined;
+  const sigs: JwsSignature[] = [];
+  for (const s of obj["signatures"] as unknown[]) {
+    const sig = parseJwsSignature(s);
+    if (sig !== null) sigs.push(sig);
+  }
+  return sigs;
+}
+
 /**
  * Parse raw Agent Card JSON into a typed AgentCard.
  *
@@ -139,61 +184,27 @@ export function parseAgentCard(rawJson: string, discoveredFrom: string): AgentCa
   } catch {
     // JSON parse failure: return a minimal card with empty arrays.
     // The caller (checkStructure / checkDiscoveryUri) will surface lint findings.
-    return {
-      name: "",
-      version: "",
-      skills: [],
-      securitySchemes: [],
-      discoveredFrom,
-      raw: null,
-    };
+    return emptyCard(discoveredFrom, null);
   }
 
   if (typeof parsed !== "object" || parsed === null) {
-    return {
-      name: "",
-      version: "",
-      skills: [],
-      securitySchemes: [],
-      discoveredFrom,
-      raw: parsed,
-    };
+    return emptyCard(discoveredFrom, parsed);
   }
 
   const obj = parsed as Record<string, unknown>;
 
-  const skills: DeclaredSkill[] = [];
-  if (Array.isArray(obj["skills"])) {
-    for (const s of obj["skills"] as unknown[]) {
-      const skill = parseDeclaredSkill(s);
-      if (skill !== null) skills.push(skill);
-    }
-  }
-
-  const securitySchemes: SecurityScheme[] = [];
-  if (Array.isArray(obj["securitySchemes"])) {
-    for (const s of obj["securitySchemes"] as unknown[]) {
-      const scheme = parseSecurityScheme(s);
-      if (scheme !== null) securitySchemes.push(scheme);
-    }
-  }
-
   const card: AgentCard = {
     name: toStringOrEmpty(obj["name"]),
     version: toStringOrEmpty(obj["version"]),
-    skills,
-    securitySchemes,
+    skills: parseSkillsList(obj),
+    securitySchemes: parseSchemesList(obj),
     discoveredFrom,
     raw: parsed,
   };
 
-  if (Array.isArray(obj["signatures"])) {
-    const sigs: JwsSignature[] = [];
-    for (const s of obj["signatures"] as unknown[]) {
-      const sig = parseJwsSignature(s);
-      if (sig !== null) sigs.push(sig);
-    }
-    card.signatures = sigs;
+  const signatures = parseSignaturesList(obj);
+  if (signatures !== undefined) {
+    card.signatures = signatures;
   }
 
   return card;

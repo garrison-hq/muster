@@ -349,7 +349,7 @@ export async function fetchJwks(endpoint: string): Promise<Jwks> {
 
   const jwks = parsed as Record<string, unknown>;
   if (!Array.isArray(jwks["keys"])) {
-    throw new Error(`A2A fetchJwks: JWKS response missing "keys" array`);
+    throw new TypeError(`A2A fetchJwks: JWKS response missing "keys" array`);
   }
 
   return { keys: jwks["keys"] as Array<Record<string, unknown>> };

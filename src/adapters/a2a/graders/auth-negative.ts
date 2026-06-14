@@ -145,7 +145,12 @@ export async function checkAuthEnforcement(
     citation: "A2A spec v1.0.0 §7; muster rubric FR-007",
   };
 
-  if (authorizedToken !== null) {
+  if (authorizedToken === null) {
+    // No token supplied: record as not-applicable, treat as true (cannot fail this leg)
+    acceptedAuthorized = true;
+    detail["acceptedAuthorizedApplicable"] = false;
+    detail["acceptedAuthorizedNote"] = "no authorizedToken supplied — authorized-probe leg not-applicable";
+  } else {
     let authStatus: number | undefined;
     try {
       const authResult = await probeAuth(endpoint, method, authorizedToken);
@@ -166,11 +171,6 @@ export async function checkAuthEnforcement(
     }
     detail["authStatus"] = authStatus;
     detail["acceptedAuthorizedApplicable"] = true;
-  } else {
-    // No token supplied: record as not-applicable, treat as true (cannot fail this leg)
-    acceptedAuthorized = true;
-    detail["acceptedAuthorizedApplicable"] = false;
-    detail["acceptedAuthorizedNote"] = "no authorizedToken supplied — authorized-probe leg not-applicable";
   }
 
   const passed = rejectedUnauthorized && acceptedAuthorized;

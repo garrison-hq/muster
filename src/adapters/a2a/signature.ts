@@ -68,7 +68,7 @@ const SUPPORTED_ALGS: ReadonlyMap<string, string | null> = new Map([
  */
 function decodeBase64Url(s: string): Buffer {
   // Replace base64url chars with standard base64 chars and pad
-  const padded = s.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = s.replaceAll("-", "+").replaceAll("_", "/");
   const remainder = padded.length % 4;
   const padded2 = remainder === 0 ? padded : padded + "=".repeat(4 - remainder);
   return Buffer.from(padded2, "base64");

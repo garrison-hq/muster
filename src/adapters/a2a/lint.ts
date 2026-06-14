@@ -101,8 +101,8 @@ function resolveSignature(
     path: card.discoveredFrom,
     message:
       `JWS signature verification failed: ${result.reason ?? "unknown reason"}` +
-      (result.alg !== undefined ? ` (alg: ${result.alg})` : "") +
-      (result.kid !== undefined ? ` (kid: ${result.kid})` : "") +
+      (result.alg === undefined ? "" : ` (alg: ${result.alg})`) +
+      (result.kid === undefined ? "" : ` (kid: ${result.kid})`) +
       ". Citation: A2A spec v1.0.0 signed cards FR-004; muster rubric.",
     severity: "error",
   };
@@ -155,7 +155,11 @@ export function lintCard(
   }
 
   // Sort findings by rule using UTF-16 code-unit ordering (NFR-001, no localeCompare).
-  findings.sort((a, b) => (a.rule < b.rule ? -1 : a.rule > b.rule ? 1 : 0));
+  findings.sort((a, b) => {
+    if (a.rule < b.rule) return -1;
+    if (a.rule > b.rule) return 1;
+    return 0;
+  });
 
   // ok is false iff any error finding OR (expectSigned && not verified).
   const hasErrorFinding = findings.some((f) => f.severity === "error");

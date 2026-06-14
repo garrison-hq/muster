@@ -493,12 +493,10 @@ describe("drifted-skill fixture + skip path", () => {
 
     const endpoint = envEndpoint();
     expect(endpoint).toBeNull();
-    // The skip path: when endpoint is null, callers should skip (not fail)
+    // The skip path: when endpoint is null, callers should skip (not fail).
     // This is the FR-009/D-04 contract: null → skip, not fail.
-    if (endpoint === null) {
-      // Skip is recorded here; we just verify the null return
-      expect(true).toBe(true); // skip acknowledged
-    }
+    // Confirm type is strictly null (not undefined, not empty string).
+    expect(endpoint).toStrictEqual(null);
 
     // Restore
     if (original !== undefined) {

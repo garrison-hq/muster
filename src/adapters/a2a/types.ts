@@ -164,7 +164,7 @@ export function loadManifest(manifestPath: string): A2aManifest {
   }
 
   if (!Array.isArray(obj["cases"])) {
-    throw new Error(
+    throw new TypeError(
       `A2A manifest: missing or invalid "cases" array in ${absPath}`
     );
   }
@@ -176,6 +176,70 @@ export function loadManifest(manifestPath: string): A2aManifest {
   );
 
   return { adapter: "a2a", cases };
+}
+
+/** Extract a plain-object field from a raw case object, or undefined if absent/invalid. */
+function extractPlainObject(
+  obj: Record<string, unknown>,
+  key: string
+): Record<string, unknown> | undefined {
+  const val = obj[key];
+  if (typeof val === "object" && val !== null && !Array.isArray(val)) {
+    return val as Record<string, unknown>;
+  }
+  return undefined;
+}
+
+/** Extract a string field, falling back to `fallback` when absent or non-string. */
+function extractString(obj: Record<string, unknown>, key: string, fallback: string): string {
+  const val = obj[key];
+  return typeof val === "string" ? val : fallback;
+}
+
+/** Parse the optional `skillProbe` block from a raw case object. */
+function parseSkillProbe(
+  obj: Record<string, unknown>
+): ManifestCase["skillProbe"] {
+  const sp = extractPlainObject(obj, "skillProbe");
+  if (sp === undefined) return undefined;
+  return {
+    skillId: extractString(sp, "skillId", ""),
+    input: extractString(sp, "input", ""),
+    expect: extractString(sp, "expect", ""),
+  };
+}
+
+/** Parse the optional `auth` block from a raw case object. */
+function parseAuthBlock(obj: Record<string, unknown>): ManifestCase["auth"] {
+  const auth = extractPlainObject(obj, "auth");
+  if (auth === undefined) return undefined;
+  return {
+    scheme: extractString(auth, "scheme", ""),
+    method: extractString(auth, "method", ""),
+    authorized: Boolean(auth["authorized"]),
+  };
+}
+
+/** Parse the optional `signed` block from a raw case object. */
+function parseSignedBlock(obj: Record<string, unknown>): ManifestCase["signed"] {
+  const signed = extractPlainObject(obj, "signed");
+  if (signed === undefined) return undefined;
+  return {
+    jwksSource: extractString(signed, "jwksSource", ""),
+    expectVerified: Boolean(signed["expectVerified"]),
+  };
+}
+
+/** Resolve `cardSource` to an absolute path (or preserve "well-known"). */
+function resolveCardSource(obj: Record<string, unknown>, manifestDir: string): string {
+  const raw = extractString(obj, "cardSource", "");
+  if (raw === "well-known" || raw.startsWith("/")) return raw;
+  return resolvePath(manifestDir, raw);
+}
+
+/** Parse the `expectation` object from a raw case, defaulting to {}. */
+function parseExpectation(obj: Record<string, unknown>): Record<string, unknown> {
+  return extractPlainObject(obj, "expectation") ?? {};
 }
 
 /**
@@ -196,70 +260,27 @@ function resolveManifestCase(
 
   const obj = raw as Record<string, unknown>;
 
-  const id = typeof obj["id"] === "string" ? obj["id"] : `case-${index}`;
-  const description =
-    typeof obj["description"] === "string" ? obj["description"] : "";
+  const id = extractString(obj, "id", `case-${index}`);
+  const description = extractString(obj, "description", "");
   const gradingClass = obj["gradingClass"] as GradingClass;
-  const expectation =
-    typeof obj["expectation"] === "object" &&
-    obj["expectation"] !== null &&
-    !Array.isArray(obj["expectation"])
-      ? (obj["expectation"] as Record<string, unknown>)
-      : {};
-
-  // Resolve cardSource: if it is not "well-known" and not absolute, resolve
-  // relative to the manifest directory.
-  let cardSource = typeof obj["cardSource"] === "string" ? obj["cardSource"] : "";
-  if (cardSource !== "well-known" && !cardSource.startsWith("/")) {
-    cardSource = resolvePath(manifestDir, cardSource);
-  }
+  const expectation = parseExpectation(obj);
+  const cardSource = resolveCardSource(obj, manifestDir);
 
   const kase: ManifestCase = { id, description, cardSource, gradingClass, expectation };
 
-  if (
-    typeof obj["skillProbe"] === "object" &&
-    obj["skillProbe"] !== null &&
-    !Array.isArray(obj["skillProbe"])
-  ) {
-    const sp = obj["skillProbe"] as Record<string, unknown>;
-    kase.skillProbe = {
-      skillId: typeof sp["skillId"] === "string" ? sp["skillId"] : "",
-      input: typeof sp["input"] === "string" ? sp["input"] : "",
-      expect: typeof sp["expect"] === "string" ? sp["expect"] : "",
-    };
-  }
+  const skillProbe = parseSkillProbe(obj);
+  if (skillProbe !== undefined) kase.skillProbe = skillProbe;
 
-  if (
-    typeof obj["auth"] === "object" &&
-    obj["auth"] !== null &&
-    !Array.isArray(obj["auth"])
-  ) {
-    const auth = obj["auth"] as Record<string, unknown>;
-    kase.auth = {
-      scheme: typeof auth["scheme"] === "string" ? auth["scheme"] : "",
-      method: typeof auth["method"] === "string" ? auth["method"] : "",
-      authorized: Boolean(auth["authorized"]),
-    };
-  }
+  const auth = parseAuthBlock(obj);
+  if (auth !== undefined) kase.auth = auth;
 
-  if (
-    typeof obj["signed"] === "object" &&
-    obj["signed"] !== null &&
-    !Array.isArray(obj["signed"])
-  ) {
-    const signed = obj["signed"] as Record<string, unknown>;
-    kase.signed = {
-      jwksSource: typeof signed["jwksSource"] === "string" ? signed["jwksSource"] : "",
-      expectVerified: Boolean(signed["expectVerified"]),
-    };
-  }
+  const signed = parseSignedBlock(obj);
+  if (signed !== undefined) kase.signed = signed;
 
   if (typeof obj["runs"] === "number") kase.runs = obj["runs"];
-  if (typeof obj["passThreshold"] === "number")
-    kase.passThreshold = obj["passThreshold"];
+  if (typeof obj["passThreshold"] === "number") kase.passThreshold = obj["passThreshold"];
   if (typeof obj["control"] === "boolean") kase.control = obj["control"];
-  if (typeof obj["discoveredFrom"] === "string")
-    kase.discoveredFrom = obj["discoveredFrom"];
+  if (typeof obj["discoveredFrom"] === "string") kase.discoveredFrom = obj["discoveredFrom"];
 
   return kase;
 }

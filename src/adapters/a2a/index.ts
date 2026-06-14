@@ -34,7 +34,7 @@ import {
 } from "./types.js";
 import { parseAgentCard } from "./card.js";
 import type { Jwks } from "./signature.js";
-import { lintCard, serializeLintReport } from "./lint.js";
+import { lintCard } from "./lint.js";
 import { envEndpoint, discoverCard } from "./transport.js";
 import {
   probeSkill,
@@ -372,6 +372,46 @@ function skippedResult(kase: ManifestCase): CaseResult {
   };
 }
 
+/**
+ * Build a failed CaseResult from a caught live grader error (FR-010).
+ * A thrown live error is a FAILED RUN — never skipped.
+ */
+function failedFromError(kase: ManifestCase, err: unknown): CaseResult {
+  return {
+    id: kase.id,
+    description: kase.description,
+    gradingClass: kase.gradingClass,
+    passed: false,
+    skipped: false,
+    detail: { error: String(err) },
+  };
+}
+
+/**
+ * Run a live grader against the endpoint.
+ *
+ * When endpoint is null (env unset) → returns a skipped result (FR-009).
+ * When the grader throws → returns a failed result (FR-010, never skipped).
+ *
+ * @param kase     - The manifest case.
+ * @param endpoint - Live endpoint or null.
+ * @param grader   - Async grader function that takes (kase, endpoint).
+ */
+async function runLiveCase(
+  kase: ManifestCase,
+  endpoint: string | null,
+  grader: (kase: ManifestCase, ep: string) => Promise<CaseResult>
+): Promise<CaseResult> {
+  if (endpoint === null) {
+    return skippedResult(kase);
+  }
+  try {
+    return await grader(kase, endpoint);
+  } catch (err) {
+    return failedFromError(kase, err);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // T025 — runManifest (FR-012)
 // ---------------------------------------------------------------------------
@@ -423,61 +463,16 @@ export async function runManifest(
         break;
 
       case "skill-behavior":
-        if (endpoint === null) {
-          result = skippedResult(kase);
-        } else {
-          try {
-            result = await gradeSkillBehaviorCase(kase, endpoint);
-          } catch (err) {
-            // Errored live probe = failed run (FR-010), never skipped.
-            result = {
-              id: kase.id,
-              description: kase.description,
-              gradingClass: kase.gradingClass,
-              passed: false,
-              skipped: false,
-              detail: { error: String(err) },
-            };
-          }
-        }
+        // Errored live probe = failed run (FR-010), never skipped.
+        result = await runLiveCase(kase, endpoint, gradeSkillBehaviorCase);
         break;
 
       case "auth-negative":
-        if (endpoint === null) {
-          result = skippedResult(kase);
-        } else {
-          try {
-            result = await gradeAuthNegativeCase(kase, endpoint);
-          } catch (err) {
-            result = {
-              id: kase.id,
-              description: kase.description,
-              gradingClass: kase.gradingClass,
-              passed: false,
-              skipped: false,
-              detail: { error: String(err) },
-            };
-          }
-        }
+        result = await runLiveCase(kase, endpoint, gradeAuthNegativeCase);
         break;
 
       case "signed-card-live":
-        if (endpoint === null) {
-          result = skippedResult(kase);
-        } else {
-          try {
-            result = await gradeSignedCardLiveCase(kase, endpoint);
-          } catch (err) {
-            result = {
-              id: kase.id,
-              description: kase.description,
-              gradingClass: kase.gradingClass,
-              passed: false,
-              skipped: false,
-              detail: { error: String(err) },
-            };
-          }
-        }
+        result = await runLiveCase(kase, endpoint, gradeSignedCardLiveCase);
         break;
 
       default: {
