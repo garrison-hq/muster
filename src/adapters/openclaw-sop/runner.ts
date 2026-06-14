@@ -36,7 +36,6 @@ import type {
   SOPRuleManifestEntry,
   SOPLintFinding,
   BinaryAssertion,
-  JudgeAssertion,
   SOPGrade,
   SOPRunVerdict,
   SOPCaseVerdict,
