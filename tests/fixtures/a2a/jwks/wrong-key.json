@@ -1,0 +1,10 @@
+{
+  "keys": [
+    {
+      "crv": "Ed25519",
+      "kid": "muster-wrong-key-ed25519-v1",
+      "kty": "OKP",
+      "x": "Rz3orYK3N2rU7lMVn3WGPNckrXrkamczh5p99sk2QxA"
+    }
+  ]
+}

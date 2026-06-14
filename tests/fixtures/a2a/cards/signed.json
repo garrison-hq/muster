@@ -1,0 +1,17 @@
+{
+  "name": "Test Signed Agent",
+  "securitySchemes": [],
+  "signatures": [
+    {
+      "protected": "eyJhbGciOiJFZERTQSIsImtpZCI6Im11c3Rlci10ZXN0LWtleS1lZDI1NTE5LXYxIn0",
+      "signature": "Re-8i-y74LX4KjA7KK8hECrGBYNSeFN8HEwOLah0jpwAHWBd8f6uyN4rcqn0bsFyDlLBBVJmZIJyPY79W16pAg"
+    }
+  ],
+  "skills": [
+    {
+      "description": "Returns the input message verbatim.",
+      "id": "echo"
+    }
+  ],
+  "version": "1.0.0"
+}
