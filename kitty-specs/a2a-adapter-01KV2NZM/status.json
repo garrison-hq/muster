@@ -1,0 +1,56 @@
+{
+  "event_count": 5,
+  "last_event_id": "01KV2R3XK5HAVBWZZWMNZZKPEC",
+  "materialized_at": "2026-06-14T09:41:29.317974+00:00",
+  "mission_number": "",
+  "mission_slug": "a2a-adapter-01KV2NZM",
+  "mission_type": "software-dev",
+  "summary": {
+    "approved": 0,
+    "blocked": 0,
+    "canceled": 0,
+    "claimed": 0,
+    "done": 0,
+    "for_review": 0,
+    "in_progress": 0,
+    "in_review": 0,
+    "planned": 5
+  },
+  "work_packages": {
+    "WP01": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KV2R3XEGEKW83A2BTRE8A98D",
+      "last_transition_at": "2026-06-14T09:41:29.168058+00:00"
+    },
+    "WP02": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KV2R3XJDR7VDD0H8K90YG7RK",
+      "last_transition_at": "2026-06-14T09:41:29.293735+00:00"
+    },
+    "WP03": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KV2R3XJN8Y2JK276636V58CH",
+      "last_transition_at": "2026-06-14T09:41:29.301537+00:00"
+    },
+    "WP04": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KV2R3XJXNM00155THKXFKWQB",
+      "last_transition_at": "2026-06-14T09:41:29.309773+00:00"
+    },
+    "WP05": {
+      "actor": "finalize-tasks",
+      "force_count": 1,
+      "lane": "planned",
+      "last_event_id": "01KV2R3XK5HAVBWZZWMNZZKPEC",
+      "last_transition_at": "2026-06-14T09:41:29.317974+00:00"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "Test RS256 Signed Agent",
+  "securitySchemes": [],
+  "signatures": [
+    {
+      "protected": "eyJhbGciOiJSUzI1NiIsImtpZCI6Im11c3Rlci10ZXN0LWtleS1yczI1Ni12MSJ9",
+      "signature": "D4YsZ0zQhnzauoalBAnqF2uqnRiguS9CNUn5i7gnESuCeLiM4Bf8vEgU8LjQ4lUd1ZwwfPbLsADrtSys4thcOe4KAiojYS0rC__28QtBsUhKrbUUn-PnfT2h56DloZwPYwHEmd3uQNzjU9kbPfjea873VrJv-X2etKISEADEq3gDhT5jonfye7tnxFhDstDWy_Ra7W-kYlxTCpA5Gxzhy2Y42Sz2GaYfZzjXWzdhKu9NG535sw_wXZXesAM7zWr4ylQoms7tCJthD92VzbRfzSwLoSW4kfXnizfvqkeUk_KRZl-Fkp9XvsS8jBKa3bwxZjAvyfvtvnXy63j4DKGTcw"
+    }
+  ],
+  "skills": [
+    {
+      "description": "Returns the input message verbatim.",
+      "id": "echo"
+    }
+  ],
+  "version": "1.0.0"
+}

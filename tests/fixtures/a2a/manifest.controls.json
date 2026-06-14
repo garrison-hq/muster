@@ -1,0 +1,62 @@
+{
+  "adapter": "a2a",
+  "cases": [
+    {
+      "id": "static-signature-control",
+      "description": "rigged-impossible control: tampered card must fail offline JWS verification (FR-011)",
+      "cardSource": "cards/tampered.json",
+      "gradingClass": "static-lint",
+      "signed": {
+        "jwksSource": "jwks/valid.json",
+        "expectVerified": false
+      },
+      "control": true,
+      "expectation": { "ok": false, "signature": "invalid" }
+    },
+    {
+      "id": "static-obsolete-uri-control",
+      "description": "rigged-impossible control: card discovered at /.well-known/agent.json must be flagged (§8.2, FR-011)",
+      "cardSource": "cards/obsolete-uri.json",
+      "discoveredFrom": "http://example.com/.well-known/agent.json",
+      "gradingClass": "static-lint",
+      "control": true,
+      "expectation": { "ok": false, "rule": "well-known-uri" }
+    },
+    {
+      "id": "skill-behavior-control",
+      "description": "rigged-impossible control: grader must reject a drifted response (FR-011)",
+      "cardSource": "well-known",
+      "gradingClass": "skill-behavior",
+      "skillProbe": {
+        "skillId": "echo",
+        "input": "ping",
+        "expect": "ping"
+      },
+      "runs": 5,
+      "passThreshold": 4,
+      "control": true,
+      "expectation": { "passed": false }
+    },
+    {
+      "id": "auth-control",
+      "description": "rigged-impossible control: grader must fail when auth is not enforced (FR-011)",
+      "cardSource": "well-known",
+      "gradingClass": "auth-negative",
+      "auth": {
+        "scheme": "bearer",
+        "method": "message/send",
+        "authorized": false
+      },
+      "control": true,
+      "expectation": { "rejected": false }
+    },
+    {
+      "id": "signed-card-live-control",
+      "description": "rigged-impossible control: tampered/wrong-key live card must fail JWS verification (FR-011)",
+      "cardSource": "well-known",
+      "gradingClass": "signed-card-live",
+      "control": true,
+      "expectation": { "passed": false }
+    }
+  ]
+}

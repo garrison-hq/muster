@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "mission_slug": "a2a-adapter-01KV2NZM",
+  "mission_id": "01KV2NZMSYZKM7B3AYH8QW13QP",
+  "mission_branch": "kitty/mission-a2a-adapter-01KV2NZM",
+  "target_branch": "feat/a2a-adapter",
+  "lanes": [
+    {
+      "lane_id": "lane-a",
+      "wp_ids": [
+        "WP01",
+        "WP02",
+        "WP03",
+        "WP04",
+        "WP05"
+      ],
+      "write_scope": [
+        "src/adapters/a2a/card.ts",
+        "src/adapters/a2a/graders/auth-negative.ts",
+        "src/adapters/a2a/graders/signed-card.ts",
+        "src/adapters/a2a/graders/skill-behavior.ts",
+        "src/adapters/a2a/index.ts",
+        "src/adapters/a2a/lint.ts",
+        "src/adapters/a2a/signature.ts",
+        "src/adapters/a2a/transport.ts",
+        "src/adapters/a2a/types.ts",
+        "src/cli/index.ts",
+        "tests/a2a/auth-negative.test.ts",
+        "tests/a2a/card.test.ts",
+        "tests/a2a/lint.test.ts",
+        "tests/a2a/manifest.test.ts",
+        "tests/a2a/signature.test.ts",
+        "tests/a2a/signed-card.test.ts",
+        "tests/a2a/skill-behavior.test.ts",
+        "tests/fixtures/a2a/cards/declared-unenforced.json",
+        "tests/fixtures/a2a/cards/drifted-skill.json",
+        "tests/fixtures/a2a/cards/obsolete-uri.json",
+        "tests/fixtures/a2a/cards/signed.json",
+        "tests/fixtures/a2a/cards/tampered.json",
+        "tests/fixtures/a2a/cards/valid.json",
+        "tests/fixtures/a2a/jwks/valid.json",
+        "tests/fixtures/a2a/jwks/wrong-key.json",
+        "tests/fixtures/a2a/manifest.json",
+        "tests/fixtures/a2a/server/test-server.ts"
+      ],
+      "predicted_surfaces": [
+        "api",
+        "artifact-rendering",
+        "tests",
+        "tracker-integration"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    }
+  ],
+  "computed_at": "2026-06-14T09:41:29.328835+00:00",
+  "computed_from": "dependency_graph+ownership",
+  "planning_artifact_wps": [],
+  "collapse_report": {
+    "events": [
+      {
+        "wp_a": "WP02",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP02 depends on WP01"
+      },
+      {
+        "wp_a": "WP03",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP03 depends on WP01"
+      },
+      {
+        "wp_a": "WP04",
+        "wp_b": "WP02",
+        "rule": "dependency",
+        "evidence": "WP04 depends on WP02"
+      },
+      {
+        "wp_a": "WP05",
+        "wp_b": "WP01",
+        "rule": "dependency",
+        "evidence": "WP05 depends on WP01"
+      }
+    ],
+    "total_merges": 4,
+    "independent_wps_collapsed": 0,
+    "by_rule": {
+      "dependency": 4
+    }
+  }
+}
