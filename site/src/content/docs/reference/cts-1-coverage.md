@@ -29,12 +29,12 @@ every path relative to itself, each fixture is a real Soul document with a
 hand-computed `expected.json`, and each fixture's Markdown body explains which
 normative clause it exercises.
 
-That means any Soul.md runtime — in any language — can point its own harness at
+That means any Soul.md runtime, in any language, can point its own harness at
 `cts/manifest.yaml` and immediately have a shared conformance target.
 
 ## Expected-output fixtures are computed by hand
 
 `expected.json` files are canonical JSON authored by applying the spec's rules
-manually — never captured from whatever the implementation currently emits. A
-fixture that "passes because the code produced it" proves nothing; computing the
+manually, never captured from whatever the implementation currently emits. A
+fixture that "passes because the code produced it" proves nothing. Computing the
 expectation by hand is what makes the suite a genuine conformance check.
