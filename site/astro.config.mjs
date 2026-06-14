@@ -11,7 +11,7 @@ export default defineConfig({
     starlight({
       title: 'muster',
       description:
-        'Reference CTS-1 conformance harness for Soul.md RFC-1: static validation, deterministic composition resolution, and behavioral conformance grading.',
+        'Conformance harness for the agent-file stack: static validation and behavioral grading across Soul.md personas, Agent Skills, SOPs, tools, memory, heartbeat, A2A cards, and cross-layer composition.',
       social: [
         {
           icon: 'github',
@@ -25,7 +25,7 @@ export default defineConfig({
       sidebar: [
         {
           label: 'Start here',
-          items: [{ slug: 'getting-started' }],
+          items: [{ slug: 'getting-started' }, { slug: 'reference/layers' }],
         },
         {
           label: 'Guides',
