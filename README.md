@@ -1,6 +1,7 @@
 # muster
 
 [![CI](https://github.com/garrison-hq/muster/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/garrison-hq/muster/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@garrison-hq/muster.svg)](https://www.npmjs.com/package/@garrison-hq/muster)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
 [![Node ≥ 22](https://img.shields.io/badge/node-%E2%89%A522-339933.svg)](https://nodejs.org/)
 [![Soul.md RFC-1](https://img.shields.io/badge/Soul.md-RFC--1%20(1.0.0--rc1)-8a2be2.svg)](https://github.com/rokoss21/soul.md)
