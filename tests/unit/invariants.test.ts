@@ -126,7 +126,17 @@ const coreImportViolations: Array<{ file: string; line: number }> = [];
 // The needle is built by concatenation so this file's own source never
 // contains the literal call-shaped token it scans for.
 const FETCH_CALL = "fetch" + "(";
-const FETCH_ALLOWED = "src/core/behavioral/client.ts";
+// Sanctioned network surfaces. Each entry is a deliberate, auditable place where
+// the codebase reaches the network. Adding one is an architectural decision, not
+// a convenience: src/core/behavioral/client.ts is the OpenAI-compatible chat
+// client; src/adapters/a2a/transport.ts is the A2A adapter's JSON-RPC/HTTP client
+// (a real A2A endpoint is a distinct protocol from the chat model — see the A2A
+// mission research D-02). The "guard the guard" tests below assert each one still
+// actually contains a call-shaped fetch, so a stale allowlist entry fails loudly.
+const FETCH_ALLOWED = [
+  "src/core/behavioral/client.ts",
+  "src/adapters/a2a/transport.ts",
+];
 
 const fetchViolations: Array<{ file: string; index: number }> = [];
 {
@@ -136,7 +146,7 @@ const fetchViolations: Array<{ file: string; index: number }> = [];
   ].filter((f) => f.endsWith(".ts"));
   for (const file of tsFiles) {
     const relFile = rel(file);
-    if (relFile === FETCH_ALLOWED) continue;
+    if (FETCH_ALLOWED.includes(relFile)) continue;
     const content = readFileSync(file, "utf8");
     const index = content.indexOf(FETCH_CALL);
     if (index !== -1) {
@@ -180,7 +190,7 @@ describe("NI-002 / C-004 core never imports adapters", () => {
 });
 
 describe("NI-003 fetch isolation", () => {
-  it(`call-shaped fetch occurs only in ${FETCH_ALLOWED}`, () => {
+  it(`call-shaped fetch occurs only in the sanctioned surfaces`, () => {
     // Note: test stubs install fakes via vi.stubGlobal("fetch", ...) — the
     // quoted-name form does not contain the call-shaped token scanned for
     // here (verified: tests/behavioral/runner.test.ts stubs survive this
@@ -189,10 +199,14 @@ describe("NI-003 fetch isolation", () => {
     expect(locations, "files containing a direct fetch call").toEqual([]);
   });
 
-  it("the allowed client module still exists and uses it", () => {
-    // Guard the guard: if the client moves, the allowlist must move with it.
-    const content = readFileSync(join(repoRoot, FETCH_ALLOWED), "utf8");
-    expect(content.includes(FETCH_CALL)).toBe(true);
+  it("every allowed network surface still exists and uses fetch directly", () => {
+    // Guard the guard: if a sanctioned module moves or stops using fetch, the
+    // allowlist must move with it — a stale entry must fail loudly rather than
+    // silently widening the guard.
+    for (const allowed of FETCH_ALLOWED) {
+      const content = readFileSync(join(repoRoot, allowed), "utf8");
+      expect(content.includes(FETCH_CALL), `${allowed} must contain a call-shaped fetch`).toBe(true);
+    }
   });
 });
 
