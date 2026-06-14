@@ -1,0 +1,60 @@
+{
+  "adapter": "a2a",
+  "cases": [
+    {
+      "id": "static-discovery-ok",
+      "description": "valid card at the well-known URI passes discovery lint",
+      "cardSource": "cards/valid.json",
+      "gradingClass": "static-lint",
+      "expectation": { "ok": true }
+    },
+    {
+      "id": "static-signed-ok",
+      "description": "signed card verifies offline against the supplied JWKS",
+      "cardSource": "cards/signed.json",
+      "gradingClass": "static-lint",
+      "signed": {
+        "jwksSource": "jwks/valid.json",
+        "expectVerified": true
+      },
+      "expectation": { "ok": true, "signature": "verified" }
+    },
+    {
+      "id": "skill-behaves-as-declared",
+      "description": "declared skill live response is consistent with the card (§8.3.1); skipped when no endpoint",
+      "cardSource": "well-known",
+      "gradingClass": "skill-behavior",
+      "skillProbe": {
+        "skillId": "echo",
+        "input": "ping",
+        "expect": "responds as the echo skill declares"
+      },
+      "runs": 5,
+      "passThreshold": 4,
+      "expectation": { "passed": true }
+    },
+    {
+      "id": "auth-enforced",
+      "description": "unauthorized request rejected; authorized accepted (§7); skipped when no endpoint",
+      "cardSource": "well-known",
+      "gradingClass": "auth-negative",
+      "auth": {
+        "scheme": "bearer",
+        "method": "message/send",
+        "authorized": false
+      },
+      "expectation": { "rejected": true }
+    },
+    {
+      "id": "signed-card-live",
+      "description": "optional: deployed card signature verifies against the live JWKS; skipped when no endpoint",
+      "cardSource": "well-known",
+      "gradingClass": "signed-card-live",
+      "signed": {
+        "jwksSource": "live",
+        "expectVerified": true
+      },
+      "expectation": { "passed": true }
+    }
+  ]
+}

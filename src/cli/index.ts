@@ -60,6 +60,14 @@ import {
   type ManifestSummary as HeartbeatManifestSummary,
 } from "../adapters/heartbeat/index.js";
 import {
+  A2aAdapter,
+  lintCard as a2aLintCard,
+  serializeLintReport as a2aSerializeLintReport,
+  runManifest as runA2aManifest,
+  type ManifestSummary as A2aManifestSummary,
+} from "../adapters/a2a/index.js";
+import { parseAgentCard } from "../adapters/a2a/card.js";
+import {
   formatBehaveHuman,
   formatCtsHuman,
   formatReportHuman,
@@ -194,8 +202,9 @@ function parseFiniteNumber(value: string): number {
 }
 
 // Adapter registry: maps --adapter values to adapter factory functions (C-004).
-const ADAPTER_REGISTRY: Record<string, () => InstanceType<typeof HeartbeatAdapter>> = {
+const ADAPTER_REGISTRY: Record<string, () => InstanceType<typeof HeartbeatAdapter> | InstanceType<typeof A2aAdapter>> = {
   heartbeat: () => new HeartbeatAdapter(),
+  a2a: () => new A2aAdapter(),
 };
 
 // ─── muster check ───────────────────────────────────────────────────────────
@@ -210,6 +219,15 @@ async function doCheck(
     const abs = toAbsolute(soul);
     const report = await checkHeartbeatFile(abs);
     io.outLine(serializeLintReport(report));
+    return report.ok ? 0 : 1;
+  }
+  // A2A adapter path: runs the A2A static-lint pipeline (offline, deterministic).
+  if (opts.adapter === "a2a") {
+    const abs = toAbsolute(soul);
+    const raw = await readFileOrThrow(abs, "agent card");
+    const card = parseAgentCard(raw, abs);
+    const report = a2aLintCard(card);
+    io.outLine(a2aSerializeLintReport(report));
     return report.ok ? 0 : 1;
   }
   const { report } = await checkSoulFile(soul, {
@@ -683,6 +701,68 @@ function buildCaseDetail(result: ManifestRunSummary["results"][number]): string 
   return "";
 }
 
+// ─── muster a2a run ─────────────────────────────────────────────────────────
+
+/**
+ * Run the A2A adapter manifest runner (FR-001, FR-012, T025).
+ *
+ * The manifest is a JSON file listing static-lint cases (always run, offline,
+ * deterministic) and optionally live conformance probe cases (skill-behavior,
+ * auth-negative, signed-card-live). Live cases require MUSTER_A2A_ENDPOINT and
+ * are skipped gracefully when it is absent.
+ *
+ * Exit-code contract (FR-012): summary.failed > 0 → 1; else → 0.
+ * Skipped cases never fail the run. IO/manifest errors → exit 2 (ExecutionError).
+ *
+ * This function mirrors doHeartbeatRun exactly (C-004 boundary pattern).
+ */
+async function doA2aRun(
+  manifestPath: string,
+  opts: GlobalOpts,
+  io: Io
+): Promise<number> {
+  let summary: A2aManifestSummary;
+  try {
+    // projectRoot defaults to cwd so that relative fixture paths in
+    // the manifest resolve from the working directory (conventional root).
+    summary = await runA2aManifest(toAbsolute(manifestPath), process.cwd());
+  } catch (error) {
+    throw new ExecutionError(
+      `a2a manifest run failed: ${errorMessage(error)}`
+    );
+  }
+
+  io.outLine(
+    opts.json === true
+      ? JSON.stringify(summary, null, 2)
+      : formatA2aSummaryHuman(summary)
+  );
+  return summary.failed > 0 ? 1 : 0;
+}
+
+/**
+ * Human-readable formatting for A2A ManifestSummary.
+ *
+ * Mirrors formatHeartbeatSummaryHuman — consistent output style across adapters.
+ */
+function formatA2aSummaryHuman(summary: A2aManifestSummary): string {
+  const lines: string[] = [];
+  const statusWord = summary.failed > 0 ? "FAIL" : "PASS";
+  lines.push(
+    `a2a: ${statusWord} — ${summary.passed} passed, ${summary.failed} failed, ${summary.skipped} skipped of ${summary.totalCases}`
+  );
+  for (const result of summary.results) {
+    if (result.skipped) {
+      lines.push(`  SKIP ${result.id}: ${result.skipReason ?? "skipped"}`);
+    } else if (result.passed) {
+      lines.push(`  PASS ${result.id}: ${result.description}`);
+    } else {
+      lines.push(`  FAIL ${result.id}: ${result.description}`);
+    }
+  }
+  return lines.join("\n");
+}
+
 // ─── program assembly ───────────────────────────────────────────────────────
 
 function buildProgram(
@@ -711,7 +791,7 @@ function buildProgram(
       "Static conformance of one Soul.md document (§25.1 report). Never touches the network."
     )
     .argument("<soul>", "path to the Soul.md document")
-    .addOption(new Option("--adapter <name>", "adapter to use (default: rfc1)").choices(["rfc1", "heartbeat"]))
+    .addOption(new Option("--adapter <name>", "adapter to use (default: rfc1)").choices(["rfc1", "heartbeat", "a2a"]))
     .option("--profile <p>", "profile to apply (default: default)")
     .option("--state <s>", "runtime-requested state (§20.1)")
     .option("--restrict-refs [dir]", RESTRICT_REFS_HELP)
@@ -849,6 +929,40 @@ function buildProgram(
     )
     .action(async (manifest: string, _local, cmd: Command) => {
       setExit(await doCrossLayerRun(manifest, cmd.optsWithGlobals(), io));
+    });
+
+  // ─── muster a2a ──────────────────────────────────────────────────────────
+  const a2a = program
+    .command("a2a")
+    .description(
+      "A2A adapter: static card lint + live conformance probes " +
+      "(skill-behavior, auth-negatives, signed cards) for A2A Agent Card conformance"
+    );
+  a2a
+    .command("run")
+    .description(
+      "Run the A2A conformance manifest. Static-lint cases always run (offline, deterministic, " +
+        "byte-stable). Live cases (skill-behavior, auth-negative, signed-card-live) run only when " +
+        "MUSTER_A2A_ENDPOINT is set; they are skipped gracefully when it is absent."
+    )
+    .argument("<manifest>", "path to a2a adapter manifest JSON")
+    .addHelpText(
+      "after",
+      "\nA2A endpoint env vars (live conformance cases):\n" +
+        "  MUSTER_A2A_ENDPOINT   base URL of a deployed A2A agent (e.g. https://my-agent.example.com)\n" +
+        "  MUSTER_A2A_TOKEN      optional bearer token for auth-negative authorized-probe leg\n" +
+        "\nWhen MUSTER_A2A_ENDPOINT is not set, live cases (skill-behavior, auth-negative,\n" +
+        "signed-card-live) are skipped gracefully — recorded as 'skipped' in the summary,\n" +
+        "not counted as failures. Static-lint cases always run offline.\n" +
+        "\nExit-code contract (FR-012):\n" +
+        "  0  all non-skipped cases passed (or all cases were skipped)\n" +
+        "  1  at least one non-skipped case failed\n" +
+        "  2  manifest could not be read or was structurally invalid\n" +
+        "\nCredentials never appear in argv — only the env-var name is used (NFR-005).\n" +
+        "The adapter never uses MUSTER_ENDPOINT / MUSTER_MODEL / MUSTER_API_KEY."
+    )
+    .action(async (manifest: string, _local, cmd: Command) => {
+      setExit(await doA2aRun(manifest, cmd.optsWithGlobals(), io));
     });
 
   // ─── muster heartbeat ─────────────────────────────────────────────────────

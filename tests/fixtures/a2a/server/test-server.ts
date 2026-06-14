@@ -11,6 +11,10 @@
  *        using the Ed25519 key from tests/fixtures/a2a/jwks/valid.json (WP02
  *        fixture keypair). opts.drift causes the declared skill to differ from
  *        what the server actually honors, producing a drifted card.
+ *        opts.healthy causes the server to generate an EPHEMERAL in-process
+ *        Ed25519 keypair, sign its honest echo+bearer card with it, and serve
+ *        the matching JWKS at /.well-known/jwks.json — all without committing
+ *        any private key to the repository.
  *
  *   GET  /.well-known/jwks.json        — The JWKS for live signature verification (WP04).
  *
@@ -30,6 +34,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
+import { generateKeyPairSync, sign as cryptoSign } from "node:crypto";
+import { canonicalJson } from "../../../../src/core/canonical-json.js";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -41,6 +47,7 @@ export interface TestServerOptions {
   /**
    * When true, the server's actual message/send response drifts from what the
    * declared skill advertises — used as the discrimination control (FR-011).
+   * Also: no auth enforcement and no signing (unhealthy control mode).
    */
   drift?: boolean;
   /**
@@ -48,6 +55,22 @@ export interface TestServerOptions {
    * The accepted token is the constant TEST_BEARER_TOKEN below.
    */
   enforceAuth?: boolean;
+  /**
+   * When true, the server generates an EPHEMERAL in-process Ed25519 keypair,
+   * signs its honest echo+bearer card, serves the signed card at the well-known
+   * URI, serves the matching JWKS at /.well-known/jwks.json, and enforces bearer
+   * auth on message/send. Implies honest + enforcing + signed.
+   *
+   * No private key is ever written to disk. The keypair is ephemeral and
+   * scoped to the lifetime of this server instance.
+   *
+   * The signing scheme exactly matches verifyCardJws in signature.ts:
+   *   signingInput = <protected_b64url> + "." + <payload_b64url>
+   *   where payload_b64url = base64url(canonicalJson(card_without_signatures_without_discoveredFrom))
+   *
+   * Citation: muster FR-014; A2A spec v1.0.0 §8.x (signed cards).
+   */
+  healthy?: boolean;
 }
 
 export interface RunningServer {
@@ -88,6 +111,95 @@ function loadJwks(): string {
 /** The signed card fixture (WP02). Loaded once. */
 function loadSignedCard(): string {
   return readFileSync(SIGNED_CARD_PATH, "utf-8");
+}
+
+// ---------------------------------------------------------------------------
+// Ephemeral keypair generation for healthy mode
+// ---------------------------------------------------------------------------
+
+/** Result of generating an ephemeral signing keypair for healthy mode. */
+interface EphemeralKeyPair {
+  /** The signed card JSON string (signed with the ephemeral key). */
+  signedCardJson: string;
+  /** The JWKS JSON string containing only the public key. */
+  jwksJson: string;
+}
+
+/**
+ * Generate an ephemeral Ed25519 keypair, sign an honest echo+bearer card,
+ * and return both the signed card JSON and the matching JWKS JSON.
+ *
+ * The signing scheme matches verifyCardJws (signature.ts) exactly:
+ *   signingInput = <protected_b64url> + "." + base64url(canonicalJson(payload))
+ *   where payload = card without "signatures" and without "discoveredFrom" fields.
+ *
+ * The private key never leaves this function's scope. No I/O.
+ *
+ * @param serverUrl - The base URL of the server (used in the card's discoveredFrom field).
+ */
+function buildEphemeralSignedCard(serverUrl: string): EphemeralKeyPair {
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+
+  const kid = "muster-ephemeral-key-healthy-test";
+
+  // Build the unsigned card payload (what will be signed).
+  // discoveredFrom is NOT included in the signed payload (stripped by buildSigningInput).
+  const cardPayload: Record<string, unknown> = {
+    name: "Muster Healthy Test Agent",
+    version: "1.0.0",
+    skills: [
+      {
+        description: "Returns the input message verbatim.",
+        expectedBehavior: "Agent responds with the exact text of the input message.",
+        id: "echo",
+      },
+    ],
+    securitySchemes: [
+      {
+        id: "bearer-auth",
+        protectedMethods: ["message/send"],
+        type: "bearer",
+      },
+    ],
+  };
+
+  // Protected JWS header: { alg: "EdDSA", kid }
+  const protectedHeader = { alg: "EdDSA", kid };
+  const protectedB64 = Buffer.from(JSON.stringify(protectedHeader)).toString("base64url");
+
+  // Payload: canonicalJson of card without "signatures" and without "discoveredFrom"
+  const canonicalPayload = canonicalJson(cardPayload);
+  const payloadB64 = Buffer.from(canonicalPayload).toString("base64url");
+
+  // signing input = protected_b64 + "." + payload_b64  (matches buildSigningInput in signature.ts)
+  const signingInput = `${protectedB64}.${payloadB64}`;
+
+  // Sign with Ed25519 (null digest for EdDSA)
+  const sigBuf = cryptoSign(null, Buffer.from(signingInput), privateKey);
+  const signatureB64 = sigBuf.toString("base64url");
+
+  // Build the full signed card (includes discoveredFrom for discoverCard transport)
+  const signedCard: Record<string, unknown> = {
+    ...cardPayload,
+    discoveredFrom: `${serverUrl}/.well-known/agent-card.json`,
+    signatures: [
+      {
+        protected: protectedB64,
+        signature: signatureB64,
+      },
+    ],
+  };
+
+  // Export the public key as JWK
+  const publicJwk = publicKey.export({ format: "jwk" }) as Record<string, unknown>;
+  publicJwk["kid"] = kid;
+
+  const jwks = { keys: [publicJwk] };
+
+  return {
+    signedCardJson: JSON.stringify(signedCard),
+    jwksJson: JSON.stringify(jwks),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -200,6 +312,15 @@ function rpcSuccess(id: unknown, result: Record<string, unknown>): JsonRpcSucces
 }
 
 // ---------------------------------------------------------------------------
+// Server state for healthy mode (ephemeral keypair, built once per server)
+// ---------------------------------------------------------------------------
+
+interface HealthyState {
+  signedCardJson: string;
+  jwksJson: string;
+}
+
+// ---------------------------------------------------------------------------
 // Request handler
 // ---------------------------------------------------------------------------
 
@@ -207,14 +328,17 @@ async function handleRequest(
   req: IncomingMessage,
   res: ServerResponse,
   opts: TestServerOptions,
-  serverUrl: string
+  serverUrl: string,
+  healthyState: HealthyState | null
 ): Promise<void> {
   const method = req.method ?? "GET";
   const url = req.url ?? "/";
 
   // GET /.well-known/agent-card.json
   if (method === "GET" && url === "/.well-known/agent-card.json") {
-    if (opts.signed) {
+    if (opts.healthy && healthyState !== null) {
+      sendJson(res, 200, JSON.parse(healthyState.signedCardJson) as unknown);
+    } else if (opts.signed) {
       const cardJson = loadSignedCard();
       sendJson(res, 200, JSON.parse(cardJson) as unknown);
     } else if (opts.drift) {
@@ -227,15 +351,20 @@ async function handleRequest(
 
   // GET /.well-known/jwks.json
   if (method === "GET" && url === "/.well-known/jwks.json") {
-    const jwksJson = loadJwks();
-    sendJson(res, 200, JSON.parse(jwksJson) as unknown);
+    if (opts.healthy && healthyState !== null) {
+      sendJson(res, 200, JSON.parse(healthyState.jwksJson) as unknown);
+    } else {
+      const jwksJson = loadJwks();
+      sendJson(res, 200, JSON.parse(jwksJson) as unknown);
+    }
     return;
   }
 
   // POST / — JSON-RPC 2.0 message/send
   if (method === "POST" && url === "/") {
-    // Auth enforcement (before reading body)
-    if (opts.enforceAuth && !isAuthorized(req)) {
+    // Auth enforcement for healthy and enforceAuth modes
+    const shouldEnforceAuth = opts.healthy === true || opts.enforceAuth === true;
+    if (shouldEnforceAuth && !isAuthorized(req)) {
       res.writeHead(401, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "Unauthorized" }));
       return;
@@ -275,7 +404,7 @@ async function handleRequest(
       return;
     }
 
-    // Honest mode: echo the input verbatim
+    // Honest mode (including healthy): echo the input verbatim
     sendJson(res, 200, rpcSuccess(id, { response: message }));
     return;
   }
@@ -295,19 +424,29 @@ async function handleRequest(
  * The server is deterministic: no random data, no time-dependent values.
  * Uses `listen(0)` for port assignment by the OS (ephemeral).
  *
- * @param opts - Toggle flags: `signed`, `drift`, `enforceAuth`.
+ * Modes (mutually exclusive; first match wins):
+ * - `healthy`     — Generates an EPHEMERAL in-process Ed25519 keypair, signs an
+ *                   honest echo+bearer card, enforces bearer auth, and serves the
+ *                   matching JWKS. A single server instance satisfies all three live
+ *                   conformance checks simultaneously. No key is written to disk.
+ * - `signed`      — Serves the committed signed-card fixture (WP02 keypair).
+ * - `drift`       — Serves a drifted card with no auth enforcement and no signing.
+ * - `enforceAuth` — Honest card + bearer auth enforcement.
+ * - (none)        — Honest card, no auth enforcement, no signing.
+ *
+ * @param opts - Toggle flags: `healthy`, `signed`, `drift`, `enforceAuth`.
  * @returns    A `RunningServer` with `url` and a `close()` that resolves on shutdown.
  */
 export function startTestServer(opts?: TestServerOptions): Promise<RunningServer> {
   const serverOpts: TestServerOptions = opts ?? {};
 
   return new Promise((resolveStart, rejectStart) => {
-    // We need the serverUrl for card bodies, but it's only known after listen().
-    // Use a late-binding approach: build card bodies lazily per-request.
     let serverUrl = "";
+    // healthyState is populated after listen() when we know the URL.
+    let healthyState: HealthyState | null = null;
 
     const server = createServer((req, res) => {
-      handleRequest(req, res, serverOpts, serverUrl).catch(() => {
+      handleRequest(req, res, serverOpts, serverUrl, healthyState).catch(() => {
         if (!res.headersSent) {
           res.writeHead(500);
           res.end("Internal Server Error");
@@ -325,6 +464,11 @@ export function startTestServer(opts?: TestServerOptions): Promise<RunningServer
         return;
       }
       serverUrl = `http://127.0.0.1:${addr.port}`;
+
+      // Build the ephemeral signed card now that we know the server URL.
+      if (serverOpts.healthy) {
+        healthyState = buildEphemeralSignedCard(serverUrl);
+      }
 
       const running: RunningServer = {
         url: serverUrl,

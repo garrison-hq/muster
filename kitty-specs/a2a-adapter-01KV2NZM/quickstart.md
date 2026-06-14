@@ -53,7 +53,9 @@ The adapter never uses the chat-model env (`MUSTER_ENDPOINT` / `MUSTER_MODEL` /
 ## CI monitoring recipe (FR-012)
 
 `muster a2a run` exits non-zero iff a non-skipped check failed and emits a
-machine-readable JSON report — so a scheduled job can monitor a deployed card:
+machine-readable JSON report — so a scheduled job can monitor a deployed card.
+Point CI at `manifest.json` (the shipping conformance manifest — no control cases,
+exits 0 on a healthy agent):
 
 ```yaml
 # .github/workflows/a2a-monitor.yml (illustrative)
@@ -66,9 +68,14 @@ jobs:
       MUSTER_A2A_ENDPOINT: ${{ secrets.A2A_ENDPOINT }}
       MUSTER_A2A_TOKEN: ${{ secrets.A2A_TOKEN }}
     steps:
-      - run: npx @garrison-hq/muster a2a run a2a-manifest.json --json > report.json
+      - run: npx @garrison-hq/muster a2a run tests/fixtures/a2a/manifest.json --json > report.json
       # non-zero exit fails the job → drift between the card and the live agent is caught
+      # offline (no endpoint): 2 static cases pass, 3 live cases skip → exit 0
+      # healthy endpoint: all 5 cases pass → exit 0
 ```
+
+`manifest.controls.json` is the harness self-test proving the graders discriminate (FR-011).
+Run it against misbehaving fixtures/server modes in `pnpm test` — never against your real deployment.
 
 ## Tests
 
@@ -83,7 +90,8 @@ dependency, fully reproducible.
 
 ## Verify discrimination controls
 
-Each grader ships a rigged-impossible control case (`control: true` in the
-manifest). A green run includes those controls **failing** as designed — proof
-the graders can fail. `manifest.test.ts` asserts every control case reports
-`passed: false`.
+`manifest.controls.json` contains five rigged-impossible control cases (`control: true`).
+`manifest.test.ts` asserts every control case reports `passed: true` after inversion
+(grader raw result is `false` — the grader failed as designed, proving it can discriminate).
+Controls are exercised against local fixtures and the drift/unsigned server modes — never
+against a real deployment.

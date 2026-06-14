@@ -61,6 +61,16 @@ export interface ManifestCase {
   passThreshold?: number;
   /** When true: a rigged-impossible discrimination control (FR-011). Must fail. */
   control?: boolean;
+  /**
+   * Optional override for the `discoveredFrom` value passed to parseAgentCard
+   * for static-lint cases. When set, this URI is used instead of the file path
+   * from cardSource — allowing controls to supply a /.well-known/agent.json URL
+   * so the §8.2 obsolete-URI rule fires. Additive and optional; ignored for live
+   * grading classes.
+   *
+   * Citation: A2A spec v1.0.0 protobuf a2a.proto §8.2; muster FR-003.
+   */
+  discoveredFrom?: string;
   /** Per-class expected outcome (used by each grader). */
   expectation: Record<string, unknown>;
 }
@@ -248,6 +258,8 @@ function resolveManifestCase(
   if (typeof obj["passThreshold"] === "number")
     kase.passThreshold = obj["passThreshold"];
   if (typeof obj["control"] === "boolean") kase.control = obj["control"];
+  if (typeof obj["discoveredFrom"] === "string")
+    kase.discoveredFrom = obj["discoveredFrom"];
 
   return kase;
 }
