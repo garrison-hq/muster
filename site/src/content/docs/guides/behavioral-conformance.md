@@ -9,7 +9,7 @@ the model's transcripts against three objectively-measurable axes the soul
 declares.
 
 The checker is **turn-list in, transcript out** and multi-turn from the ground
-up — single-turn cases are just turn lists of length one.
+up. Single-turn cases are just turn lists of length one.
 
 ## The three axes
 
@@ -19,7 +19,7 @@ up — single-turn cases are just turn lists of length one.
 | **Brief refusals** | A refusal stays under the refusal word cap and satisfies content assertions (e.g. "states no price"). |
 | **Dynamic state shift** | Injecting a fact (e.g. `user.rude`) at a turn shifts the active state (e.g. `cold_strict`), and the post-shift output observably conforms to the shifted state. |
 
-These are deliberately the objectively-gradable axes — there is no fuzzy
+These are deliberately the objectively-gradable axes. There is no fuzzy
 "LLM-as-judge" for subjective qualities. Every grade records the `measured`
 value and the `limit` it was checked against, so a failure is always
 explainable.
@@ -37,11 +37,11 @@ The behavioral runner talks to any endpoint speaking the OpenAI
 `/chat/completions` API. Nothing but configuration changes between providers.
 
 ```sh
-# Local — Ollama
+# Local: Ollama
 ollama pull qwen2.5:7b-instruct
 muster behave run behave/voice-frontdesk.yaml     # defaults to localhost:11434/v1
 
-# Hosted — NVIDIA NIM (or any compatible provider)
+# Hosted: NVIDIA NIM (or any compatible provider)
 export MUSTER_API_KEY="..."                        # env only; never a flag or file
 muster behave run behave/voice-frontdesk.yaml \
   --base-url https://integrate.api.nvidia.com/v1 \
@@ -49,7 +49,7 @@ muster behave run behave/voice-frontdesk.yaml \
 ```
 
 The API key is read from `MUSTER_API_KEY` (fallback `OPENAI_API_KEY`) at request
-time. It never appears in argv, transcripts, or committed results — and must
+time. It never appears in argv, transcripts, or committed results, and must
 never be committed to a repository.
 
 See [Behavioral thresholds](/muster/reference/thresholds/) for the exact

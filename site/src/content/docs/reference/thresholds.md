@@ -3,9 +3,9 @@ title: Behavioral thresholds
 description: The deterministic word-count mapping behavioral grading uses, and how overrides work.
 ---
 
-RFC-1 defines `voice.verbosity` as a 0–100 scalar but deliberately maps no word
-counts. So that behavioral grades are objective and reproducible, muster applies
-a documented, deterministic mapping (a locked design decision).
+RFC-1 defines `voice.verbosity` as a 0 to 100 scalar but deliberately maps no
+word counts. So that behavioral grades are objective and reproducible, muster
+applies a documented, deterministic mapping (a locked design decision).
 
 ## The mapping
 
@@ -35,7 +35,7 @@ overrides:
   refusal_cap: 20
 ```
 
-Overrides express **deliberate test design** — they win over the default
+Overrides express **deliberate test design**: they win over the default
 mapping for that case. The canonical example is the intentionally-impossible
 `xfail_discrimination_overly_verbose` case, which sets an unreachable cap to
 prove the grader actually fails non-conforming output rather than rubber-stamping
