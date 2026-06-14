@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-06-14T09:04:12.687036+00:00",
+  "friendly_name": "a2a adapter",
+  "mission_id": "01KV2NZMSYZKM7B3AYH8QW13QP",
+  "mission_number": null,
+  "mission_slug": "a2a-adapter-01KV2NZM",
+  "mission_type": "software-dev",
+  "slug": "a2a-adapter-01KV2NZM",
+  "target_branch": "main"
+}
