@@ -1,9 +1,9 @@
 ---
 title: muster
-description: Reference CTS-1 conformance harness for Soul.md RFC-1 — static validation, deterministic composition resolution, and behavioral conformance grading.
+description: muster is a conformance harness for the agent-file stack. It checks each file an AI agent is built from against its spec, and checks whether your model behaves the way those files declare.
 template: splash
 hero:
-  tagline: Does your SOUL.md conform — and does your model actually behave like it? muster checks the file and the model against Soul.md RFC-1, deterministically and offline-first.
+  tagline: An AI agent is defined by a stack of plain-text files, not a single persona file. muster checks each file against its spec, then checks whether your model behaves the way the files declare. It runs offline and deterministically, with no provider baked in.
   actions:
     - text: Get started
       link: /muster/getting-started/
@@ -17,39 +17,64 @@ hero:
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
 <CardGrid stagger>
-  <Card title="Static conformance" icon="approve-check">
-    Parse a SOUL.md, enforce the Soul-YAML subset, validate against the RFC-1
-    schema **and** the §25 keyspace rules, then resolve composition
-    (extends / mixins / profiles / state) to a byte-stable canonical form.
-    A §25.1 report tells you exactly which clause failed and where.
+  <Card title="Seven layers, one harness" icon="list-format">
+    A persona (`Soul.md`), Agent Skills (`SKILL.md`), an operating procedure
+    (`AGENTS.md`), a tool manifest (`TOOLS.md`), a memory store, a heartbeat
+    checklist, and an A2A agent card. muster validates each one, and checks how
+    they compose.
   </Card>
-  <Card title="Behavioral conformance" icon="rocket">
-    Turn-list in, transcript out. Grade a bring-your-own model against a soul's
-    declared axes — verbosity, brief refusals, and dynamic state shifts — with
-    k-of-n majority and a documented, reproducible threshold mapping.
+  <Card title="Two kinds of check" icon="approve-check">
+    Static checks parse a file and validate it against its spec, offline and
+    byte-for-byte reproducible. Behavioral checks grade a live model against
+    what the file declares, over real multi-turn conversations.
   </Card>
-  <Card title="CTS-1 fixture suite" icon="list-format">
-    A self-describing fixture corpus laid out per RFC-1 **Appendix F**, covering
-    all nine §25.2 conformance categories. Point any Soul.md runtime at the
-    manifest and you have a shared conformance target.
+  <Card title="Bring your own model" icon="rocket">
+    Behavioral grading talks to any OpenAI-compatible endpoint: local Ollama,
+    NVIDIA NIM, OpenAI, whatever you run. The API key is read from the
+    environment at request time. It never goes in a flag, a file, or a manifest.
   </Card>
-  <Card title="Deterministic & offline" icon="laptop">
-    Static checking needs zero network and is byte-for-byte reproducible
-    (RFC 8785 canonical JSON). Behavioral checks talk to any OpenAI-compatible
-    endpoint — local Ollama, NVIDIA NIM, OpenAI — with no provider baked in and
-    no key ever written to disk.
+  <Card title="Deterministic and offline" icon="laptop">
+    Static checking needs no network and produces the same bytes every run
+    (RFC 8785 canonical JSON). You can wire it into CI as a hard gate and trust
+    the result.
   </Card>
 </CardGrid>
 
-## What is Soul.md?
+## What muster checks
 
-[Soul.md RFC-1](https://github.com/rokoss21/soul.md) is a portable, file-based
-format for defining an AI agent's persona — its voice, values, interaction
-style, safety posture, composition from reusable mixins, and reactive "mood"
-states. muster is the reference **CTS-1** (Conformance Test Suite) harness for
-that spec: it tests whether a SOUL.md file is *valid* and whether a model
-*behaves* the way the file declares.
+Each layer below has a static mode that always runs, and most add a behavioral
+mode that runs only when you point it at an endpoint. The
+[layers reference](/muster/reference/layers/) covers each one in detail.
 
-The normative spec text is vendored in the repository and is the single source
-of truth for every check muster performs — each test cites the RFC-1 section it
-enforces.
+| Layer | File | Command |
+| --- | --- | --- |
+| Persona | `Soul.md` (Soul.md RFC-1 / CTS-1) | `check`, `resolve`, `cts run`, `behave run` |
+| Skills | `SKILL.md` (agentskills.io) | `skills run` |
+| SOP | `AGENTS.md` (OpenClaw SOP) | `sop run` |
+| Tools | `TOOLS.md` | `tools run` |
+| Memory | `MEMORY.md` / `USER.md` | `memory run` |
+| Heartbeat | `HEARTBEAT.md` | `heartbeat run` |
+| A2A | Agent Card (JSON) | `a2a run` |
+| Cross-layer | composition of the above | `crosslayer run` |
+
+## What the agent-file stack is
+
+The files an agent reads at startup have multiplied. A persona file sets its
+voice and safety posture. A skills directory tells it what it can do and when.
+An `AGENTS.md` encodes the standard operating procedure. A tools manifest
+declares the functions it may call. A memory file holds what it should remember
+about you. A heartbeat checklist drives its scheduled work. An agent card
+advertises it to other agents.
+
+Each of these has a spec, and a file that parses is not the same as a file the
+model actually follows. muster treats both questions as testable. It validates
+the file against the spec, and it grades the model against the file.
+
+## Where it came from
+
+muster began as the reference **CTS-1** harness for
+[Soul.md RFC-1](https://github.com/rokoss21/soul.md), the persona format. The
+engine underneath turned out to be spec-agnostic, so the same core now drives
+seven layers and the cross-layer composition checks. The normative spec text is
+vendored in the repository and is the single source of truth for every check.
+Each test names the section it enforces.
