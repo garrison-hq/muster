@@ -36,6 +36,7 @@ import type {
   SOPRuleManifestEntry,
   SOPLintFinding,
   BinaryAssertion,
+  JudgeAssertion,
   SOPGrade,
   SOPRunVerdict,
   SOPCaseVerdict,
@@ -53,9 +54,7 @@ import {
 } from "./graders.js";
 import type { ToolCall, SOPTurn } from "./graders.js";
 import { gradeJudgeCompliance } from "./judge.js";
-import type { JudgeAssertion } from "./manifest.js";
-import type { Transcript } from "../../core/behavioral/types.js";
-import type { ChatClient } from "../../core/behavioral/types.js";
+import type { Transcript, ChatClient } from "../../core/behavioral/types.js";
 
 // ---------------------------------------------------------------------------
 // RUBRIC_VERSION — must match docs/rubric/sop-rule-taxonomy.md front matter
@@ -231,9 +230,7 @@ function gradeRunWithBinaryAssertion(
     case "output-format": {
       // Find the last assistant turn content
       const assistantEntries = transcript.entries.filter((e) => e.role === "assistant");
-      const lastContent = assistantEntries.length > 0
-        ? assistantEntries[assistantEntries.length - 1].content
-        : "";
+      const lastContent = assistantEntries.at(-1)?.content ?? "";
       return gradeOutputFormat(lastContent, assertion);
     }
 
@@ -305,7 +302,7 @@ async function runComplianceProbeEntry(
         grades = [grade];
         passed = grade.passed;
       } else if (probe.gradingClass === "judge" && probe.judgeAssertion !== undefined) {
-        const judgeAssertion = probe.judgeAssertion as JudgeAssertion;
+        const judgeAssertion = probe.judgeAssertion;
         const passThreshold = entry.passThreshold ?? Math.ceil(entry.k / 2);
         const result = await gradeJudgeCompliance(
           transcript,
@@ -326,7 +323,7 @@ async function runComplianceProbeEntry(
             passed: false,
           },
         ];
-        passed = false;
+        // passed remains false (initialized above); no reassignment needed
       }
 
       runVerdicts.push({ run, passed, grades, transcript });
@@ -475,6 +472,123 @@ async function loadManifestProbes(manifestPath: string): Promise<{
 // runManifestSuite — the main entry-point (FR-011)
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// loadManifestPhase — load + validate manifest and resolve sopFilePath (Step 1a)
+// ---------------------------------------------------------------------------
+
+/**
+ * Load the manifest and resolve the SOP file path.
+ * Returns { manifest, sopFilePath } on success, or an early SOPSuiteReport on
+ * failure so the caller can return immediately.
+ */
+async function loadManifestPhase(
+  manifestPath: string
+): Promise<{ manifest: SOPRuleManifest; sopFilePath: string } | SOPSuiteReport> {
+  try {
+    const manifest = await loadAndValidateManifest(manifestPath);
+    const manifestDir = dirname(resolve(manifestPath));
+    const sopFilePath = resolve(join(manifestDir, manifest.sopFile));
+    return { manifest, sopFilePath };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return {
+      adapter: "openclaw-sop",
+      rubricVersion: RUBRIC_VERSION,
+      sopFile: manifestPath,
+      lintFindings: [
+        {
+          kind: "MANIFEST_ERROR",
+          location: manifestPath,
+          message: `Manifest load failed: ${msg}`,
+          source: "docs/rubric/sop-rule-taxonomy.md",
+          severity: "error",
+        },
+      ],
+      verdicts: [],
+      passed: false,
+      ranAt: new Date().toISOString(),
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// runLintPhase — static lint with error containment (Step 1b)
+// ---------------------------------------------------------------------------
+
+/**
+ * Run static lint (FR-003); on throw, convert to a STRUCTURAL_ABSENCE finding.
+ * FR-012: lint errors do not short-circuit probe dispatch.
+ */
+async function runLintPhase(
+  sopFilePath: string,
+  manifestPath: string
+): Promise<SOPLintFinding[]> {
+  try {
+    const lintReport = await runStaticLint(sopFilePath, manifestPath);
+    return lintReport.findings;
+  } catch (lintErr) {
+    const msg = lintErr instanceof Error ? lintErr.message : String(lintErr);
+    return [
+      {
+        kind: "STRUCTURAL_ABSENCE",
+        location: sopFilePath,
+        message: `Static lint failed: ${msg}`,
+        source: "docs/rubric/sop-rule-taxonomy.md",
+        severity: "error",
+      },
+    ];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// dispatchProbeVerdicts — probe dispatch + aggregation loop (Steps 2–3)
+// ---------------------------------------------------------------------------
+
+/**
+ * Iterate manifest entries, dispatch compliance and adversarial probes, and
+ * aggregate per-run verdicts into SOPCaseVerdict records.
+ */
+async function dispatchProbeVerdicts(
+  manifest: SOPRuleManifest,
+  complianceProbes: Map<string, ComplianceProbe>,
+  adversarialProbes: Map<string, AdversarialProbe>,
+  client: ChatClient,
+  kOverride?: number
+): Promise<SOPCaseVerdict[]> {
+  const verdicts: SOPCaseVerdict[] = [];
+
+  for (const entry of manifest.rules) {
+    for (const probeId of entry.probeIds) {
+      const complianceProbe = complianceProbes.get(probeId);
+      const adversarialProbe = adversarialProbes.get(probeId);
+
+      if (complianceProbe !== undefined) {
+        const runVerdicts = await runComplianceProbeEntry(entry, complianceProbe, client, kOverride);
+        const passThreshold = entry.passThreshold ?? Math.ceil(entry.k / 2);
+        const caseResult =
+          entry.aggregation === "pass-k"
+            ? aggregatePassK(runVerdicts)
+            : aggregateKofN(runVerdicts, passThreshold);
+        verdicts.push({ probeId, ruleId: entry.ruleId, ...caseResult });
+      } else if (adversarialProbe !== undefined) {
+        // Adversarial probes always use pass^k (FR-007, charter)
+        const runVerdicts = await runAdversarialProbeEntry(entry, adversarialProbe, client, kOverride);
+        const caseResult = aggregatePassK(runVerdicts);
+        verdicts.push({
+          probeId,
+          ruleId: entry.ruleId,
+          ...caseResult,
+          aggregation: "pass-k", // adversarial probes always pass-k
+        });
+      }
+      // If a probeId is not found in the probe registry, skip it
+      // (the manifest may reference external probes not in this suite).
+    }
+  }
+
+  return verdicts;
+}
+
 /**
  * FR-011: Run the full compliance + adversarial probe suite from a YAML
  * rule manifest.
@@ -501,126 +615,30 @@ export async function runManifestSuite(
 ): Promise<SOPSuiteReport> {
   const { client, k: kOverride } = options;
 
-  // -------------------------------------------------------------------------
-  // Step 1: Load phase
-  // -------------------------------------------------------------------------
-
-  // Load and validate the manifest (needed to resolve sopFile path)
-  let manifest: SOPRuleManifest;
-  let sopFilePath: string;
-
-  try {
-    manifest = await loadAndValidateManifest(manifestPath);
-    // Resolve the SOP file path relative to the manifest file
-    const manifestDir = dirname(resolve(manifestPath));
-    sopFilePath = resolve(join(manifestDir, manifest.sopFile));
-  } catch (err) {
-    // Manifest load failed — return a report with a single error finding
-    const msg = err instanceof Error ? err.message : String(err);
-    return {
-      adapter: "openclaw-sop",
-      rubricVersion: RUBRIC_VERSION,
-      sopFile: manifestPath,
-      lintFindings: [
-        {
-          kind: "MANIFEST_ERROR",
-          location: manifestPath,
-          message: `Manifest load failed: ${msg}`,
-          source: "docs/rubric/sop-rule-taxonomy.md",
-          severity: "error",
-        },
-      ],
-      verdicts: [],
-      passed: false,
-      ranAt: new Date().toISOString(),
-    };
+  // Step 1a: Load and validate manifest
+  const loadResult = await loadManifestPhase(manifestPath);
+  // If loadResult has a `verdicts` field it is an early-exit error report
+  if ("verdicts" in loadResult) {
+    return loadResult;
   }
+  const { manifest, sopFilePath } = loadResult;
 
-  // Run static lint (FR-003; read-only import from index.ts — index.ts is not modified).
-  // FR-012: lint errors do not short-circuit probe dispatch. If runStaticLint itself
-  // throws (e.g., sopFile not found / ENOENT), convert the exception to a lint finding
-  // and continue with probe execution.
-  let lintFindings: SOPLintFinding[];
-  try {
-    const lintReport = await runStaticLint(sopFilePath, manifestPath);
-    lintFindings = lintReport.findings;
-  } catch (lintErr) {
-    const msg = lintErr instanceof Error ? lintErr.message : String(lintErr);
-    lintFindings = [
-      {
-        kind: "STRUCTURAL_ABSENCE",
-        location: sopFilePath,
-        message: `Static lint failed: ${msg}`,
-        source: "docs/rubric/sop-rule-taxonomy.md",
-        severity: "error",
-      },
-    ];
-  }
+  // Step 1b: Static lint (FR-012: never short-circuits probe dispatch)
+  const lintFindings = await runLintPhase(sopFilePath, manifestPath);
 
-  // Load probe registry from the manifest file (probes section)
+  // Step 1c: Load probe registry from the manifest file (probes section)
   const { complianceProbes, adversarialProbes } = await loadManifestProbes(manifestPath);
 
-  // -------------------------------------------------------------------------
-  // Step 2: Dispatch phase — iterate over manifest entries
-  // -------------------------------------------------------------------------
+  // Steps 2–3: Dispatch probes and aggregate verdicts
+  const verdicts = await dispatchProbeVerdicts(
+    manifest,
+    complianceProbes,
+    adversarialProbes,
+    client,
+    kOverride
+  );
 
-  const verdicts: SOPCaseVerdict[] = [];
-
-  for (const entry of manifest.rules) {
-    // Dispatch compliance probes for this entry
-    for (const probeId of entry.probeIds) {
-      const complianceProbe = complianceProbes.get(probeId);
-      const adversarialProbe = adversarialProbes.get(probeId);
-
-      if (complianceProbe !== undefined) {
-        // Run compliance probe (FR-012: errors are contained per-run)
-        const runVerdicts = await runComplianceProbeEntry(
-          entry,
-          complianceProbe,
-          client,
-          kOverride
-        );
-
-        // Step 3: Aggregation
-        let caseResult: Omit<SOPCaseVerdict, "probeId" | "ruleId">;
-        if (entry.aggregation === "pass-k") {
-          caseResult = aggregatePassK(runVerdicts);
-        } else {
-          const passThreshold = entry.passThreshold ?? Math.ceil(entry.k / 2);
-          caseResult = aggregateKofN(runVerdicts, passThreshold);
-        }
-
-        verdicts.push({
-          probeId,
-          ruleId: entry.ruleId,
-          ...caseResult,
-        });
-      } else if (adversarialProbe !== undefined) {
-        // Adversarial probes always use pass^k (FR-007, charter)
-        const runVerdicts = await runAdversarialProbeEntry(
-          entry,
-          adversarialProbe,
-          client,
-          kOverride
-        );
-
-        const caseResult = aggregatePassK(runVerdicts);
-        verdicts.push({
-          probeId,
-          ruleId: entry.ruleId,
-          ...caseResult,
-          aggregation: "pass-k", // adversarial probes always pass-k
-        });
-      }
-      // If a probeId is listed in the manifest but not found in the probe registry,
-      // skip it (the manifest may reference external probes not in this suite).
-    }
-  }
-
-  // -------------------------------------------------------------------------
   // Step 4: Report assembly
-  // -------------------------------------------------------------------------
-
   const passed =
     lintFindings.every((f) => f.severity !== "error") &&
     verdicts.every((v) => v.passed);

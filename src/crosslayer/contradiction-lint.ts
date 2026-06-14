@@ -168,6 +168,29 @@ function hasAny(tokens: string[], set: Set<string>): boolean {
 }
 
 /**
+ * Returns true when one clause is a broad accommodation and the other is a
+ * scope restriction (no negation) — i.e. a refinement, not a contradiction.
+ * e.g. "respond warmly" + "use formal register for legal topics".
+ * Extracted to keep isRefinement within cognitive complexity ≤ 15 (S3776).
+ */
+function isScopeRefinement(
+  tokensA: string[],
+  aHasAccommodation: boolean,
+  tokensB: string[],
+  bHasNegation: boolean,
+  bHasAccommodation: boolean,
+  aHasNegation: boolean
+): boolean {
+  if (aHasAccommodation && !bHasNegation && hasAny(tokensB, SCOPE_QUALIFIERS)) {
+    return true;
+  }
+  if (bHasAccommodation && !aHasNegation && hasAny(tokensA, SCOPE_QUALIFIERS)) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * Determines whether clauseB is a refinement (scope restriction) of clauseA
  * rather than a true contradiction.
  *
@@ -222,27 +245,9 @@ function isRefinement(clauseA: string, clauseB: string): boolean {
     return false;
   }
 
-  // Scope-restriction test:
-  // If one clause is a generality (accommodation) and the other uses only scope
-  // qualifiers to limit application domain (no negation of the general directive)
-  // — this is a refinement. e.g. "respond warmly" + "use formal register for legal".
-  if (aHasAccommodation && !bHasNegation) {
-    const bHasScopeQualifier = hasAny(tokensB, SCOPE_QUALIFIERS);
-    if (bHasScopeQualifier) {
-      // clauseB narrows clauseA to a scope without negating it — refinement.
-      return true;
-    }
-  }
-
-  if (bHasAccommodation && !aHasNegation) {
-    const aHasScopeQualifier = hasAny(tokensA, SCOPE_QUALIFIERS);
-    if (aHasScopeQualifier) {
-      return true;
-    }
-  }
-
-  // Default: report contradiction (err on the side of false positive for safety).
-  return false;
+  // Scope-restriction test: one clause is a generality (accommodation) and the
+  // other uses only scope qualifiers to limit the application domain (no negation).
+  return isScopeRefinement(tokensA, aHasAccommodation, tokensB, bHasNegation, bHasAccommodation, aHasNegation);
 }
 
 // ---------------------------------------------------------------------------
@@ -360,6 +365,94 @@ function buildPrecedenceFinding(
 // ---------------------------------------------------------------------------
 
 /**
+ * Emits precedence findings for a confirmed contradiction between two clauses.
+ * Extracted from analyseLayerPair to keep cognitive complexity ≤ 15 (S3776).
+ * When effectivePrecedence is undefined, emits an "undefined-precedence" finding;
+ * otherwise resolves the winner and emits "resolved-by-precedence".
+ */
+function emitPrecedenceFindings(
+  layerA: LayerType,
+  layerB: LayerType,
+  clauseA: string,
+  clauseB: string,
+  effectivePrecedence: PrecedenceDeclaration | undefined
+): CrossLayerFinding[] {
+  if (effectivePrecedence === undefined) {
+    return [
+      buildPrecedenceFinding(
+        "undefined-precedence",
+        layerA,
+        layerB,
+        clauseA,
+        clauseB,
+        undefined,
+        MUSTER_RUBRIC_CITATION
+      ),
+    ];
+  }
+  const winner = resolveWinner(layerA, layerB, effectivePrecedence);
+  return [
+    buildPrecedenceFinding(
+      "resolved-by-precedence",
+      layerA,
+      layerB,
+      clauseA,
+      clauseB,
+      winner,
+      STACK_PRECEDENCE_CITATION
+    ),
+  ];
+}
+
+/**
+ * Analyses a single clause pair and returns any contradiction/precedence findings.
+ * Returns an empty array when no contradiction is detected.
+ * Extracted from analyseLayerPair to keep cognitive complexity ≤ 15 (S3776).
+ */
+function analyseClausePair(
+  layerA: LayerType,
+  clauseA: string,
+  layerB: LayerType,
+  clauseB: string,
+  effectivePrecedence: PrecedenceDeclaration | undefined
+): CrossLayerFinding[] {
+  const tokensA = tokenize(clauseA);
+  const tokensB = tokenize(clauseB);
+
+  const aHasNegation = hasAny(tokensA, NEGATION_OPERATORS);
+  const bHasNegation = hasAny(tokensB, NEGATION_OPERATORS);
+  const aHasAccommodation = hasAny(tokensA, ACCOMMODATION_OPERATORS);
+  const bHasAccommodation = hasAny(tokensB, ACCOMMODATION_OPERATORS);
+
+  // Only analyse pairs where at least one polarity signal is present.
+  // Pairs with no negation and no accommodation cannot produce a contradiction
+  // with the current heuristic — skip to avoid noise.
+  const hasPolaritySignal =
+    aHasNegation || bHasNegation || aHasAccommodation || bHasAccommodation;
+  if (!hasPolaritySignal) {
+    return [];
+  }
+
+  // Check for polarity inversion — a necessary condition for contradiction.
+  const isPolarityInversion =
+    (aHasAccommodation && bHasNegation) || (aHasNegation && bHasAccommodation);
+  if (!isPolarityInversion) {
+    return [];
+  }
+
+  // Apply refinement distinguisher (FR-003).
+  if (isRefinement(clauseA, clauseB)) {
+    return [];
+  }
+
+  // True contradiction detected — emit contradiction finding + precedence finding.
+  return [
+    buildContradictionFinding(layerA, layerB, clauseA, clauseB, MUSTER_RUBRIC_CITATION),
+    ...emitPrecedenceFindings(layerA, layerB, clauseA, clauseB, effectivePrecedence),
+  ];
+}
+
+/**
  * Analyses a pair of layer texts for contradictions and emits findings.
  * Runs on resolved layerTexts (C-003) for one (layerA, layerB) pair.
  * When isCircular is true, skips precedence resolution (T011).
@@ -374,70 +467,13 @@ function analyseLayerPair(
 ): CrossLayerFinding[] {
   const clausesA = extractClauses(textA);
   const clausesB = extractClauses(textB);
+  const effectivePrecedence = isCircular ? undefined : composition.precedence;
   const pairFindings: CrossLayerFinding[] = [];
 
   for (const clauseA of clausesA) {
     for (const clauseB of clausesB) {
-      const tokensA = tokenize(clauseA);
-      const tokensB = tokenize(clauseB);
-
-      const aHasNegation = hasAny(tokensA, NEGATION_OPERATORS);
-      const bHasNegation = hasAny(tokensB, NEGATION_OPERATORS);
-      const aHasAccommodation = hasAny(tokensA, ACCOMMODATION_OPERATORS);
-      const bHasAccommodation = hasAny(tokensB, ACCOMMODATION_OPERATORS);
-
-      // Only analyse pairs where at least one polarity signal is present.
-      // Pairs with no negation and no accommodation cannot produce a contradiction
-      // with the current heuristic — skip to avoid noise.
-      const hasPolaritySignal =
-        aHasNegation || bHasNegation || aHasAccommodation || bHasAccommodation;
-      if (!hasPolaritySignal) {
-        continue;
-      }
-
-      // Check for polarity inversion — a necessary condition for contradiction.
-      const isPolarityInversion =
-        (aHasAccommodation && bHasNegation) || (aHasNegation && bHasAccommodation);
-      if (!isPolarityInversion) {
-        continue;
-      }
-
-      // Apply refinement distinguisher (FR-003).
-      if (isRefinement(clauseA, clauseB)) {
-        continue;
-      }
-
-      // True contradiction detected.
-      pairFindings.push(buildContradictionFinding(layerA, layerB, clauseA, clauseB, MUSTER_RUBRIC_CITATION));
-
-      // Determine precedence finding type (T010, T011).
-      const effectivePrecedence = isCircular ? undefined : composition.precedence;
-      if (effectivePrecedence !== undefined) {
-        const winner = resolveWinner(layerA, layerB, effectivePrecedence);
-        pairFindings.push(
-          buildPrecedenceFinding(
-            "resolved-by-precedence",
-            layerA,
-            layerB,
-            clauseA,
-            clauseB,
-            winner,
-            STACK_PRECEDENCE_CITATION
-          )
-        );
-      } else {
-        pairFindings.push(
-          buildPrecedenceFinding(
-            "undefined-precedence",
-            layerA,
-            layerB,
-            clauseA,
-            clauseB,
-            undefined,
-            MUSTER_RUBRIC_CITATION
-          )
-        );
-      }
+      const clauseFindings = analyseClausePair(layerA, clauseA, layerB, clauseB, effectivePrecedence);
+      pairFindings.push(...clauseFindings);
     }
   }
 

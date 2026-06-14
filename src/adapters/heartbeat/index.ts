@@ -31,9 +31,9 @@ import {
   parseHeartbeat,
   applyManifest,
   lintHeartbeat,
-  serializeLintReport,
 } from "./lint.js";
 import type { LintReport, RecurrenceManifest } from "./lint.js";
+export { serializeLintReport } from "./lint.js";
 import { loadTickState, buildScenarioFraming } from "./tick.js";
 import { loadIntervalConfig } from "./graders/quiet-ack.js";
 import * as ActionDiffGrader from "./graders/action-diff.js";
@@ -122,6 +122,36 @@ export function loadManifestFile(manifestPath: string): ManifestFile {
 }
 
 /**
+ * Check whether a LintReport satisfies the static-lint expectation object.
+ * Returns true when all specified expectation fields match the report.
+ */
+function checkStaticLintExpectation(
+  report: LintReport,
+  exp: Record<string, unknown>
+): boolean {
+  if ("ok" in exp && exp["ok"] !== undefined && report.ok !== exp["ok"]) {
+    return false;
+  }
+  if ("isEmpty" in exp && exp["isEmpty"] !== undefined && report.isEmpty !== exp["isEmpty"]) {
+    return false;
+  }
+  if ("hasRule" in exp && typeof exp["hasRule"] === "string") {
+    if (!report.findings.some((f) => f.rule === exp["hasRule"])) {
+      return false;
+    }
+  }
+  if (
+    "findings" in exp &&
+    Array.isArray(exp["findings"]) &&
+    (exp["findings"] as unknown[]).length === 0 &&
+    report.findings.length !== 0
+  ) {
+    return false;
+  }
+  return true;
+}
+
+/**
  * Grade a static-lint case from the manifest.
  *
  * Resolves the checklistPath relative to projectRoot, runs parseHeartbeat
@@ -148,34 +178,7 @@ function gradeStaticLintCase(kase: ManifestCase, projectRoot: string): CaseResul
 
   const heartbeatFile = parseHeartbeat(absPath, raw);
   const report = lintHeartbeat(heartbeatFile);
-
-  const exp = kase.expectation;
-  let passed = true;
-
-  // Check ok expectation (when specified).
-  if ("ok" in exp && exp["ok"] !== undefined) {
-    if (report.ok !== exp["ok"]) passed = false;
-  }
-
-  // Check isEmpty expectation (when specified).
-  if ("isEmpty" in exp && exp["isEmpty"] !== undefined) {
-    if (report.isEmpty !== exp["isEmpty"]) passed = false;
-  }
-
-  // Check that a specific rule is present in findings.
-  if ("hasRule" in exp && typeof exp["hasRule"] === "string") {
-    const hasRule = report.findings.some((f) => f.rule === exp["hasRule"]);
-    if (!hasRule) passed = false;
-  }
-
-  // Check that findings array is empty (when expectation says findings: []).
-  if (
-    "findings" in exp &&
-    Array.isArray(exp["findings"]) &&
-    (exp["findings"] as unknown[]).length === 0
-  ) {
-    if (report.findings.length !== 0) passed = false;
-  }
+  const passed = checkStaticLintExpectation(report, kase.expectation);
 
   return {
     id: kase.id,
@@ -351,9 +354,9 @@ async function runIdempotencyCase(
   const framing = buildScenarioFraming(checklist, tickWithInterval);
 
   const onceOnlyItems = checklist.items.filter((item) => item.recurrence === "once-only");
-  const priorActions = tick.priorActionSummary !== null
-    ? tick.priorActionSummary.split("\n").map((l) => l.trim()).filter((l) => l.length > 0)
-    : [];
+  const priorActions = tick.priorActionSummary === null
+    ? []
+    : tick.priorActionSummary.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
 
   const runs: IdempotencyGrader.IdempotencyCheck[] = [];
 
@@ -508,7 +511,14 @@ export async function runManifest(
       case "action-diff":
       case "idempotency":
       case "quiet-ack":
-        if (!hasMusterEndpoint) {
+        if (hasMusterEndpoint) {
+          const client = makeClient({
+            baseUrl: endpointUrl as string,
+            model: process.env["MUSTER_MODEL"] ?? "default",
+            apiKeyEnv: "MUSTER_API_KEY",
+          });
+          result = await gradeBehavioralCase(kase, root, client);
+        } else {
           result = {
             id: kase.id,
             description: kase.description,
@@ -517,13 +527,6 @@ export async function runManifest(
             skipped: true,
             skipReason: `MUSTER_ENDPOINT not set — behavioral case requires a BYOM endpoint`,
           };
-        } else {
-          const client = makeClient({
-            baseUrl: endpointUrl as string,
-            model: process.env["MUSTER_MODEL"] ?? "default",
-            apiKeyEnv: "MUSTER_API_KEY",
-          });
-          result = await gradeBehavioralCase(kase, root, client);
         }
         break;
       default: {
@@ -544,7 +547,11 @@ export async function runManifest(
 
   // Sort by case ID using UTF-16 code-unit ordering (NFR-001).
   // DO NOT use localeCompare — it is locale-dependent and breaks byte-stability.
-  results.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  results.sort((a, b) => {
+    if (a.id < b.id) return -1;
+    if (a.id > b.id) return 1;
+    return 0;
+  });
 
   const passed = results.filter((r) => !r.skipped && r.passed).length;
   const failed = results.filter((r) => !r.skipped && !r.passed).length;
@@ -648,6 +655,4 @@ export const heartbeatAdapter: SpecAdapter = new HeartbeatAdapter();
 /** Structural conformance witness: satisfies the C-004 contract. */
 const _contractCheck: SpecAdapter = heartbeatAdapter;
 
-// Re-export serializeLintReport for CLI use (avoids the CLI importing
-// from lint.ts directly — all heartbeat types flow through this module).
-export { serializeLintReport };
+// serializeLintReport is re-exported via `export { serializeLintReport } from "./lint.js"` above.

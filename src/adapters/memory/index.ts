@@ -196,6 +196,46 @@ function runStaticLintCases(
 }
 
 /**
+ * Run a single recall probe case; returns true iff it passes.
+ * Extracted to reduce cognitive complexity of runBehavioralCases (S3776).
+ */
+async function runRecallCase(
+  recallCase: RecallCase,
+  endpoint: AdapterOptions["endpoint"],
+  runner: RecallProbeRunner,
+  allFindings: Finding[]
+): Promise<boolean> {
+  if (endpoint === undefined) {
+    throw new Error(`behavioral recall probe "${recallCase.id}" requires endpoint config`);
+  }
+  const probeYaml = readFileSync(toAbsolute(recallCase.probePath), "utf8");
+  const probe = parseProbeYaml<RecallProbe>(probeYaml);
+  const verdict = await runner.run(probe, endpoint);
+  allFindings.push({ ...verdict, kind: "recall" } satisfies TaggedRecallVerdict);
+  return verdict.pass;
+}
+
+/**
+ * Run a single privacy-leak probe case; returns true iff it passes.
+ * Extracted to reduce cognitive complexity of runBehavioralCases (S3776).
+ */
+async function runPrivacyCase(
+  privacyCase: PrivacyCase,
+  endpoint: AdapterOptions["endpoint"],
+  runner: PrivacyLeakProbeRunner,
+  allFindings: Finding[]
+): Promise<boolean> {
+  if (endpoint === undefined) {
+    throw new Error(`behavioral privacy probe "${privacyCase.id}" requires endpoint config`);
+  }
+  const probeYaml = readFileSync(toAbsolute(privacyCase.probePath), "utf8");
+  const probe = parseProbeYaml<PrivacyLeakProbe>(probeYaml);
+  const verdict = await runner.run(probe, endpoint);
+  allFindings.push({ ...verdict, kind: "privacy" } satisfies TaggedPrivacyLeakVerdict);
+  return verdict.pass;
+}
+
+/**
  * Run behavioral (recall + privacy) probe cases and accumulate findings.
  * Extraction-only refactor — identical control flow to the original block.
  */
@@ -211,19 +251,8 @@ async function runBehavioralCases(
   // Recall probe cases.
   if (manifest.recallCases !== undefined) {
     for (const recallCase of manifest.recallCases) {
-      const probeYaml = readFileSync(toAbsolute(recallCase.probePath), "utf8");
-      const probe = parseProbeYaml<RecallProbe>(probeYaml);
-
-      if (options.endpoint === undefined) {
-        throw new Error(
-          `behavioral recall probe "${recallCase.id}" requires endpoint config`
-        );
-      }
-
-      const verdict = await recallRunner.run(probe, options.endpoint);
-      const taggedRecall: TaggedRecallVerdict = { ...verdict, kind: "recall" };
-      allFindings.push(taggedRecall);
-      if (!verdict.pass) {
+      const passed = await runRecallCase(recallCase, options.endpoint, recallRunner, allFindings);
+      if (!passed) {
         allOk = false;
       }
     }
@@ -232,19 +261,8 @@ async function runBehavioralCases(
   // Privacy/leak probe cases.
   if (manifest.privacyCases !== undefined) {
     for (const privacyCase of manifest.privacyCases) {
-      const probeYaml = readFileSync(toAbsolute(privacyCase.probePath), "utf8");
-      const probe = parseProbeYaml<PrivacyLeakProbe>(probeYaml);
-
-      if (options.endpoint === undefined) {
-        throw new Error(
-          `behavioral privacy probe "${privacyCase.id}" requires endpoint config`
-        );
-      }
-
-      const verdict = await privacyRunner.run(probe, options.endpoint);
-      const taggedPrivacy: TaggedPrivacyLeakVerdict = { ...verdict, kind: "privacy" };
-      allFindings.push(taggedPrivacy);
-      if (!verdict.pass) {
+      const passed = await runPrivacyCase(privacyCase, options.endpoint, privacyRunner, allFindings);
+      if (!passed) {
         allOk = false;
       }
     }

@@ -238,9 +238,9 @@ function validateManifest(
 
   // Only require endpoint when behavioral cases are present in the active run set.
   // When testClassFilter is "static", behavioral cases are excluded — no endpoint needed.
-  const activeCases = options.filter !== undefined
-    ? manifest.cases.filter((c) => c.testClass === options.filter)
-    : manifest.cases;
+  const activeCases = options.filter === undefined
+    ? manifest.cases
+    : manifest.cases.filter((c) => c.testClass === options.filter);
 
   const hasBehavioral = activeCases.some((c) => c.testClass === "behavioral");
   if (hasBehavioral && manifest.endpoint === undefined) {
@@ -420,9 +420,9 @@ async function runBehavioralCase(
   const result = await runRuleSurvival(survivalCase, composition, endpointConfig);
 
   const passed =
-    c.expected.verdict !== undefined
-      ? result.verdict === c.expected.verdict
-      : result.verdict !== "eroded" && result.verdict !== "baseline-failure";
+    c.expected.verdict === undefined
+      ? result.verdict !== "eroded" && result.verdict !== "baseline-failure"
+      : result.verdict === c.expected.verdict;
 
   return {
     id: c.id,
@@ -443,7 +443,7 @@ function buildSurvivalCase(
     baselineRuns: c.baselineConfig?.runs ?? 3,
     composedRuns: c.composedRuns ?? 3,
     passThreshold: c.passThreshold ?? c.baselineConfig?.passThreshold ?? 0.6,
-    gradingClass: (c.gradingClass ?? "pass-k") as GradingClass,
+    gradingClass: c.gradingClass ?? "pass-k",
     isDiscriminationControl: c.isDiscriminationControl === true,
     adversarialProbe: c.adversarialProbe,
   };
@@ -538,9 +538,9 @@ export async function runManifest(
     };
   }
 
-  const casesToRun = filter !== undefined
-    ? manifest.cases.filter((c) => c.testClass === filter)
-    : manifest.cases;
+  const casesToRun = filter === undefined
+    ? manifest.cases
+    : manifest.cases.filter((c) => c.testClass === filter);
 
   // Path-traversal preflight (Note 6): validate all relative layer fixturePaths
   // before running any case. Traversal violations are security errors — they

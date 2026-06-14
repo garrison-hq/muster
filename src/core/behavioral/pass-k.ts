@@ -35,5 +35,5 @@
  * @returns `true` iff all flags are `true` (pass^k conjunction).
  */
 export function conjunctivePassK(passFlags: readonly boolean[]): boolean {
-  return passFlags.every((p) => p);
+  return passFlags.every(Boolean);
 }

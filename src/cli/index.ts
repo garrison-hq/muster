@@ -523,6 +523,63 @@ function endpointFromEnv(): EndpointManifestConfig | undefined {
   return { base_url: baseUrl, model, api_key_env: apiKeyEnv };
 }
 
+/** Emit a crosslayer summary to the output sink and return the exit code. */
+function emitCrossLayerSummary(summary: ManifestRunSummary, opts: GlobalOpts, io: Io): number {
+  io.outLine(opts.json === true ? JSON.stringify(summary, null, 2) : formatCrossLayerResultHuman(summary));
+  return summary.failed > 0 ? 1 : 0;
+}
+
+/**
+ * Run crosslayer with --static-only (no endpoint required).
+ * Extracted to reduce cognitive complexity of doCrossLayerRun (S3776).
+ */
+async function doCrossLayerStaticOnly(
+  absManifestPath: string,
+  opts: GlobalOpts,
+  io: Io
+): Promise<number> {
+  let summary: ManifestRunSummary;
+  try {
+    summary = await runCrossLayerManifest(absManifestPath, { testClassFilter: "static" });
+  } catch (error) {
+    throw new ExecutionError(`crosslayer manifest run failed: ${errorMessage(error)}`);
+  }
+  return emitCrossLayerSummary(summary, opts, io);
+}
+
+/**
+ * Run crosslayer without an env-supplied endpoint: attempt a full run, then
+ * gracefully fall back to static-only when the manifest has no endpoint either.
+ * Extracted to reduce cognitive complexity of doCrossLayerRun (S3776).
+ */
+async function doCrossLayerNoEnvEndpoint(
+  absManifestPath: string,
+  opts: GlobalOpts,
+  io: Io
+): Promise<number> {
+  let summary: ManifestRunSummary;
+  try {
+    summary = await runCrossLayerManifest(absManifestPath);
+  } catch (error) {
+    const msg = errorMessage(error);
+    if (msg.includes("endpoint") && msg.includes("required")) {
+      // No endpoint configured anywhere — skip behavioral gracefully.
+      io.errLine(
+        "muster crosslayer: no endpoint configured (MUSTER_ENDPOINT not set, manifest has no endpoint block); " +
+          "behavioral cases skipped — running static cases only"
+      );
+      try {
+        summary = await runCrossLayerManifest(absManifestPath, { testClassFilter: "static" });
+      } catch (staticError) {
+        throw new ExecutionError(`crosslayer manifest run failed: ${errorMessage(staticError)}`);
+      }
+    } else {
+      throw new ExecutionError(`crosslayer manifest run failed: ${msg}`);
+    }
+  }
+  return emitCrossLayerSummary(summary, opts, io);
+}
+
 /**
  * Run the cross-layer manifest runner (FR-011, C-004).
  *
@@ -554,50 +611,15 @@ async function doCrossLayerRun(
 ): Promise<number> {
   const absManifestPath = toAbsolute(manifestPath);
 
-  // --static-only: skip all behavioral cases regardless of endpoint config.
   if (opts.staticOnly === true) {
-    let summary: ManifestRunSummary;
-    try {
-      summary = await runCrossLayerManifest(absManifestPath, { testClassFilter: "static" });
-    } catch (error) {
-      throw new ExecutionError(`crosslayer manifest run failed: ${errorMessage(error)}`);
-    }
-    io.outLine(opts.json === true ? JSON.stringify(summary, null, 2) : formatCrossLayerResultHuman(summary));
-    return summary.failed > 0 ? 1 : 0;
+    return doCrossLayerStaticOnly(absManifestPath, opts, io);
   }
 
   // Behavioral run: source endpoint from env (priority) or manifest.
   const envEndpoint = endpointFromEnv();
 
-  // When neither env nor manifest provides an endpoint, skip behavioral cases
-  // gracefully (static cases still run). This avoids a hard validation error
-  // and matches `--static-only` semantics for the "no endpoint" path.
   if (envEndpoint === undefined) {
-    // We don't know yet whether the manifest has an endpoint — attempt a full
-    // run and let validateManifest decide. If it throws the "endpoint required"
-    // error, fall back to static-only with a stderr notice.
-    let summary: ManifestRunSummary;
-    try {
-      summary = await runCrossLayerManifest(absManifestPath);
-    } catch (error) {
-      const msg = errorMessage(error);
-      if (msg.includes("endpoint") && msg.includes("required")) {
-        // No endpoint configured anywhere — skip behavioral gracefully.
-        io.errLine(
-          "muster crosslayer: no endpoint configured (MUSTER_ENDPOINT not set, manifest has no endpoint block); " +
-            "behavioral cases skipped — running static cases only"
-        );
-        try {
-          summary = await runCrossLayerManifest(absManifestPath, { testClassFilter: "static" });
-        } catch (staticError) {
-          throw new ExecutionError(`crosslayer manifest run failed: ${errorMessage(staticError)}`);
-        }
-      } else {
-        throw new ExecutionError(`crosslayer manifest run failed: ${msg}`);
-      }
-    }
-    io.outLine(opts.json === true ? JSON.stringify(summary, null, 2) : formatCrossLayerResultHuman(summary));
-    return summary.failed > 0 ? 1 : 0;
+    return doCrossLayerNoEnvEndpoint(absManifestPath, opts, io);
   }
 
   // Env endpoint present: pass as override so behavioral cases use it even
@@ -608,8 +630,7 @@ async function doCrossLayerRun(
   } catch (error) {
     throw new ExecutionError(`crosslayer manifest run failed: ${errorMessage(error)}`);
   }
-  io.outLine(opts.json === true ? JSON.stringify(summary, null, 2) : formatCrossLayerResultHuman(summary));
-  return summary.failed > 0 ? 1 : 0;
+  return emitCrossLayerSummary(summary, opts, io);
 }
 
 // ─── muster heartbeat run ───────────────────────────────────────────────────
@@ -647,6 +668,13 @@ async function doHeartbeatRun(
   return summary.failed > 0 ? 1 : 0;
 }
 
+/** Map a case's skip/pass flags to a display icon (S3358: no nested ternary). */
+function caseIcon(skipped: boolean, passed: boolean): string {
+  if (skipped) return "SKIP";
+  if (passed) return "PASS";
+  return "FAIL";
+}
+
 /**
  * Human-readable formatting for cross-layer ManifestRunSummary.
  *
@@ -659,7 +687,7 @@ function formatCrossLayerResultHuman(summary: ManifestRunSummary): string {
     `crosslayer: ${status} — ${summary.passed}/${summary.total} cases passed, ${summary.failed} failed${skippedSuffix}`,
   ];
   for (const result of summary.results) {
-    const icon = result.skipped === true ? "SKIP" : result.passed ? "PASS" : "FAIL";
+    const icon = caseIcon(result.skipped === true, result.passed);
     const detail = buildCaseDetail(result);
     lines.push(`  [${icon}] ${result.id}${detail}`);
   }

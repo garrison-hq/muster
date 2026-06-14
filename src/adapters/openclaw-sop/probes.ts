@@ -189,6 +189,8 @@ export async function loadProbeCorpus(
  *   2. Fallback: return the first https:// URL anywhere in the file.
  *   3. If no URL found, return empty string.
  */
+const HTTPS_URL_RE = /https:\/\/[^\s]+/;
+
 function extractUpstreamUrl(citationContent: string): string {
   const lines = citationContent.split("\n");
 
@@ -196,7 +198,7 @@ function extractUpstreamUrl(citationContent: string): string {
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed.toLowerCase().startsWith("upstream:")) {
-      const urlMatch = trimmed.match(/https:\/\/[^\s]+/);
+      const urlMatch = HTTPS_URL_RE.exec(trimmed);
       if (urlMatch) {
         return urlMatch[0];
       }
@@ -204,7 +206,7 @@ function extractUpstreamUrl(citationContent: string): string {
   }
 
   // Fallback Rule 2: first https:// URL in file
-  const anyUrlMatch = citationContent.match(/https:\/\/[^\s]+/);
+  const anyUrlMatch = HTTPS_URL_RE.exec(citationContent);
   return anyUrlMatch ? anyUrlMatch[0] : "";
 }
 
