@@ -23,6 +23,11 @@ export default defineConfig({
       editLink: {
         baseUrl: 'https://github.com/garrison-hq/muster/edit/main/site/',
       },
+      components: {
+        // Renders the default footer plus the cookie consent banner, which
+        // gates Google Analytics behind an explicit choice (see ConsentBanner).
+        Footer: './src/components/Footer.astro',
+      },
       plugins: [
         starlightBlog({
           authors: {
