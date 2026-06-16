@@ -1,0 +1,10 @@
+---
+// Override of Starlight's Footer so the cookie consent banner renders on every
+// page. The default footer is rendered unchanged; the banner is appended and
+// floats via position: fixed, so its place in the DOM does not matter.
+import Default from '@astrojs/starlight/components/Footer.astro';
+import ConsentBanner from './ConsentBanner.astro';
+---
+
+<Default><slot /></Default>
+<ConsentBanner />

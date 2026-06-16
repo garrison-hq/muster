@@ -1,0 +1,125 @@
+---
+// Cookie consent banner. Google Analytics is gated behind an explicit choice
+// using Google Consent Mode v2: until the visitor accepts, analytics_storage
+// stays denied, so no analytics cookies are written and no data is sent.
+// The GA snippet in astro.config.mjs sets the default to denied; this banner
+// updates it to granted on accept. The choice is remembered in localStorage,
+// so the banner only appears once.
+---
+
+<div id="consent-banner" class="consent-banner" hidden>
+  <p class="consent-text">
+    We use Google Analytics to see which pages people read. It only sets
+    cookies if you accept.
+  </p>
+  <div class="consent-actions">
+    <button id="consent-accept" type="button" class="consent-btn consent-accept">
+      Accept
+    </button>
+    <button id="consent-decline" type="button" class="consent-btn consent-decline">
+      Decline
+    </button>
+  </div>
+</div>
+
+<script is:inline>
+  (function () {
+    var KEY = 'muster-analytics-consent';
+    var banner = document.getElementById('consent-banner');
+    if (!banner) return;
+
+    function apply(decision) {
+      if (typeof window.gtag === 'function') {
+        window.gtag('consent', 'update', {
+          analytics_storage: decision === 'granted' ? 'granted' : 'denied',
+        });
+      }
+    }
+
+    var stored = localStorage.getItem(KEY);
+    if (stored === 'granted' || stored === 'denied') {
+      apply(stored);
+      return;
+    }
+
+    banner.hidden = false;
+
+    function decide(decision) {
+      localStorage.setItem(KEY, decision);
+      apply(decision);
+      banner.hidden = true;
+    }
+
+    document
+      .getElementById('consent-accept')
+      .addEventListener('click', function () {
+        decide('granted');
+      });
+    document
+      .getElementById('consent-decline')
+      .addEventListener('click', function () {
+        decide('denied');
+      });
+  })();
+</script>
+
+<style>
+  .consent-banner {
+    position: fixed;
+    bottom: 1rem;
+    left: 1rem;
+    right: 1rem;
+    z-index: 100;
+    margin-inline: auto;
+    max-width: 48rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+    padding: 0.85rem 1.1rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.5rem;
+    background: var(--sl-color-black);
+    box-shadow: var(--sl-shadow-md);
+    font-size: var(--sl-text-sm);
+  }
+
+  .consent-text {
+    margin: 0;
+    flex: 1 1 18rem;
+    color: var(--sl-color-gray-2);
+    line-height: 1.5;
+  }
+
+  .consent-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .consent-btn {
+    cursor: pointer;
+    border-radius: 0.35rem;
+    padding: 0.4rem 0.9rem;
+    font-size: var(--sl-text-sm);
+    font-weight: 600;
+    border: 1px solid var(--sl-color-gray-5);
+    line-height: 1.2;
+  }
+
+  .consent-accept {
+    background: var(--sl-color-accent);
+    color: var(--sl-color-white);
+    border-color: var(--sl-color-accent);
+  }
+
+  .consent-decline {
+    background: transparent;
+    color: var(--sl-color-gray-1);
+  }
+
+  .consent-decline:hover {
+    background: var(--sl-color-gray-6);
+  }
+</style>
