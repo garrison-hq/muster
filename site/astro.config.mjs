@@ -23,6 +23,32 @@ export default defineConfig({
       editLink: {
         baseUrl: 'https://github.com/garrison-hq/muster/edit/main/site/',
       },
+      // Google Analytics 4 with Consent Mode v2. analytics_storage defaults to
+      // denied, so until the visitor accepts in the consent banner GA sends no
+      // cookies. The banner (see ConsentBanner.astro) updates consent to
+      // granted on accept. Order matters: the default-denied call runs before
+      // config so the first hit already respects the denied state.
+      head: [
+        {
+          tag: 'script',
+          content:
+            "window.dataLayer=window.dataLayer||[];" +
+            "function gtag(){dataLayer.push(arguments);}" +
+            "gtag('consent','default',{analytics_storage:'denied'});",
+        },
+        {
+          tag: 'script',
+          attrs: {
+            async: true,
+            src: 'https://www.googletagmanager.com/gtag/js?id=G-VTTFT7JE73',
+          },
+        },
+        {
+          tag: 'script',
+          content:
+            "gtag('js',new Date());gtag('config','G-VTTFT7JE73');",
+        },
+      ],
       components: {
         // Renders the default footer plus the cookie consent banner, which
         // gates Google Analytics behind an explicit choice (see ConsentBanner).
