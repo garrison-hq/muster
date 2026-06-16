@@ -1,0 +1,46 @@
+name: Cross-post blog to dev.to
+
+# Publishes blog posts to dev.to. Runs only when a markdown file under blog/
+# changes on main (so unrelated merges never trigger it), plus manual dispatch.
+#
+# The action reads each post's frontmatter and mirrors it to dev.to via the API.
+# Posts with `published: false` are pushed as drafts and only go live when the
+# flag flips to true. On first publish the action writes the returned article
+# `id` back into the frontmatter and commits it, so later runs update the same
+# article instead of creating a duplicate.
+#
+# Setup required once:
+#   - Add a repository secret DEV_TO_API_KEY (dev.to -> Settings -> Extensions
+#     -> "DEV Community API Keys").
+#   - The id write-back commits to main. If branch protection blocks pushes from
+#     github-actions[bot], either allow that actor to bypass, or run once via
+#     workflow_dispatch and commit the returned id manually the first time.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'blog/**.md'
+  workflow_dispatch:
+
+# Serialise runs so two publishes never race on the id write-back.
+concurrency:
+  group: devto-crosspost
+  cancel-in-progress: false
+
+permissions:
+  contents: write # commit the dev.to article id back into the post frontmatter
+
+jobs:
+  cross-post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - name: Publish to dev.to
+        uses: sinedied/publish-devto@c713cc0934b35cb3df9fca759b98e36e6a540a85 # v2
+        with:
+          devto_key: ${{ secrets.DEV_TO_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          files: 'blog/**/*.md'
+          branch: main
+          conventional_commits: true
