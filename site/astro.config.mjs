@@ -45,8 +45,12 @@ export default defineConfig({
         },
         {
           tag: 'script',
+          // cookie_domain is pinned to the current host because *.github.io is
+          // on the Public Suffix List: GA4's automatic domain detection picks an
+          // invalid domain there and the browser rejects the _ga cookies.
           content:
-            "gtag('js',new Date());gtag('config','G-VTTFT7JE73');",
+            "gtag('js',new Date());" +
+            "gtag('config','G-VTTFT7JE73',{cookie_domain:location.hostname});",
         },
       ],
       components: {
