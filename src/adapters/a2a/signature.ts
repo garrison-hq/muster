@@ -19,7 +19,7 @@
  * Citation: A2A spec v1.0.0, §8.x signed cards; muster rubric FR-004.
  */
 
-import { createPublicKey, verify as cryptoVerify, type JsonWebKey as CryptoJsonWebKey } from "node:crypto";
+import { createPublicKey, verify as cryptoVerify } from "node:crypto";
 import type { AgentCard } from "./card.js";
 import { canonicalJson } from "../../core/canonical-json.js";
 
@@ -165,7 +165,7 @@ function verifyOneSignature(
 
   let publicKey: ReturnType<typeof createPublicKey>;
   try {
-    publicKey = createPublicKey({ key: jwk as CryptoJsonWebKey, format: "jwk" });
+    publicKey = createPublicKey({ key: jwk as JsonWebKey, format: "jwk" });
   } catch {
     return { ok: false, reason: "key-import-failure", alg, kid };
   }

@@ -1,6 +1,7 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import starlightBlog from 'starlight-blog';
 
 // Deployed as a GitHub Pages project site, hence the /muster base path.
 // When a custom domain arrives, change `site` and drop `base`.
@@ -22,6 +23,16 @@ export default defineConfig({
       editLink: {
         baseUrl: 'https://github.com/garrison-hq/muster/edit/main/site/',
       },
+      plugins: [
+        starlightBlog({
+          authors: {
+            jeroen: {
+              name: 'Jeroen Nouws',
+              title: 'Maintainer',
+            },
+          },
+        }),
+      ],
       sidebar: [
         {
           label: 'Start here',
