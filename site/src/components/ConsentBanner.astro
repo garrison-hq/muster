@@ -64,6 +64,13 @@
 </script>
 
 <style>
+  /* The author `display: flex` below would otherwise override the UA
+     `[hidden] { display: none }`, leaving the banner visible after the
+     visitor accepts or declines. This keeps the hidden attribute working. */
+  .consent-banner[hidden] {
+    display: none;
+  }
+
   .consent-banner {
     position: fixed;
     bottom: 1rem;
