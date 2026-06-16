@@ -1,6 +1,6 @@
 ---
 title: "Your AI agent is a stack of files. muster 1.0.0 tests all of them."
-published: false
+published: true
 description: "muster is a conformance harness for the agent-file stack. It checks each file an agent is built from against its spec, and checks whether the model actually behaves the way those files say. Here is what shipped in 1.0.0."
 tags: ai, opensource, typescript, llm
 canonical_url: https://garrison-hq.github.io/muster
