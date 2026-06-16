@@ -4,6 +4,7 @@ published: true
 description: "muster is a conformance harness for the agent-file stack. It checks each file an agent is built from against its spec, and checks whether the model actually behaves the way those files say. Here is what shipped in 1.0.0."
 tags: ai, opensource, typescript, llm
 canonical_url: https://garrison-hq.github.io/muster
+id: 3918220
 ---
 
 Look at what defines an AI agent now. It is not one file anymore.
