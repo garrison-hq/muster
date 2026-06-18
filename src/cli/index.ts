@@ -451,9 +451,10 @@ async function doMemoryRun(
   opts: GlobalOpts & { behavioral?: boolean; baseUrl?: string; model?: string },
   io: Io
 ): Promise<number> {
+  const absManifestPath = toAbsolute(manifestPath);
   let manifest: AdapterManifest;
   try {
-    const raw = await readFileOrThrow(toAbsolute(manifestPath), "memory manifest");
+    const raw = await readFileOrThrow(absManifestPath, "memory manifest");
     manifest = JSON.parse(raw) as AdapterManifest;
   } catch (error) {
     throw new ExecutionError(
@@ -463,6 +464,9 @@ async function doMemoryRun(
 
   const adapterOptions: AdapterOptions = {
     behavioral: opts.behavioral === true,
+    // Relative case paths resolve against the manifest's own directory, so the
+    // command works regardless of cwd (matches the other adapters).
+    manifestDir: dirname(absManifestPath),
   };
 
   if (opts.behavioral === true) {
@@ -667,9 +671,10 @@ async function doHeartbeatRun(
 ): Promise<number> {
   let summary: HeartbeatManifestSummary;
   try {
-    // projectRoot defaults to cwd so that relative checklist/fixture paths in
-    // the manifest resolve from the working directory (the conventional root).
-    summary = await runHeartbeatManifest(toAbsolute(manifestPath), process.cwd());
+    // projectRoot omitted so relative checklist/fixture paths in the manifest
+    // resolve against the manifest's own directory (the adapter's default),
+    // making the command work regardless of cwd (matches the other adapters).
+    summary = await runHeartbeatManifest(toAbsolute(manifestPath));
   } catch (error) {
     throw new ExecutionError(
       `heartbeat manifest run failed: ${errorMessage(error)}`
@@ -905,9 +910,10 @@ async function doSkillsRun(
 ): Promise<number> {
   let cases: SkillsManifestCase[];
   const absManifestPath = toAbsolute(manifestPath);
-  // Skills manifest paths (skillDir, querySetPath) are relative to cwd
-  // (repo root convention), not to the manifest file location.
-  const baseDir = process.cwd();
+  // Skills manifest paths (skillDir, querySetPath) resolve against the
+  // manifest's own directory, so the command works regardless of cwd
+  // (matches the other adapters).
+  const baseDir = dirname(absManifestPath);
   try {
     const raw = await readFileOrThrow(absManifestPath, "skills manifest");
     const parsed = parseYaml(raw) as { cases: SkillsManifestCase[] };

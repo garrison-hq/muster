@@ -1,15 +1,15 @@
-# Skills conformance example manifest — muster 1.0.0 OSS release.
-# Run from repo root: node dist/cli/index.js skills run examples/skills/manifest.yaml
+# Skills conformance example manifest for muster.
+# Run: muster skills run examples/skills/manifest.yaml (from anywhere)
 #
 # Static cases run offline. Behavioral trigger-routing cases require MUSTER_ENDPOINT
 # and are skipped gracefully when it is absent.
 #
-# skillDir paths are relative to the repo root (cwd when invoked from there).
+# skillDir paths are relative to this manifest's own directory.
 
 cases:
   - id: example-valid-minimal
     type: static
-    skillDir: examples/skills/valid/minimal
+    skillDir: valid/minimal
     profile: base
     expectations:
       ok: true

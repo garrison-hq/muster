@@ -124,11 +124,15 @@ describe("muster skills run (CLI wiring, FR-013)", () => {
       // cause failures. We write a minimal inline manifest to a temp path.
       const { writeFileSync, unlinkSync } = await import("node:fs");
       const tmpPath = "/tmp/skills-cli-rigged-manifest.yaml";
+      // skillDir is absolute: the manifest lives in /tmp, and case paths resolve
+      // against the manifest's own directory, so a relative path would not find
+      // the repo fixture.
+      const brokenSkillDir = resolvePath(repoRoot, "fixtures/skills/broken/name-missing");
       const brokenCaseManifest = [
         "cases:",
         "  - id: broken-name-missing",
         "    type: static",
-        "    skillDir: fixtures/skills/broken/name-missing",
+        `    skillDir: ${brokenSkillDir}`,
         "    profile: base",
         "    expectations:",
         "      ok: true",
