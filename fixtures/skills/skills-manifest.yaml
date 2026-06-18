@@ -12,7 +12,7 @@ cases:
   - id: valid-minimal
     type: static
     # Rule: FR-014 minimal conforming SKILL.md — only required fields.
-    skillDir: fixtures/skills/valid/minimal
+    skillDir: valid/minimal
     profile: base
     expectations:
       ok: true
@@ -22,7 +22,7 @@ cases:
     type: static
     # Rule: FR-014 / FR-005 — all optional fields present (license, compatibility,
     # metadata with string values). No allowed-tools field → no experimental warning.
-    skillDir: fixtures/skills/valid/full-optional
+    skillDir: valid/full-optional
     profile: base
     expectations:
       ok: true
@@ -35,7 +35,7 @@ cases:
     # word "anthropic"; this fixture is therefore tested under profile: base
     # (where reserved-word checks do NOT apply). Anthropic-profile violations
     # are covered by broken-anthropic-reserved-word and broken-anthropic-xml-tag.
-    skillDir: fixtures/skills/valid/anthropic-profile-clean
+    skillDir: valid/anthropic-profile-clean
     profile: base
     expectations:
       ok: true
@@ -46,7 +46,7 @@ cases:
   - id: broken-name-missing
     type: static
     # Rule: name-missing — frontmatter has no `name` key (schema required).
-    skillDir: fixtures/skills/broken/name-missing
+    skillDir: broken/name-missing
     profile: base
     expectations:
       ok: false
@@ -58,7 +58,7 @@ cases:
     type: static
     # Rule: name-too-long — name is 65 chars; exceeds 64-char limit (FR-003).
     # Also triggers dir-mismatch (name ≠ "name-too-long"). Both violations expected.
-    skillDir: fixtures/skills/broken/name-too-long
+    skillDir: broken/name-too-long
     profile: base
     expectations:
       ok: false
@@ -70,7 +70,7 @@ cases:
     type: static
     # Rule: name-bad-charset — name contains uppercase letters (FR-003).
     # Also triggers dir-mismatch (name ≠ "name-bad-charset"). Both expected.
-    skillDir: fixtures/skills/broken/name-bad-charset
+    skillDir: broken/name-bad-charset
     profile: base
     expectations:
       ok: false
@@ -81,7 +81,7 @@ cases:
   - id: broken-name-leading-hyphen
     type: static
     # Rule: name-leading-hyphen — name starts with a hyphen (FR-003).
-    skillDir: fixtures/skills/broken/name-leading-hyphen
+    skillDir: broken/name-leading-hyphen
     profile: base
     expectations:
       ok: false
@@ -92,7 +92,7 @@ cases:
   - id: broken-name-dir-mismatch
     type: static
     # Rule: name-dir-mismatch — name ("completely-different") ≠ dir basename (FR-003).
-    skillDir: fixtures/skills/broken/name-dir-mismatch
+    skillDir: broken/name-dir-mismatch
     profile: base
     expectations:
       ok: false
@@ -105,7 +105,7 @@ cases:
   - id: broken-description-missing
     type: static
     # Rule: description-missing — frontmatter has no `description` key (FR-004).
-    skillDir: fixtures/skills/broken/description-missing
+    skillDir: broken/description-missing
     profile: base
     expectations:
       ok: false
@@ -116,7 +116,7 @@ cases:
   - id: broken-description-too-long
     type: static
     # Rule: description-too-long — description is exactly 1025 chars; exceeds 1024 (FR-004).
-    skillDir: fixtures/skills/broken/description-too-long
+    skillDir: broken/description-too-long
     profile: base
     expectations:
       ok: false
@@ -130,7 +130,7 @@ cases:
     type: static
     # Rule: metadata-bad-value — metadata.count is a number; metadata values must
     # be strings only (FR-005). Schema violation path: metadata/count.
-    skillDir: fixtures/skills/broken/metadata-bad-value
+    skillDir: broken/metadata-bad-value
     profile: base
     expectations:
       ok: false
@@ -144,7 +144,7 @@ cases:
     type: static
     # Rule: bundled-file-missing — body references scripts/missing.sh which
     # does not exist on disk (FR-006).
-    skillDir: fixtures/skills/broken/bundled-file-missing
+    skillDir: broken/bundled-file-missing
     profile: base
     expectations:
       ok: false
@@ -156,7 +156,7 @@ cases:
     type: static
     # Rule: bundled-file-escape — body references scripts/../../../etc/passwd;
     # lexical path-traversal guard rejects it without I/O (FR-006, NFR-001).
-    skillDir: fixtures/skills/broken/bundled-file-escape
+    skillDir: broken/bundled-file-escape
     profile: base
     expectations:
       ok: false
@@ -171,7 +171,7 @@ cases:
     # Rule: anthropic-reserved-word — name "claude-helper" contains reserved
     # word "claude" under the Anthropic platform profile (FR-007).
     # Also triggers dir-mismatch (name ≠ "anthropic-reserved-word"). Both expected.
-    skillDir: fixtures/skills/broken/anthropic-reserved-word
+    skillDir: broken/anthropic-reserved-word
     profile: anthropic
     expectations:
       ok: false
@@ -185,7 +185,7 @@ cases:
     # XML tags are forbidden under the Anthropic platform profile (FR-007).
     # Also: name "anthropic-xml-tag" contains reserved word "anthropic" → two
     # violations under profile=anthropic. Both expected.
-    skillDir: fixtures/skills/broken/anthropic-xml-tag
+    skillDir: broken/anthropic-xml-tag
     profile: anthropic
     expectations:
       ok: false
@@ -204,9 +204,9 @@ cases:
     type: behavioral
     # Uses the minimal valid skill as the target tool; weather queries are the
     # labeled trigger set. A real model endpoint grades trigger routing.
-    skillDir: fixtures/skills/valid/minimal
+    skillDir: valid/minimal
     profile: base
-    querySetPath: fixtures/skills/trigger-queries/weather-skill-queries.yaml
+    querySetPath: trigger-queries/weather-skill-queries.yaml
     runsPerQuery: 3
     threshold: 0.5
     isControl: false
@@ -218,9 +218,9 @@ cases:
     # The shouldTrigger queries are normal, plausible tasks — a well-functioning
     # model will NOT invoke the rigged tool. Expected: passed: false.
     # skillDir is a placeholder; the runner replaces the description at runtime.
-    skillDir: fixtures/skills/broken/name-missing
+    skillDir: broken/name-missing
     profile: base
-    querySetPath: fixtures/skills/trigger-queries/rigged-impossible-queries.yaml
+    querySetPath: trigger-queries/rigged-impossible-queries.yaml
     runsPerQuery: 3
     threshold: 0.5
     isControl: true

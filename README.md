@@ -75,8 +75,10 @@ Every command shares two global flags, `--mode <strict|permissive>` (default
 invalid manifest).
 
 The package ships a runnable [`examples/`](./examples) directory with one
-self-contained example per layer. Run them from the repository (or installed
-package) root:
+self-contained example per layer. The commands below use repo-relative paths, so
+run them from the repository (or installed-package) root. Paths inside a manifest
+resolve relative to the manifest file, so a manifest itself runs from any
+directory.
 
 ```bash
 # Persona: static conformance of one document (§25.1 report; never touches the network)

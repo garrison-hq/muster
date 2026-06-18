@@ -41,7 +41,9 @@ import type { ChatClient } from "../../src/core/behavioral/types.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURES_ROOT = resolvePath(__dirname, "../../tests/fixtures/heartbeat");
 const MANIFEST_PATH = resolvePath(FIXTURES_ROOT, "manifest.json");
-const PROJECT_ROOT = resolvePath(__dirname, "../..");
+// Manifest-internal paths resolve against the manifest's own directory, so the
+// project root for resolution is the fixtures dir (matches the CLI default).
+const PROJECT_ROOT = FIXTURES_ROOT;
 
 // ---------------------------------------------------------------------------
 // Fixture path helpers

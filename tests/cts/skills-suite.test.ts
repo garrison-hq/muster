@@ -24,7 +24,7 @@
  */
 
 import { fileURLToPath } from "node:url";
-import { join, resolve as resolvePath } from "node:path";
+import { dirname, join, resolve as resolvePath } from "node:path";
 import { readFileSync } from "node:fs";
 import { describe, it, expect } from "vitest";
 import { parse as parseYaml } from "yaml";
@@ -43,6 +43,9 @@ import type { Violation } from "../../src/core/report.js";
 // Resolve from THIS file's location (tests/cts/), not process.cwd().
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 const manifestPath = join(repoRoot, "fixtures/skills/skills-manifest.yaml");
+// Manifest case paths (skillDir, querySetPath) resolve against the manifest's
+// own directory, matching the CLI.
+const manifestDir = dirname(manifestPath);
 
 // ─── Manifest types ──────────────────────────────────────────────────────────
 
@@ -107,7 +110,7 @@ function runStaticCase(c: StaticManifestCase): {
   ok: boolean;
   violations: Violation[];
 } {
-  const absoluteSkillDir = resolvePath(repoRoot, c.skillDir);
+  const absoluteSkillDir = resolvePath(manifestDir, c.skillDir);
   const doc: SkillDocument = skillsAdapter.parseSkill(absoluteSkillDir);
   const semanticViolations = skillsAdapter.validateSkill(doc, c.profile);
   const layoutViolations = checkLayout(doc);
@@ -325,8 +328,8 @@ describe("Skills CTS — behavioral suite (require MUSTER_BASE_URL)", () => {
           "../../src/adapters/skills/trigger.js"
         );
         const { default: yamlPkg } = await import("yaml");
-        const absoluteSkillDir = resolvePath(repoRoot, c.skillDir);
-        const querySetAbsPath = resolvePath(repoRoot, c.querySetPath);
+        const absoluteSkillDir = resolvePath(manifestDir, c.skillDir);
+        const querySetAbsPath = resolvePath(manifestDir, c.querySetPath);
 
         const querySetRaw = parseYaml(
           readFileSync(querySetAbsPath, "utf8")

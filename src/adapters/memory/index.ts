@@ -31,11 +31,11 @@ import { PrivacyLeakProbeRunner, type PrivacyLeakVerdict, type PrivacyLeakProbe 
 export interface StaticLintCase {
   /** Stable, human-readable case id (C-005). */
   id: string;
-  /** Absolute or cwd-relative path to MEMORY.md. */
+  /** Absolute, or relative to the manifest dir (options.manifestDir; cwd when unset). */
   memoryPath: string;
-  /** Absolute or cwd-relative path to USER.md. */
+  /** Absolute, or relative to the manifest dir (options.manifestDir; cwd when unset). */
   userPath: string;
-  /** Absolute or cwd-relative path to manifest.json (fact labels). */
+  /** Absolute, or relative to the manifest dir (options.manifestDir; cwd when unset). */
   manifestPath: string;
   /**
    * ISO 8601 reference date for staleness lint (C-003).
@@ -47,14 +47,14 @@ export interface StaticLintCase {
 export interface RecallCase {
   /** Stable case id. */
   id: string;
-  /** Absolute or cwd-relative path to the recall probe YAML. */
+  /** Absolute, or relative to the manifest dir (options.manifestDir; cwd when unset). */
   probePath: string;
 }
 
 export interface PrivacyCase {
   /** Stable case id. */
   id: string;
-  /** Absolute or cwd-relative path to the privacy leak probe YAML. */
+  /** Absolute, or relative to the manifest dir (options.manifestDir; cwd when unset). */
   probePath: string;
 }
 
@@ -84,6 +84,12 @@ export interface AdapterOptions {
     model: string;
     apiKeyEnv: "MUSTER_API_KEY" | "OPENAI_API_KEY";
   };
+  /**
+   * Base directory for resolving manifest-internal relative paths (normally the
+   * manifest file's own directory). Absolute case paths are unaffected. When
+   * unset, paths resolve against process.cwd() (back-compat for direct callers).
+   */
+  manifestDir?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -123,6 +129,35 @@ export interface AdapterResult {
 
 function toAbsolute(path: string): string {
   return resolvePath(path);
+}
+
+/**
+ * Resolve every manifest-internal relative path against baseDir so the adapter
+ * is invariant to process.cwd(). Absolute paths pass through unchanged
+ * (resolvePath ignores baseDir when its argument is already absolute). Returns a
+ * shallow-copied manifest; the input is not mutated.
+ */
+function resolveManifestPaths(manifest: AdapterManifest, baseDir: string): AdapterManifest {
+  return {
+    cases: manifest.cases.map((c) => ({
+      ...c,
+      memoryPath: resolvePath(baseDir, c.memoryPath),
+      userPath: resolvePath(baseDir, c.userPath),
+      manifestPath: resolvePath(baseDir, c.manifestPath),
+    })),
+    ...(manifest.recallCases !== undefined && {
+      recallCases: manifest.recallCases.map((c) => ({
+        ...c,
+        probePath: resolvePath(baseDir, c.probePath),
+      })),
+    }),
+    ...(manifest.privacyCases !== undefined && {
+      privacyCases: manifest.privacyCases.map((c) => ({
+        ...c,
+        probePath: resolvePath(baseDir, c.probePath),
+      })),
+    }),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -363,18 +398,24 @@ export class MemoryAdapter {
     const allFindings: Finding[] = [];
     const lintReports: LintReport[] = [];
 
+    // Resolve manifest-internal relative paths against the manifest's directory
+    // (options.manifestDir) so results are invariant to process.cwd(). Falls
+    // back to cwd when manifestDir is unset (direct callers using absolute paths
+    // are unaffected either way).
+    const resolvedManifest = resolveManifestPaths(manifest, options.manifestDir ?? process.cwd());
+
     // ── Static lint cases ──────────────────────────────────────────────────
     const parser = new FactParser();
     const stalenessLinter = new StalenessLinter();
     const contradictionLinter = new ContradictionLinter();
 
     let allOk = runStaticLintCases(
-      manifest, parser, stalenessLinter, contradictionLinter, allFindings, lintReports
+      resolvedManifest, parser, stalenessLinter, contradictionLinter, allFindings, lintReports
     );
 
     // ── Behavioral cases (only when options.behavioral === true) ────────────
     if (options.behavioral === true) {
-      const behavioralOk = await runBehavioralCases(manifest, options, allFindings);
+      const behavioralOk = await runBehavioralCases(resolvedManifest, options, allFindings);
       if (!behavioralOk) {
         allOk = false;
       }
@@ -383,8 +424,8 @@ export class MemoryAdapter {
     // NFR-001: sort all findings deterministically by factId (UTF-16 code-unit).
     const sortedFindings = sortFindings(allFindings);
 
-    const passCount = manifest.cases.filter((_, i) => lintReports[i]?.ok).length;
-    const totalCases = manifest.cases.length;
+    const passCount = resolvedManifest.cases.filter((_, i) => lintReports[i]?.ok).length;
+    const totalCases = resolvedManifest.cases.length;
     const summary = buildSummary(allOk, totalCases, passCount, options.behavioral === true);
 
     const result: AdapterResult = {

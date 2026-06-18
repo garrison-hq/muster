@@ -49,7 +49,9 @@ exit codes:
 ## Your first checks
 
 The package ships an `examples/` directory with one runnable example per layer.
-Run these from the repository or installed-package root:
+The commands below use repo-relative paths, so run them from the repository or
+installed-package root. Paths inside a manifest resolve relative to the manifest
+file, so a manifest itself runs from any directory.
 
 ```sh
 # Persona: validate one Soul.md and print a §25.1 report (offline)
