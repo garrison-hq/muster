@@ -4,6 +4,7 @@ published: true
 description: "A valid AGENTS.md is not a compliant agent. A real muster run: a live model breaks a rule the file got right, a bigger model only breaks it less, and a two-sentence prompt fix makes it hold. Behavioral conformance testing for the agent-file stack."
 tags: ai, opensource, llm, aiagents
 canonical_url: https://garrison-hq.github.io/muster/blog/muster-sop-behavioral/
+id: 3932058
 ---
 
 I wrote a tiny operating policy for a support bot. Two rules, both reasonable,
