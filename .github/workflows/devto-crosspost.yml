@@ -20,7 +20,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'blog/**.md'
+      # Only top-level posts are published. Per-post asset folders
+      # (e.g. blog/<slug>/) hold manifests, transcripts, and example
+      # AGENTS.md files that must NOT be cross-posted as articles.
+      - 'blog/*.md'
   workflow_dispatch:
 
 # Serialise runs so two publishes never race on the id write-back.
@@ -41,6 +44,6 @@ jobs:
         with:
           devto_key: ${{ secrets.DEV_TO_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          files: 'blog/**/*.md'
+          files: 'blog/*.md'
           branch: main
           conventional_commits: true
