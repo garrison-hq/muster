@@ -8,77 +8,41 @@
     {
       "lane_id": "lane-a",
       "wp_ids": [
-        "WP01"
+        "WP01",
+        "WP02",
+        "WP03",
+        "WP04"
       ],
       "write_scope": [
         "src/adapters/a2a/transport.ts",
         "tests/a2a/transport-multiturn.test.ts",
-        "tests/fixtures/a2a/responses/**"
-      ],
-      "predicted_surfaces": [
-        "api",
-        "artifact-rendering",
-        "tracker-integration"
-      ],
-      "depends_on_lanes": [],
-      "parallel_group": 0
-    },
-    {
-      "lane_id": "lane-b",
-      "wp_ids": [
-        "WP02"
-      ],
-      "write_scope": [
+        "tests/fixtures/a2a/responses/**",
         "src/adapters/a2a/behavioral-manifest.ts",
         "src/adapters/a2a/behavioral-types.ts",
         "tests/a2a/behavioral-manifest.test.ts",
-        "tests/fixtures/a2a/behavioral-manifests/**"
-      ],
-      "predicted_surfaces": [
-        "api"
-      ],
-      "depends_on_lanes": [],
-      "parallel_group": 0
-    },
-    {
-      "lane_id": "lane-c",
-      "wp_ids": [
-        "WP03"
-      ],
-      "write_scope": [
+        "tests/fixtures/a2a/behavioral-manifests/**",
         "src/adapters/a2a/graders/behavioral.ts",
         "tests/a2a/behavioral-runner.test.ts",
-        "tests/fixtures/a2a/transcripts/**"
-      ],
-      "predicted_surfaces": [
-        "api"
-      ],
-      "depends_on_lanes": [],
-      "parallel_group": 0
-    },
-    {
-      "lane_id": "lane-d",
-      "wp_ids": [
-        "WP04"
-      ],
-      "write_scope": [
-        "examples/a2a/behavioral-explicit.yaml",
-        "examples/a2a/behavioral-persona.yaml",
-        "site/a2a-behavioral.md",
+        "tests/fixtures/a2a/transcripts/**",
         "src/adapters/a2a/index.ts",
         "src/cli/index.ts",
         "src/cli/output.ts",
+        "examples/a2a/behavioral-persona.yaml",
+        "examples/a2a/behavioral-explicit.yaml",
+        "site/a2a-behavioral.md",
         "tests/a2a/behavioral-cli.test.ts"
       ],
       "predicted_surfaces": [
         "api",
-        "tests"
+        "tests",
+        "artifact-rendering",
+        "tracker-integration"
       ],
       "depends_on_lanes": [],
       "parallel_group": 0
     }
   ],
   "computed_at": "2026-06-20T12:16:01.273384+00:00",
-  "computed_from": "dependency_graph+ownership",
+  "computed_from": "dependency_graph+ownership; manually serialized to one lane because WP03/WP04 import symbols from WP01/WP02 (import-level dependency that ownership-based lane computation did not capture). Mirrors the single-lane v1 adapter missions.",
   "planning_artifact_wps": []
 }
