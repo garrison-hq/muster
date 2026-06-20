@@ -914,7 +914,7 @@ async function resolveSoulThresholds(
   const effective = checkResult.effective;
   const baseVerbosity = extractBaseVerbosity(effective);
   const overrideMaxWords = overrides?.max_words;
-  const derivedBaseMaxWords = baseVerbosity !== null ? deriveMaxWords(baseVerbosity) : null;
+  const derivedBaseMaxWords = baseVerbosity === null ? null : deriveMaxWords(baseVerbosity);
   const baseMaxWords = overrideMaxWords ?? derivedBaseMaxWords;
   const stateMaxWords = buildStateMaxWords(effective, baseVerbosity, overrideMaxWords);
 
