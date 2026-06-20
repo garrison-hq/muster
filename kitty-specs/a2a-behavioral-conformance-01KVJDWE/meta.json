@@ -1,10 +1,12 @@
 {
   "created_at": "2026-06-20T11:50:30.374026+00:00",
-  "friendly_name": "a2a behavioral conformance",
+  "friendly_name": "A2A Behavioral Conformance",
   "mission_id": "01KVJDWEKGD6VHYWDH71Y0R38T",
   "mission_number": null,
   "mission_slug": "a2a-behavioral-conformance-01KVJDWE",
   "mission_type": "software-dev",
   "slug": "a2a-behavioral-conformance-01KVJDWE",
-  "target_branch": "main"
+  "target_branch": "main",
+  "vcs": "git",
+  "source_description": "Multi-turn A2A behavioral conformance: drive an external running agent over A2A JSON-RPC and grade it on verbosity/refusal/state_shift k-of-n, reusing the core axis graders + pass^k. Source briefing: briefings/a2a-behavioral-conformance.md. Companion (out of scope): briefings/muster-github-action.md."
 }
