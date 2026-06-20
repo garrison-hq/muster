@@ -9,6 +9,9 @@ requirement_refs:
 planning_base_branch: kitty/mission-a2a-behavioral-conformance
 merge_target_branch: kitty/mission-a2a-behavioral-conformance
 branch_strategy: Planning artifacts for this feature were generated on kitty/mission-a2a-behavioral-conformance. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into kitty/mission-a2a-behavioral-conformance unless the human explicitly redirects the landing branch.
+base_branch: kitty/mission-a2a-behavioral-conformance-01KVJDWE
+base_commit: 0bd5cd4778a8db4d2375e32c9b59e165f682ed75
+created_at: '2026-06-20T12:29:34.755565+00:00'
 subtasks:
 - T001
 - T002
@@ -16,6 +19,7 @@ subtasks:
 - T004
 - T005
 - T006
+shell_pid: '734352'
 history:
 - Created by /spec-kitty.tasks for mission a2a-behavioral-conformance-01KVJDWE
 authoritative_surface: src/adapters/a2a/transport.ts
