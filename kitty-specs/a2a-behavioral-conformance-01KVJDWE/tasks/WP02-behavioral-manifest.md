@@ -16,8 +16,8 @@ subtasks:
 - T010
 - T011
 - T012
-agent: "claude:sonnet:implementer:implementer"
-shell_pid: "751549"
+agent: "claude:opus:reviewer:reviewer"
+shell_pid: "770430"
 history:
 - Created by /spec-kitty.tasks for mission a2a-behavioral-conformance-01KVJDWE
 authoritative_surface: src/adapters/a2a/behavioral-manifest.ts
@@ -184,3 +184,4 @@ spec-kitty agent action implement WP02 --agent <name>
 
 - 2026-06-20T12:37:03Z – claude:sonnet:implementer:implementer – shell_pid=751549 – Started implementation via action command
 - 2026-06-20T12:47:02Z – claude:sonnet:implementer:implementer – shell_pid=751549 – WP02 complete: behavioral-types.ts + behavioral-manifest.ts + 10 YAML fixtures + 20 tests (40 with TS). Decision-C precedence: explicit thresholds > soul-derived > none. Strict field rejection (FR-005), NFR-002 env-name validation, soul paths resolved against manifest dir. pnpm build clean, pnpm test 2732/2732 passed, invariants NI-001/NI-002/NI-003 green. Exports: loadBehavioralManifest, resolveThresholds, isA2aBehavioralManifestError (all needed by WP03).
+- 2026-06-20T12:47:27Z – claude:opus:reviewer:reviewer – shell_pid=770430 – Started review via action command
