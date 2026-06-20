@@ -88,6 +88,31 @@ export function formatBehaveHuman(verdicts: readonly CaseVerdict[]): string {
   return lines.join("\n");
 }
 
+/** Format the skip block for A2A behavioral when endpoint is absent. */
+function formatA2aSkipped(verdicts: readonly CaseVerdict[]): string {
+  const lines: string[] = [
+    "a2a-behavioral: SKIP — MUSTER_A2A_ENDPOINT not set; cases skipped (exit 0)",
+  ];
+  for (const v of verdicts) {
+    lines.push(`  SKIP ${v.id}`);
+  }
+  return lines.join("\n");
+}
+
+/** Format one A2A behavioral case verdict line and its failure details. */
+function formatA2aCaseLines(verdict: CaseVerdict): string[] {
+  const lines: string[] = [
+    `${verdict.passed ? "PASS" : "FAIL"} ${verdict.id} ` +
+      `(${verdict.passCount}/${verdict.runs.length} runs)`,
+  ];
+  if (!verdict.passed) {
+    for (const run of verdict.runs) {
+      if (!run.passed) lines.push(...formatRunFailure(run));
+    }
+  }
+  return lines;
+}
+
 /**
  * Human rendering of A2A behavioral verdicts (WP04, FR-007).
  *
@@ -105,28 +130,13 @@ export function formatA2aBehavioralHuman(
   verdicts: readonly CaseVerdict[],
   skipped: boolean
 ): string {
-  const lines: string[] = [];
-
   if (skipped) {
-    lines.push(
-      "a2a-behavioral: SKIP — MUSTER_A2A_ENDPOINT not set; cases skipped (exit 0)"
-    );
-    for (const v of verdicts) {
-      lines.push(`  SKIP ${v.id}`);
-    }
-    return lines.join("\n");
+    return formatA2aSkipped(verdicts);
   }
 
+  const lines: string[] = [];
   for (const verdict of verdicts) {
-    lines.push(
-      `${verdict.passed ? "PASS" : "FAIL"} ${verdict.id} ` +
-        `(${verdict.passCount}/${verdict.runs.length} runs)`
-    );
-    if (!verdict.passed) {
-      for (const run of verdict.runs) {
-        if (!run.passed) lines.push(...formatRunFailure(run));
-      }
-    }
+    lines.push(...formatA2aCaseLines(verdict));
   }
 
   const passed = verdicts.filter((v) => v.passed).length;

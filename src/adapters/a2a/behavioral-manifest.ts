@@ -32,6 +32,7 @@ import type {
   A2aThresholds,
   AxisSpec,
   CaseOverrides,
+  ContentAssertion,
   ResolvedThresholds,
   Turn,
 } from "./behavioral-types.js";
@@ -131,7 +132,7 @@ function isEnvVarName(value: string): boolean {
   // Reject host:port patterns (looks like a URL without scheme)
   if (/^[a-zA-Z0-9.-]+:\d+/.test(value)) return false;
   // Valid env-var: POSIX identifier characters only
-  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(value);
+  return /^[A-Za-z_]\w*$/.test(value);
 }
 
 // ---------------------------------------------------------------------------
@@ -197,8 +198,8 @@ function validateEndpoint(
   if (!envOk || !tokenOk) return null;
 
   return {
-    env: String(env),
-    token_env: String(tokenEnv),
+    env: env as string,
+    token_env: tokenEnv as string,
   };
 }
 
@@ -308,8 +309,6 @@ function validateTurn(
 // ---------------------------------------------------------------------------
 // Assertion validation
 // ---------------------------------------------------------------------------
-
-import type { ContentAssertion } from "./behavioral-types.js";
 
 function validateAssertion(
   raw: unknown,
@@ -527,6 +526,28 @@ function validateOverrides(
 // Thresholds block validation
 // ---------------------------------------------------------------------------
 
+/** Validate and collect per-state word-limit entries into `stateMap`. */
+function validateStateEntries(
+  states: Record<string, unknown>,
+  where: string,
+  errors: Violation[]
+): Record<string, number> {
+  const stateMap: Record<string, number> = {};
+  for (const [stateName, limit] of Object.entries(states)) {
+    if (!isInt(limit) || limit < 0) {
+      errors.push(
+        violation(
+          `${where}.states.${stateName}`,
+          `state "${stateName}" word limit must be an integer ≥ 0`
+        )
+      );
+    } else {
+      stateMap[stateName] = limit;
+    }
+  }
+  return stateMap;
+}
+
 function validateThresholds(
   raw: unknown,
   where: string,
@@ -554,25 +575,12 @@ function validateThresholds(
 
   const states = raw["states"];
   if (states !== undefined) {
-    if (!isRecord(states)) {
+    if (isRecord(states)) {
+      thresholds.states = validateStateEntries(states, where, errors);
+    } else {
       errors.push(
         violation(`${where}.states`, '"states" must be a mapping of state → word limit')
       );
-    } else {
-      const stateMap: Record<string, number> = {};
-      for (const [stateName, limit] of Object.entries(states)) {
-        if (!isInt(limit) || (limit as number) < 0) {
-          errors.push(
-            violation(
-              `${where}.states.${stateName}`,
-              `state "${stateName}" word limit must be an integer ≥ 0`
-            )
-          );
-        } else {
-          stateMap[stateName] = limit as number;
-        }
-      }
-      thresholds.states = stateMap;
     }
   }
 
@@ -630,6 +638,70 @@ function validateRunCounts(
 // Case validation (T009)
 // ---------------------------------------------------------------------------
 
+/** Resolve and validate the optional soul path against the manifest directory. */
+function resolveSoulPath(
+  raw: Record<string, unknown>,
+  where: string,
+  manifestDir: string,
+  errors: Violation[]
+): string | undefined {
+  const rawSoul = raw["soul"];
+  if (rawSoul === undefined) return undefined;
+  if (typeof rawSoul !== "string" || rawSoul.length === 0) {
+    errors.push(
+      violation(`${where}.soul`, '"soul" must be a non-empty path string when provided')
+    );
+    return undefined;
+  }
+  return isAbsolute(rawSoul) ? rawSoul : resolvePath(manifestDir, rawSoul);
+}
+
+/** Validate and collect the turns list for a case. */
+function validateCaseTurns(
+  raw: Record<string, unknown>,
+  where: string,
+  errors: Violation[]
+): Turn[] {
+  const rawTurns = raw["turns"];
+  const turns: Turn[] = [];
+  if (!Array.isArray(rawTurns) || rawTurns.length === 0) {
+    errors.push(
+      violation(
+        `${where}.turns`,
+        'required field "turns" must be a non-empty list (C-005)'
+      )
+    );
+  } else {
+    rawTurns.forEach((entry, i) => {
+      const turn = validateTurn(entry, `${where}.turns[${i}]`, errors);
+      if (turn !== null) turns.push(turn);
+    });
+  }
+  return turns;
+}
+
+/** Validate and collect the axes list for a case. */
+function validateCaseAxes(
+  raw: Record<string, unknown>,
+  where: string,
+  turnCount: number,
+  errors: Violation[]
+): AxisSpec[] {
+  const rawAxes = raw["axes"];
+  const axes: AxisSpec[] = [];
+  if (!Array.isArray(rawAxes) || rawAxes.length === 0) {
+    errors.push(
+      violation(`${where}.axes`, 'required field "axes" must be a non-empty list')
+    );
+  } else if (turnCount > 0) {
+    rawAxes.forEach((entry, i) => {
+      const axis = validateAxis(entry, `${where}.axes[${i}]`, turnCount, errors);
+      if (axis !== null) axes.push(axis);
+    });
+  }
+  return axes;
+}
+
 async function validateCase(
   raw: unknown,
   index: number,
@@ -655,20 +727,7 @@ async function validateCase(
     );
   }
 
-  // soul — optional path, resolved to absolute against manifest directory
-  let soulAbsolute: string | undefined;
-  const rawSoul = raw["soul"];
-  if (rawSoul !== undefined) {
-    if (typeof rawSoul !== "string" || rawSoul.length === 0) {
-      errors.push(
-        violation(`${where}.soul`, '"soul" must be a non-empty path string when provided')
-      );
-    } else {
-      soulAbsolute = isAbsolute(rawSoul)
-        ? rawSoul
-        : resolvePath(manifestDir, rawSoul);
-    }
-  }
+  const soulAbsolute = resolveSoulPath(raw, where, manifestDir, errors);
 
   // thresholds — optional explicit threshold block
   let thresholds: A2aThresholds | undefined;
@@ -677,50 +736,16 @@ async function validateCase(
     if (checked !== null) thresholds = checked;
   }
 
-  // turns — required, ≥ 1
-  const rawTurns = raw["turns"];
-  const turns: Turn[] = [];
-  if (!Array.isArray(rawTurns) || rawTurns.length === 0) {
-    errors.push(
-      violation(
-        `${where}.turns`,
-        'required field "turns" must be a non-empty list (C-005)'
-      )
-    );
-  } else {
-    rawTurns.forEach((entry, i) => {
-      const turn = validateTurn(entry, `${where}.turns[${i}]`, errors);
-      if (turn !== null) turns.push(turn);
-    });
-  }
-
-  // axes — required, ≥ 1
-  const rawAxes = raw["axes"];
-  const axes: AxisSpec[] = [];
-  if (!Array.isArray(rawAxes) || rawAxes.length === 0) {
-    errors.push(
-      violation(`${where}.axes`, 'required field "axes" must be a non-empty list')
-    );
-  } else if (Array.isArray(rawTurns) && rawTurns.length > 0) {
-    rawAxes.forEach((entry, i) => {
-      const axis = validateAxis(
-        entry,
-        `${where}.axes[${i}]`,
-        rawTurns.length,
-        errors
-      );
-      if (axis !== null) axes.push(axis);
-    });
-  }
+  const turns = validateCaseTurns(raw, where, errors);
+  // Use the declared turn count for axis turn-index validation (not validated count),
+  // so axis indices are validated against the full declared turn list.
+  const rawTurnCount = Array.isArray(raw["turns"]) ? raw["turns"].length : 0;
+  const axes = validateCaseAxes(raw, where, rawTurnCount, errors);
 
   // overrides — optional
   let overrides: CaseOverrides | undefined;
   if (raw["overrides"] !== undefined) {
-    const checked = validateOverrides(
-      raw["overrides"],
-      `${where}.overrides`,
-      errors
-    );
+    const checked = validateOverrides(raw["overrides"], `${where}.overrides`, errors);
     if (checked !== null) overrides = checked;
   }
 
@@ -768,6 +793,144 @@ function needsVerbosityThreshold(axes: AxisSpec[]): boolean {
   );
 }
 
+/** Apply the max_words override to each entry in a state map. */
+function applyMaxWordsOverride(
+  states: Record<string, number>,
+  override: number
+): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const state of Object.keys(states)) {
+    result[state] = override;
+  }
+  return result;
+}
+
+/**
+ * Source 1: Resolve thresholds from an explicit thresholds block (decision-C,
+ * highest precedence). Returns a Violation[] if the block is present but
+ * incomplete for a verbosity/state_shift axis.
+ */
+function resolveExplicitThresholds(
+  caseId: string,
+  thresholds: A2aThresholds,
+  overrides: CaseOverrides | undefined,
+  requiresVerbosity: boolean,
+  refusalCap: number
+): ResolvedThresholds | Violation[] {
+  const overrideMaxWords = overrides?.max_words;
+  const baseMaxWords = overrideMaxWords ?? thresholds.default_max_words ?? null;
+
+  const stateMaxWords =
+    overrideMaxWords === undefined
+      ? { ...thresholds.states }
+      : applyMaxWordsOverride(thresholds.states ?? {}, overrideMaxWords);
+
+  if (requiresVerbosity && baseMaxWords === null && Object.keys(stateMaxWords).length === 0) {
+    return [
+      violation(
+        `cases[${caseId}].thresholds`,
+        `case "${caseId}": verbosity or state_shift axis requires a word threshold; ` +
+          "thresholds block must include default_max_words or states (decision-C)"
+      ),
+    ];
+  }
+
+  return { baseMaxWords, stateMaxWords, refusalCap };
+}
+
+/** Extract base verbosity from an EffectiveConfig voice section. */
+function extractBaseVerbosity(effective: Record<string, unknown>): number | null {
+  const voice = isRecord(effective["voice"]) ? effective["voice"] : {};
+  return typeof voice["verbosity"] === "number" ? voice["verbosity"] : null;
+}
+
+/** Build per-state word caps from EffectiveConfig state overlays. */
+function buildStateMaxWords(
+  effective: Record<string, unknown>,
+  baseVerbosity: number | null,
+  overrideMaxWords: number | undefined
+): Record<string, number> {
+  const stateMaxWords: Record<string, number> = {};
+  const stateSection = isRecord(effective["state"]) ? effective["state"] : {};
+  const statesMap = isRecord(stateSection["states"]) ? stateSection["states"] : {};
+
+  for (const [stateName, overlay] of Object.entries(statesMap)) {
+    if (!isRecord(overlay)) continue;
+    const stateVoice = isRecord(overlay["voice"]) ? overlay["voice"] : {};
+    const stateVerbosity =
+      typeof stateVoice["verbosity"] === "number"
+        ? stateVoice["verbosity"]
+        : baseVerbosity;
+    if (stateVerbosity !== null) {
+      stateMaxWords[stateName] = overrideMaxWords ?? deriveMaxWords(stateVerbosity);
+    }
+  }
+
+  return stateMaxWords;
+}
+
+/**
+ * Source 2: Resolve thresholds by loading and parsing the soul file
+ * (decision-C source 2). Returns Violation[] on any load/parse/conformance error.
+ */
+async function resolveSoulThresholds(
+  caseId: string,
+  soulPath: string,
+  overrides: CaseOverrides | undefined,
+  requiresVerbosity: boolean,
+  refusalCap: number,
+  adapter: SpecAdapter
+): Promise<ResolvedThresholds | Violation[]> {
+  let rawText: string;
+  try {
+    rawText = await readFile(soulPath, "utf8");
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    return [
+      violation(
+        `cases[${caseId}].soul`,
+        `cannot read soul "${soulPath}": ${reason}`
+      ),
+    ];
+  }
+
+  const loadRef = makeFsLoadRef(
+    (refRaw, refPath) => adapter.parse(refRaw, refPath, "strict")
+  );
+  const checkResult = await checkSoul(adapter, rawText, soulPath, { mode: "strict" }, loadRef);
+
+  if (!checkResult.report.ok || checkResult.effective === null) {
+    const errMessages = checkResult.report.errors
+      .map((e) => `${e.path}: ${e.message}`)
+      .join("; ");
+    return [
+      violation(
+        `cases[${caseId}].soul`,
+        `soul "${soulPath}" failed static conformance: ${errMessages}`
+      ),
+    ];
+  }
+
+  const effective = checkResult.effective;
+  const baseVerbosity = extractBaseVerbosity(effective);
+  const overrideMaxWords = overrides?.max_words;
+  const derivedBaseMaxWords = baseVerbosity !== null ? deriveMaxWords(baseVerbosity) : null;
+  const baseMaxWords = overrideMaxWords ?? derivedBaseMaxWords;
+  const stateMaxWords = buildStateMaxWords(effective, baseVerbosity, overrideMaxWords);
+
+  if (requiresVerbosity && baseMaxWords === null) {
+    return [
+      violation(
+        `cases[${caseId}].soul`,
+        `case "${caseId}": verbosity or state_shift axis requires a word threshold; ` +
+          `soul "${soulPath}" has no voice.verbosity to derive one from (decision-C)`
+      ),
+    ];
+  }
+
+  return { baseMaxWords, stateMaxWords, refusalCap };
+}
+
 /**
  * Resolve thresholds for one A2A behavioral case (decision-C precedence).
  *
@@ -791,111 +954,12 @@ export async function resolveThresholds(
 
   // Source 1: explicit thresholds — highest precedence.
   if (thresholds !== undefined) {
-    const baseMaxWords =
-      overrides?.max_words !== undefined
-        ? overrides.max_words
-        : thresholds.default_max_words ?? null;
-
-    const stateMaxWords: Record<string, number> = {};
-    for (const [state, limit] of Object.entries(thresholds.states ?? {})) {
-      stateMaxWords[state] =
-        overrides?.max_words !== undefined ? overrides.max_words : limit;
-    }
-
-    if (requiresVerbosity && baseMaxWords === null && Object.keys(stateMaxWords).length === 0) {
-      return [
-        violation(
-          `cases[${caseId}].thresholds`,
-          `case "${caseId}": verbosity or state_shift axis requires a word threshold; ` +
-            "thresholds block must include default_max_words or states (decision-C)"
-        ),
-      ];
-    }
-
-    return { baseMaxWords, stateMaxWords, refusalCap };
+    return resolveExplicitThresholds(caseId, thresholds, overrides, requiresVerbosity, refusalCap);
   }
 
   // Source 2: soul present — resolve EffectiveConfig, derive caps from voice.verbosity.
   if (soulPath !== undefined) {
-    let raw: string;
-    try {
-      raw = await readFile(soulPath, "utf8");
-    } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
-      return [
-        violation(
-          `cases[${caseId}].soul`,
-          `cannot read soul "${soulPath}": ${reason}`
-        ),
-      ];
-    }
-
-    const loadRef = makeFsLoadRef(
-      (refRaw, refPath) => adapter.parse(refRaw, refPath, "strict")
-    );
-    const checkResult = await checkSoul(
-      adapter,
-      raw,
-      soulPath,
-      { mode: "strict" },
-      loadRef
-    );
-
-    if (!checkResult.report.ok || checkResult.effective === null) {
-      const errMessages = checkResult.report.errors
-        .map((e) => `${e.path}: ${e.message}`)
-        .join("; ");
-      return [
-        violation(
-          `cases[${caseId}].soul`,
-          `soul "${soulPath}" failed static conformance: ${errMessages}`
-        ),
-      ];
-    }
-
-    const effective = checkResult.effective;
-    const voice = isRecord(effective["voice"]) ? effective["voice"] : {};
-    const verbosity =
-      typeof voice["verbosity"] === "number" ? voice["verbosity"] : null;
-
-    const baseMaxWords =
-      overrides?.max_words !== undefined
-        ? overrides.max_words
-        : verbosity !== null
-        ? deriveMaxWords(verbosity)
-        : null;
-
-    // Build per-state caps from state overlays in EffectiveConfig.
-    const stateMaxWords: Record<string, number> = {};
-    const stateSection = isRecord(effective["state"]) ? effective["state"] : {};
-    const statesMap = isRecord(stateSection["states"]) ? stateSection["states"] : {};
-
-    for (const [stateName, overlay] of Object.entries(statesMap)) {
-      if (!isRecord(overlay)) continue;
-      const stateVoice = isRecord(overlay["voice"]) ? overlay["voice"] : {};
-      const stateVerbosity =
-        typeof stateVoice["verbosity"] === "number"
-          ? stateVoice["verbosity"]
-          : verbosity;
-      if (stateVerbosity !== null) {
-        stateMaxWords[stateName] =
-          overrides?.max_words !== undefined
-            ? overrides.max_words
-            : deriveMaxWords(stateVerbosity);
-      }
-    }
-
-    if (requiresVerbosity && baseMaxWords === null) {
-      return [
-        violation(
-          `cases[${caseId}].soul`,
-          `case "${caseId}": verbosity or state_shift axis requires a word threshold; ` +
-            `soul "${soulPath}" has no voice.verbosity to derive one from (decision-C)`
-        ),
-      ];
-    }
-
-    return { baseMaxWords, stateMaxWords, refusalCap };
+    return resolveSoulThresholds(caseId, soulPath, overrides, requiresVerbosity, refusalCap, adapter);
   }
 
   // No soul, no thresholds — valid for refusal-only axes; violation if verbosity needed.
@@ -938,12 +1002,10 @@ export function isA2aBehavioralManifestError(
  * Normative: a2a-behavioral-manifest.md; FR-004, FR-005, FR-012.
  * Citation: a2a-behavioral-conformance-01KVJDWE commit (WP02).
  */
-export async function loadBehavioralManifest(
-  path: string
-): Promise<A2aBehavioralManifest | Violation[]> {
-  const manifestPath = isAbsolute(path) ? path : resolvePath(path);
-  const manifestDir = dirname(manifestPath);
-
+/** Read and parse a manifest YAML file. Returns Violation[] on any I/O or parse error. */
+async function readManifestYaml(
+  manifestPath: string
+): Promise<Record<string, unknown> | Violation[]> {
   let rawText: string;
   try {
     rawText = await readFile(manifestPath, "utf8");
@@ -962,9 +1024,7 @@ export async function loadBehavioralManifest(
     parsed = parseYaml(rawText);
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
-    return [
-      violation("manifest", `A2A behavioral manifest is not valid YAML: ${reason}`)
-    ];
+    return [violation("manifest", `A2A behavioral manifest is not valid YAML: ${reason}`)];
   }
 
   if (!isRecord(parsed)) {
@@ -976,6 +1036,52 @@ export async function loadBehavioralManifest(
     ];
   }
 
+  return parsed;
+}
+
+/** Validate and collect cases from the raw cases list, checking for duplicate ids. */
+async function collectValidatedCases(
+  rawCases: unknown[],
+  manifestDir: string,
+  defaults: ResolvedDefaults,
+  errors: Violation[]
+): Promise<A2aBehavioralCase[]> {
+  const firstIndexById = new Map<string, number>();
+  const casePromises = rawCases.map((entry, index) =>
+    validateCase(entry, index, manifestDir, defaults, errors)
+  );
+  const resolvedCases = await Promise.all(casePromises);
+
+  const cases: A2aBehavioralCase[] = [];
+  for (let index = 0; index < resolvedCases.length; index++) {
+    const validatedCase = resolvedCases[index];
+    if (validatedCase === null) continue;
+    const firstIndex = firstIndexById.get(validatedCase.id);
+    if (firstIndex !== undefined) {
+      errors.push(
+        violation(
+          `cases[${index}].id`,
+          `duplicate case id "${validatedCase.id}": first declared at cases[${firstIndex}] (FR-005)`
+        )
+      );
+      continue;
+    }
+    firstIndexById.set(validatedCase.id, index);
+    cases.push(validatedCase);
+  }
+  return cases;
+}
+
+export async function loadBehavioralManifest(
+  path: string
+): Promise<A2aBehavioralManifest | Violation[]> {
+  const manifestPath = isAbsolute(path) ? path : resolvePath(path);
+  const manifestDir = dirname(manifestPath);
+
+  const parsedOrErrors = await readManifestYaml(manifestPath);
+  if (Array.isArray(parsedOrErrors)) return parsedOrErrors;
+
+  const parsed = parsedOrErrors;
   const errors: Violation[] = [];
   rejectUnknown(parsed, TOP_FIELDS, "manifest", errors);
 
@@ -1000,36 +1106,16 @@ export async function loadBehavioralManifest(
   const endpoint = validateEndpoint(parsed["endpoint"], errors);
   const defaults = validateDefaults(parsed["defaults"], errors);
 
-  const cases: A2aBehavioralCase[] = [];
   const rawCases = parsed["cases"];
+  const cases: A2aBehavioralCase[] = [];
 
   if (!Array.isArray(rawCases) || rawCases.length === 0) {
     errors.push(
       violation("cases", 'required field "cases" must be a non-empty list')
     );
   } else {
-    const firstIndexById = new Map<string, number>();
-    const casePromises = rawCases.map((entry, index) =>
-      validateCase(entry, index, manifestDir, defaults, errors)
-    );
-    const resolvedCases = await Promise.all(casePromises);
-
-    for (let index = 0; index < resolvedCases.length; index++) {
-      const validatedCase = resolvedCases[index];
-      if (validatedCase === null) continue;
-      const firstIndex = firstIndexById.get(validatedCase.id);
-      if (firstIndex !== undefined) {
-        errors.push(
-          violation(
-            `cases[${index}].id`,
-            `duplicate case id "${validatedCase.id}": first declared at cases[${firstIndex}] (FR-005)`
-          )
-        );
-        continue;
-      }
-      firstIndexById.set(validatedCase.id, index);
-      cases.push(validatedCase);
-    }
+    const collected = await collectValidatedCases(rawCases, manifestDir, defaults, errors);
+    cases.push(...collected);
   }
 
   if (errors.length > 0 || endpoint === null) {

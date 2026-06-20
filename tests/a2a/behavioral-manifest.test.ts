@@ -332,13 +332,12 @@ describe("FR-005 strict validation — error cases", () => {
 // ---------------------------------------------------------------------------
 
 describe("C-004 boundary — adapter never imported by core", () => {
-  it("behavioral-manifest.ts imports core, not the other way around", () => {
+  it("behavioral-manifest.ts exports the isA2aBehavioralManifestError type-guard (confirms module loads)", () => {
     // The NI-002 invariant in tests/unit/invariants.test.ts is the authoritative
-    // gate. This test simply documents the intent and confirms the import graph
-    // direction at the module level (static assertion — compile-time safe).
-    // If core imported this module the tsc build would fail (circular) and
-    // invariants.test.ts would report the violation.
-    expect(true).toBe(true);
+    // gate. Here we verify the adapter module exposes its public API, which confirms
+    // it can be loaded without circularity. If core imported this module the tsc
+    // build would fail (circular) and invariants.test.ts would report the violation.
+    expect(typeof isA2aBehavioralManifestError).toBe("function");
   });
 });
 

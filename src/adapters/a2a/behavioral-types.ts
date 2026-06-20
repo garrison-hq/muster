@@ -8,9 +8,9 @@
  * Normative: kitty-specs/a2a-behavioral-conformance-01KVJDWE/contracts/a2a-behavioral-manifest.md
  */
 
-import type { AxisSpec, CaseOverrides, ContentAssertion, Turn } from "../../core/behavioral/types.js";
+import type { AxisSpec, CaseOverrides, Turn } from "../../core/behavioral/types.js";
 
-export type { AxisSpec, CaseOverrides, ContentAssertion, Turn };
+export type { AxisSpec, CaseOverrides, ContentAssertion, Turn } from "../../core/behavioral/types.js";
 
 /**
  * Endpoint reference — env-var NAMES only (never literal URLs or tokens).

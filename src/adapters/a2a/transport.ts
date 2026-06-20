@@ -441,6 +441,38 @@ function extractFromArtifacts(artifacts: unknown): string {
     .join("");
 }
 
+/** Resolve taskId from a Task result object (taskId field, or id field). */
+function resolveTaskId(obj: Record<string, unknown>): string | undefined {
+  if (typeof obj["taskId"] === "string") return obj["taskId"];
+  if (typeof obj["id"] === "string") return obj["id"];
+  return undefined;
+}
+
+/** Extract reply text from a Task status message (if present and non-empty). */
+function extractStatusMessageText(obj: Record<string, unknown>): string | null {
+  const status = obj["status"];
+  if (typeof status !== "object" || status === null) return null;
+  const statusObj = status as Record<string, unknown>;
+  const statusMsg = statusObj["message"];
+  if (!hasKind(statusMsg) || (statusMsg as Record<string, unknown>)["kind"] !== "message") {
+    return null;
+  }
+  const msgObj = statusMsg as Record<string, unknown>;
+  const text = joinTextParts(msgObj["parts"]);
+  return text.length > 0 ? text : null;
+}
+
+/** Extract reply from a Task-shaped result (Q1 tolerance). */
+function extractTaskReply(obj: Record<string, unknown>, contextId: string | undefined): ExtractedReply {
+  const taskId = resolveTaskId(obj);
+  const statusText = extractStatusMessageText(obj);
+  if (statusText !== null) {
+    return { reply: statusText, contextId, taskId };
+  }
+  const artifactText = extractFromArtifacts(obj["artifacts"]);
+  return { reply: artifactText, contextId, taskId };
+}
+
 /**
  * Extract the assistant reply text and threading ids from a JSON-RPC `result` object.
  *
@@ -466,37 +498,14 @@ export function extractReply(resultObj: unknown): ExtractedReply {
   }
 
   const obj = resultObj as Record<string, unknown>;
-
   const contextId = typeof obj["contextId"] === "string" ? obj["contextId"] : undefined;
 
   if (obj["kind"] === "message") {
-    const text = joinTextParts(obj["parts"]);
-    return { reply: text, contextId };
+    return { reply: joinTextParts(obj["parts"]), contextId };
   }
 
   if (obj["kind"] === "task") {
-    const taskId =
-      typeof obj["taskId"] === "string"
-        ? obj["taskId"]
-        : typeof obj["id"] === "string"
-        ? obj["id"]
-        : undefined;
-
-    const status = obj["status"];
-    if (typeof status === "object" && status !== null) {
-      const statusObj = status as Record<string, unknown>;
-      const statusMsg = statusObj["message"];
-      if (hasKind(statusMsg) && (statusMsg as Record<string, unknown>)["kind"] === "message") {
-        const msgObj = statusMsg as Record<string, unknown>;
-        const text = joinTextParts(msgObj["parts"]);
-        if (text.length > 0) {
-          return { reply: text, contextId, taskId };
-        }
-      }
-    }
-
-    const artifactText = extractFromArtifacts(obj["artifacts"]);
-    return { reply: artifactText, contextId, taskId };
+    return extractTaskReply(obj, contextId);
   }
 
   return { reply: "" };

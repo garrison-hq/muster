@@ -236,10 +236,7 @@ function gradeStateShiftAxis(
 
   // Expected post-shift verbosity limit: the shifted state's word cap.
   const shiftedThresholds = makeThresholdMapping(resolved, axis.expect_state);
-  const shiftedCap =
-    overrideMaxWords !== undefined
-      ? overrideMaxWords
-      : shiftedThresholds.maxWords(0);
+  const shiftedCap = overrideMaxWords ?? shiftedThresholds.maxWords(0);
 
   const postShift = verbosityGrades.filter((g) => g.turn >= axis.trigger_turn);
 
@@ -471,7 +468,14 @@ export async function runBehavioralCases(
   );
 
   const anyFailed = verdicts.some((v) => !v.passed);
-  const exitCode = allErrored ? 2 : anyFailed ? 1 : 0;
+  let exitCode: 0 | 1 | 2;
+  if (allErrored) {
+    exitCode = 2;
+  } else if (anyFailed) {
+    exitCode = 1;
+  } else {
+    exitCode = 0;
+  }
 
   return { verdicts, exitCode, allErrored };
 }
