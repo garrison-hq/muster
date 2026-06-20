@@ -22,6 +22,8 @@ subtasks:
 - T017
 - T018
 - T019
+agent: "claude:sonnet:implementer:implementer"
+shell_pid: "787559"
 history:
 - Created by /spec-kitty.tasks for mission a2a-behavioral-conformance-01KVJDWE
 authoritative_surface: src/adapters/a2a/graders/behavioral.ts
@@ -197,3 +199,7 @@ Collect all `AxisGrade[]`; a run `passed` iff every grade passed.
 ```
 spec-kitty agent action implement WP03 --agent <name>
 ```
+
+## Activity Log
+
+- 2026-06-20T12:51:59Z – claude:sonnet:implementer:implementer – shell_pid=787559 – Started implementation via action command
