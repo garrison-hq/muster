@@ -33,13 +33,13 @@ WP02 (manifest) ──┘                        ▲
 | T010 | Decision-C threshold resolution (soul EffectiveConfig + explicit + override precedence) | WP02 |  | [D] |
 | T011 | Strict unknown-field rejection + all load-time error cases | WP02 |  | [D] |
 | T012 | Unit tests: valid (persona/explicit/both) + each error case | WP02 |  | [D] |
-| T013 | Per-case turn walk driving WP01 `sendMessage` with the handle | WP03 |  |
-| T014 | Build `TranscriptEntry[]` (user turns only; replies; wordCount; expected activeState) | WP03 |  |
-| T015 | Expected-state tracking from facts/triggers (black-box; never sent to agent) | WP03 |  |
-| T016 | Resolve thresholds via decision C → ThresholdMapping for graders | WP03 |  |
-| T017 | Call core gradeVerbosity/gradeRefusal/gradeStateShift → AxisGrade[] per run | WP03 |  |
-| T018 | Aggregate runs (errored→false, conjunctivePassK, passCount≥pass_threshold) → CaseVerdict | WP03 |  |
-| T019 | Unit tests with fixture transcripts (pass/verbosity-fail/refusal-fail/state-shift/all-errored) | WP03 |  |
+| T013 | Per-case turn walk driving WP01 `sendMessage` with the handle | WP03 |  | [D] |
+| T014 | Build `TranscriptEntry[]` (user turns only; replies; wordCount; expected activeState) | WP03 |  | [D] |
+| T015 | Expected-state tracking from facts/triggers (black-box; never sent to agent) | WP03 |  | [D] |
+| T016 | Resolve thresholds via decision C → ThresholdMapping for graders | WP03 |  | [D] |
+| T017 | Call core gradeVerbosity/gradeRefusal/gradeStateShift → AxisGrade[] per run | WP03 |  | [D] |
+| T018 | Aggregate runs (errored→false, conjunctivePassK, passCount≥pass_threshold) → CaseVerdict | WP03 |  | [D] |
+| T019 | Unit tests with fixture transcripts (pass/verbosity-fail/refusal-fail/state-shift/all-errored) | WP03 |  | [D] |
 | T020 | Route by manifest `kind: behavioral` in adapter `runManifest` (no edit to existing loader) | WP04 |  |
 | T021 | Map behavioral `CaseVerdict[]` into the `a2a run` summary + exit codes 0/1/2 | WP04 |  |
 | T022 | Human + `--json` formatting for behavioral cases (axis/turn measured-vs-limit) | WP04 |  |
@@ -115,13 +115,13 @@ state locally and never tells the agent.
 verbosity-fail, refusal-fail, state-shift, and all-errored; grading reuses core graders
 (no axis logic re-implemented); deterministic for a fixed transcript.
 
-- [ ] T013 Per-case turn walk driving WP01 `sendMessage` with the handle (WP03)
-- [ ] T014 Build `TranscriptEntry[]` (user turns only; replies; wordCount; expected activeState) (WP03)
-- [ ] T015 Expected-state tracking from facts/triggers (black-box) (WP03)
-- [ ] T016 Resolve thresholds via decision C → ThresholdMapping for graders (WP03)
-- [ ] T017 Call core gradeVerbosity/gradeRefusal/gradeStateShift → AxisGrade[] per run (WP03)
-- [ ] T018 Aggregate runs → CaseVerdict (errored→false; conjunctivePassK; passCount≥threshold) (WP03)
-- [ ] T019 Unit tests with fixture transcripts (WP03)
+- [x] T013 Per-case turn walk driving WP01 `sendMessage` with the handle (WP03)
+- [x] T014 Build `TranscriptEntry[]` (user turns only; replies; wordCount; expected activeState) (WP03)
+- [x] T015 Expected-state tracking from facts/triggers (black-box) (WP03)
+- [x] T016 Resolve thresholds via decision C → ThresholdMapping for graders (WP03)
+- [x] T017 Call core gradeVerbosity/gradeRefusal/gradeStateShift → AxisGrade[] per run (WP03)
+- [x] T018 Aggregate runs → CaseVerdict (errored→false; conjunctivePassK; passCount≥threshold) (WP03)
+- [x] T019 Unit tests with fixture transcripts (WP03)
 
 **Dependencies/risks:** must NOT reuse `core/behavioral/runner.runCase` (it injects a persona
 prompt — forbidden by black-box). Import the *graders* and *pass-k*, not the runner.
