@@ -21,12 +21,12 @@ WP02 (manifest) ──┘                        ▲
 
 | ID | Description | WP | Parallel |
 |----|-------------|----|----------|
-| T001 | A2A `Message`/`Part` request builder (role:user, text part, messageId) | WP01 | [P] |
-| T002 | Conversation handle: thread `contextId`/`taskId` across turns | WP01 |  |
-| T003 | `sendMessage(endpoint, turn, handle, opts)` — fetch, bearer auth, timeout | WP01 |  |
-| T004 | Reply extraction tolerant of Message and Task response shapes (Q1) | WP01 |  |
-| T005 | Error/timeout/non-2xx/JSON-RPC-error → errored result; never log token | WP01 |  |
-| T006 | Unit tests: request shape, threading, extraction (both shapes), errors | WP01 |  |
+| T001 | A2A `Message`/`Part` request builder (role:user, text part, messageId) | WP01 | [P] | [D] |
+| T002 | Conversation handle: thread `contextId`/`taskId` across turns | WP01 |  | [D] |
+| T003 | `sendMessage(endpoint, turn, handle, opts)` — fetch, bearer auth, timeout | WP01 |  | [D] |
+| T004 | Reply extraction tolerant of Message and Task response shapes (Q1) | WP01 |  | [D] |
+| T005 | Error/timeout/non-2xx/JSON-RPC-error → errored result; never log token | WP01 |  | [D] |
+| T006 | Unit tests: request shape, threading, extraction (both shapes), errors | WP01 |  | [D] |
 | T007 | A2A behavioral types in `behavioral-types.ts` | WP02 | [P] |
 | T008 | Top-level + `endpoint` (env-name) strict validation | WP02 |  |
 | T009 | Case validation reusing core Turn/AxisSpec/ContentAssertion/CaseOverrides | WP02 |  |
@@ -62,12 +62,12 @@ extractor — **additively**, leaving the existing single-turn `{skill, message}
 `Message` shape, threading carries `contextId`/`taskId` to turn 2, and extraction yields the
 reply text from both a Message result and a Task result; error/timeout produce an errored result.
 
-- [ ] T001 A2A `Message`/`Part` request builder (WP01)
-- [ ] T002 Conversation handle: thread `contextId`/`taskId` across turns (WP01)
-- [ ] T003 `sendMessage(endpoint, turn, handle, opts)` — fetch, bearer auth, timeout (WP01)
-- [ ] T004 Reply extraction tolerant of Message and Task response shapes (WP01)
-- [ ] T005 Error/timeout/non-2xx/JSON-RPC-error → errored result; never log token (WP01)
-- [ ] T006 Unit tests: request shape, threading, extraction (both shapes), errors (WP01)
+- [x] T001 A2A `Message`/`Part` request builder (WP01)
+- [x] T002 Conversation handle: thread `contextId`/`taskId` across turns (WP01)
+- [x] T003 `sendMessage(endpoint, turn, handle, opts)` — fetch, bearer auth, timeout (WP01)
+- [x] T004 Reply extraction tolerant of Message and Task response shapes (WP01)
+- [x] T005 Error/timeout/non-2xx/JSON-RPC-error → errored result; never log token (WP01)
+- [x] T006 Unit tests: request shape, threading, extraction (both shapes), errors (WP01)
 
 **Dependencies/risks:** the `message/send` response shape is an external (hey-anton) unknown
 (Q1) — extractor must tolerate both shapes. No new `fetch` site (extend the allow-listed file).
