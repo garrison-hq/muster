@@ -183,3 +183,4 @@ spec-kitty agent action implement WP02 --agent <name>
 ## Activity Log
 
 - 2026-06-20T12:37:03Z – claude:sonnet:implementer:implementer – shell_pid=751549 – Started implementation via action command
+- 2026-06-20T12:47:02Z – claude:sonnet:implementer:implementer – shell_pid=751549 – WP02 complete: behavioral-types.ts + behavioral-manifest.ts + 10 YAML fixtures + 20 tests (40 with TS). Decision-C precedence: explicit thresholds > soul-derived > none. Strict field rejection (FR-005), NFR-002 env-name validation, soul paths resolved against manifest dir. pnpm build clean, pnpm test 2732/2732 passed, invariants NI-001/NI-002/NI-003 green. Exports: loadBehavioralManifest, resolveThresholds, isA2aBehavioralManifestError (all needed by WP03).
