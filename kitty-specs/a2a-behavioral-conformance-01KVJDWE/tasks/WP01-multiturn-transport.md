@@ -19,7 +19,8 @@ subtasks:
 - T004
 - T005
 - T006
-shell_pid: '734352'
+shell_pid: "734352"
+agent: "claude:sonnet:implementer:implementer"
 history:
 - Created by /spec-kitty.tasks for mission a2a-behavioral-conformance-01KVJDWE
 authoritative_surface: src/adapters/a2a/transport.ts
@@ -194,3 +195,7 @@ the error string.
 ```
 spec-kitty agent action implement WP01 --agent <name>
 ```
+
+## Activity Log
+
+- 2026-06-20T12:29:36Z – claude:sonnet:implementer:implementer – shell_pid=734352 – Assigned agent via action command
