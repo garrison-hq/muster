@@ -1,0 +1,9 @@
+# empty-turns.yaml — error: turns list is empty (C-005 requires ≥ 1 turn)
+adapter: a2a
+kind: behavioral
+cases:
+  - id: no-turns
+    turns: []
+    axes:
+      - axis: refusal
+        turn: 0

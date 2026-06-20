@@ -1,0 +1,11 @@
+# unknown-field.yaml — error: unknown top-level field (FR-005 strict validation)
+adapter: a2a
+kind: behavioral
+unknownTopField: this-should-fail
+cases:
+  - id: some-case
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0

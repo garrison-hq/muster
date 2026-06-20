@@ -16,7 +16,9 @@
  */
 
 import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { resolve as resolvePath, dirname } from "node:path";
+import { parse as parseYaml } from "yaml";
 import type {
   EffectiveConfig,
   MergeStrategy,
@@ -42,10 +44,20 @@ import {
 } from "./graders/skill-behavior.js";
 import { checkAuthEnforcement } from "./graders/auth-negative.js";
 import { checkLiveSignedCard } from "./graders/signed-card.js";
+import {
+  loadBehavioralManifest,
+  isA2aBehavioralManifestError,
+  resolveThresholds,
+} from "./behavioral-manifest.js";
+import type { A2aBehavioralCase } from "./behavioral-manifest.js";
+import { runBehavioralCases } from "./graders/behavioral.js";
+import type { BehavioralRunResult } from "./graders/behavioral.js";
 
 // Re-export public surface (FR-012, T024)
 export { lintCard, serializeLintReport } from "./lint.js";
 export type { ManifestCase, CaseResult, ManifestSummary } from "./types.js";
+export type { BehavioralRunResult } from "./graders/behavioral.js";
+export type { CaseVerdict } from "./graders/behavioral.js";
 
 // ---------------------------------------------------------------------------
 // Version from package.json (mirrors HeartbeatAdapter pattern)
@@ -410,6 +422,139 @@ async function runLiveCase(
   } catch (err) {
     return failedFromError(kase, err);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Manifest kind peeking (WP04, T020)
+// ---------------------------------------------------------------------------
+
+/**
+ * Read absPath once and return the `kind` field value, or null if not present.
+ *
+ * Tries JSON first (static manifests are JSON); on JSON-parse failure tries
+ * YAML (behavioral manifests are YAML). A single file read is shared between
+ * both parse attempts (Issue 3 fix).
+ *
+ * Returns null when:
+ * - the file is not readable;
+ * - neither JSON nor YAML parses to an object;
+ * - the parsed object has no `kind` string field.
+ *
+ * Citation: muster rubric FR-006 (routing on kind: behavioral);
+ * A2A behavioral manifest spec §2.1 (kind field).
+ *
+ * @param absPath - Absolute path to the manifest file.
+ */
+export async function peekManifestKind(absPath: string): Promise<string | null> {
+  let raw: string;
+  try {
+    raw = await readFile(absPath, "utf8");
+  } catch {
+    return null;
+  }
+  return extractKind(raw);
+}
+
+/** Extract the `kind` string from a raw JSON-or-YAML buffer. */
+function extractKind(raw: string): string | null {
+  const parsed = tryParseJsonOrYaml(raw);
+  if (
+    typeof parsed === "object" &&
+    parsed !== null &&
+    !Array.isArray(parsed) &&
+    typeof (parsed as Record<string, unknown>)["kind"] === "string"
+  ) {
+    return (parsed as Record<string, unknown>)["kind"] as string;
+  }
+  return null;
+}
+
+/** Try JSON first, then YAML, on the same buffer. Returns undefined on failure. */
+function tryParseJsonOrYaml(raw: string): unknown {
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    try {
+      return parseYaml(raw) as unknown;
+    } catch {
+      return undefined;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Behavioral manifest runner (WP04, T020/T021)
+// ---------------------------------------------------------------------------
+
+/**
+ * Outcome returned by runA2aBehavioralManifest; consumed by doA2aRun in the CLI.
+ *
+ * - skipped: true when MUSTER_A2A_ENDPOINT was not set (no endpoint → cases
+ *   skipped, not failed — FR-009).
+ * - violations: non-empty when the manifest failed schema validation (exit 2).
+ * - result: present when the runner executed (skipped=false, violations=[]).
+ */
+export interface A2aBehavioralManifestOutcome {
+  skipped: boolean;
+  violations: Violation[];
+  result: BehavioralRunResult | null;
+}
+
+/**
+ * Load, validate, and run an A2A behavioral manifest.
+ *
+ * Endpoint activation (FR-009): reads the env-var name from the manifest's
+ * `endpoint.env` field and resolves the URL at call time. If the env var is
+ * absent, all cases are marked skipped and exit 0 is recommended.
+ *
+ * Threshold resolution (decision-C): calls WP02's resolveThresholds() per case,
+ * injecting the provided adapter for soul parsing + resolution.
+ *
+ * Error contract (FR-010): an errored run is a failed run; allErrored → exit 2.
+ *
+ * NFR-002: token value is read from env at call time inside runBehavioralCases;
+ * it is never stored or logged here.
+ *
+ * @param manifestPath - Absolute path to the behavioral manifest YAML.
+ * @param adapter      - SpecAdapter for soul resolution (threshold decision-C).
+ */
+export async function runA2aBehavioralManifest(
+  manifestPath: string,
+  adapter: SpecAdapter
+): Promise<A2aBehavioralManifestOutcome> {
+  const loaded = await loadBehavioralManifest(manifestPath);
+  if (isA2aBehavioralManifestError(loaded)) {
+    return { skipped: false, violations: loaded, result: null };
+  }
+
+  // FR-009: if the endpoint env var is absent, skip all cases (not fail).
+  const endpointValue = process.env[loaded.endpoint.env] ?? "";
+  if (endpointValue === "") {
+    return { skipped: true, violations: [], result: null };
+  }
+
+  // Build per-case threshold resolver (decision-C, WP02 resolveThresholds).
+  const resolveThresholdsFor = async (
+    kase: A2aBehavioralCase
+  ): Promise<import("./behavioral-manifest.js").ResolvedThresholds> => {
+    const resolved = await resolveThresholds(
+      kase.id,
+      kase.soul,
+      kase.thresholds,
+      kase.overrides,
+      kase.axes,
+      adapter
+    );
+    if (Array.isArray(resolved)) {
+      // Threshold violation: throw so runBehavioralCases records an errored run.
+      const msgs = resolved.map((v) => `${v.path}: ${v.message}`).join("; ");
+      throw new Error(`threshold resolution failed for case "${kase.id}": ${msgs}`);
+    }
+    return resolved;
+  };
+
+  const result = await runBehavioralCases(loaded, resolveThresholdsFor);
+  return { skipped: false, violations: [], result };
 }
 
 // ---------------------------------------------------------------------------

@@ -307,6 +307,325 @@ export async function probeAuth(
 }
 
 // ---------------------------------------------------------------------------
+// Multi-turn A2A transport — WP01 (B1)
+//
+// Adds a conformant `message/send` path that:
+//   1. Builds a proper A2A Message per spec v0.3.0 §6.4 / §6.5.1 / §7.1.1.
+//   2. Threads server-owned `contextId` / `taskId` across turns (D1).
+//   3. Extracts the assistant reply from Message and Task response shapes (Q1).
+//   4. Maps every failure (non-2xx, timeout, JSON-RPC error, empty reply) to a
+//      thrown error — errored run = failed run, never retried (D5, FR-010).
+//   5. Never stores or logs the bearer token (NFR-002).
+//
+// This is a purely additive extension; `invokeSkill` is unchanged (NFR-003).
+// The only new network surface is `sendMessage`, which routes through the
+// already allow-listed `fetch` site in this file (NI-003).
+// ---------------------------------------------------------------------------
+
+/**
+ * Carry server-owned `contextId` and `taskId` across turns.
+ *
+ * The runtime (WP03) holds the handle lifetime for one multi-turn case.
+ * Transport reads / returns the handle; it never stores state itself.
+ *
+ * Citation: A2A spec v0.3.0 §7.1.1 (MessageSendParams), D1 (threading rationale).
+ */
+export interface ConversationHandle {
+  /** Server-generated context identifier — echoed on every turn after turn 1. */
+  contextId?: string;
+  /** Server-generated task identifier — echoed when the agent created a task. */
+  taskId?: string;
+}
+
+/** Minimal A2A JSON-RPC request body for `message/send`. */
+interface SendRequestBody {
+  jsonrpc: "2.0";
+  id: number;
+  method: "message/send";
+  params: {
+    message: {
+      kind: "message";
+      role: "user";
+      parts: Array<{ kind: "text"; text: string }>;
+      messageId: string;
+      contextId?: string;
+      taskId?: string;
+    };
+  };
+}
+
+/**
+ * Build the JSON-RPC 2.0 `message/send` request body for one user turn.
+ *
+ * - First turn (empty handle): omits `contextId` and `taskId` entirely.
+ * - Subsequent turns: includes whichever ids the handle carries.
+ * - `messageId` is deterministic from `idSeq` (no Math.random / Date.now).
+ *
+ * Citation: A2A spec v0.3.0 §6.4 (Message), §6.5.1 (TextPart), §7.1.1 (MessageSendParams).
+ *
+ * @param turnText - The user-turn text content.
+ * @param handle   - Conversation handle (empty on turn 1; updated handle on turn 2+).
+ * @param idSeq    - Monotonically increasing counter for the call (≥ 1); used for
+ *                   both the JSON-RPC `id` and the deterministic `messageId`.
+ */
+export function buildSendRequest(
+  turnText: string,
+  handle: ConversationHandle,
+  idSeq: number
+): SendRequestBody {
+  const message: SendRequestBody["params"]["message"] = {
+    kind: "message",
+    role: "user",
+    parts: [{ kind: "text", text: turnText }],
+    messageId: `muster-msg-${idSeq}`,
+  };
+
+  if (handle.contextId !== undefined) {
+    message.contextId = handle.contextId;
+  }
+  if (handle.taskId !== undefined) {
+    message.taskId = handle.taskId;
+  }
+
+  return {
+    jsonrpc: "2.0",
+    id: idSeq,
+    method: "message/send",
+    params: { message },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// T004 — Reply extraction (Q1: tolerant of Message and Task response shapes)
+// ---------------------------------------------------------------------------
+
+/** Intermediate extraction result — pure, no network or env access. */
+interface ExtractedReply {
+  reply: string;
+  contextId?: string;
+  taskId?: string;
+}
+
+/** Guard: an object with a string `kind` field. */
+function hasKind(val: unknown): val is { kind: string } {
+  return typeof val === "object" && val !== null && typeof (val as Record<string, unknown>)["kind"] === "string";
+}
+
+/** Join text parts from a parts array, skipping non-text entries. */
+function joinTextParts(parts: unknown): string {
+  if (!Array.isArray(parts)) {
+    return "";
+  }
+  return parts
+    .filter((p): p is { kind: string; text: string } =>
+      typeof p === "object" && p !== null &&
+      (p as Record<string, unknown>)["kind"] === "text" &&
+      typeof (p as Record<string, unknown>)["text"] === "string"
+    )
+    .map((p) => p.text)
+    .join("");
+}
+
+/** Extract text from Task artifacts array. */
+function extractFromArtifacts(artifacts: unknown): string {
+  if (!Array.isArray(artifacts)) {
+    return "";
+  }
+  return artifacts
+    .map((a: unknown) => {
+      if (typeof a !== "object" || a === null) {
+        return "";
+      }
+      return joinTextParts((a as Record<string, unknown>)["parts"]);
+    })
+    .join("");
+}
+
+/**
+ * Extract the assistant reply text and threading ids from a JSON-RPC `result` object.
+ *
+ * Tries in order:
+ * 1. Message result (`result.kind === "message"`) → join `result.parts[].text`.
+ * 2. Task result (`result.kind === "task"`) → prefer `result.status.message.parts[].text`;
+ *    else concatenate `result.artifacts[].parts[].text`.
+ * 3. Returns `{ reply: "" }` (empty sentinel) when neither shape yields text.
+ *    The caller (`sendMessage`) treats the empty sentinel as an errored run.
+ *
+ * `contextId` is read from `result.contextId`; `taskId` from `result.taskId`
+ * or `result.id` (Task shape) — whichever is present.
+ *
+ * This function is pure (no fetch, no env) so it is testable offline.
+ *
+ * Citation: A2A spec v0.3.0 §6.4 (Message), research Q1 (response shape tolerance).
+ *
+ * @param resultObj - The `result` field from a JSON-RPC 2.0 success response.
+ */
+export function extractReply(resultObj: unknown): ExtractedReply {
+  if (!hasKind(resultObj)) {
+    return { reply: "" };
+  }
+
+  const obj = resultObj as Record<string, unknown>;
+
+  const contextId = typeof obj["contextId"] === "string" ? obj["contextId"] : undefined;
+
+  if (obj["kind"] === "message") {
+    const text = joinTextParts(obj["parts"]);
+    return { reply: text, contextId };
+  }
+
+  if (obj["kind"] === "task") {
+    const taskId =
+      typeof obj["taskId"] === "string"
+        ? obj["taskId"]
+        : typeof obj["id"] === "string"
+        ? obj["id"]
+        : undefined;
+
+    const status = obj["status"];
+    if (typeof status === "object" && status !== null) {
+      const statusObj = status as Record<string, unknown>;
+      const statusMsg = statusObj["message"];
+      if (hasKind(statusMsg) && (statusMsg as Record<string, unknown>)["kind"] === "message") {
+        const msgObj = statusMsg as Record<string, unknown>;
+        const text = joinTextParts(msgObj["parts"]);
+        if (text.length > 0) {
+          return { reply: text, contextId, taskId };
+        }
+      }
+    }
+
+    const artifactText = extractFromArtifacts(obj["artifacts"]);
+    return { reply: artifactText, contextId, taskId };
+  }
+
+  return { reply: "" };
+}
+
+// ---------------------------------------------------------------------------
+// T003 / T005 — sendMessage
+// ---------------------------------------------------------------------------
+
+/** Options for `sendMessage`. */
+export interface SendMessageOptions {
+  /** Bearer token for `Authorization` header; omitted when null/undefined. */
+  token?: string | null;
+  /** HTTP timeout in ms; defaults to `timeoutMs()` from env. */
+  timeoutMs?: number;
+  /** Monotonically increasing sequence number for request/message ids (≥ 1). */
+  idSeq: number;
+}
+
+/**
+ * Send one user turn to an A2A agent via the conformant `message/send` path.
+ *
+ * Builds a proper A2A `Message` (T001), POSTs it, extracts the reply (T004),
+ * and returns the updated `ConversationHandle` (T002) for the next turn.
+ *
+ * Error contract (T005, D5, FR-010):
+ * - Network / timeout → throws with "timeout-or-network" in the message.
+ * - Non-2xx HTTP → throws with host + HTTP status only (no token, no headers).
+ * - JSON-RPC `error` in body → throws with code + agent error message.
+ * - Empty/unextractable reply → throws with "empty reply".
+ * All failures are errored runs; callers must NOT retry.
+ *
+ * NFR-002: `opts.token` is never stored or logged; error messages carry
+ * endpoint host + HTTP status only.
+ *
+ * NI-003: this is the only new `fetch` call; it lives in the already
+ * allow-listed `src/adapters/a2a/transport.ts`.
+ *
+ * Citation: A2A spec v0.3.0 §7.1.1 (MessageSendParams); muster rubric FR-001,
+ *   FR-010, NFR-002; research D1 (threading), D5 (errored = failed).
+ *
+ * @param endpoint  - Base URL of the A2A agent (no path suffix).
+ * @param turnText  - The user-turn content to send.
+ * @param handle    - Current conversation handle (empty `{}` on the first turn).
+ * @param opts      - Token, timeout, and sequence number options.
+ * @returns `{ reply, handle }` — reply text and updated handle for the next turn.
+ */
+export async function sendMessage(
+  endpoint: string,
+  turnText: string,
+  handle: ConversationHandle,
+  opts: SendMessageOptions
+): Promise<{ reply: string; handle: ConversationHandle }> {
+  const requestBody = buildSendRequest(turnText, handle, opts.idSeq);
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  const token = opts.token ?? null;
+  if (token !== null && token.length > 0) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const effectiveTimeout = opts.timeoutMs ?? timeoutMs();
+
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(effectiveTimeout),
+    });
+  } catch (err) {
+    throw new Error(
+      `A2A sendMessage: timeout-or-network error posting to ${endpoint}: ${String(err)}`
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      `A2A sendMessage: server returned HTTP ${response.status} for ${endpoint}`
+    );
+  }
+
+  let body: string;
+  try {
+    body = await response.text();
+  } catch (err) {
+    throw new Error(
+      `A2A sendMessage: failed to read response body from ${endpoint}: ${String(err)}`
+    );
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body) as unknown;
+  } catch {
+    throw new Error(
+      `A2A sendMessage: response is not valid JSON from ${endpoint}: ${body.slice(0, 200)}`
+    );
+  }
+
+  const rpc = parsed as { result?: unknown; error?: { code?: number; message?: string } };
+
+  if (rpc.error !== undefined) {
+    throw new Error(
+      `A2A sendMessage: JSON-RPC error ${rpc.error.code ?? "unknown"}: ${rpc.error.message ?? "(no message)"}`
+    );
+  }
+
+  const extracted = extractReply(rpc.result);
+
+  if (extracted.reply.length === 0) {
+    throw new Error(
+      `A2A sendMessage: empty reply from ${endpoint} — unrecognized response shape`
+    );
+  }
+
+  const updatedHandle: ConversationHandle = {
+    contextId: extracted.contextId ?? handle.contextId,
+    taskId: extracted.taskId ?? handle.taskId,
+  };
+
+  return { reply: extracted.reply, handle: updatedHandle };
+}
+
+// ---------------------------------------------------------------------------
 // T014 — fetchJwks
 // ---------------------------------------------------------------------------
 

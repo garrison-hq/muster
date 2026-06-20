@@ -1,0 +1,19 @@
+# persona.yaml — valid A2A behavioral manifest using soul-only threshold source (decision-C source 2)
+# voice.verbosity = 25 → baseMaxWords = 10 + 25 = 35
+adapter: a2a
+kind: behavioral
+endpoint:
+  env: MUSTER_A2A_ENDPOINT
+  token_env: MUSTER_A2A_TOKEN
+defaults:
+  runs: 3
+  pass_threshold: 2
+cases:
+  - id: verbosity-via-soul
+    soul: "../../../../souls/voice-frontdesk/Soul.md"
+    turns:
+      - role: user
+        content: "Hi, what are your opening hours?"
+    axes:
+      - axis: verbosity
+        turns: all

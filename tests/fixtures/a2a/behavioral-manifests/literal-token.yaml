@@ -1,0 +1,14 @@
+# literal-token.yaml — error: literal URL in endpoint.env (NFR-002)
+# endpoint.env must be an env-var NAME, not a literal URL
+adapter: a2a
+kind: behavioral
+endpoint:
+  env: "https://my-agent.example.com/a2a"
+  token_env: MUSTER_A2A_TOKEN
+cases:
+  - id: some-case
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0
