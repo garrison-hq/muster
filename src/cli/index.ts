@@ -65,6 +65,7 @@ import {
   serializeLintReport as a2aSerializeLintReport,
   runManifest as runA2aManifest,
   runA2aBehavioralManifest,
+  peekManifestKind,
   type ManifestSummary as A2aManifestSummary,
 } from "../adapters/a2a/index.js";
 import { parseAgentCard } from "../adapters/a2a/card.js";
@@ -835,47 +836,14 @@ async function doA2aRun(
 ): Promise<number> {
   const absManifestPath = toAbsolute(manifestPath);
 
-  // T020: peek at the YAML/JSON `kind` field to route behavioral vs static.
-  // We read the file inline here since peekManifestKind is in the adapter.
+  // T020: peek at the `kind` field to route behavioral vs static (FR-006).
+  // peekManifestKind lives in the adapter (adapter knowledge stays in adapters).
   // A JSON manifest (static path) will not have kind:"behavioral", so routing
-  // is additive — the static path is byte-identical to before.
-  let manifestKind: string | null = null;
-  try {
-    const raw = await readFile(absManifestPath, "utf8");
-    const parsed = JSON.parse(raw) as unknown;
-    if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      !Array.isArray(parsed) &&
-      typeof (parsed as Record<string, unknown>)["kind"] === "string"
-    ) {
-      manifestKind = (parsed as Record<string, unknown>)["kind"] as string;
-    }
-  } catch {
-    // JSON parse failed — try YAML (behavioral manifests are YAML).
-    try {
-      const raw = await readFile(absManifestPath, "utf8");
-      const parsed = parseYaml(raw) as unknown;
-      if (
-        typeof parsed === "object" &&
-        parsed !== null &&
-        !Array.isArray(parsed) &&
-        typeof (parsed as Record<string, unknown>)["kind"] === "string"
-      ) {
-        manifestKind = (parsed as Record<string, unknown>)["kind"] as string;
-      }
-    } catch {
-      // Cannot parse → fall through to static path (will fail there with a clear error).
-    }
-  }
+  // is additive — the static path is byte-identical to before (NFR-001).
+  const manifestKind = await peekManifestKind(absManifestPath);
 
   if (manifestKind === "behavioral") {
-    try {
-      return await doA2aBehavioralRun(absManifestPath, opts, io);
-    } catch (error) {
-      if (error instanceof ExecutionError) throw error;
-      throw new ExecutionError(`a2a behavioral run failed: ${errorMessage(error)}`);
-    }
+    return doA2aBehavioralRun(absManifestPath, opts, io);
   }
 
   // Static path (byte-identical behavior — additive routing only).

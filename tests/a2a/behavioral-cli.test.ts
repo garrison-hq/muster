@@ -33,6 +33,7 @@ import {
   formatA2aBehavioralHuman,
 } from "../../src/cli/output.js";
 import type { CaseVerdict } from "../../src/adapters/a2a/index.js";
+import { peekManifestKind } from "../../src/adapters/a2a/index.js";
 
 // ---------------------------------------------------------------------------
 // Test fixtures — small in-memory behavioral manifests written to a tmp dir
@@ -391,5 +392,52 @@ describe("runA2aBehavioralManifest: validation errors", () => {
   it("returns violations when manifest file does not exist", async () => {
     const outcome = await runA2aBehavioralManifest("/nonexistent/behavioral.yaml", rfc1Adapter);
     expect(outcome.violations.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// peekManifestKind unit tests (WP04 fix-cycle-2, Issue 1+3)
+// ---------------------------------------------------------------------------
+
+describe("peekManifestKind", () => {
+  it("returns 'behavioral' for a YAML file with kind: behavioral (FR-006)", async () => {
+    const path = resolvePath(TMP_DIR, "peek-behavioral.yaml");
+    await writeFile(path, "kind: behavioral\nother: value\n", "utf8");
+    const kind = await peekManifestKind(path);
+    expect(kind).toBe("behavioral");
+  });
+
+  it("returns the kind string from a JSON file (static manifests are JSON)", async () => {
+    const path = resolvePath(TMP_DIR, "peek-static.json");
+    await writeFile(path, JSON.stringify({ kind: "static", cases: [] }), "utf8");
+    const kind = await peekManifestKind(path);
+    expect(kind).toBe("static");
+  });
+
+  it("returns null when the file does not exist (unreadable path)", async () => {
+    const kind = await peekManifestKind("/nonexistent/no-such-file.yaml");
+    expect(kind).toBeNull();
+  });
+
+  it("returns null when the file content is neither valid JSON nor YAML object", async () => {
+    const path = resolvePath(TMP_DIR, "peek-garbage.txt");
+    // A bare string is valid YAML but not an object, so kind extraction returns null.
+    await writeFile(path, "- item1\n- item2\n", "utf8");
+    const kind = await peekManifestKind(path);
+    expect(kind).toBeNull();
+  });
+
+  it("returns null when the parsed object has no kind field", async () => {
+    const path = resolvePath(TMP_DIR, "peek-no-kind.yaml");
+    await writeFile(path, "adapter: a2a\nother: value\n", "utf8");
+    const kind = await peekManifestKind(path);
+    expect(kind).toBeNull();
+  });
+
+  it("returns null when kind field is not a string", async () => {
+    const path = resolvePath(TMP_DIR, "peek-numeric-kind.yaml");
+    await writeFile(path, "kind: 42\n", "utf8");
+    const kind = await peekManifestKind(path);
+    expect(kind).toBeNull();
   });
 });

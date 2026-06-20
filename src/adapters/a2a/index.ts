@@ -16,7 +16,9 @@
  */
 
 import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { resolve as resolvePath, dirname } from "node:path";
+import { parse as parseYaml } from "yaml";
 import type {
   EffectiveConfig,
   MergeStrategy,
@@ -419,6 +421,64 @@ async function runLiveCase(
     return await grader(kase, endpoint);
   } catch (err) {
     return failedFromError(kase, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Manifest kind peeking (WP04, T020)
+// ---------------------------------------------------------------------------
+
+/**
+ * Read absPath once and return the `kind` field value, or null if not present.
+ *
+ * Tries JSON first (static manifests are JSON); on JSON-parse failure tries
+ * YAML (behavioral manifests are YAML). A single file read is shared between
+ * both parse attempts (Issue 3 fix).
+ *
+ * Returns null when:
+ * - the file is not readable;
+ * - neither JSON nor YAML parses to an object;
+ * - the parsed object has no `kind` string field.
+ *
+ * Citation: muster rubric FR-006 (routing on kind: behavioral);
+ * A2A behavioral manifest spec §2.1 (kind field).
+ *
+ * @param absPath - Absolute path to the manifest file.
+ */
+export async function peekManifestKind(absPath: string): Promise<string | null> {
+  let raw: string;
+  try {
+    raw = await readFile(absPath, "utf8");
+  } catch {
+    return null;
+  }
+  return extractKind(raw);
+}
+
+/** Extract the `kind` string from a raw JSON-or-YAML buffer. */
+function extractKind(raw: string): string | null {
+  const parsed = tryParseJsonOrYaml(raw);
+  if (
+    typeof parsed === "object" &&
+    parsed !== null &&
+    !Array.isArray(parsed) &&
+    typeof (parsed as Record<string, unknown>)["kind"] === "string"
+  ) {
+    return (parsed as Record<string, unknown>)["kind"] as string;
+  }
+  return null;
+}
+
+/** Try JSON first, then YAML, on the same buffer. Returns undefined on failure. */
+function tryParseJsonOrYaml(raw: string): unknown {
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    try {
+      return parseYaml(raw) as unknown;
+    } catch {
+      return undefined;
+    }
   }
 }
 
