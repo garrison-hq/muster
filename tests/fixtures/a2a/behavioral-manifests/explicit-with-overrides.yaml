@@ -1,0 +1,17 @@
+# explicit-with-overrides.yaml — valid: explicit thresholds + overrides.max_words override
+adapter: a2a
+kind: behavioral
+cases:
+  - id: explicit-with-overrides
+    thresholds:
+      default_max_words: 40
+      states:
+        escalated: 25
+    overrides:
+      max_words: 15
+      refusal_cap: 10
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: verbosity
+        turns: all

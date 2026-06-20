@@ -1,0 +1,14 @@
+# assertion-invalid-regex.yaml — error: regex=true but pattern is an invalid regex
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    turns:
+      - content: "Refuse this please."
+    axes:
+      - axis: refusal
+        turn: 0
+        assertions:
+          - kind: must_contain
+            pattern: "[unclosed"
+            regex: true

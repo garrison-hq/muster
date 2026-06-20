@@ -1,0 +1,11 @@
+# turn-unknown-field.yaml — error: unknown field in turn mapping (FR-005)
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    turns:
+      - content: "Hello."
+        unknownTurnField: bad
+    axes:
+      - axis: refusal
+        turn: 0

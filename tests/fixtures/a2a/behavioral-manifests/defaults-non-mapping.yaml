@@ -1,0 +1,11 @@
+# defaults-non-mapping.yaml — error: defaults must be a mapping (not a scalar)
+adapter: a2a
+kind: behavioral
+defaults: 42
+cases:
+  - id: some-case
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0

@@ -1,0 +1,12 @@
+# explicit-no-threshold-verbosity.yaml — error: explicit thresholds block present but no
+# default_max_words and no states, while verbosity axis requires a word threshold (decision-C)
+adapter: a2a
+kind: behavioral
+cases:
+  - id: verbosity-no-threshold
+    thresholds: {}
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: verbosity
+        turns: all

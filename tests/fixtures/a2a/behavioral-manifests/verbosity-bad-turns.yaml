@@ -1,0 +1,12 @@
+# verbosity-bad-turns.yaml — error: verbosity axis turns must be "all" or list of integers
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    thresholds:
+      default_max_words: 30
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: verbosity
+        turns: none

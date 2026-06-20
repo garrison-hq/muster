@@ -1,0 +1,13 @@
+# endpoint-whitespace-env.yaml — error: env contains whitespace (not a valid env-var name)
+adapter: a2a
+kind: behavioral
+endpoint:
+  env: "MY ENV VAR"
+  token_env: MUSTER_A2A_TOKEN
+cases:
+  - id: some-case
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0

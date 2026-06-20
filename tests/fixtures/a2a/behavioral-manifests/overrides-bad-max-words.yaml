@@ -1,0 +1,12 @@
+# overrides-bad-max-words.yaml — error: overrides.max_words must be an integer >= 0
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0
+    overrides:
+      max_words: -5

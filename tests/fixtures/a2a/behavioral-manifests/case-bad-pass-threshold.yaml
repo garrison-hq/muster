@@ -1,0 +1,11 @@
+# case-bad-pass-threshold.yaml — error: case-level pass_threshold must be integer >= 1 (FR-022)
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    pass_threshold: 0
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0

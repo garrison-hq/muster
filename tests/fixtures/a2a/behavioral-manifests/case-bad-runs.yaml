@@ -1,0 +1,11 @@
+# case-bad-runs.yaml — error: case-level runs must be integer >= 1 (FR-022)
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    runs: 0
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0

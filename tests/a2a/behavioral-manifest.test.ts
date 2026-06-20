@@ -367,3 +367,631 @@ describe("NFR-002 env-var name validation for endpoint fields", () => {
     expect(envError).toBeDefined();
   });
 });
+
+// ---------------------------------------------------------------------------
+// isEnvVarName branches — whitespace, nvapi, host:port, invalid POSIX
+// ---------------------------------------------------------------------------
+
+describe("isEnvVarName rejects non-env-var literals (NFR-002)", () => {
+  it("rejects env with whitespace characters", async () => {
+    const result = await loadBehavioralManifest(fixture("endpoint-whitespace-env.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path === "endpoint.env");
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("NFR-002");
+  });
+
+  it("rejects env with host:port pattern", async () => {
+    const result = await loadBehavioralManifest(fixture("endpoint-hostport-env.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path === "endpoint.env");
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("NFR-002");
+  });
+
+  it("rejects env that fails POSIX identifier check (starts with digit)", async () => {
+    const result = await loadBehavioralManifest(fixture("endpoint-invalid-posix-env.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path === "endpoint.env");
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("NFR-002");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Endpoint validation branches
+// ---------------------------------------------------------------------------
+
+describe("endpoint validation error cases", () => {
+  it("endpoint is a non-mapping scalar → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("endpoint-non-mapping.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path === "endpoint");
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("mapping");
+  });
+
+  it("endpoint.env is an empty string → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("endpoint-empty-env.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path === "endpoint.env");
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("non-empty");
+  });
+
+  it("endpoint.token_env is a literal URL → violation (NFR-002)", async () => {
+    const result = await loadBehavioralManifest(fixture("endpoint-literal-token-env.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path === "endpoint.token_env");
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("NFR-002");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Defaults validation branches
+// ---------------------------------------------------------------------------
+
+describe("defaults validation error cases", () => {
+  it("defaults is a scalar (not mapping) → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("defaults-non-mapping.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path === "defaults");
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("mapping");
+  });
+
+  it("defaults.runs = 0 → violation (must be ≥ 1)", async () => {
+    const result = await loadBehavioralManifest(fixture("defaults-bad-runs.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path === "defaults.runs");
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("integer ≥ 1");
+  });
+
+  it("defaults.pass_threshold = 0 → violation (must be ≥ 1)", async () => {
+    const result = await loadBehavioralManifest(fixture("defaults-bad-pass-threshold.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path === "defaults.pass_threshold");
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("integer ≥ 1");
+  });
+
+  it("defaults with unknown field → violation (FR-005)", async () => {
+    const result = await loadBehavioralManifest(fixture("defaults-unknown-field.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path === "defaults.extraField");
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("FR-005");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Turn validation branches
+// ---------------------------------------------------------------------------
+
+describe("turn validation error cases", () => {
+  it("turn entry is a string (not mapping) → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("turn-non-mapping.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("turns[0]") && v.message.includes("mapping"));
+    expect(err).toBeDefined();
+  });
+
+  it("turn role = 'assistant' → violation (only 'user' allowed)", async () => {
+    const result = await loadBehavioralManifest(fixture("turn-wrong-role.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("role"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain('"user"');
+  });
+
+  it("turn content is empty string → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("turn-empty-content.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("content"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("non-empty");
+  });
+
+  it("turn facts is an array (not mapping) → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("turn-non-mapping-facts.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("facts") && v.message.includes("mapping"));
+    expect(err).toBeDefined();
+  });
+
+  it("turn fact value is a number (not bool/string) → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("turn-bad-fact-value.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("facts.important"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("boolean or string");
+  });
+
+  it("turn with unknown field → violation (FR-005)", async () => {
+    const result = await loadBehavioralManifest(fixture("turn-unknown-field.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("unknownTurnField"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("FR-005");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Assertion validation branches
+// ---------------------------------------------------------------------------
+
+describe("assertion validation error cases", () => {
+  it("assertion is a string (not mapping) → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("assertion-non-mapping.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("assertions[0]") && v.message.includes("mapping"));
+    expect(err).toBeDefined();
+  });
+
+  it("assertion kind = 'should_contain' → violation (must be must_contain or must_not_contain)", async () => {
+    const result = await loadBehavioralManifest(fixture("assertion-bad-kind.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("assertions[0].kind"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("must_contain");
+  });
+
+  it("assertion pattern is empty string → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("assertion-empty-pattern.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("assertions[0].pattern"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("non-empty");
+  });
+
+  it("assertion regex is a string (not boolean) → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("assertion-non-bool-regex.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("regex"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("boolean");
+  });
+
+  it("assertion regex=true with invalid pattern → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("assertion-invalid-regex.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("pattern") && v.message.includes("invalid regular expression"));
+    expect(err).toBeDefined();
+  });
+
+  it("assertion with unknown field → violation (FR-005)", async () => {
+    const result = await loadBehavioralManifest(fixture("assertion-unknown-field.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("unknownAssertField"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("FR-005");
+  });
+
+  it("refusal axis assertions is a mapping (not list) → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("assertions-non-list.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("assertions") && v.message.includes("list"));
+    expect(err).toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Axis validation branches
+// ---------------------------------------------------------------------------
+
+describe("axis validation error cases", () => {
+  it("axis entry is a string (not mapping) → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("axis-non-mapping.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("axes[0]") && v.message.includes("mapping"));
+    expect(err).toBeDefined();
+  });
+
+  it("axis discriminator is unknown value → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("axis-unknown-type.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("axes[0].axis"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("verbosity");
+  });
+
+  it("verbosity axis turns='none' (not 'all' or list) → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("verbosity-bad-turns.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("turns") && v.message.includes('"all"'));
+    expect(err).toBeDefined();
+  });
+
+  it("verbosity axis turn index out of range → violation (FR-005)", async () => {
+    const result = await loadBehavioralManifest(fixture("verbosity-out-of-range-turn.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("turns[1]") && v.message.includes("FR-005"));
+    expect(err).toBeDefined();
+  });
+
+  it("verbosity axis with unknown field → violation (FR-005)", async () => {
+    const result = await loadBehavioralManifest(fixture("axis-unknown-field-verbosity.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("unknownAxisField"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("FR-005");
+  });
+
+  it("refusal axis with unknown field → violation (FR-005)", async () => {
+    const result = await loadBehavioralManifest(fixture("axis-unknown-field-refusal.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("unknownRefusalField"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("FR-005");
+  });
+
+  it("state_shift axis trigger_turn out of range → violation (FR-005)", async () => {
+    const result = await loadBehavioralManifest(fixture("state-shift-out-of-range.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("trigger_turn") && v.message.includes("FR-005"));
+    expect(err).toBeDefined();
+  });
+
+  it("state_shift axis expect_state empty string → violation (FR-021)", async () => {
+    const result = await loadBehavioralManifest(fixture("state-shift-empty-expect-state.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("expect_state"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("FR-021");
+  });
+
+  it("state_shift axis with unknown field → violation (FR-005)", async () => {
+    const result = await loadBehavioralManifest(fixture("axis-unknown-field-state-shift.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("unknownStateShiftField"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("FR-005");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Overrides validation branches
+// ---------------------------------------------------------------------------
+
+describe("overrides validation error cases", () => {
+  it("overrides is a string (not mapping) → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("overrides-non-mapping.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("overrides") && v.message.includes("mapping"));
+    expect(err).toBeDefined();
+  });
+
+  it("overrides.max_words = -5 → violation (must be ≥ 0)", async () => {
+    const result = await loadBehavioralManifest(fixture("overrides-bad-max-words.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("max_words"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("integer ≥ 0");
+  });
+
+  it("overrides.refusal_cap = -1 → violation (must be ≥ 0)", async () => {
+    const result = await loadBehavioralManifest(fixture("overrides-bad-refusal-cap.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("refusal_cap"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("integer ≥ 0");
+  });
+
+  it("overrides with unknown field → violation (FR-005)", async () => {
+    const result = await loadBehavioralManifest(fixture("overrides-unknown-field.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("unknownOverrideField"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("FR-005");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Thresholds block validation branches
+// ---------------------------------------------------------------------------
+
+describe("thresholds validation error cases", () => {
+  it("thresholds is a scalar (not mapping) → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("thresholds-non-mapping.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("thresholds") && v.message.includes("mapping"));
+    expect(err).toBeDefined();
+  });
+
+  it("thresholds.default_max_words = -1 → violation (must be ≥ 0)", async () => {
+    const result = await loadBehavioralManifest(fixture("thresholds-bad-max-words.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("default_max_words"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("integer ≥ 0");
+  });
+
+  it("thresholds.states is a list (not mapping) → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("thresholds-non-mapping-states.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("states") && v.message.includes("mapping"));
+    expect(err).toBeDefined();
+  });
+
+  it("thresholds state word limit is a string (not int) → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("thresholds-bad-state-limit.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("states.escalated"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("word limit must be an integer");
+  });
+
+  it("thresholds with unknown field → violation (FR-005)", async () => {
+    const result = await loadBehavioralManifest(fixture("thresholds-unknown-field.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("unknownThreshField"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("FR-005");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Case validation branches
+// ---------------------------------------------------------------------------
+
+describe("case validation error cases", () => {
+  it("case entry is a string (not mapping) → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("case-non-mapping.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path === "cases[0]" && v.message.includes("mapping"));
+    expect(err).toBeDefined();
+  });
+
+  it("case missing id field → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("case-missing-id.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("id") && v.message.includes('"id"'));
+    expect(err).toBeDefined();
+  });
+
+  it("case soul is empty string → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("case-empty-soul.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("soul"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("non-empty");
+  });
+
+  it("case axes is empty list → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("case-missing-axes.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("axes"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("non-empty");
+  });
+
+  it("case with unknown field → violation (FR-005)", async () => {
+    const result = await loadBehavioralManifest(fixture("case-unknown-field.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("unknownCaseField"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("FR-005");
+  });
+
+  it("case runs = 0 → violation (FR-022)", async () => {
+    const result = await loadBehavioralManifest(fixture("case-bad-runs.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("runs"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("FR-022");
+  });
+
+  it("case pass_threshold = 0 → violation (FR-022)", async () => {
+    const result = await loadBehavioralManifest(fixture("case-bad-pass-threshold.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path.includes("pass_threshold"));
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("FR-022");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Top-level manifest validation branches
+// ---------------------------------------------------------------------------
+
+describe("top-level loadBehavioralManifest validation branches", () => {
+  it("wrong adapter value → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("wrong-adapter.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path === "manifest.adapter");
+    expect(err).toBeDefined();
+    expect(err?.message).toContain('"a2a"');
+  });
+
+  it("wrong kind value → violation (FR-004)", async () => {
+    const result = await loadBehavioralManifest(fixture("wrong-kind.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path === "manifest.kind");
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("FR-004");
+  });
+
+  it("empty cases list → violation", async () => {
+    const result = await loadBehavioralManifest(fixture("empty-cases.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path === "cases");
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("non-empty");
+  });
+
+  it("top-level unknown field → violation (FR-005)", async () => {
+    const result = await loadBehavioralManifest(fixture("top-unknown-field.yaml"));
+    expect(isA2aBehavioralManifestError(result)).toBe(true);
+    if (!isA2aBehavioralManifestError(result)) return;
+    const err = result.find((v) => v.path === "manifest.extraTopField");
+    expect(err).toBeDefined();
+    expect(err?.message).toContain("FR-005");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolveThresholds branches — decision-C edge cases
+// ---------------------------------------------------------------------------
+
+describe("T010 resolveThresholds edge cases (decision-C)", () => {
+  it("explicit thresholds empty block + verbosity axis → violation (decision-C)", async () => {
+    const result = await loadBehavioralManifest(fixture("explicit-no-threshold-verbosity.yaml"));
+    if (isA2aBehavioralManifestError(result)) throw new Error("load failed");
+    const kase = result.cases[0];
+    const thresholds = await resolveThresholds(
+      kase.id,
+      kase.soul,
+      kase.thresholds,
+      kase.overrides,
+      kase.axes,
+      rfc1Adapter
+    );
+    expect(Array.isArray(thresholds)).toBe(true);
+    if (!Array.isArray(thresholds)) return;
+    expect(thresholds[0].message).toContain("decision-C");
+    expect(thresholds[0].message).toContain(kase.id);
+  });
+
+  it("state_shift axis without soul or thresholds → violation (decision-C)", async () => {
+    const result = await loadBehavioralManifest(fixture("state-shift-no-threshold.yaml"));
+    if (isA2aBehavioralManifestError(result)) throw new Error("load failed");
+    const kase = result.cases[0];
+    const thresholds = await resolveThresholds(
+      kase.id,
+      kase.soul,
+      kase.thresholds,
+      kase.overrides,
+      kase.axes,
+      rfc1Adapter
+    );
+    expect(Array.isArray(thresholds)).toBe(true);
+    if (!Array.isArray(thresholds)) return;
+    expect(thresholds[0].message).toContain("decision-C");
+  });
+
+  it("soul path does not exist → resolveThresholds returns violation", async () => {
+    const result = await loadBehavioralManifest(fixture("soul-path-missing.yaml"));
+    if (isA2aBehavioralManifestError(result)) throw new Error("load failed");
+    const kase = result.cases[0];
+    const thresholds = await resolveThresholds(
+      kase.id,
+      kase.soul,
+      kase.thresholds,
+      kase.overrides,
+      kase.axes,
+      rfc1Adapter
+    );
+    expect(Array.isArray(thresholds)).toBe(true);
+    if (!Array.isArray(thresholds)) return;
+    expect(thresholds[0].message).toContain("cannot read soul");
+  });
+
+  it("explicit thresholds + overrides.max_words overrides baseMaxWords", async () => {
+    const result = await loadBehavioralManifest(fixture("explicit-with-overrides.yaml"));
+    if (isA2aBehavioralManifestError(result)) throw new Error("load failed");
+    const kase = result.cases[0];
+    const thresholds = await resolveThresholds(
+      kase.id,
+      kase.soul,
+      kase.thresholds,
+      kase.overrides,
+      kase.axes,
+      rfc1Adapter
+    );
+    expect(Array.isArray(thresholds)).toBe(false);
+    if (Array.isArray(thresholds)) return;
+    // overrides.max_words=15 should override thresholds.default_max_words=40
+    expect(thresholds.baseMaxWords).toBe(15);
+    // overrides.max_words also overrides per-state thresholds
+    expect(thresholds.stateMaxWords["escalated"]).toBe(15);
+    // overrides.refusal_cap=10
+    expect(thresholds.refusalCap).toBe(10);
+  });
+
+  it("explicit states-only threshold with state_shift axis → valid (stateMaxWords populated)", async () => {
+    const result = await loadBehavioralManifest(fixture("explicit-states-only.yaml"));
+    if (isA2aBehavioralManifestError(result)) throw new Error("load failed");
+    const kase = result.cases[0];
+    const thresholds = await resolveThresholds(
+      kase.id,
+      kase.soul,
+      kase.thresholds,
+      kase.overrides,
+      kase.axes,
+      rfc1Adapter
+    );
+    expect(Array.isArray(thresholds)).toBe(false);
+    if (Array.isArray(thresholds)) return;
+    expect(thresholds.baseMaxWords).toBeNull();
+    expect(thresholds.stateMaxWords["escalated"]).toBe(20);
+  });
+
+  it("soul path with invalid soul YAML → resolveThresholds returns conformance violation", async () => {
+    // We provide an inline call: use a file that exists but is not a valid soul
+    const badSoulPath = fixture("unknown-field.yaml"); // not a soul, will fail conformance
+    const thresholds = await resolveThresholds(
+      "test-case",
+      badSoulPath,
+      undefined,
+      undefined,
+      [{ axis: "verbosity", turns: "all" }],
+      rfc1Adapter
+    );
+    expect(Array.isArray(thresholds)).toBe(true);
+    if (!Array.isArray(thresholds)) return;
+    expect(thresholds[0].message).toContain("failed static conformance");
+  });
+});

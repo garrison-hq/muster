@@ -1,0 +1,9 @@
+# axis-unknown-type.yaml — error: axis discriminator must be verbosity/refusal/state_shift
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: grammar_check

@@ -1,0 +1,11 @@
+# turn-wrong-role.yaml — error: turn role must be "user" (not "assistant")
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    turns:
+      - role: assistant
+        content: "I am the assistant."
+    axes:
+      - axis: refusal
+        turn: 0

@@ -1,0 +1,12 @@
+# turn-bad-fact-value.yaml — error: fact values must be boolean or string (not number)
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    turns:
+      - content: "Hello."
+        facts:
+          important: 42
+    axes:
+      - axis: refusal
+        turn: 0

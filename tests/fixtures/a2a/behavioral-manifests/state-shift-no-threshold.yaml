@@ -1,0 +1,11 @@
+# state-shift-no-threshold.yaml — error: state_shift axis with no soul/thresholds (decision-C)
+adapter: a2a
+kind: behavioral
+cases:
+  - id: state-shift-needs-threshold
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: state_shift
+        trigger_turn: 0
+        expect_state: "escalated"

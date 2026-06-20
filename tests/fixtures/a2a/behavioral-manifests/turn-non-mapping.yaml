@@ -1,0 +1,10 @@
+# turn-non-mapping.yaml — error: a turn entry must be a mapping (not a string)
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    turns:
+      - "not a mapping"
+    axes:
+      - axis: refusal
+        turn: 0

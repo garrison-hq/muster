@@ -1,0 +1,14 @@
+# thresholds-bad-state-limit.yaml — error: state word limit must be integer >= 0
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    thresholds:
+      default_max_words: 30
+      states:
+        escalated: "not-a-number"
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0

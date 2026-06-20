@@ -1,0 +1,11 @@
+# case-unknown-field.yaml — error: unknown field in case mapping (FR-005)
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    unknownCaseField: bad
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0

@@ -1,0 +1,12 @@
+# overrides-bad-refusal-cap.yaml — error: overrides.refusal_cap must be an integer >= 0
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0
+    overrides:
+      refusal_cap: -1

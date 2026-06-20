@@ -1,0 +1,11 @@
+# soul-path-missing.yaml — case that references a non-existent soul file
+adapter: a2a
+kind: behavioral
+cases:
+  - id: missing-soul
+    soul: "nonexistent-soul-file-that-does-not-exist.md"
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: verbosity
+        turns: all

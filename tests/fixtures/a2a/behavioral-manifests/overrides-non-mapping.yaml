@@ -1,0 +1,11 @@
+# overrides-non-mapping.yaml — error: overrides must be a mapping (not a scalar)
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0
+    overrides: "invalid"

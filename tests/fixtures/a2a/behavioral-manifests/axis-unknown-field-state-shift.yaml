@@ -1,0 +1,14 @@
+# axis-unknown-field-state-shift.yaml — error: unknown field in state_shift axis (FR-005)
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    thresholds:
+      default_max_words: 30
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: state_shift
+        trigger_turn: 0
+        expect_state: escalated
+        unknownStateShiftField: bad

@@ -1,0 +1,13 @@
+# defaults-bad-runs.yaml — error: defaults.runs must be an integer >= 1
+adapter: a2a
+kind: behavioral
+defaults:
+  runs: 0
+  pass_threshold: 1
+cases:
+  - id: some-case
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0
