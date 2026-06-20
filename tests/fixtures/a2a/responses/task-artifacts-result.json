@@ -1,0 +1,20 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "kind": "task",
+    "id": "task-art999",
+    "contextId": "ctx-def456",
+    "status": {
+      "state": "completed"
+    },
+    "artifacts": [
+      {
+        "parts": [
+          { "kind": "text", "text": "Artifact part one." },
+          { "kind": "text", "text": " Artifact part two." }
+        ]
+      }
+    ]
+  }
+}
