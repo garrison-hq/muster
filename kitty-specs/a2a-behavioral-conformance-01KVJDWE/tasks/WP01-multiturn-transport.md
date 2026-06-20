@@ -19,8 +19,8 @@ subtasks:
 - T004
 - T005
 - T006
-shell_pid: "734352"
-agent: "claude:sonnet:implementer:implementer"
+shell_pid: "745920"
+agent: "claude:opus:reviewer:reviewer"
 history:
 - Created by /spec-kitty.tasks for mission a2a-behavioral-conformance-01KVJDWE
 authoritative_surface: src/adapters/a2a/transport.ts
@@ -200,3 +200,4 @@ spec-kitty agent action implement WP01 --agent <name>
 
 - 2026-06-20T12:29:36Z – claude:sonnet:implementer:implementer – shell_pid=734352 – Assigned agent via action command
 - 2026-06-20T12:33:33Z – claude:sonnet:implementer:implementer – shell_pid=734352 – Multi-turn A2A transport implemented: sendMessage + buildSendRequest + extractReply + ConversationHandle. 28 unit tests (offline, mocked fetch). invokeSkill unchanged. pnpm build clean, pnpm test 118 files/2692 tests green, NI-003 invariant passes.
+- 2026-06-20T12:33:53Z – claude:opus:reviewer:reviewer – shell_pid=745920 – Started review via action command
