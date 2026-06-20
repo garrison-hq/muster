@@ -6,9 +6,9 @@ requirement_refs:
 - FR-001
 - FR-010
 - NFR-002
-planning_base_branch: main
-merge_target_branch: main
-branch_strategy: Plan/tasks on kitty/mission-a2a-behavioral-conformance; execution worktree allocated per lane from lanes.json; completed work merges to main via PR.
+planning_base_branch: kitty/mission-a2a-behavioral-conformance
+merge_target_branch: kitty/mission-a2a-behavioral-conformance
+branch_strategy: Planning artifacts for this feature were generated on kitty/mission-a2a-behavioral-conformance. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into kitty/mission-a2a-behavioral-conformance unless the human explicitly redirects the landing branch.
 subtasks:
 - T001
 - T002

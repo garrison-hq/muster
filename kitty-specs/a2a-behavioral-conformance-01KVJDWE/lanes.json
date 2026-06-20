@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "mission_slug": "a2a-behavioral-conformance-01KVJDWE",
+  "mission_id": "01KVJDWEKGD6VHYWDH71Y0R38T",
+  "mission_branch": "kitty/mission-a2a-behavioral-conformance-01KVJDWE",
+  "target_branch": "kitty/mission-a2a-behavioral-conformance",
+  "lanes": [
+    {
+      "lane_id": "lane-a",
+      "wp_ids": [
+        "WP01"
+      ],
+      "write_scope": [
+        "src/adapters/a2a/transport.ts",
+        "tests/a2a/transport-multiturn.test.ts",
+        "tests/fixtures/a2a/responses/**"
+      ],
+      "predicted_surfaces": [
+        "api",
+        "artifact-rendering",
+        "tracker-integration"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    },
+    {
+      "lane_id": "lane-b",
+      "wp_ids": [
+        "WP02"
+      ],
+      "write_scope": [
+        "src/adapters/a2a/behavioral-manifest.ts",
+        "src/adapters/a2a/behavioral-types.ts",
+        "tests/a2a/behavioral-manifest.test.ts",
+        "tests/fixtures/a2a/behavioral-manifests/**"
+      ],
+      "predicted_surfaces": [
+        "api"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    },
+    {
+      "lane_id": "lane-c",
+      "wp_ids": [
+        "WP03"
+      ],
+      "write_scope": [
+        "src/adapters/a2a/graders/behavioral.ts",
+        "tests/a2a/behavioral-runner.test.ts",
+        "tests/fixtures/a2a/transcripts/**"
+      ],
+      "predicted_surfaces": [
+        "api"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    },
+    {
+      "lane_id": "lane-d",
+      "wp_ids": [
+        "WP04"
+      ],
+      "write_scope": [
+        "examples/a2a/behavioral-explicit.yaml",
+        "examples/a2a/behavioral-persona.yaml",
+        "site/a2a-behavioral.md",
+        "src/adapters/a2a/index.ts",
+        "src/cli/index.ts",
+        "src/cli/output.ts",
+        "tests/a2a/behavioral-cli.test.ts"
+      ],
+      "predicted_surfaces": [
+        "api",
+        "tests"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    }
+  ],
+  "computed_at": "2026-06-20T12:16:01.273384+00:00",
+  "computed_from": "dependency_graph+ownership",
+  "planning_artifact_wps": []
+}
