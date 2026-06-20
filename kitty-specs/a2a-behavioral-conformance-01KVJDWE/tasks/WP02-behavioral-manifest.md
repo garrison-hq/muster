@@ -16,6 +16,8 @@ subtasks:
 - T010
 - T011
 - T012
+agent: "claude:sonnet:implementer:implementer"
+shell_pid: "751549"
 history:
 - Created by /spec-kitty.tasks for mission a2a-behavioral-conformance-01KVJDWE
 authoritative_surface: src/adapters/a2a/behavioral-manifest.ts
@@ -177,3 +179,7 @@ full list, matching the core manifest's behavior.
 ```
 spec-kitty agent action implement WP02 --agent <name>
 ```
+
+## Activity Log
+
+- 2026-06-20T12:37:03Z – claude:sonnet:implementer:implementer – shell_pid=751549 – Started implementation via action command
