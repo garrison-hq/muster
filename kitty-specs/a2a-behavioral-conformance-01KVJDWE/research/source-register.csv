@@ -1,0 +1,12 @@
+source_id,type,title,reference,accessed,notes
+S-001,spec,"Agent2Agent (A2A) Protocol Official Specification v0.3.0",https://a2a-protocol.org/v0.3.0/specification/,2026-06-20,"Authoritative message/send + Message/Part shapes; response shape not pinned in fetched excerpt (Q1)"
+S-002,doc,"A2A Protocol — Core Concepts",https://a2a-protocol.org/latest/topics/key-concepts/,2026-06-20,"contextId server-generated, client echoes for multi-turn"
+S-003,source,"muster A2A transport",src/adapters/a2a/transport.ts,2026-06-20,"invokeSkill non-standard {skill,message}; envEndpoint/envToken/timeoutMs; allow-listed fetch site"
+S-004,source,"muster core axis graders",src/core/behavioral/graders.ts,2026-06-20,"gradeVerbosity/gradeRefusal/gradeStateShift/verbosityLimit — pure, reusable unchanged"
+S-005,source,"muster pass^k scoring",src/core/behavioral/pass-k.ts,2026-06-20,"conjunctivePassK(passFlags)"
+S-006,source,"muster behavioral types",src/core/behavioral/types.ts,2026-06-20,"TranscriptEntry/Transcript/AxisGrade/RunVerdict/CaseVerdict"
+S-007,source,"muster behavioral runner",src/core/behavioral/runner.ts,2026-06-20,"runCase couples soul+personaPrompt+system-prompt injection (incl. mood-state line)"
+S-008,source,"muster behavioral manifest validators",src/core/behavioral/manifest.ts,2026-06-20,"Turn/AxisSpec/ContentAssertion/CaseOverrides/defaults; strict unknown-field reject; endpoint.api_key_env = env name"
+S-009,source,"muster EffectiveConfig",src/core/adapter.ts,2026-06-20,"EffectiveConfig = Record; voice.verbosity threshold mapping"
+S-010,source,"muster invariant guard",tests/unit/invariants.test.ts,2026-06-20,"NI-002/C-004 core-no-adapter-import; NI-003 fetch allow-list"
+S-011,source,"muster A2A index + manifest types",src/adapters/a2a/index.ts; src/adapters/a2a/types.ts,2026-06-20,"gradingClass grader wiring; loadManifest()"
