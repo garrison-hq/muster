@@ -1,0 +1,11 @@
+# no-threshold.yaml — error: verbosity axis with no soul or thresholds (decision-C)
+# A verbosity axis requires a word threshold; neither soul nor thresholds provided
+adapter: a2a
+kind: behavioral
+cases:
+  - id: verbosity-no-source
+    turns:
+      - content: "How long should your replies be?"
+    axes:
+      - axis: verbosity
+        turns: all

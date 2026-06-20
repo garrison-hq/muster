@@ -1,0 +1,19 @@
+# both.yaml — valid manifest with BOTH soul AND explicit thresholds
+# Decision-C source 1 wins: explicit thresholds override persona-derived caps.
+# soul voice.verbosity = 25 → persona-derived baseMaxWords = 35
+# but explicit thresholds.default_max_words = 50 wins → baseMaxWords = 50
+adapter: a2a
+kind: behavioral
+cases:
+  - id: both-sources-explicit-wins
+    soul: "../../../../souls/voice-frontdesk/Soul.md"
+    thresholds:
+      default_max_words: 50
+      states:
+        cold_strict: 30
+    turns:
+      - role: user
+        content: "Hello there."
+    axes:
+      - axis: verbosity
+        turns: all

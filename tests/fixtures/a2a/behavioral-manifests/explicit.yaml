@@ -1,0 +1,23 @@
+# explicit.yaml — valid A2A behavioral manifest using explicit thresholds only (decision-C source 1)
+adapter: a2a
+kind: behavioral
+defaults:
+  runs: 5
+  pass_threshold: 4
+cases:
+  - id: explicit-thresholds-only
+    thresholds:
+      default_max_words: 40
+      states:
+        escalated: 25
+    turns:
+      - role: user
+        content: "I need help with my account."
+      - role: user
+        content: "This is urgent!"
+    axes:
+      - axis: verbosity
+        turns: all
+      - axis: state_shift
+        trigger_turn: 1
+        expect_state: escalated
