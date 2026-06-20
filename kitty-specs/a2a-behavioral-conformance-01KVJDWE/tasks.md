@@ -27,12 +27,12 @@ WP02 (manifest) ──┘                        ▲
 | T004 | Reply extraction tolerant of Message and Task response shapes (Q1) | WP01 |  | [D] |
 | T005 | Error/timeout/non-2xx/JSON-RPC-error → errored result; never log token | WP01 |  | [D] |
 | T006 | Unit tests: request shape, threading, extraction (both shapes), errors | WP01 |  | [D] |
-| T007 | A2A behavioral types in `behavioral-types.ts` | WP02 | [P] |
-| T008 | Top-level + `endpoint` (env-name) strict validation | WP02 |  |
-| T009 | Case validation reusing core Turn/AxisSpec/ContentAssertion/CaseOverrides | WP02 |  |
-| T010 | Decision-C threshold resolution (soul EffectiveConfig + explicit + override precedence) | WP02 |  |
-| T011 | Strict unknown-field rejection + all load-time error cases | WP02 |  |
-| T012 | Unit tests: valid (persona/explicit/both) + each error case | WP02 |  |
+| T007 | A2A behavioral types in `behavioral-types.ts` | WP02 | [D] |
+| T008 | Top-level + `endpoint` (env-name) strict validation | WP02 |  | [D] |
+| T009 | Case validation reusing core Turn/AxisSpec/ContentAssertion/CaseOverrides | WP02 |  | [D] |
+| T010 | Decision-C threshold resolution (soul EffectiveConfig + explicit + override precedence) | WP02 |  | [D] |
+| T011 | Strict unknown-field rejection + all load-time error cases | WP02 |  | [D] |
+| T012 | Unit tests: valid (persona/explicit/both) + each error case | WP02 |  | [D] |
 | T013 | Per-case turn walk driving WP01 `sendMessage` with the handle | WP03 |  |
 | T014 | Build `TranscriptEntry[]` (user turns only; replies; wordCount; expected activeState) | WP03 |  |
 | T015 | Expected-state tracking from facts/triggers (black-box; never sent to agent) | WP03 |  |
@@ -88,12 +88,12 @@ overrides persona-derived). Per `contracts/a2a-behavioral-manifest.md`.
 (unknown field, literal token, `pass_threshold > runs`, empty turns/axes, out-of-range turn
 ref, duplicate id, missing-threshold-when-needed) is rejected with a clear message.
 
-- [ ] T007 A2A behavioral types in `behavioral-types.ts` (WP02)
-- [ ] T008 Top-level + `endpoint` (env-name) strict validation (WP02)
-- [ ] T009 Case validation reusing core Turn/AxisSpec/ContentAssertion/CaseOverrides (WP02)
-- [ ] T010 Decision-C threshold resolution (soul EffectiveConfig + explicit + precedence) (WP02)
-- [ ] T011 Strict unknown-field rejection + all load-time error cases (WP02)
-- [ ] T012 Unit tests: valid (persona/explicit/both) + each error case (WP02)
+- [x] T007 A2A behavioral types in `behavioral-types.ts` (WP02)
+- [x] T008 Top-level + `endpoint` (env-name) strict validation (WP02)
+- [x] T009 Case validation reusing core Turn/AxisSpec/ContentAssertion/CaseOverrides (WP02)
+- [x] T010 Decision-C threshold resolution (soul EffectiveConfig + explicit + precedence) (WP02)
+- [x] T011 Strict unknown-field rejection + all load-time error cases (WP02)
+- [x] T012 Unit tests: valid (persona/explicit/both) + each error case (WP02)
 
 **Dependencies/risks:** must keep the C-004 boundary (import core validators; never edit core).
 Do **not** modify the existing `src/adapters/a2a/types.ts` static loader (owned elsewhere).
