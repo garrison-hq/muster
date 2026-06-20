@@ -64,6 +64,7 @@ import {
   lintCard as a2aLintCard,
   serializeLintReport as a2aSerializeLintReport,
   runManifest as runA2aManifest,
+  runA2aBehavioralManifest,
   type ManifestSummary as A2aManifestSummary,
 } from "../adapters/a2a/index.js";
 import { parseAgentCard } from "../adapters/a2a/card.js";
@@ -71,6 +72,7 @@ import {
   formatBehaveHuman,
   formatCtsHuman,
   formatReportHuman,
+  formatA2aBehavioralHuman,
   globToRegExp,
 } from "./output.js";
 import {
@@ -753,28 +755,135 @@ function buildCaseDetail(result: ManifestRunSummary["results"][number]): string 
 // ─── muster a2a run ─────────────────────────────────────────────────────────
 
 /**
- * Run the A2A adapter manifest runner (FR-001, FR-012, T025).
+ * Handle the behavioral path for `muster a2a run <behavioral.yaml>` (WP04).
  *
- * The manifest is a JSON file listing static-lint cases (always run, offline,
- * deterministic) and optionally live conformance probe cases (skill-behavior,
- * auth-negative, signed-card-live). Live cases require MUSTER_A2A_ENDPOINT and
- * are skipped gracefully when it is absent.
+ * Exit-code contract (FR-008):
+ *   0 — all cases passed, or endpoint absent (all skipped).
+ *   1 — ≥1 case failed.
+ *   2 — every run of every case errored (execution failure).
  *
- * Exit-code contract (FR-012): summary.failed > 0 → 1; else → 0.
+ * NFR-002: no secret ever printed; `--json` emits CaseVerdict[] only.
+ *
+ * Extracted from doA2aRun to keep cognitive complexity below 15.
+ */
+async function doA2aBehavioralRun(
+  absManifestPath: string,
+  opts: GlobalOpts,
+  io: Io
+): Promise<number> {
+  const outcome = await runA2aBehavioralManifest(absManifestPath, rfc1Adapter);
+
+  if (outcome.violations.length > 0) {
+    const lines = outcome.violations.map((v) => `  ${v.path}: ${v.message}`).join("\n");
+    throw new ExecutionError(
+      `a2a behavioral manifest failed validation:\n${lines}`
+    );
+  }
+
+  if (outcome.skipped) {
+    // No endpoint configured — all cases skipped, exit 0 (FR-009).
+    if (opts.json === true) {
+      io.outLine("[]");
+    } else {
+      io.outLine(formatA2aBehavioralHuman([], true));
+    }
+    return 0;
+  }
+
+  const { result } = outcome;
+  if (result === null) {
+    // Should not happen when skipped=false and violations=[]; guard for type safety.
+    throw new ExecutionError("a2a behavioral run: unexpected null result");
+  }
+
+  if (opts.json === true) {
+    io.outLine(JSON.stringify(result.verdicts, null, 2));
+  } else {
+    io.outLine(formatA2aBehavioralHuman(result.verdicts, false));
+  }
+
+  if (result.allErrored) {
+    io.errLine(
+      "a2a-behavioral: endpoint fatal — every run of every case errored (exit 2)"
+    );
+    return 2;
+  }
+
+  return result.exitCode;
+}
+
+/**
+ * Run the A2A adapter manifest runner (FR-001, FR-012).
+ *
+ * Routes by manifest `kind` (WP04, T020/FR-006):
+ *   kind: behavioral → behavioral path (loadBehavioralManifest + runBehavioralCases).
+ *   anything else    → static/skill/auth/signed path (runA2aManifest), byte-unchanged.
+ *
+ * Static path: JSON manifest listing static-lint, skill-behavior, auth-negative,
+ * or signed-card-live cases. Static-lint always runs (offline, deterministic).
+ * Live cases require MUSTER_A2A_ENDPOINT and are skipped gracefully when absent.
+ *
+ * Exit-code contract (FR-008/FR-012): summary.failed > 0 → 1; else → 0.
  * Skipped cases never fail the run. IO/manifest errors → exit 2 (ExecutionError).
  *
- * This function mirrors doHeartbeatRun exactly (C-004 boundary pattern).
+ * NFR-002: no credential ever printed; `--json` to stdout; human summary to stdout.
  */
 async function doA2aRun(
   manifestPath: string,
   opts: GlobalOpts,
   io: Io
 ): Promise<number> {
+  const absManifestPath = toAbsolute(manifestPath);
+
+  // T020: peek at the YAML/JSON `kind` field to route behavioral vs static.
+  // We read the file inline here since peekManifestKind is in the adapter.
+  // A JSON manifest (static path) will not have kind:"behavioral", so routing
+  // is additive — the static path is byte-identical to before.
+  let manifestKind: string | null = null;
+  try {
+    const raw = await readFile(absManifestPath, "utf8");
+    const parsed = JSON.parse(raw) as unknown;
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      !Array.isArray(parsed) &&
+      typeof (parsed as Record<string, unknown>)["kind"] === "string"
+    ) {
+      manifestKind = (parsed as Record<string, unknown>)["kind"] as string;
+    }
+  } catch {
+    // JSON parse failed — try YAML (behavioral manifests are YAML).
+    try {
+      const raw = await readFile(absManifestPath, "utf8");
+      const parsed = parseYaml(raw) as unknown;
+      if (
+        typeof parsed === "object" &&
+        parsed !== null &&
+        !Array.isArray(parsed) &&
+        typeof (parsed as Record<string, unknown>)["kind"] === "string"
+      ) {
+        manifestKind = (parsed as Record<string, unknown>)["kind"] as string;
+      }
+    } catch {
+      // Cannot parse → fall through to static path (will fail there with a clear error).
+    }
+  }
+
+  if (manifestKind === "behavioral") {
+    try {
+      return await doA2aBehavioralRun(absManifestPath, opts, io);
+    } catch (error) {
+      if (error instanceof ExecutionError) throw error;
+      throw new ExecutionError(`a2a behavioral run failed: ${errorMessage(error)}`);
+    }
+  }
+
+  // Static path (byte-identical behavior — additive routing only).
   let summary: A2aManifestSummary;
   try {
     // projectRoot defaults to cwd so that relative fixture paths in
     // the manifest resolve from the working directory (conventional root).
-    summary = await runA2aManifest(toAbsolute(manifestPath), process.cwd());
+    summary = await runA2aManifest(absManifestPath, process.cwd());
   } catch (error) {
     throw new ExecutionError(
       `a2a manifest run failed: ${errorMessage(error)}`
