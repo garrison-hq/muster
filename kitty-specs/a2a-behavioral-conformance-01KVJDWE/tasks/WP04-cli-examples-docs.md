@@ -21,8 +21,8 @@ subtasks:
 - T023
 - T024
 - T025
-agent: "claude:sonnet:implementer:implementer"
-shell_pid: "865161"
+agent: "claude:opus:reviewer:reviewer"
+shell_pid: "882609"
 history:
 - Created by /spec-kitty.tasks for mission a2a-behavioral-conformance-01KVJDWE
 authoritative_surface: src/adapters/a2a/index.ts
@@ -180,3 +180,4 @@ spec-kitty agent action implement WP04 --agent <name>
 - 2026-06-20T13:18:41Z – claude:opus:reviewer:reviewer – shell_pid=852982 – Moved to planned
 - 2026-06-20T13:19:17Z – claude:sonnet:implementer:implementer – shell_pid=865161 – Started implementation via action command
 - 2026-06-20T13:25:59Z – claude:sonnet:implementer:implementer – shell_pid=865161 – Fix-cycle-2 complete. Extracted peekManifestKind to src/adapters/a2a/index.ts: single file read, JSON-then-YAML on same buffer, returns kind|null. doA2aRun cognitive complexity dropped from ~16 to 4 (if + catch + 2 ternaries). Added 6 unit tests covering all peekManifestKind branches. pnpm build clean; pnpm test 2818/2821 green (12 new tests vs prior 2806). Invariants 12/12 green.
+- 2026-06-20T13:26:17Z – claude:opus:reviewer:reviewer – shell_pid=882609 – Started review via action command
