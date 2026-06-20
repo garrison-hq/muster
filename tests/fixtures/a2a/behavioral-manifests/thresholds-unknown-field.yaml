@@ -1,0 +1,13 @@
+# thresholds-unknown-field.yaml — error: unknown field in thresholds block (FR-005)
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    thresholds:
+      default_max_words: 30
+      unknownThreshField: bad
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0

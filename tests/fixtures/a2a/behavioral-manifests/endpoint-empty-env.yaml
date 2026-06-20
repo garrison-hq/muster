@@ -1,0 +1,13 @@
+# endpoint-empty-env.yaml — error: endpoint.env is an empty string
+adapter: a2a
+kind: behavioral
+endpoint:
+  env: ""
+  token_env: MUSTER_A2A_TOKEN
+cases:
+  - id: some-case
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0

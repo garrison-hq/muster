@@ -1,0 +1,14 @@
+# thresholds-non-mapping-states.yaml — error: thresholds.states must be a mapping (not a list)
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    thresholds:
+      default_max_words: 30
+      states:
+        - escalated
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0

@@ -1,0 +1,16 @@
+# explicit-states-only.yaml — valid: threshold block with states only (no default_max_words)
+# A state_shift axis uses per-state caps, so no default_max_words needed
+adapter: a2a
+kind: behavioral
+cases:
+  - id: states-only-case
+    thresholds:
+      states:
+        escalated: 20
+    turns:
+      - content: "Hello."
+      - content: "This is urgent!"
+    axes:
+      - axis: state_shift
+        trigger_turn: 1
+        expect_state: escalated

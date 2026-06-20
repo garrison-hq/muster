@@ -88,6 +88,68 @@ export function formatBehaveHuman(verdicts: readonly CaseVerdict[]): string {
   return lines.join("\n");
 }
 
+/** Format the skip block for A2A behavioral when endpoint is absent. */
+function formatA2aSkipped(verdicts: readonly CaseVerdict[]): string {
+  const lines: string[] = [
+    "a2a-behavioral: SKIP — MUSTER_A2A_ENDPOINT not set; cases skipped (exit 0)",
+  ];
+  for (const v of verdicts) {
+    lines.push(`  SKIP ${v.id}`);
+  }
+  return lines.join("\n");
+}
+
+/** Format one A2A behavioral case verdict line and its failure details. */
+function formatA2aCaseLines(verdict: CaseVerdict): string[] {
+  const lines: string[] = [
+    `${verdict.passed ? "PASS" : "FAIL"} ${verdict.id} ` +
+      `(${verdict.passCount}/${verdict.runs.length} runs)`,
+  ];
+  if (!verdict.passed) {
+    for (const run of verdict.runs) {
+      if (!run.passed) lines.push(...formatRunFailure(run));
+    }
+  }
+  return lines;
+}
+
+/**
+ * Human rendering of A2A behavioral verdicts (WP04, FR-007).
+ *
+ * Mirrors formatBehaveHuman: `PASS/FAIL <id> (<k>/<n> runs)` per case;
+ * failing cases show each failed run's error and per-axis measured-vs-limit.
+ * Skipped case (no endpoint) shows `SKIP <id>`.
+ * Header line carries the a2a-behavioral prefix so CI output is unambiguous.
+ *
+ * No credential or endpoint URL is ever emitted (NFR-002).
+ *
+ * Normative: cli-contract.md Output section; FR-007; NFR-002.
+ * Citation: a2a-behavioral-conformance-01KVJDWE WP04.
+ */
+export function formatA2aBehavioralHuman(
+  verdicts: readonly CaseVerdict[],
+  skipped: boolean
+): string {
+  if (skipped) {
+    return formatA2aSkipped(verdicts);
+  }
+
+  const lines: string[] = [];
+  for (const verdict of verdicts) {
+    lines.push(...formatA2aCaseLines(verdict));
+  }
+
+  const passed = verdicts.filter((v) => v.passed).length;
+  const total = verdicts.length;
+  const failed = total - passed;
+  const status = failed === 0 ? "PASS" : "FAIL";
+  lines.push(
+    `a2a-behavioral: ${status} — ${passed} passed, ${failed} failed of ${total}`
+  );
+
+  return lines.join("\n");
+}
+
 /**
  * `--filter` glob → anchored RegExp: `*` is the only wildcard (matches any
  * run of characters, including none); everything else is literal.

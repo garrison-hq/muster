@@ -1,0 +1,13 @@
+# state-shift-empty-expect-state.yaml — error: state_shift expect_state must be non-empty
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    thresholds:
+      default_max_words: 30
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: state_shift
+        trigger_turn: 0
+        expect_state: ""

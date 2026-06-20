@@ -1,0 +1,11 @@
+# out-of-range-turn.yaml — error: refusal.turn is out of range (FR-005)
+# The case has 1 turn (index 0 only), but turn: 2 is referenced
+adapter: a2a
+kind: behavioral
+cases:
+  - id: turn-out-of-range
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 2

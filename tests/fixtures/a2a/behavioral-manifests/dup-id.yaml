@@ -1,0 +1,16 @@
+# dup-id.yaml — error: duplicate case id (FR-005)
+adapter: a2a
+kind: behavioral
+cases:
+  - id: repeated-case
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0
+  - id: repeated-case
+    turns:
+      - content: "Hi again."
+    axes:
+      - axis: refusal
+        turn: 0

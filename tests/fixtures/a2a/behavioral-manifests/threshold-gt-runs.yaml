@@ -1,0 +1,12 @@
+# threshold-gt-runs.yaml — error: pass_threshold exceeds runs (FR-022 k ≤ n)
+adapter: a2a
+kind: behavioral
+cases:
+  - id: impossible-threshold
+    runs: 3
+    pass_threshold: 5
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0

@@ -1,0 +1,10 @@
+# wrong-adapter.yaml — error: adapter must be "a2a"
+adapter: rfc1
+kind: behavioral
+cases:
+  - id: some-case
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0

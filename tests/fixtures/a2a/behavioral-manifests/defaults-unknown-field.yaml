@@ -1,0 +1,14 @@
+# defaults-unknown-field.yaml — error: unknown field in defaults block (FR-005)
+adapter: a2a
+kind: behavioral
+defaults:
+  runs: 3
+  pass_threshold: 2
+  extraField: not-allowed
+cases:
+  - id: some-case
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0

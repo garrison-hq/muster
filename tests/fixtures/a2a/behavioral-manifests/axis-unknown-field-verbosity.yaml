@@ -1,0 +1,13 @@
+# axis-unknown-field-verbosity.yaml — error: unknown field in verbosity axis (FR-005)
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    thresholds:
+      default_max_words: 30
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: verbosity
+        turns: all
+        unknownAxisField: bad

@@ -1,0 +1,4 @@
+# empty-cases.yaml — error: cases must be a non-empty list
+adapter: a2a
+kind: behavioral
+cases: []

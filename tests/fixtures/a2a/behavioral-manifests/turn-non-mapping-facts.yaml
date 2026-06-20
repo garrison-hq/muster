@@ -1,0 +1,12 @@
+# turn-non-mapping-facts.yaml — error: turn facts must be a mapping (not a list)
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    turns:
+      - content: "Hello."
+        facts:
+          - "not a mapping"
+    axes:
+      - axis: refusal
+        turn: 0

@@ -1,0 +1,12 @@
+# verbosity-out-of-range-turn.yaml — error: verbosity axis turn index out of range
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    thresholds:
+      default_max_words: 30
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: verbosity
+        turns: [0, 5]

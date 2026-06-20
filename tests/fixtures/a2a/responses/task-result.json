@@ -1,0 +1,21 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "kind": "task",
+    "id": "task-xyz789",
+    "contextId": "ctx-abc123",
+    "status": {
+      "state": "completed",
+      "message": {
+        "kind": "message",
+        "role": "agent",
+        "messageId": "agent-msg-002",
+        "parts": [
+          { "kind": "text", "text": "Task completed successfully." }
+        ]
+      }
+    },
+    "artifacts": []
+  }
+}

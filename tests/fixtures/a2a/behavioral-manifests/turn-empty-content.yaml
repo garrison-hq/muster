@@ -1,0 +1,10 @@
+# turn-empty-content.yaml — error: turn content must be a non-empty string
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    turns:
+      - content: ""
+    axes:
+      - axis: refusal
+        turn: 0

@@ -1,0 +1,9 @@
+# axis-non-mapping.yaml — error: axis must be a mapping (not a string)
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    turns:
+      - content: "Hello."
+    axes:
+      - "not a mapping"

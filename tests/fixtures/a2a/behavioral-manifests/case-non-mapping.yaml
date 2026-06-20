@@ -1,0 +1,5 @@
+# case-non-mapping.yaml — error: case entry must be a mapping (not a string)
+adapter: a2a
+kind: behavioral
+cases:
+  - "not a mapping"

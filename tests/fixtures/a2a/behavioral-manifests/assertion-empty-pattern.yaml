@@ -1,0 +1,13 @@
+# assertion-empty-pattern.yaml — error: assertion pattern must be non-empty
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    turns:
+      - content: "Refuse this please."
+    axes:
+      - axis: refusal
+        turn: 0
+        assertions:
+          - kind: must_contain
+            pattern: ""

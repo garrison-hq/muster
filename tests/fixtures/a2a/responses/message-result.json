@@ -1,0 +1,14 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "kind": "message",
+    "role": "agent",
+    "messageId": "agent-msg-001",
+    "contextId": "ctx-abc123",
+    "parts": [
+      { "kind": "text", "text": "Hello from the agent!" },
+      { "kind": "text", "text": " This is a multi-part reply." }
+    ]
+  }
+}

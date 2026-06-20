@@ -1,0 +1,11 @@
+# endpoint-non-mapping.yaml — error: endpoint must be a mapping (not a string)
+adapter: a2a
+kind: behavioral
+endpoint: "https://x.example/a2a"
+cases:
+  - id: some-case
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0

@@ -1,0 +1,13 @@
+# defaults-bad-pass-threshold.yaml — error: defaults.pass_threshold must be >= 1
+adapter: a2a
+kind: behavioral
+defaults:
+  runs: 3
+  pass_threshold: 0
+cases:
+  - id: some-case
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0

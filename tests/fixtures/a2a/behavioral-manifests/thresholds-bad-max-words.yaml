@@ -1,0 +1,12 @@
+# thresholds-bad-max-words.yaml — error: thresholds.default_max_words must be integer >= 0
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    thresholds:
+      default_max_words: -1
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0

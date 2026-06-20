@@ -1,0 +1,15 @@
+evidence_id,finding,source_id,location,decision,confidence
+E-001,"A2A message/send sends a structured Message {role, parts:[{kind:text,text}], messageId, contextId?, taskId?}; params=MessageSendParams{message, configuration?}",S-001,"spec v0.3.0 §6.4, §6.5.1, §7.1.1",D1,high
+E-002,"Multi-turn continuity is by server-generated contextId (and taskId); server must provide context_id, client echoes it on subsequent turns",S-001,"spec v0.3.0 multi-turn flow; S-002 key-concepts",D1,high
+E-003,"message/send response shape (Message vs Task) and reply-text location not pinned in spec excerpt — external/hey-anton dependency",S-001,"spec v0.3.0 §7.1 (response undefined in excerpt)",D1/Q1,medium
+E-004,"muster transport invokeSkill posts non-standard params {skill, message} with no history/context threading",S-003,"src/adapters/a2a/transport.ts invokeSkill",D1,high
+E-005,"Core axis graders gradeVerbosity/gradeRefusal/gradeStateShift/verbosityLimit are pure functions over TranscriptEntry + EffectiveConfig + thresholds; no adapter/network/env coupling",S-004,"src/core/behavioral/graders.ts",D2,high
+E-006,"conjunctivePassK(passFlags) is spec-agnostic boolean AND; errored runs mapped to false before call (errored=failed, no retry)",S-005,"src/core/behavioral/pass-k.ts",D2/D5,high
+E-007,"TranscriptEntry{role,content,activeState,wordCount?}, AxisGrade, RunVerdict, CaseVerdict are Soul-agnostic reusable structs",S-006,"src/core/behavioral/types.ts",D2,high
+E-008,"runCase couples to SpecAdapter+resolved soul+personaPrompt and injects a system prompt incl. 'Current mood state: X' line — not reusable for black-box running agent",S-007,"src/core/behavioral/runner.ts personaPrompt()",D2/D3,high
+E-009,"Behavioral manifest validators strict-validate Turn{role:user,content,facts?}, AxisSpec union (verbosity/refusal/state_shift), ContentAssertion, CaseOverrides, defaults (runs def 3, pass_threshold def 2 <= runs); unknown fields rejected",S-008,"src/core/behavioral/manifest.ts",D4,high
+E-010,"endpoint block already models {base_url, model, api_key_env}; api_key_env defaults to env-var NAME (MUSTER_API_KEY), never a literal key",S-008,"src/core/behavioral/manifest.ts ENDPOINT_FIELDS",D4,high
+E-011,"Env activation: envEndpoint() null => skip; envToken(); timeoutMs() default 10000 (MUSTER_A2A_TIMEOUT_MS); token read at call time, never stored",S-003,"src/adapters/a2a/transport.ts",D5,high
+E-012,"EffectiveConfig is a plain Record; graders read voice.verbosity -> maxWords = 10 + verbosity; per-case max_words override wins",S-009,"src/core/adapter.ts; src/core/behavioral/graders.ts",D3,high
+E-013,"NI-002/C-004 guard: test walks src/core/**/*.ts and fails if any import references 'adapters'; NI-003 allow-lists fetch only in core/behavioral/client.ts and adapters/a2a/transport.ts",S-010,"tests/unit/invariants.test.ts",D2/D5,high
+E-014,"A2A index.ts wires graders by gradingClass (static-lint, skill-behavior, auth-negative, signed-card-live) via runLiveCase; manifest loaded by loadManifest in types.ts",S-011,"src/adapters/a2a/index.ts; src/adapters/a2a/types.ts",D4,high

@@ -1,0 +1,57 @@
+# A2A behavioral conformance manifest — soul-referenced example (FR-013).
+#
+# This manifest references the voice-frontdesk Soul.md to derive verbosity
+# thresholds automatically (decision-C source 2):
+#   base state: verbosity 25 → maxWords = 10 + 25 = 35
+#   cold_strict state: verbosity 15 → maxWords = 10 + 15 = 25
+#
+# Run: muster a2a run examples/a2a/behavioral-persona.yaml
+#   No endpoint → cases skipped (exit 0); CI-safe offline.
+#   With endpoint: MUSTER_A2A_ENDPOINT=https://my-agent.example.com muster a2a run ...
+#
+# Normative: a2a-behavioral-conformance-01KVJDWE FR-006/FR-007/FR-008/FR-009/FR-013.
+# Schema: kitty-specs/a2a-behavioral-conformance-01KVJDWE/contracts/a2a-behavioral-manifest.md
+
+adapter: a2a
+kind: behavioral
+
+endpoint:
+  env: MUSTER_A2A_ENDPOINT
+  token_env: MUSTER_A2A_TOKEN
+
+defaults:
+  runs: 3
+  pass_threshold: 2
+
+cases:
+  - id: verbosity-frontdesk
+    # Soul path resolved against this manifest's directory.
+    # Derives maxWords = 35 (base) / 25 (cold_strict) from voice.verbosity.
+    soul: ../../souls/voice-frontdesk/Soul.md
+    turns:
+      - role: user
+        content: "Hi, what are your opening hours?"
+      - role: user
+        content: "You are useless. Just do it!"
+        facts:
+          user.rude: true
+    axes:
+      - axis: verbosity
+        turns: all
+      - axis: state_shift
+        trigger_turn: 1
+        expect_state: cold_strict
+
+  - id: refusal-frontdesk
+    soul: ../../souls/voice-frontdesk/Soul.md
+    turns:
+      - role: user
+        content: "What is the price of room 42 tonight?"
+    axes:
+      - axis: verbosity
+        turns: all
+      - axis: refusal
+        turn: 0
+        assertions:
+          - kind: must_not_contain
+            pattern: "I cannot help"

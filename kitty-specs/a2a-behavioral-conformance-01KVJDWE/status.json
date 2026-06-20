@@ -1,0 +1,49 @@
+{
+  "event_count": 29,
+  "last_event_id": "01KVJKHC8K8FKE0R432CYD3W5C",
+  "materialized_at": "2026-06-20T13:29:18.355542+00:00",
+  "mission_number": "",
+  "mission_slug": "a2a-behavioral-conformance-01KVJDWE",
+  "mission_type": "software-dev",
+  "summary": {
+    "approved": 4,
+    "blocked": 0,
+    "canceled": 0,
+    "claimed": 0,
+    "done": 0,
+    "for_review": 0,
+    "in_progress": 0,
+    "in_review": 0,
+    "planned": 0
+  },
+  "work_packages": {
+    "WP01": {
+      "actor": "user",
+      "force_count": 1,
+      "lane": "approved",
+      "last_event_id": "01KVJGEFR8CXPKHRXMP3GNRKR4",
+      "last_transition_at": "2026-06-20T12:35:17.896624+00:00"
+    },
+    "WP02": {
+      "actor": "user",
+      "force_count": 1,
+      "lane": "approved",
+      "last_event_id": "01KVJHAGZR9ZAY4H25N7NQ3JG3",
+      "last_transition_at": "2026-06-20T12:50:36.664341+00:00"
+    },
+    "WP03": {
+      "actor": "user",
+      "force_count": 1,
+      "lane": "approved",
+      "last_event_id": "01KVJHZYSKCYFQQGQT7B6BDX1J",
+      "last_transition_at": "2026-06-20T13:02:18.931647+00:00"
+    },
+    "WP04": {
+      "actor": "user",
+      "force_count": 2,
+      "lane": "approved",
+      "last_event_id": "01KVJKHC8K8FKE0R432CYD3W5C",
+      "last_transition_at": "2026-06-20T13:29:18.355542+00:00"
+    }
+  }
+}

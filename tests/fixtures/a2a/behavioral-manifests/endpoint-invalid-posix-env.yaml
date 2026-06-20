@@ -1,0 +1,14 @@
+# endpoint-invalid-posix-env.yaml — error: env has invalid POSIX chars (NFR-002)
+# Starts with a digit, so fails the POSIX identifier check
+adapter: a2a
+kind: behavioral
+endpoint:
+  env: "123INVALID"
+  token_env: MUSTER_A2A_TOKEN
+cases:
+  - id: some-case
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0

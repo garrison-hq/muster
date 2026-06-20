@@ -1,0 +1,8 @@
+# case-missing-axes.yaml — error: axes is required and non-empty
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    turns:
+      - content: "Hello."
+    axes: []

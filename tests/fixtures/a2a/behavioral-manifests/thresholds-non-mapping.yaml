@@ -1,0 +1,11 @@
+# thresholds-non-mapping.yaml — error: thresholds must be a mapping (not a scalar)
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    thresholds: 42
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0

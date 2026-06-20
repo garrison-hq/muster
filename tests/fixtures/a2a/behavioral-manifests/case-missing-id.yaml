@@ -1,0 +1,9 @@
+# case-missing-id.yaml — error: case id is required and non-empty
+adapter: a2a
+kind: behavioral
+cases:
+  - turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0

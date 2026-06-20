@@ -1,0 +1,11 @@
+# axis-unknown-field-refusal.yaml — error: unknown field in refusal axis (FR-005)
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    turns:
+      - content: "Refuse this please."
+    axes:
+      - axis: refusal
+        turn: 0
+        unknownRefusalField: bad

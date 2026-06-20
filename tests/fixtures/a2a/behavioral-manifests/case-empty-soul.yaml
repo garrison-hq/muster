@@ -1,0 +1,11 @@
+# case-empty-soul.yaml — error: soul must be a non-empty path string when provided
+adapter: a2a
+kind: behavioral
+cases:
+  - id: some-case
+    soul: ""
+    turns:
+      - content: "Hello."
+    axes:
+      - axis: refusal
+        turn: 0
