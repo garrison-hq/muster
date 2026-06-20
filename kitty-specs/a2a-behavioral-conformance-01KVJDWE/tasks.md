@@ -40,12 +40,12 @@ WP02 (manifest) ──┘                        ▲
 | T017 | Call core gradeVerbosity/gradeRefusal/gradeStateShift → AxisGrade[] per run | WP03 |  | [D] |
 | T018 | Aggregate runs (errored→false, conjunctivePassK, passCount≥pass_threshold) → CaseVerdict | WP03 |  | [D] |
 | T019 | Unit tests with fixture transcripts (pass/verbosity-fail/refusal-fail/state-shift/all-errored) | WP03 |  | [D] |
-| T020 | Route by manifest `kind: behavioral` in adapter `runManifest` (no edit to existing loader) | WP04 |  |
-| T021 | Map behavioral `CaseVerdict[]` into the `a2a run` summary + exit codes 0/1/2 | WP04 |  |
-| T022 | Human + `--json` formatting for behavioral cases (axis/turn measured-vs-limit) | WP04 |  |
-| T023 | Two example manifests (persona-referenced + explicit-threshold) | WP04 | [P] |
-| T024 | Docs: layers table + CLI reference; each new check cites its spec section | WP04 | [P] |
-| T025 | CLI smoke/integration test (skip when no endpoint) + verify no regression | WP04 |  |
+| T020 | Route by manifest `kind: behavioral` in adapter `runManifest` (no edit to existing loader) | WP04 |  | [D] |
+| T021 | Map behavioral `CaseVerdict[]` into the `a2a run` summary + exit codes 0/1/2 | WP04 |  | [D] |
+| T022 | Human + `--json` formatting for behavioral cases (axis/turn measured-vs-limit) | WP04 |  | [D] |
+| T023 | Two example manifests (persona-referenced + explicit-threshold) | WP04 | [D] |
+| T024 | Docs: layers table + CLI reference; each new check cites its spec section | WP04 | [D] |
+| T025 | CLI smoke/integration test (skip when no endpoint) + verify no regression | WP04 |  | [D] |
 
 ---
 
@@ -142,12 +142,12 @@ no-regression guarantees. Per `contracts/cli-contract.md`.
 fails a deliberately-bad case (exit 1), exits 2 when all runs error; existing static/skill/
 auth/signed manifests behave identically (no regression).
 
-- [ ] T020 Route by manifest `kind: behavioral` in adapter `runManifest` (WP04)
-- [ ] T021 Map behavioral `CaseVerdict[]` into the `a2a run` summary + exit codes 0/1/2 (WP04)
-- [ ] T022 Human + `--json` formatting for behavioral cases (WP04)
-- [ ] T023 Two example manifests (persona-referenced + explicit-threshold) (WP04)
-- [ ] T024 Docs: layers table + CLI reference; cite spec sections (WP04)
-- [ ] T025 CLI smoke/integration test (skip when no endpoint) + verify no regression (WP04)
+- [x] T020 Route by manifest `kind: behavioral` in adapter `runManifest` (WP04)
+- [x] T021 Map behavioral `CaseVerdict[]` into the `a2a run` summary + exit codes 0/1/2 (WP04)
+- [x] T022 Human + `--json` formatting for behavioral cases (WP04)
+- [x] T023 Two example manifests (persona-referenced + explicit-threshold) (WP04)
+- [x] T024 Docs: layers table + CLI reference; cite spec sections (WP04)
+- [x] T025 CLI smoke/integration test (skip when no endpoint) + verify no regression (WP04)
 
 **Dependencies/risks:** touches shared CLI files (`src/cli/index.ts`, `src/cli/output.ts`) —
 keep edits additive and behind the behavioral path; do not change static-path output.
