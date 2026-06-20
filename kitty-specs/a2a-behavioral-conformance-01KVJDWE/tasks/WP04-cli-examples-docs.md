@@ -21,8 +21,8 @@ subtasks:
 - T023
 - T024
 - T025
-agent: "claude:opus:reviewer:reviewer"
-shell_pid: "852982"
+agent: "claude:sonnet:implementer:implementer"
+shell_pid: "865161"
 history:
 - Created by /spec-kitty.tasks for mission a2a-behavioral-conformance-01KVJDWE
 authoritative_surface: src/adapters/a2a/index.ts
@@ -178,3 +178,4 @@ spec-kitty agent action implement WP04 --agent <name>
 - 2026-06-20T13:14:11Z – claude:sonnet:implementer:implementer – shell_pid=817088 – WP04 implemented: kind:behavioral routing in a2a/index.ts and cli/index.ts; formatA2aBehavioralHuman in cli/output.ts; two runnable example manifests; site/a2a-behavioral.md docs; 38 new tests covering skip/pass/fail/allErrored/--json/static-regression/output-formatting. pnpm build clean; pnpm test 2806/2806 passed; CLI smoke exit 0 offline; invariants 12/12 green.
 - 2026-06-20T13:14:34Z – claude:opus:reviewer:reviewer – shell_pid=852982 – Started review via action command
 - 2026-06-20T13:18:41Z – claude:opus:reviewer:reviewer – shell_pid=852982 – Moved to planned
+- 2026-06-20T13:19:17Z – claude:sonnet:implementer:implementer – shell_pid=865161 – Started implementation via action command

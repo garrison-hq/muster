@@ -1,7 +1,7 @@
 {
-  "event_count": 24,
-  "last_event_id": "01KVJJXXQQWMYG5WXCJGGNZ1WN",
-  "materialized_at": "2026-06-20T13:18:40.887835+00:00",
+  "event_count": 26,
+  "last_event_id": "01KVJJZ1SNJPVWMDXERHVJ43PD",
+  "materialized_at": "2026-06-20T13:19:17.813970+00:00",
   "mission_number": "",
   "mission_slug": "a2a-behavioral-conformance-01KVJDWE",
   "mission_type": "software-dev",
@@ -12,9 +12,9 @@
     "claimed": 0,
     "done": 0,
     "for_review": 0,
-    "in_progress": 0,
+    "in_progress": 1,
     "in_review": 0,
-    "planned": 1
+    "planned": 0
   },
   "work_packages": {
     "WP01": {
@@ -39,11 +39,11 @@
       "last_transition_at": "2026-06-20T13:02:18.931647+00:00"
     },
     "WP04": {
-      "actor": "user",
+      "actor": "claude:sonnet:implementer:implementer",
       "force_count": 2,
-      "lane": "planned",
-      "last_event_id": "01KVJJXXQQWMYG5WXCJGGNZ1WN",
-      "last_transition_at": "2026-06-20T13:18:40.887835+00:00"
+      "lane": "in_progress",
+      "last_event_id": "01KVJJZ1SNJPVWMDXERHVJ43PD",
+      "last_transition_at": "2026-06-20T13:19:17.813970+00:00"
     }
   }
 }
