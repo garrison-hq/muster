@@ -199,3 +199,4 @@ spec-kitty agent action implement WP01 --agent <name>
 ## Activity Log
 
 - 2026-06-20T12:29:36Z – claude:sonnet:implementer:implementer – shell_pid=734352 – Assigned agent via action command
+- 2026-06-20T12:33:33Z – claude:sonnet:implementer:implementer – shell_pid=734352 – Multi-turn A2A transport implemented: sendMessage + buildSendRequest + extractReply + ConversationHandle. 28 unit tests (offline, mocked fetch). invokeSkill unchanged. pnpm build clean, pnpm test 118 files/2692 tests green, NI-003 invariant passes.
