@@ -203,3 +203,4 @@ spec-kitty agent action implement WP03 --agent <name>
 ## Activity Log
 
 - 2026-06-20T12:51:59Z – claude:sonnet:implementer:implementer – shell_pid=787559 – Started implementation via action command
+- 2026-06-20T12:59:02Z – claude:sonnet:implementer:implementer – shell_pid=787559 – WP03 behavioral runner implemented: runA2aCaseOnce (T013), system-prompt-free transcript (T014), black-box state tracking (T015), threshold mapping (T016), core grader reuse (T017), k-of-n aggregation + exit classification (T018), 36 unit tests (T019). pnpm build clean, pnpm test 122 files / 2768 pass / 3 pre-existing skips. Coverage: behavioral.ts 97%+ statements. C-004 clean (no core/behavioral/runner import, no system message), NI-003 clean (no new fetch site). Commit 49ad9cb.
