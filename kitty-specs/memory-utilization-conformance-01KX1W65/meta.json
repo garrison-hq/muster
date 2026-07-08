@@ -1,0 +1,15 @@
+{
+  "coordination_branch": "kitty/mission-memory-utilization-conformance-01KX1W65",
+  "created_at": "2026-07-08T22:04:46.526666+00:00",
+  "flattened": false,
+  "friendly_name": "memory utilization conformance",
+  "mission_id": "01KX1W65HYFFCTQSPM4FK0BYMH",
+  "mission_number": null,
+  "mission_slug": "memory-utilization-conformance-01KX1W65",
+  "mission_type": "software-dev",
+  "purpose_context": "This mission advances memory utilization conformance on chore/spec-kitty-3.2.5-upgrade so stakeholders can track the work from mission creation onward.",
+  "purpose_tldr": "memory utilization conformance",
+  "slug": "memory-utilization-conformance-01KX1W65",
+  "target_branch": "chore/spec-kitty-3.2.5-upgrade",
+  "topology": "coord"
+}
