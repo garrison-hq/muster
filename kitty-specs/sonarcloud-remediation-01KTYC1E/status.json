@@ -2,7 +2,7 @@
   "event_count": 29,
   "last_event_id": "01KTYMYHSX08NZYQWK3H6TCFFX",
   "materialized_at": "2026-06-12T19:29:09.949868+00:00",
-  "mission_number": "",
+  "mission_number": "3",
   "mission_slug": "sonarcloud-remediation-01KTYC1E",
   "mission_type": "software-dev",
   "summary": {

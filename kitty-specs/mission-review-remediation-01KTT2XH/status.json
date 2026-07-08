@@ -2,7 +2,7 @@
   "event_count": 18,
   "last_event_id": "01KTT55QWBS7F84KMT4DGWQS09",
   "materialized_at": "2026-06-11T01:36:30.603039+00:00",
-  "mission_number": "",
+  "mission_number": "2",
   "mission_slug": "mission-review-remediation-01KTT2XH",
   "mission_type": "software-dev",
   "summary": {

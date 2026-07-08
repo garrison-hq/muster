@@ -2,7 +2,7 @@
   "event_count": 68,
   "last_event_id": "01KTT0VV8SDXTYQSC33X0666XQ",
   "materialized_at": "2026-06-11T00:21:12.089135+00:00",
-  "mission_number": "",
+  "mission_number": "1",
   "mission_slug": "cts1-conformance-harness-01KTS86B",
   "mission_type": "software-dev",
   "summary": {
