@@ -10,5 +10,5 @@
   "purpose_tldr": "memory utilization conformance",
   "slug": "memory-utilization-conformance-01KX1W65",
   "target_branch": "chore/spec-kitty-3.2.5-upgrade",
-  "topology": "coord"
+  "topology": "single_branch"
 }
