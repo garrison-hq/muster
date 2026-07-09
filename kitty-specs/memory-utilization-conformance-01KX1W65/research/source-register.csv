@@ -1,0 +1,19 @@
+id,citation,url,kind,quality,angle
+S01,DeepEval Knowledge Retention metric,https://deepeval.com/docs/metrics-knowledge-retention,convention-tool,primary,prior-art gap (intra-conversation recall only)
+S02,UK AISI Inspect,https://inspect.aisi.org.uk/,convention-tool,primary,judge infra; no memory/lift/longitudinal capability
+S03,Letta Agent File (.af),https://github.com/letta-ai/agent-file,convention,primary,file-declared-memory fixture format
+S04,Reflexion (Shinn et al. NeurIPS 2023),https://arxiv.org/abs/2303.11366,research,primary,citable lift delta (91 vs 80 pass@1)
+S05,MemGPT (UC Berkeley 2023),https://arxiv.org/abs/2310.08560,research,primary,fixture regimes; architecture prior art
+S06,LongMemEval (ICLR 2025),https://arxiv.org/abs/2410.10813,research,primary,five abilities; abstention + knowledge-update controls
+S07,LoCoMo (ACL 2024),https://aclanthology.org/2024.acl-long.747/,research,primary,multi-session fixtures; context != learning
+S08,Generating Leakage-Free Benchmarks for RAG,https://arxiv.org/abs/2605.08838,research,primary,contamination control (52-75% parametric-answerable)
+S09,GEM Gradient Episodic Memory (NeurIPS 2017),https://arxiv.org/abs/1706.08840,research,primary,ACC/BWT/FWT transfer metrics
+S10,Diaz-Rodriguez et al. CL metrics (2018),https://arxiv.org/abs/1810.13166,research,primary,multi-dimensional continual-learning metric set
+S11,LLMs Cannot Self-Correct Reasoning Yet (ICLR 2024),https://arxiv.org/abs/2310.01798,research,primary,external-feedback requirement (negative result)
+S12,MemoryAgentBench,https://arxiv.org/abs/2507.05257,research,primary,"Test-Time Learning" definition
+S13,Adding Error Bars to Evals (Miller/Anthropic),https://arxiv.org/abs/2411.00640,research,primary,paired CI; N-sizing/MDE; clustered SEs
+S14,Codex/HumanEval pass@k (Chen et al. 2021),https://arxiv.org/abs/2107.03374,research-convention,primary,unbiased disjunctive pass@k estimator
+S15,openai/human-eval,https://github.com/openai/human-eval,convention,primary,reference pass@k implementation
+S16,Fagerland/Lydersen/Laake 2014 (Statistics in Medicine),https://onlinelibrary.wiley.com/doi/10.1002/sim.6148,research-convention,primary,McNemar mid-p; Tango/Newcombe paired-delta CI
+S17,Fagerland/Lydersen/Laake 2013 (BMC Med Res Methodol),https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3716987/,research-convention,primary,matched-pairs test recommendations
+S18,"Don't Pass@k: A Bayesian Framework (ICLR 2026)",https://arxiv.org/abs/2510.04265,research,primary,empirical N anchor (conservative, simulated)

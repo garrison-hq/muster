@@ -1,0 +1,13 @@
+id,finding,source_ids,confidence,use
+E01,No harness does non-runtime file-declared-memory learning-lift conformance; DeepEval is intra-conversation recall only; Inspect has no memory/lift capability,S01;S02,high,defines the gap this mission fills
+E02,No normative standard exists for agent-memory files or self-learning agents; strongest sources are conventions (.af) and research,S03;S04;S05,high,muster must publish its own rubric and cite it (C-003)
+E03,Reflexion shows a clean baseline-vs-condition lift (91 vs 80 pass@1) attributable to reflection-in-memory,S04,high,the exact delta shape the adapter quantifies (FR-003/004)
+E04,Memory-benchmark taxonomies: LongMemEval five abilities (incl. abstention + knowledge updates); MemGPT two fixture regimes; LoCoMo multi-session construction,S06;S05;S07,high,what to assert + how to stage fixtures (FR-007/014)
+E05,Context/retrieval is not learning (LoCoMo Human F1 ~88 vs RAG ~41); contamination inflates lift (52-75% answerable from parametric memory),S07;S08,high,the two decisive controls: no-memory baseline + closed-book gate (FR-005/006)
+E06,Continual-learning transfer metrics (ACC/BWT/FWT) separate genuine learning from context addition,S09;S10,high,optional Tier-2 directional metrics; framing
+E07,Intrinsic self-correction fails without external feedback; a learning test must supply ground truth not self-report,S11,medium,abstention + external-truth grading rationale (FR-007)
+E08,Statistics: paired difference on same probes gives free variance reduction; single-arm CI via CLT/Bernoulli (Wilson at boundaries),S13,high,FR-003 paired design + CI
+E09,Paired significance via McNemar mid-p; delta CI via Tango/Newcombe; not plain Wald,S16;S17,high,FR-004 significance + delta CI
+E10,N-sizing/MDE via Miller Eq.9/10 (~1000 probes rule of thumb); report no-lift as bounded/powered null,S13;S18,high,FR-008 MDE + bounded null
+E11,Unbiased disjunctive pass@k estimator (Chen); conjunctive pass^k has NO citable estimator,S14;S15,high,FR-013 muster derives own pass^k estimator
+E12,LLM-judge bias mitigation has no citable convention; paired same-judge design cancels common-mode bias; blind arm order for position bias,S13,low,FR-011 judge-bias rubric (muster-owned reasoning)
