@@ -1,0 +1,13 @@
+# NVIDIA NIM (free, OpenAI-compatible) — key env: NVIDIA_API_KEY (nvapi-...)
+nim-llama-3.1-8b	https://integrate.api.nvidia.com/v1	meta/llama-3.1-8b-instruct	NVIDIA_API_KEY
+nim-llama-3.3-70b	https://integrate.api.nvidia.com/v1	meta/llama-3.3-70b-instruct	NVIDIA_API_KEY
+nim-nemotron-70b	https://integrate.api.nvidia.com/v1	nvidia/llama-3.1-nemotron-70b-instruct	NVIDIA_API_KEY
+nim-mistral-7b	https://integrate.api.nvidia.com/v1	mistralai/mistral-7b-instruct-v0.3	NVIDIA_API_KEY
+# OpenRouter (cross-provider) — key env: OPENROUTER_API_KEY (sk-or-...)
+or-gpt-4o	https://openrouter.ai/api/v1	openai/gpt-4o	OPENROUTER_API_KEY
+or-gpt-4o-mini	https://openrouter.ai/api/v1	openai/gpt-4o-mini	OPENROUTER_API_KEY
+or-claude-sonnet	https://openrouter.ai/api/v1	anthropic/claude-3.5-sonnet	OPENROUTER_API_KEY
+or-gemini-flash	https://openrouter.ai/api/v1	google/gemini-2.0-flash-001	OPENROUTER_API_KEY
+or-llama-3.3-70b	https://openrouter.ai/api/v1	meta-llama/llama-3.3-70b-instruct	OPENROUTER_API_KEY
+or-qwen-2.5-72b	https://openrouter.ai/api/v1	qwen/qwen-2.5-72b-instruct	OPENROUTER_API_KEY
+or-deepseek-chat	https://openrouter.ai/api/v1	deepseek/deepseek-chat	OPENROUTER_API_KEY
