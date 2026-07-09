@@ -133,7 +133,9 @@ export interface LearningLiftManifest {
 
 /** Deterministic UTF-16 code-unit string comparator — never `localeCompare` (repo invariant). */
 function compareStrings(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
 }
 
 function validateArms(kase: LearningLiftCase): void {
