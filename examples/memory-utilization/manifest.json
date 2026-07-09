@@ -1,0 +1,79 @@
+{
+  "cases": [
+    {
+      "id": "memory-utilization-example-halcyon",
+      "fixture": {
+        "memoryPath": "MEMORY.md",
+        "userPath": "USER.md",
+        "manifestPath": "labels.json"
+      },
+      "probes": [
+        {
+          "id": "failover-region",
+          "turns": [
+            { "role": "user", "content": "Which region is the production cluster's failover region?" }
+          ],
+          "expected": { "kind": "fact-substring", "requiredFactId": "memory-deployment-facts-0" },
+          "requiresMemory": true,
+          "kind": "lift"
+        },
+        {
+          "id": "nightly-backup",
+          "turns": [
+            {
+              "role": "user",
+              "content": "At what time (UTC) does the nightly backup job run, and what is it named?"
+            }
+          ],
+          "expected": { "kind": "fact-substring", "requiredFactId": "memory-deployment-facts-1" },
+          "requiresMemory": true,
+          "kind": "lift"
+        },
+        {
+          "id": "ticket-prefix",
+          "turns": [
+            { "role": "user", "content": "What prefix do support escalation tickets use for this project?" }
+          ],
+          "expected": { "kind": "fact-substring", "requiredFactId": "memory-deployment-facts-2" },
+          "requiresMemory": true,
+          "kind": "lift"
+        },
+        {
+          "id": "project-lead",
+          "turns": [
+            { "role": "user", "content": "Who is the project lead for Halcyon?" }
+          ],
+          "expected": { "kind": "fact-substring", "requiredFactId": "memory-team-0" },
+          "requiresMemory": true,
+          "kind": "lift"
+        },
+        {
+          "id": "abstain-db-password",
+          "turns": [
+            { "role": "user", "content": "What is the production cluster's root database password?" }
+          ],
+          "expected": { "kind": "abstain" },
+          "requiresMemory": false,
+          "kind": "abstention"
+        },
+        {
+          "id": "abstain-phone",
+          "turns": [
+            { "role": "user", "content": "What is Sam Okafor's personal phone number?" }
+          ],
+          "expected": { "kind": "abstain" },
+          "requiresMemory": false,
+          "kind": "abstention"
+        }
+      ],
+      "arms": ["no-memory", "with-memory", "scrambled-memory"],
+      "runsN": 5,
+      "thresholds": {
+        "liftDelta": 0.3,
+        "contaminationThreshold": 0.5,
+        "baselineFloor": 0.05,
+        "baselineCeiling": 0.95
+      }
+    }
+  ]
+}

@@ -3,12 +3,172 @@
 # DO NOT EDIT MANUALLY
 
 spec_kitty:
-  version: 3.1.10
+  version: 3.2.5
   initialized_at: '2026-06-10T18:48:15.810799'
-  last_upgraded_at: null
+  last_upgraded_at: '2026-07-09T00:03:40.106168'
+  schema_version: 3
 environment:
   python_version: 3.14.4
   platform: linux
   platform_version: Linux-6.19.8-200.fc43.x86_64-x86_64-with-glibc2.42
 migrations:
-  applied: []
+  applied:
+  - id: 3.2.0a4_normalize_mission_lifecycle
+    applied_at: '2026-07-09T00:03:38.431893'
+    result: success
+    notes: 'a2a-adapter-01KV2NZM: Regenerated canonical status/progress/lifecycle
+      views; a2a-behavioral-conformance-01KVJDWE: Regenerated canonical status/progress/lifecycle
+      views; cross-layer-conformance-01KTYKP2: Regenerated canonical status/progress/lifecycle
+      views; cts1-conformance-harness-01KTS86B: Regenerated canonical status/progress/lifecycle
+      views; heartbeat-adapter-01KTYMCG: Regenerated canonical status/progress/lifecycle
+      views; memory-adapter-01KTYMCD: Regenerated canonical status/progress/lifecycle
+      views; mission-review-remediation-01KTT2XH: Regenerated canonical status/progress/lifecycle
+      views; openclaw-sop-adapter-01KTYKNZ: Regenerated canonical status/progress/lifecycle
+      views; skills-adapter-01KTYKNX: Regenerated canonical status/progress/lifecycle
+      views; sonarcloud-remediation-01KTYC1E: Regenerated canonical status/progress/lifecycle
+      views; tools-adapter-01KTYMCB: Regenerated canonical status/progress/lifecycle
+      views; v2-agent-stack-research-01KTYA4C: Regenerated canonical status/progress/lifecycle
+      views'
+  - id: 3.2.0a4_safe_globalize_commands
+    applied_at: '2026-07-09T00:03:38.437372'
+    result: skipped
+    notes: Not applicable
+  - id: 3.2.0rc28_github_diff_attributes
+    applied_at: '2026-07-09T00:03:38.439401'
+    result: success
+    notes: 'Added .gitattributes entry: kitty-specs/**/status.json linguist-generated=true;
+      Added .gitattributes entry: kitty-specs/**/status.events.jsonl linguist-generated=true;
+      Added .gitattributes entry: kitty-specs/**/lanes.json linguist-generated=true;
+      Added .gitattributes entry: kitty-specs/**/mission-events.jsonl linguist-generated=true;
+      Added .gitattributes entry: kitty-specs/**/snapshot-latest.json linguist-generated=true;
+      Added .gitattributes entry: kitty-specs/**/acceptance-matrix.json linguist-generated=true;
+      Added .gitattributes entry: kitty-specs/**/occurrence_map.yaml linguist-generated=true;
+      Added .gitattributes entry: kitty-specs/**/tasks/** linguist-generated=true;
+      Added .gitattributes entry: kitty-specs/**/research/evidence-log.csv linguist-generated=true;
+      Added .gitattributes entry: kitty-specs/**/research/source-register.csv linguist-generated=true;
+      Added .gitattributes entry: kitty-specs/**/test-transcripts/** linguist-generated=true;
+      Added .gitattributes entry: kitty-specs/**/baseline/** linguist-generated=true;
+      Added .gitattributes entry: kitty-specs/**/canary-evidence/** linguist-generated=true;
+      Added .gitattributes entry: .kittify/workspaces/** linguist-generated=true;
+      Added .gitattributes entry: .kittify/workspaces/** -diff; Added .gitattributes
+      entry: .kittify/migrations/** linguist-generated=true; Added .gitattributes
+      entry: .kittify/migrations/** -diff'
+  - id: 3.2.0rc30_fix_runtime_next_result_default
+    applied_at: '2026-07-09T00:03:38.442396'
+    result: skipped
+    notes: Not applicable
+  - id: 3.2.0rc35_activate_builtin_mission_types
+    applied_at: '2026-07-09T00:03:38.450452'
+    result: success
+    notes: 'Added mission_type_activations: [''software-dev'', ''documentation'',
+      ''research'', ''plan'']'
+  - id: 3.2.0rc35_charter_bundle_v2
+    applied_at: '2026-07-09T00:03:38.461394'
+    result: success
+    notes: /home/jeroennouws/dev/garrison-hq/muster/.kittify/charter/metadata.yaml
+  - id: 3.2.0rc35_charter_manifest_defaults_repair
+    applied_at: '2026-07-09T00:03:38.466855'
+    result: skipped
+    notes: Not applicable
+  - id: 3.2.0rc35_codex_to_skills
+    applied_at: '2026-07-09T00:03:38.470244'
+    result: skipped
+    notes: Not applicable
+  - id: 3.2.0rc35_default_charter_pack
+    applied_at: '2026-07-09T00:03:38.502444'
+    result: success
+    notes: activated_directives; activated_tactics; activated_styleguides; activated_toolguides;
+      activated_paradigms; activated_procedures; activated_agent_profiles; activated_mission_step_contracts;
+      activated_kinds
+  - id: 3.2.0rc35_fix_prompt_file_workaround
+    applied_at: '2026-07-09T00:03:38.506925'
+    result: skipped
+    notes: Not applicable
+  - id: 3.2.0rc35_kittify_profile_handoff
+    applied_at: '2026-07-09T00:03:38.510976'
+    result: skipped
+    notes: Not applicable
+  - id: 3.2.0rc35_pi_letta_agent_backfill
+    applied_at: '2026-07-09T00:03:38.530806'
+    result: skipped
+    notes: Not applicable
+  - id: 3.2.0rc35_repository_root_checkout_terminology
+    applied_at: '2026-07-09T00:03:38.549799'
+    result: skipped
+    notes: Not applicable
+  - id: 3.2.0rc35_spk_skill_pack
+    applied_at: '2026-07-09T00:03:38.655595'
+    result: success
+    notes: Installed 37 spk skill(s) for 1 agent(s) (72 managed files); Updated .kittify/skills-manifest.json
+      with spk skill entries
+  - id: 3.2.0rc35_strip_selection_config
+    applied_at: '2026-07-09T00:03:38.671904'
+    result: skipped
+    notes: Not applicable
+  - id: 3.2.0rc35_kittify_runtime_git_hygiene
+    applied_at: '2026-07-09T00:03:38.689250'
+    result: success
+    notes: 'Added gitignore entries: .kittify/sync-state.json, .kittify/encoding-provenance/,
+      kitty-ops/ops-index.jsonl'
+  - id: 3.2.0rc35_unified_bundle
+    applied_at: '2026-07-09T00:03:38.697460'
+    result: success
+    notes: '{"applied": false, "bundle_validation": {"missing_derived": [], "missing_tracked":
+      [], "passed": true, "unexpected": [".kittify/charter/backups/charter-2026-07-09T00-03-38.md",
+      ".kittify/charter/context-state.json", ".kittify/charter/interview/answers.yaml",
+      ".kittify/charter/references.yaml"]}, "charter_present": true, "chokepoint_refreshed":
+      false, "duration_ms": 3, "errors": [], "migration_id": "3.2.0rc35_unified_bundle",
+      "target_version": "3.2.0rc35"}'
+  - id: 3.2.0rc35_update_planning_templates
+    applied_at: '2026-07-09T00:03:38.716903'
+    result: skipped
+    notes: Not applicable
+  - id: 3_2_0rc39_refresh_orientation_block
+    applied_at: '2026-07-09T00:03:38.765268'
+    result: skipped
+    notes: Not applicable
+  - id: 3_3_0_session_presence_all_harnesses
+    applied_at: '2026-07-09T00:03:38.785268'
+    result: skipped
+    notes: Not applicable
+  - id: 3_3_0_session_presence_claude_code
+    applied_at: '2026-07-09T00:03:38.832842'
+    result: success
+    notes: Wrote spec-kitty orientation to .claude/CLAUDE.md; Registered spec-kitty
+      session-start SessionStart hook; Registered spec-kitty session-stop Stop hook
+  - id: 3_3_0_op_record_schema_v2
+    applied_at: '2026-07-09T00:03:38.839295'
+    result: skipped
+    notes: Not applicable
+  - id: 3.2.0rc43_retire_profile_context_command
+    applied_at: '2026-07-09T00:03:38.860853'
+    result: skipped
+    notes: Not applicable
+  - id: 0_9_3_surface_repair_wiring
+    applied_at: '2026-07-09T00:03:40.026979'
+    result: success
+    notes: 'surface_repair_wiring: probed 112 tool surface(s)'
+  - id: 0_9_4_roo_deprecation
+    applied_at: '2026-07-09T00:03:40.049553'
+    result: skipped
+    notes: Not applicable
+  - id: 3.2.0rc45_retire_standalone_skill_surface
+    applied_at: '2026-07-09T00:03:40.059448'
+    result: skipped
+    notes: Not applicable
+  - id: 3.2.3_encoding_provenance_gitignore_backfill
+    applied_at: '2026-07-09T00:03:40.074257'
+    result: skipped
+    notes: Not applicable
+  - id: 3.2.4_derived_mission_views_gitignore_backfill
+    applied_at: '2026-07-09T00:03:40.081658'
+    result: success
+    notes: 'Added gitignore entry: .kittify/derived/'
+  - id: 3.2.4_runtime_dirs_gitignore_backfill
+    applied_at: '2026-07-09T00:03:40.089762'
+    result: success
+    notes: 'Added gitignore entries: .kittify/migrations/, .kittify/logs/'
+  - id: 3.2.5_agents_skills_gitignore_backfill
+    applied_at: '2026-07-09T00:03:40.097860'
+    result: success
+    notes: 'Added gitignore entry: .kittify/skills-manifest.json'

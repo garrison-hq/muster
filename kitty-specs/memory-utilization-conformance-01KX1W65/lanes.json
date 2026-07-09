@@ -1,0 +1,116 @@
+{
+  "version": 1,
+  "mission_slug": "memory-utilization-conformance-01KX1W65",
+  "mission_id": "01KX1W65HYFFCTQSPM4FK0BYMH",
+  "mission_branch": "kitty/mission-memory-utilization-conformance-01KX1W65",
+  "target_branch": "chore/spec-kitty-3.2.5-upgrade",
+  "lanes": [
+    {
+      "lane_id": "lane-a",
+      "wp_ids": [
+        "WP01"
+      ],
+      "write_scope": [
+        "src/core/behavioral/runner.ts",
+        "src/core/behavioral/types.ts"
+      ],
+      "predicted_surfaces": [
+        "legacy-cleanup"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    },
+    {
+      "lane_id": "lane-b",
+      "wp_ids": [
+        "WP02"
+      ],
+      "write_scope": [
+        "src/core/behavioral/stats/index.ts",
+        "src/core/behavioral/stats/paired.ts",
+        "src/core/behavioral/stats/passk.ts",
+        "src/core/behavioral/stats/power.ts",
+        "src/core/behavioral/stats/proportion-ci.ts"
+      ],
+      "predicted_surfaces": [
+        "artifact-rendering"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    },
+    {
+      "lane_id": "lane-c",
+      "wp_ids": [
+        "WP03"
+      ],
+      "write_scope": [
+        "src/adapters/memory-utilization/contamination.ts",
+        "src/adapters/memory-utilization/controls.ts",
+        "src/adapters/memory-utilization/fixture.ts",
+        "src/adapters/memory-utilization/index.ts",
+        "src/adapters/memory-utilization/manifest.ts",
+        "src/adapters/memory-utilization/verdict.ts"
+      ],
+      "predicted_surfaces": [
+        "tests"
+      ],
+      "depends_on_lanes": [
+        "lane-a",
+        "lane-b"
+      ],
+      "parallel_group": 1
+    },
+    {
+      "lane_id": "lane-d",
+      "wp_ids": [
+        "WP04"
+      ],
+      "write_scope": [
+        "docs/rubric/memory-utilization-taxonomy.md",
+        "src/adapters/memory-utilization/rubric.ts"
+      ],
+      "predicted_surfaces": [],
+      "depends_on_lanes": [
+        "lane-b"
+      ],
+      "parallel_group": 1
+    },
+    {
+      "lane_id": "lane-e",
+      "wp_ids": [
+        "WP05"
+      ],
+      "write_scope": [
+        "examples/memory-utilization/",
+        "tests/fixtures/memory-utilization/"
+      ],
+      "predicted_surfaces": [],
+      "depends_on_lanes": [
+        "lane-c"
+      ],
+      "parallel_group": 2
+    },
+    {
+      "lane_id": "lane-f",
+      "wp_ids": [
+        "WP06"
+      ],
+      "write_scope": [
+        "docs/guides/memory-utilization-pilot-protocol.md",
+        "src/cli/index.ts"
+      ],
+      "predicted_surfaces": [
+        "artifact-rendering"
+      ],
+      "depends_on_lanes": [
+        "lane-c",
+        "lane-d",
+        "lane-e"
+      ],
+      "parallel_group": 3
+    }
+  ],
+  "computed_at": "2026-07-09T00:37:23.552307+00:00",
+  "computed_from": "dependency_graph+ownership",
+  "planning_artifact_wps": []
+}

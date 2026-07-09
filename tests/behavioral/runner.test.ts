@@ -19,6 +19,7 @@ import type {
   BehavioralCase,
   ChatClient,
   ChatMessage,
+  PairedOutcome,
 } from "../../src/core/behavioral/types.js";
 import type { Violation } from "../../src/core/report.js";
 
@@ -200,6 +201,219 @@ describe("FR-022 k-of-n grading", () => {
     await expect(
       runCase(rfc1Adapter, broken, verbosityCase(), client, runnerOpts)
     ).rejects.toThrow(/did not resolve/);
+  });
+});
+
+// ─── WP01: continuous pass-rate + paired-outcome retention (research.md §3) ──
+//
+// Two strictly ADDITIVE prerequisites for a later paired-lift measurement:
+// (1) surface the continuous pass-rate muster already computes internally
+//     but today collapses to a boolean before reporting; (2) retain a
+//     per-probe/per-run score so a later adapter can pair two arms by probe
+//     id. The boolean verdict stays authoritative for exit codes throughout.
+
+describe("research.md §3 prerequisite 1 — continuous passRate is additive", () => {
+  it("CaseVerdict.passRate equals passCount/total for a mixed [pass, fail, pass] run; per-run passRate mirrors each run's boolean at single-axis granularity", async () => {
+    const soulCheck = await check(soulRaw("session"));
+    const { client } = scriptedClient([wordsOf(3), wordsOf(9), wordsOf(4)]);
+    const verdict = await runCase(rfc1Adapter, soulCheck, verbosityCase(), client, runnerOpts);
+
+    expect(verdict.passCount).toBe(2);
+    expect(verdict.runs).toHaveLength(3);
+    // Exact equality: same floating-point division as the field under test.
+    expect(verdict.passRate).toBe(verdict.passCount / verdict.runs.length);
+    expect(verdict.passRate).toBeCloseTo(2 / 3, 10);
+    expect(verdict.runs.map((run) => run.passRate)).toEqual([1, 0, 1]);
+    // The boolean stays authoritative — passRate never overrides it.
+    expect(verdict.passed).toBe(true);
+  });
+
+  it("FR-022: an errored run contributes passRate 0 (never partial credit) and still fails the case", async () => {
+    const soulCheck = await check(soulRaw("session"));
+    const { client } = scriptedClient([wordsOf(3), new Error("connection reset"), wordsOf(9)]);
+    const verdict = await runCase(rfc1Adapter, soulCheck, verbosityCase(), client, runnerOpts);
+
+    expect(verdict.runs[1]?.passed).toBe(false);
+    expect(verdict.runs[1]?.error).toContain("connection reset");
+    expect(verdict.runs[1]?.passRate).toBe(0);
+    expect(verdict.passCount).toBe(1);
+    expect(verdict.passRate).toBe(1 / 3);
+    expect(verdict.passed).toBe(false);
+  });
+
+  it("a run with two axis grades (one pass, one fail) resolves a genuine fractional passRate (0.5), not just 0/1", async () => {
+    const twoTurnVerbosity: BehavioralCase = {
+      id: "two_turn_verbosity",
+      soul: "/virtual/Soul.md",
+      turns: [
+        { role: "user", content: "First question?" },
+        { role: "user", content: "Second question?" },
+      ],
+      axes: [{ axis: "verbosity", turns: "all" }],
+      runs: 1,
+      pass_threshold: 1,
+      overrides: { max_words: 5 },
+    };
+    const soulCheck = await check(soulRaw("session"));
+    const { client } = scriptedClient([wordsOf(3), wordsOf(9)]);
+    const verdict = await runCase(rfc1Adapter, soulCheck, twoTurnVerbosity, client, runnerOpts);
+
+    expect(verdict.runs[0]?.axes.map((grade) => grade.passed)).toEqual([true, false]);
+    expect(verdict.runs[0]?.passed).toBe(false);
+    expect(verdict.runs[0]?.passRate).toBe(0.5);
+  });
+
+  it("an axis-free run resolves passRate to 1 (vacuous conjunction matches the `passed` boolean)", async () => {
+    const soulCheck = await check(soulRaw("session"));
+    const { client } = scriptedClient([wordsOf(3)]);
+    const verdict = await runCase(
+      rfc1Adapter,
+      soulCheck,
+      verbosityCase({ axes: [], runs: 1, pass_threshold: 1 }),
+      client,
+      runnerOpts
+    );
+    expect(verdict.runs[0]?.axes).toEqual([]);
+    expect(verdict.runs[0]?.passed).toBe(true);
+    expect(verdict.runs[0]?.passRate).toBe(1);
+  });
+
+  it("CaseVerdict.passRate defensively resolves to 0 for a zero-run case (division-by-zero guard)", async () => {
+    const soulCheck = await check(soulRaw("session"));
+    const { client, calls } = scriptedClient([]);
+    const verdict = await runCase(
+      rfc1Adapter,
+      soulCheck,
+      verbosityCase({ runs: 0, pass_threshold: 0 }),
+      client,
+      runnerOpts
+    );
+    expect(calls).toHaveLength(0);
+    expect(verdict.runs).toEqual([]);
+    expect(verdict.passRate).toBe(0);
+  });
+});
+
+describe("regression — pre-existing CaseVerdict/RunVerdict fields are unchanged (additive only)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** Recursively strip `passRate` keys so what remains is exactly the
+   *  pre-WP01 shape — proves the new field is additive, not a replacement. */
+  function stripPassRate(value: unknown): unknown {
+    return JSON.parse(JSON.stringify(value, (key, val) => (key === "passRate" ? undefined : val)));
+  }
+
+  it("byte-identical JSON for every pre-existing field; passRate is present and appended last on both CaseVerdict and RunVerdict", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+
+    const soulCheck = await check(soulRaw("session"));
+    const { client } = scriptedClient([wordsOf(3), wordsOf(9)]);
+    const verdict = await runCase(
+      rfc1Adapter,
+      soulCheck,
+      verbosityCase({ runs: 2, pass_threshold: 1 }),
+      client,
+      runnerOpts
+    );
+
+    const stripped = stripPassRate(verdict);
+    const expected = {
+      id: "verbosity_case",
+      passed: true,
+      passCount: 1,
+      runs: [
+        {
+          run: 1,
+          passed: true,
+          axes: [{ axis: "verbosity", turn: 0, measured: 3, limit: 5, passed: true }],
+          transcript: {
+            entries: [
+              { role: "user", content: "Hi, what are your opening hours?", activeState: "friendly" },
+              { role: "assistant", content: wordsOf(3), activeState: "friendly", wordCount: 3 },
+            ],
+            model: "test-model",
+            baseUrl: "http://localhost:9999/v1",
+            temperature: "default",
+            durationMs: 0,
+          },
+        },
+        {
+          run: 2,
+          passed: false,
+          axes: [{ axis: "verbosity", turn: 0, measured: 9, limit: 5, passed: false }],
+          transcript: {
+            entries: [
+              { role: "user", content: "Hi, what are your opening hours?", activeState: "friendly" },
+              { role: "assistant", content: wordsOf(9), activeState: "friendly", wordCount: 9 },
+            ],
+            model: "test-model",
+            baseUrl: "http://localhost:9999/v1",
+            temperature: "default",
+            durationMs: 0,
+          },
+        },
+      ],
+    };
+
+    // Structural + value-level byte check in one shot: identical JSON text.
+    expect(JSON.stringify(stripped)).toBe(JSON.stringify(expected));
+    expect(stripped).toEqual(expected);
+
+    // The new field exists and is appended AFTER every pre-existing key —
+    // never inserted in the middle, never replacing anything (append-only).
+    expect(Object.keys(verdict).at(-1)).toBe("passRate");
+    for (const run of verdict.runs) {
+      expect(Object.keys(run).at(-1)).toBe("passRate");
+    }
+  });
+});
+
+describe("research.md §3 prerequisite 3 — PairedOutcome retention shape (additive type only)", () => {
+  it("PairedOutcome retains a probe's continuous score per condition arm, keyed by arm name", () => {
+    const outcome: PairedOutcome = {
+      probeId: "verbosity_case",
+      perArmScore: { "with-memory": 1, "no-memory": 0.5 },
+    };
+    expect(outcome.probeId).toBe("verbosity_case");
+    expect(outcome.perArmScore["with-memory"]).toBe(1);
+    expect(outcome.perArmScore["no-memory"]).toBe(0.5);
+  });
+
+  it("a PairedOutcome can be built from CaseVerdict.passRate retained under two arms, then paired by probe id", async () => {
+    const soulCheck = await check(soulRaw("session"));
+
+    const withMemory = scriptedClient([wordsOf(3), wordsOf(3)]);
+    const withVerdict = await runCase(
+      rfc1Adapter,
+      soulCheck,
+      verbosityCase({ runs: 2, pass_threshold: 2 }),
+      withMemory.client,
+      runnerOpts
+    );
+
+    const withoutMemory = scriptedClient([wordsOf(9), wordsOf(3)]);
+    const withoutVerdict = await runCase(
+      rfc1Adapter,
+      soulCheck,
+      verbosityCase({ runs: 2, pass_threshold: 2 }),
+      withoutMemory.client,
+      runnerOpts
+    );
+
+    // A later adapter's job (out of scope here) — proving the retained
+    // per-run/per-case passRate is sufficient to build the pairing.
+    const paired: PairedOutcome = {
+      probeId: withVerdict.id,
+      perArmScore: {
+        "with-memory": withVerdict.passRate ?? Number.NaN,
+        "no-memory": withoutVerdict.passRate ?? Number.NaN,
+      },
+    };
+    expect(paired.probeId).toBe("verbosity_case");
+    expect(paired.perArmScore["with-memory"]).toBe(1);
+    expect(paired.perArmScore["no-memory"]).toBe(0.5);
   });
 });
 

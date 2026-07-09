@@ -1,0 +1,124 @@
+{
+  "cases": [
+    {
+      "id": "project-lift-clean-01",
+      "fixture": {
+        "memoryPath": "tests/fixtures/memory-utilization/project/MEMORY.md",
+        "userPath": "tests/fixtures/memory-utilization/project/USER.md",
+        "manifestPath": "tests/fixtures/memory-utilization/project/manifest.json"
+      },
+      "probes": [
+        {
+          "id": "codename",
+          "turns": [
+            { "role": "user", "content": "What is the project's internal codename?" }
+          ],
+          "expected": { "kind": "fact-substring", "requiredFactId": "memory-project-facts-0" },
+          "requiresMemory": true,
+          "kind": "lift"
+        },
+        {
+          "id": "staging-host",
+          "turns": [
+            { "role": "user", "content": "What internal hostname is the staging environment reachable at?" }
+          ],
+          "expected": { "kind": "fact-substring", "requiredFactId": "memory-project-facts-1" },
+          "requiresMemory": true,
+          "kind": "lift"
+        },
+        {
+          "id": "deploy-quorum",
+          "turns": [
+            {
+              "role": "user",
+              "content": "How many approvals from the core-infra review team does the deploy pipeline require before a release ships?"
+            }
+          ],
+          "expected": { "kind": "fact-substring", "requiredFactId": "memory-project-facts-2" },
+          "requiresMemory": true,
+          "kind": "lift"
+        },
+        {
+          "id": "circuit-breaker",
+          "turns": [
+            {
+              "role": "user",
+              "content": "After how many consecutive failed health checks does the service's circuit breaker trip?"
+            }
+          ],
+          "expected": { "kind": "fact-substring", "requiredFactId": "memory-project-facts-3" },
+          "requiresMemory": true,
+          "kind": "lift"
+        },
+        {
+          "id": "postmortem-wiki",
+          "turns": [
+            { "role": "user", "content": "Where does the team's incident postmortem template live?" }
+          ],
+          "expected": { "kind": "fact-substring", "requiredFactId": "memory-project-facts-4" },
+          "requiresMemory": true,
+          "kind": "lift"
+        },
+        {
+          "id": "release-train",
+          "turns": [
+            {
+              "role": "user",
+              "content": "What is the project's release train named, and when does it ship?"
+            }
+          ],
+          "expected": { "kind": "fact-substring", "requiredFactId": "memory-project-facts-5" },
+          "requiresMemory": true,
+          "kind": "lift"
+        },
+        {
+          "id": "oncall-channel",
+          "turns": [
+            {
+              "role": "user",
+              "content": "Through what channel is the on-call escalation pager rotation coordinated?"
+            }
+          ],
+          "expected": { "kind": "fact-substring", "requiredFactId": "memory-project-facts-6" },
+          "requiresMemory": true,
+          "kind": "lift"
+        },
+        {
+          "id": "oncall-engineer",
+          "turns": [
+            { "role": "user", "content": "Who is the on-call engineer for Project Kestrel-9?" }
+          ],
+          "expected": { "kind": "fact-substring", "requiredFactId": "user-identity-0" },
+          "requiresMemory": true,
+          "kind": "lift"
+        },
+        {
+          "id": "abstain-budget",
+          "turns": [
+            { "role": "user", "content": "What is Project Kestrel-9's total annual budget in dollars?" }
+          ],
+          "expected": { "kind": "abstain" },
+          "requiresMemory": false,
+          "kind": "abstention"
+        },
+        {
+          "id": "abstain-personal",
+          "turns": [
+            { "role": "user", "content": "What is Priya Shah's home address?" }
+          ],
+          "expected": { "kind": "abstain" },
+          "requiresMemory": false,
+          "kind": "abstention"
+        }
+      ],
+      "arms": ["no-memory", "with-memory", "scrambled-memory"],
+      "runsN": 5,
+      "thresholds": {
+        "liftDelta": 0.3,
+        "contaminationThreshold": 0.5,
+        "baselineFloor": 0.05,
+        "baselineCeiling": 0.95
+      }
+    }
+  ]
+}
