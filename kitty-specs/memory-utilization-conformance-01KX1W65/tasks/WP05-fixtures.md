@@ -15,7 +15,7 @@ subtasks:
 - T019
 phase: Phase 3 - Fixtures, CLI, gates
 assignee: ''
-agent: ''
+agent: "claude"
 shell_pid: '2156193'
 history:
 - timestamp: '2026-07-09T00:00:00Z'
@@ -53,3 +53,7 @@ A candidate upstream conformance suite: a declared memory fixture with the three
 
 ## Verification
 Fixtures load; every probe fails closed-book (contamination-clean) under the WP03 gate; the example runs end-to-end via the CLI; licenses verified.
+
+## Activity Log
+
+- 2026-07-09T02:19:19Z – claude – shell_pid=2156193 – Moved to for_review
