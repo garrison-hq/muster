@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://garrison-hq.github.io/muster/contracts/memory-utilization-report.schema.json",
+  "title": "muster memory-utilization run report",
+  "description": "Machine-readable report emitted by `muster memory-utilization run <manifest> --json`. Every methodological check cites muster's published rubric (docs/rubric/memory-utilization-taxonomy.md); no upstream normative standard exists (C-003).",
+  "type": "object",
+  "required": ["ok", "summary", "rubricDocPath", "exitCode", "cases"],
+  "properties": {
+    "ok": { "type": "boolean", "description": "true iff every case conforms (all lift-confirmed or expected)." },
+    "summary": { "type": "string" },
+    "rubricDocPath": { "type": "string", "const": "docs/rubric/memory-utilization-taxonomy.md" },
+    "exitCode": { "type": "integer", "enum": [0, 1, 2], "description": "0 conforming; 1 any failed/no-lift/contaminated/baseline-invalid; 2 manifest/exec error." },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["caseId", "measurement", "pairedOutcomes", "contamination", "scrambledControl", "allRefuseGuard", "abstention", "citations"],
+        "properties": {
+          "caseId": { "type": "string" },
+          "measurement": {
+            "type": "object",
+            "required": ["probeCount", "delta", "deltaCI", "mcnemarMidP", "mde", "baselineValid", "verdict"],
+            "properties": {
+              "probeCount": { "type": "integer", "minimum": 0 },
+              "delta": { "type": "number", "description": "paired pass-rate(with) - pass-rate(without)." },
+              "deltaCI": {
+                "type": "object",
+                "required": ["lower", "upper"],
+                "properties": { "lower": { "type": "number" }, "upper": { "type": "number" } },
+                "description": "Tango asymptotic-score interval for the paired difference."
+              },
+              "mcnemarMidP": { "type": "number", "minimum": 0, "maximum": 1, "description": "McNemar mid-p paired significance." },
+              "mde": { "type": "number", "minimum": 0, "description": "Miller Eq.10 minimum detectable effect for this probe count." },
+              "baselineValid": { "type": "boolean", "description": "false when the no-memory baseline is saturated or floored (two-sided guard)." },
+              "verdict": { "type": "string", "enum": ["lift-confirmed", "no-lift", "contaminated", "baseline-invalid"] }
+            }
+          },
+          "pairedOutcomes": {
+            "type": "array",
+            "description": "Per-probe cross-arm scores retained for the paired statistic (C-005).",
+            "items": {
+              "type": "object",
+              "required": ["probeId", "perArmScore"],
+              "properties": {
+                "probeId": { "type": "string" },
+                "perArmScore": { "type": "object", "additionalProperties": { "type": "number" } }
+              }
+            }
+          },
+          "contamination": { "type": "array", "description": "Per-probe closed-book contamination findings; any positive → verdict contaminated." },
+          "scrambledControl": { "type": "object", "required": ["passed"], "description": "Negative control: a significant lift on scrambled memory FAILS the case (proves not prompt-stuffing)." },
+          "allRefuseGuard": { "type": "object", "required": ["fired"], "description": "Guards against a trivial all-refuse false pass." },
+          "abstention": { "type": "object", "required": ["passed"], "description": "Declared-unanswerable probes must abstain (pass^k, safety-critical)." },
+          "citations": {
+            "type": "object",
+            "description": "rubric clause id per methodological check (FR-012); every value resolves to a §X.Y heading in the rubric doc.",
+            "additionalProperties": { "type": "string" }
+          },
+          "noLiftRendering": {
+            "type": "object",
+            "description": "Present only when verdict is no-lift: the bounded/powered null (FR-008), never bare absence of evidence.",
+            "required": ["kind", "mde"],
+            "properties": {
+              "kind": { "type": "string", "enum": ["bounded-powered-null", "underpowered-inconclusive"] },
+              "mde": { "type": "number" },
+              "ciExcludesLiftThreshold": { "type": "boolean" },
+              "note": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
