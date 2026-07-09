@@ -25,7 +25,7 @@ subtasks:
 - T013
 phase: Phase 2 - Adapter + rubric
 assignee: ''
-agent: ''
+agent: "claude"
 shell_pid: '2065172'
 history:
 - timestamp: '2026-07-09T00:00:00Z'
@@ -73,3 +73,7 @@ The adapter behind muster's boundary. It stages the memory fixture in three vari
 
 ## Verification
 `pnpm build` + `pnpm test` green; the four verdicts and all controls covered; no modification to the spec-agnostic core beyond WP01's additive changes.
+
+## Activity Log
+
+- 2026-07-09T02:02:26Z – claude – shell_pid=2065172 – Moved to for_review
