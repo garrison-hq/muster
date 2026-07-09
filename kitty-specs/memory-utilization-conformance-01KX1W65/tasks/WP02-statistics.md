@@ -70,3 +70,4 @@ Implement the statistics from `research.md` §4A as **pure, dependency-free** fu
 ## Activity Log
 
 - 2026-07-09T01:18:38Z – claude – shell_pid=1992528 – Moved to for_review
+- 2026-07-09T01:36:51Z – claude – shell_pid=1992528 – Reviewed APPROVE: formulas independently re-derived (McNemar mid-p, Tango CI term-by-term, unbiased pass@k, beta-binomial pass^k, Miller Eq.9/10); 3099 tests green; no new deps; FR-004/008/013
