@@ -1,16 +1,16 @@
 {
-  "event_count": 39,
-  "last_event_id": "01KX2CS3CSAMT06NXV0KX13PJK",
-  "materialized_at": "2026-07-09T02:54:44.121081+00:00",
+  "event_count": 40,
+  "last_event_id": "01KX2CS410TRQ33S2QNQPD4GSW",
+  "materialized_at": "2026-07-09T02:54:44.769007+00:00",
   "mission_number": "4",
   "mission_slug": "memory-utilization-conformance-01KX1W65",
   "mission_type": "software-dev",
   "summary": {
-    "approved": 3,
+    "approved": 2,
     "blocked": 0,
     "canceled": 0,
     "claimed": 0,
-    "done": 3,
+    "done": 4,
     "for_review": 0,
     "in_progress": 0,
     "in_review": 0,
@@ -39,11 +39,11 @@
       "last_transition_at": "2026-07-09T02:54:44.121081+00:00"
     },
     "WP04": {
-      "actor": "claude",
+      "actor": "merge",
       "force_count": 0,
-      "lane": "approved",
-      "last_event_id": "01KX2AM36TA0WM98GHVP53VR12",
-      "last_transition_at": "2026-07-09T02:17:02.938574+00:00"
+      "lane": "done",
+      "last_event_id": "01KX2CS410TRQ33S2QNQPD4GSW",
+      "last_transition_at": "2026-07-09T02:54:44.769007+00:00"
     },
     "WP05": {
       "actor": "claude",
