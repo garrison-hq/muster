@@ -1,7 +1,6 @@
 {
-  "coordination_branch": "kitty/mission-memory-utilization-conformance-01KX1W65",
   "created_at": "2026-07-08T22:04:46.526666+00:00",
-  "flattened": false,
+  "flattened": true,
   "friendly_name": "memory utilization conformance",
   "mission_id": "01KX1W65HYFFCTQSPM4FK0BYMH",
   "mission_number": null,
