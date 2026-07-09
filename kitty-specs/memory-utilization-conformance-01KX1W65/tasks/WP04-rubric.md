@@ -18,6 +18,7 @@ subtasks:
 phase: Phase 2 - Adapter + rubric
 assignee: ''
 agent: ''
+shell_pid: '2153771'
 history:
 - timestamp: '2026-07-09T00:00:00Z'
   agent: system
