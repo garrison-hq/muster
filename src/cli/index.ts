@@ -46,6 +46,7 @@ import type {
   CaseVerdict,
   ChatClient,
   EndpointConfig,
+  PairedOutcome as MemoryUtilizationPairedOutcome,
 } from "../core/behavioral/types.js";
 import type { Violation } from "../core/report.js";
 // The single core↔adapter composition point (C-004).
@@ -97,6 +98,26 @@ import {
   type ToolsManifestCase,
   type ToolsManifestResult,
 } from "../adapters/tools/index.js";
+// Memory-utilization / learning-lift adapter imports (C-001: only the
+// adapter boundary + its published rubric citations are imported here).
+import {
+  createMemoryUtilizationAdapter,
+  type AbstentionResult as MemoryUtilizationAbstentionResult,
+  type AdapterResult as MemoryUtilizationAdapterResult,
+  type AllRefuseGuardResult as MemoryUtilizationAllRefuseGuardResult,
+  type CaseResult as MemoryUtilizationCaseResult,
+  type ContaminationResult as MemoryUtilizationContaminationResult,
+  type LearningLiftCase,
+  type LearningLiftManifest,
+  type LiftMeasurement as MemoryUtilizationLiftMeasurement,
+  type MemoryFixtureRef,
+  type ScrambledControlResult as MemoryUtilizationScrambledControlResult,
+} from "../adapters/memory-utilization/index.js";
+import {
+  RUBRIC_CITATIONS as MEMORY_UTILIZATION_RUBRIC_CITATIONS,
+  RUBRIC_DOC_PATH as MEMORY_UTILIZATION_RUBRIC_DOC_PATH,
+} from "../adapters/memory-utilization/rubric.js";
+import { evaluateLiftVerdict as evaluateMemoryUtilizationLiftVerdict } from "../core/behavioral/stats/power.js";
 
 /** Version straight from package.json (works from src/ via tsx and dist/). */
 const VERSION = (
@@ -517,6 +538,308 @@ function formatMemoryResultHuman(result: import("../adapters/memory/index.js").A
         );
       }
     }
+  }
+  return lines.join("\n");
+}
+
+// ─── muster memory-utilization run ──────────────────────────────────────────
+
+/**
+ * Every methodological check the memory-utilization pipeline always performs
+ * for a case, cited back to muster's published rubric (FR-012). Attached
+ * verbatim to every emitted case in the JSON report — see
+ * `docs/rubric/memory-utilization-taxonomy.md` for the prose per clause.
+ *
+ * Two rubric clauses are deliberately NOT attached here: §4.2/§4.3 (the
+ * beta-binomial `pass^k` posterior derivation) describe a statistical
+ * machinery (`conjunctivePassKPosterior`, `src/core/behavioral/stats/
+ * passk.ts`) that this adapter's abstention aggregation does not yet call
+ * (it uses the simpler boolean `conjunctivePassK` conjunction instead) —
+ * citing the posterior derivation for a check that does not use it would
+ * misrepresent what was actually computed. Likewise §5.1/§5.2 (judge-bias
+ * cancellation / arm-order blinding) apply only when an LLM judge grades
+ * probes; WP03's grading is mechanical (fact-substring / refusal), so those
+ * two clauses are not yet exercised by any check this report emits.
+ */
+const MEMORY_UTILIZATION_CITATIONS: Readonly<Record<string, string>> = {
+  liftDefinition: MEMORY_UTILIZATION_RUBRIC_CITATIONS.LIFT_DEFINITION,
+  baselineValidity: MEMORY_UTILIZATION_RUBRIC_CITATIONS.BASELINE_VALIDITY,
+  scrambledControl: MEMORY_UTILIZATION_RUBRIC_CITATIONS.SCRAMBLED_CONTROL,
+  contaminationGate: MEMORY_UTILIZATION_RUBRIC_CITATIONS.CONTAMINATION_GATE,
+  abstention: MEMORY_UTILIZATION_RUBRIC_CITATIONS.ABSTENTION,
+  abstentionUnderMemory: MEMORY_UTILIZATION_RUBRIC_CITATIONS.ABSTENTION_UNDER_MEMORY,
+  singleArmCI: MEMORY_UTILIZATION_RUBRIC_CITATIONS.SINGLE_ARM_CI,
+  pairedSignificance: MEMORY_UTILIZATION_RUBRIC_CITATIONS.PAIRED_SIGNIFICANCE,
+  deltaCI: MEMORY_UTILIZATION_RUBRIC_CITATIONS.DELTA_CI,
+  powerMde: MEMORY_UTILIZATION_RUBRIC_CITATIONS.POWER_MDE,
+  verdictSemantics: MEMORY_UTILIZATION_RUBRIC_CITATIONS.VERDICT_SEMANTICS,
+  doubleConfirmation: MEMORY_UTILIZATION_RUBRIC_CITATIONS.DOUBLE_CONFIRMATION,
+  contaminationVeto: MEMORY_UTILIZATION_RUBRIC_CITATIONS.CONTAMINATION_VETO,
+};
+
+/** FR-008: a `no-lift` verdict rendered as a bounded/powered null, never bare absence of evidence. */
+interface MemoryUtilizationNoLiftRendering {
+  /** `bounded-powered-null`: the CI clears the threshold from above (a genuine powered null). */
+  readonly kind: "bounded-powered-null" | "underpowered-inconclusive";
+  readonly mde: number;
+  readonly liftThreshold: number;
+  readonly ciExcludesLiftThreshold: boolean;
+  readonly note: string;
+  readonly rubricCitation: string;
+}
+
+/** One case's entry in the emitted memory-utilization JSON report. */
+interface MemoryUtilizationReportCase {
+  readonly caseId: string;
+  readonly ok: boolean;
+  readonly measurement: MemoryUtilizationLiftMeasurement;
+  readonly noLiftRendering?: MemoryUtilizationNoLiftRendering;
+  readonly pairedOutcomes: readonly MemoryUtilizationPairedOutcome[];
+  readonly contamination: readonly MemoryUtilizationContaminationResult[];
+  readonly scrambledControl: MemoryUtilizationScrambledControlResult;
+  readonly allRefuseGuard: MemoryUtilizationAllRefuseGuardResult;
+  readonly abstention: MemoryUtilizationAbstentionResult;
+  readonly capOfZeroFailedAsDesigned: boolean;
+  readonly citations: Readonly<Record<string, string>>;
+}
+
+/** The machine-readable memory-utilization run report (data-model.md `Report`). */
+interface MemoryUtilizationReport {
+  readonly ok: boolean;
+  readonly summary: string;
+  readonly rubricDocPath: string;
+  /** 0 conforming | 1 any failed/no-lift/contaminated/baseline-invalid (FR-008/FR-010/FR-012). */
+  readonly exitCode: 0 | 1;
+  readonly cases: readonly MemoryUtilizationReportCase[];
+}
+
+/**
+ * Render `measurement`'s `no-lift` verdict as the bounded/powered null FR-008
+ * requires: never bare "absence of evidence". Returns `undefined` for every
+ * other verdict — the rendering only applies to `no-lift`.
+ *
+ * `evaluateMemoryUtilizationLiftVerdict` re-derives the CI-vs-threshold
+ * comparison the adapter's own `resolveVerdict` (verdict.ts) already made
+ * internally, purely to distinguish two DIFFERENT reasons a case can read
+ * `no-lift` (spec.md edge cases): a genuine powered null (the CI's upper
+ * bound sits entirely below the declared threshold) vs. an under-powered
+ * draw (the threshold falls inside the CI) — the achievable MDE is reported
+ * either way.
+ */
+function buildMemoryUtilizationNoLiftRendering(
+  measurement: MemoryUtilizationLiftMeasurement,
+  liftThreshold: number
+): MemoryUtilizationNoLiftRendering | undefined {
+  if (measurement.verdict !== "no-lift") return undefined;
+  const bounded = evaluateMemoryUtilizationLiftVerdict(measurement.deltaCI, liftThreshold);
+  const ciExcludesLiftThreshold = bounded.verdict === "no-lift";
+  const mde = measurement.mde.toFixed(4);
+  const lower = measurement.deltaCI.lower.toFixed(4);
+  const upper = measurement.deltaCI.upper.toFixed(4);
+  const note = ciExcludesLiftThreshold
+    ? `the lift delta's CI [${lower}, ${upper}] lies entirely below the declared lift threshold ` +
+      `(${liftThreshold}) — a bounded/powered null at MDE=${mde} for ${measurement.probeCount} probes ` +
+      "(FR-008), never bare absence of evidence."
+    : `the probe count (n=${measurement.probeCount}) is underpowered to resolve a lift at the declared ` +
+      `threshold (${liftThreshold}) — the CI [${lower}, ${upper}] straddles it; the achievable minimum ` +
+      `detectable effect is MDE=${mde} — flagged under-powered, not a bare "no-lift" claim ` +
+      "(spec.md edge case).";
+  return {
+    kind: ciExcludesLiftThreshold ? "bounded-powered-null" : "underpowered-inconclusive",
+    mde: measurement.mde,
+    liftThreshold,
+    ciExcludesLiftThreshold,
+    note,
+    rubricCitation: MEMORY_UTILIZATION_RUBRIC_CITATIONS.POWER_MDE,
+  };
+}
+
+/** The case's declared lift threshold — every `AdapterResult` case has a matching manifest case. */
+function memoryUtilizationLiftThreshold(
+  manifestCases: readonly LearningLiftCase[],
+  caseId: string
+): number {
+  const kase = manifestCases.find((c) => c.id === caseId);
+  if (kase === undefined) {
+    throw new ExecutionError(
+      `memory-utilization: adapter result case "${caseId}" not found in the manifest`
+    );
+  }
+  return kase.thresholds.liftDelta;
+}
+
+function buildMemoryUtilizationCaseReport(
+  caseResult: MemoryUtilizationCaseResult,
+  liftThreshold: number
+): MemoryUtilizationReportCase {
+  const noLiftRendering = buildMemoryUtilizationNoLiftRendering(caseResult.measurement, liftThreshold);
+  return {
+    caseId: caseResult.caseId,
+    ok: caseResult.ok,
+    measurement: caseResult.measurement,
+    ...(noLiftRendering !== undefined && { noLiftRendering }),
+    pairedOutcomes: caseResult.pairedOutcomes,
+    contamination: caseResult.contamination,
+    scrambledControl: caseResult.scrambledControl,
+    allRefuseGuard: caseResult.allRefuseGuard,
+    abstention: caseResult.abstention,
+    capOfZeroFailedAsDesigned: caseResult.capOfZeroFailedAsDesigned,
+    citations: MEMORY_UTILIZATION_CITATIONS,
+  };
+}
+
+/** Build the emitted JSON report (FR-008, FR-012) from one adapter run. */
+function buildMemoryUtilizationReport(
+  manifest: LearningLiftManifest,
+  result: MemoryUtilizationAdapterResult
+): MemoryUtilizationReport {
+  const cases = result.cases.map((caseResult) =>
+    buildMemoryUtilizationCaseReport(
+      caseResult,
+      memoryUtilizationLiftThreshold(manifest.cases, caseResult.caseId)
+    )
+  );
+  return {
+    ok: result.ok,
+    summary: result.summary,
+    rubricDocPath: MEMORY_UTILIZATION_RUBRIC_DOC_PATH,
+    exitCode: result.ok ? 0 : 1,
+    cases,
+  };
+}
+
+/** Resolve one case's fixture paths against the manifest's own directory (matches the other adapters). */
+function resolveMemoryUtilizationFixtureRef(
+  ref: MemoryFixtureRef,
+  manifestDir: string
+): MemoryFixtureRef {
+  return {
+    memoryPath: resolvePath(manifestDir, ref.memoryPath),
+    userPath: resolvePath(manifestDir, ref.userPath),
+    manifestPath: resolvePath(manifestDir, ref.manifestPath),
+  };
+}
+
+/**
+ * Relative `fixture.{memoryPath,userPath,manifestPath}` values resolve
+ * against the manifest's own directory, so the command works regardless of
+ * cwd (matches memory/heartbeat/skills — path-resolution.test.ts).
+ */
+function resolveMemoryUtilizationManifestPaths(
+  manifest: LearningLiftManifest,
+  manifestDir: string
+): LearningLiftManifest {
+  return {
+    cases: manifest.cases.map((kase) => ({
+      ...kase,
+      fixture: resolveMemoryUtilizationFixtureRef(kase.fixture, manifestDir),
+    })),
+  };
+}
+
+async function loadMemoryUtilizationManifest(absManifestPath: string): Promise<LearningLiftManifest> {
+  try {
+    const raw = await readFileOrThrow(absManifestPath, "memory-utilization manifest");
+    return JSON.parse(raw) as LearningLiftManifest;
+  } catch (error) {
+    throw new ExecutionError(
+      `memory-utilization manifest read/parse error: ${errorMessage(error)}`
+    );
+  }
+}
+
+interface MemoryUtilizationRunOpts extends GlobalOpts {
+  baseUrl?: string;
+  model?: string;
+}
+
+/**
+ * Resolve the behavioral endpoint for `memory-utilization run` (NFR-003/
+ * NFR-005: BYOM, credentials from the environment only). Precedence:
+ * `--base-url`/`--model` flags, then `MUSTER_ENDPOINT`/`MUSTER_MODEL`, then
+ * the same local-Ollama default the `memory` adapter's behavioral path uses.
+ * Unlike the other adapters this capability has no static-only path (C-002:
+ * it IS the behavioral suite) — an endpoint is always constructed so the
+ * injected `clientFactory` seam (tests, CI smoke) always has one to build
+ * from; a genuinely unreachable endpoint surfaces as per-run errors (FR-009:
+ * an errored run counts as a failed run), not a silent skip.
+ */
+function resolveMemoryUtilizationEndpoint(opts: MemoryUtilizationRunOpts): EndpointConfig {
+  const baseUrl = opts.baseUrl ?? process.env["MUSTER_ENDPOINT"] ?? "http://localhost:11434/v1";
+  const model = opts.model ?? process.env["MUSTER_MODEL"] ?? "llama3.2";
+  return { baseUrl, model, apiKeyEnv: effectiveApiKeyEnv("MUSTER_API_KEY") };
+}
+
+/**
+ * Run the memory-utilization / learning-lift conformance manifest (FR-001,
+ * FR-002, FR-004..FR-010, wired here per FR-008/FR-010/FR-012).
+ *
+ * Exit-code contract (data-model.md `Report.exitCode`):
+ *   0 — every case conforms (lift-confirmed, every control/guard held).
+ *   1 — any case failed/no-lift/contaminated/baseline-invalid.
+ *   2 — manifest could not be read/parsed, or the adapter run itself errored.
+ */
+async function doMemoryUtilizationRun(
+  manifestPath: string,
+  opts: MemoryUtilizationRunOpts,
+  io: Io,
+  clientFactory: (endpoint: EndpointConfig) => ChatClient
+): Promise<number> {
+  const absManifestPath = toAbsolute(manifestPath);
+  const rawManifest = await loadMemoryUtilizationManifest(absManifestPath);
+  const manifest = resolveMemoryUtilizationManifestPaths(rawManifest, dirname(absManifestPath));
+
+  const client = clientFactory(resolveMemoryUtilizationEndpoint(opts));
+  const adapter = createMemoryUtilizationAdapter();
+
+  let result: MemoryUtilizationAdapterResult;
+  try {
+    result = await adapter.run(manifest, { client });
+  } catch (error) {
+    throw new ExecutionError(`memory-utilization adapter run failed: ${errorMessage(error)}`);
+  }
+
+  const report = buildMemoryUtilizationReport(manifest, result);
+  io.outLine(
+    opts.json === true
+      ? JSON.stringify(report, null, 2)
+      : formatMemoryUtilizationResultHuman(report)
+  );
+  return report.exitCode;
+}
+
+/** Per-case detail lines (bounded null, controls, contamination, abstention) for the human summary. */
+function memoryUtilizationCaseDetailLines(c: MemoryUtilizationReportCase): string[] {
+  const lines: string[] = [];
+  if (c.noLiftRendering !== undefined) {
+    lines.push(`      bounded-null: ${c.noLiftRendering.note}`);
+  }
+  if (!c.scrambledControl.passed) {
+    lines.push(`      scrambled-control: ${c.scrambledControl.reason}`);
+  }
+  if (c.allRefuseGuard.fired) {
+    lines.push(`      all-refuse-guard: ${c.allRefuseGuard.reason}`);
+  }
+  if (c.measurement.contaminated) {
+    lines.push(`      contaminated probes: ${c.measurement.contaminatedProbeIds.join(", ")}`);
+  }
+  if (!c.abstention.passed) {
+    lines.push("      abstention: FAILED — a probe fabricated instead of abstaining (FR-007)");
+  }
+  return lines;
+}
+
+/** Human-readable formatting for the memory-utilization report. */
+function formatMemoryUtilizationResultHuman(report: MemoryUtilizationReport): string {
+  const statusWord = report.ok ? "PASS" : "FAIL";
+  const lines: string[] = [`memory-utilization: ${statusWord} — ${report.summary}`];
+  for (const c of report.cases) {
+    const icon = c.ok ? "PASS" : "FAIL";
+    lines.push(
+      `  [${icon}] ${c.caseId}: verdict=${c.measurement.verdict} delta=${c.measurement.delta.toFixed(4)} ` +
+        `mcnemarMidP=${c.measurement.mcnemarMidP.toFixed(4)} mde=${c.measurement.mde.toFixed(4)}`
+    );
+    lines.push(...memoryUtilizationCaseDetailLines(c));
   }
   return lines.join("\n");
 }
@@ -1388,6 +1711,47 @@ function buildProgram(
     .option("--model <m>", "behavioral endpoint model (default: llama3.2)")
     .action(async (manifest: string, _local, cmd: Command) => {
       setExit(await doMemoryRun(manifest, cmd.optsWithGlobals(), io));
+    });
+
+  // ─── muster memory-utilization ────────────────────────────────────────────
+  const memoryUtilization = program
+    .command("memory-utilization")
+    .description(
+      "Memory-utilization / learning-lift adapter: stages a declared memory fixture under " +
+      "no-memory / with-memory / scrambled-memory arms and measures a statistically real " +
+      "behavior lift — paired McNemar mid-p, Tango/Newcombe delta CI, Miller MDE (FR-001..FR-015)"
+    );
+  memoryUtilization
+    .command("run")
+    .description(
+      "Run a memory-utilization LearningLiftManifest against an OpenAI-compatible endpoint. " +
+        "Every case runs all three condition arms and reports the paired lift delta, its CI, " +
+        "McNemar mid-p, and the minimum detectable effect (MDE); a no-lift verdict is always " +
+        "rendered as a bounded/powered null, never bare absence of evidence (FR-008)."
+    )
+    .argument("<manifest>", "path to a memory-utilization LearningLiftManifest JSON")
+    .option(
+      "--base-url <url>",
+      "behavioral endpoint base URL (default: MUSTER_ENDPOINT env var, else http://localhost:11434/v1)"
+    )
+    .option("--model <m>", "behavioral endpoint model (default: MUSTER_MODEL env var, else llama3.2)")
+    .addHelpText(
+      "after",
+      "\nThis capability has no static-only path — every case is a behavioral 3-arm suite " +
+        "(C-002: non-runtime, but still requires a ChatClient to grade transcripts).\n" +
+        "\nEndpoint env vars: MUSTER_ENDPOINT (base URL), MUSTER_MODEL (model name).\n" +
+        "API key: read from the MUSTER_API_KEY environment variable (fallback: OPENAI_API_KEY). " +
+        "There is deliberately no key flag and no key file — credentials never appear in argv, " +
+        "manifests, or transcripts.\n" +
+        "\nEvery methodological check cites muster's published rubric " +
+        "(docs/rubric/memory-utilization-taxonomy.md, FR-012).\n" +
+        "\nExit-code contract:\n" +
+        "  0  every case conforms (lift-confirmed, every control/guard held)\n" +
+        "  1  any case failed / no-lift / contaminated / baseline-invalid\n" +
+        "  2  manifest could not be read/parsed, or the adapter run itself errored"
+    )
+    .action(async (manifest: string, _local, cmd: Command) => {
+      setExit(await doMemoryUtilizationRun(manifest, cmd.optsWithGlobals(), io, clientFactory));
     });
 
   // ─── muster crosslayer ────────────────────────────────────────────────────

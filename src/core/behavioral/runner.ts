@@ -470,6 +470,19 @@ function gradeStateShiftAxis(
   );
 }
 
+/**
+ * Continuous per-run pass-rate (research.md §3 prerequisite 1): the fraction
+ * of `axes` that passed. Errored runs pass `axes: []` with `passed: false`
+ * (FR-022: an errored run is a failed run, never partial credit) so they
+ * must resolve to 0, not the vacuous-conjunction 1 an empty array would
+ * otherwise suggest; a genuinely axis-free successful run (`passed: true`,
+ * `axes: []`) resolves to 1, mirroring `axes.every(...)` semantics.
+ */
+function computeRunPassRate(passed: boolean, axes: readonly AxisGrade[]): number {
+  if (axes.length === 0) return passed ? 1 : 0;
+  return axes.filter((grade) => grade.passed).length / axes.length;
+}
+
 /** Grade every axis of the case against the per-turn active effective configs. */
 function gradeRun(
   adapter: SpecAdapter,
@@ -566,6 +579,9 @@ export async function runCase(
         axes: [],
         transcript,
         ...(error !== undefined && { error }),
+        // Additive (research.md §3 prerequisite 1) — appended last so
+        // pre-existing fields/ordering are unchanged for existing consumers.
+        passRate: computeRunPassRate(false, []),
       });
       continue;
     }
@@ -573,7 +589,13 @@ export async function runCase(
     const axes = gradeRun(adapter, kase, baseEffective, records);
     const passed = axes.every((grade) => grade.passed);
     if (passed) passCount++;
-    runs.push({ run, passed, axes, transcript });
+    runs.push({
+      run,
+      passed,
+      axes,
+      transcript,
+      passRate: computeRunPassRate(passed, axes),
+    });
   }
 
   return {
@@ -581,5 +603,7 @@ export async function runCase(
     passed: passCount >= kase.pass_threshold,
     passCount,
     runs,
+    // Additive (research.md §3 prerequisite 1) — appended last, same reason.
+    passRate: runs.length === 0 ? 0 : passCount / runs.length,
   };
 }

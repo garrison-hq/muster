@@ -17,7 +17,7 @@
   "flattened": true,
   "friendly_name": "memory utilization conformance",
   "mission_id": "01KX1W65HYFFCTQSPM4FK0BYMH",
-  "mission_number": null,
+  "mission_number": 4,
   "mission_slug": "memory-utilization-conformance-01KX1W65",
   "mission_type": "software-dev",
   "purpose_context": "This mission advances memory utilization conformance on chore/spec-kitty-3.2.5-upgrade so stakeholders can track the work from mission creation onward.",

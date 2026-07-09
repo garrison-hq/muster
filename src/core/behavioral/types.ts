@@ -105,6 +105,19 @@ export interface RunVerdict {
   axes: AxisGrade[];
   transcript: Transcript;
   error?: string;
+  /**
+   * Continuous per-run pass-rate in [0, 1]: the fraction of `axes` that
+   * passed (1 when `axes` is empty and the run did not error — the vacuous
+   * conjunction `passed` already uses). An errored run always reports 0
+   * (FR-022: an errored run counts as a failed run, never partial credit).
+   *
+   * Additive alongside the authoritative `passed` boolean, which stays the
+   * field exit codes key off (research.md §3 prerequisite 1: muster
+   * computes this internally today then collapses it to a boolean before
+   * reporting; this field is the surfaced number). Optional so pre-existing
+   * `RunVerdict` object literals elsewhere in the codebase stay valid.
+   */
+  passRate?: number;
 }
 
 /** Case verdict: `passed = passCount >= pass_threshold` (FR-022). */
@@ -113,6 +126,34 @@ export interface CaseVerdict {
   passed: boolean;
   passCount: number;
   runs: RunVerdict[];
+  /**
+   * Continuous pass-rate in [0, 1], equal to `passCount / runs.length` (0
+   * when `runs` is empty). Additive alongside the authoritative `passed`
+   * boolean, which stays the field exit codes key off (research.md §3
+   * prerequisite 1). Optional so pre-existing `CaseVerdict` object literals
+   * elsewhere in the codebase (e.g. adapter tests) stay valid.
+   */
+  passRate?: number;
+}
+
+/**
+ * Per-probe paired outcome across condition arms (research.md §3
+ * prerequisite 3; data-model.md `PairedOutcome`).
+ *
+ * A generic retention shape only: `src/core/behavioral/` has no notion of a
+ * "condition arm" and nothing here constructs this type. A later adapter
+ * (e.g. a memory/learning-lift adapter) builds one `PairedOutcome` per probe
+ * by pairing the retained per-run continuous scores (`CaseVerdict.passRate` /
+ * `RunVerdict.passRate`) it collected under each arm — this is what makes a
+ * McNemar/paired-CI lift measurement possible (research.md §4A). Exporting
+ * the shape here is the additive prerequisite; wiring it up is a later work
+ * package.
+ */
+export interface PairedOutcome {
+  /** Identifies the probe (behavioral case id) paired across arms. */
+  probeId: string;
+  /** Arm name (e.g. "with-memory", "no-memory") → continuous score (0..1). */
+  perArmScore: Record<string, number>;
 }
 
 /**
