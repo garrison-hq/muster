@@ -57,3 +57,4 @@ The behavioral layer computes `computePassRate` internally then collapses it to 
 ## Activity Log
 
 - 2026-07-09T01:18:32Z – claude – shell_pid=1956086 – Moved to for_review
+- 2026-07-09T01:18:35Z – claude – shell_pid=1956086 – Additive-only; tsc strict clean; 2950 tests pass incl 16 new + byte-identical regression; FR-003
