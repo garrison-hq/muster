@@ -33,8 +33,12 @@
 
 import { makeClient } from "../../core/behavioral/client.js";
 import { conjunctivePassK } from "../../core/behavioral/pass-k.js";
-import type { PairedOutcome as RetainedPairedOutcome } from "../../core/behavioral/types.js";
-import type { ChatClient, ChatMessage, EndpointConfig } from "../../core/behavioral/types.js";
+import type {
+  PairedOutcome as RetainedPairedOutcome,
+  ChatClient,
+  ChatMessage,
+  EndpointConfig,
+} from "../../core/behavioral/types.js";
 import type { PairedOutcome as StatsPairedOutcome } from "../../core/behavioral/stats/paired.js";
 import { gradeRefusalResponse } from "../../crosslayer/rule-survival.js";
 import type { MemoryFact } from "../memory/lint.js";

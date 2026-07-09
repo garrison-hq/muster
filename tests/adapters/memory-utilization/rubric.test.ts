@@ -117,7 +117,7 @@ describe("blindArmOrder", () => {
   it("order is a permutation of [0, arms.length)", () => {
     const arms = makeArms();
     const { order } = blindArmOrder(arms, "probe-7");
-    expect(order.length).toBe(arms.length);
+    expect(order).toHaveLength(arms.length);
     expect([...order].sort((a, b) => a - b)).toEqual([0, 1, 2]);
   });
 
@@ -174,8 +174,8 @@ describe("blindArmOrder", () => {
   it("supports the minimal 2-arm case (e.g. no-memory vs with-memory only)", () => {
     const arms = makeArms().slice(0, 2);
     const { order, presentation } = blindArmOrder(arms, "probe-2arm");
-    expect(order.length).toBe(2);
-    expect(presentation.length).toBe(2);
+    expect(order).toHaveLength(2);
+    expect(presentation).toHaveLength(2);
     expect(presentation.map((entry) => entry.blindLabel)).toEqual(["Answer A", "Answer B"]);
   });
 
@@ -192,7 +192,7 @@ describe("blindArmOrder", () => {
       content: { n: i },
     }));
     const { presentation } = blindArmOrder(manyArms, "probe-many-arms");
-    expect(presentation.length).toBe(28);
+    expect(presentation).toHaveLength(28);
     expect(presentation[0]?.blindLabel).toBe("Answer A");
     expect(presentation[25]?.blindLabel).toBe("Answer Z");
     expect(presentation[26]?.blindLabel).toBe("Answer 27");

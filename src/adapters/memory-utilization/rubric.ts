@@ -160,7 +160,12 @@ const FNV_PRIME = 0x01000193;
 function fnv1a32(input: string): number {
   let hash = FNV_OFFSET_BASIS;
   for (let i = 0; i < input.length; i++) {
-    hash ^= input.charCodeAt(i);
+    // `codePointAt` (not `charCodeAt`, SonarCloud S7758): identical to
+    // `charCodeAt(i)` at every index for the ASCII/BMP seed strings this
+    // module ever hashes (probe ids, sample indices), so the permutation
+    // output is unchanged (verified by blindArmOrder's determinism tests).
+    // `?? 0` is unreachable — `i` never exceeds `input.length - 1`.
+    hash ^= input.codePointAt(i) ?? 0;
     hash = Math.imul(hash, FNV_PRIME);
   }
   return hash >>> 0;

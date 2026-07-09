@@ -131,9 +131,14 @@ export interface LearningLiftManifest {
 // loudly rather than producing a silently-meaningless verdict.
 // ---------------------------------------------------------------------------
 
+/** Deterministic UTF-16 code-unit string comparator — never `localeCompare` (repo invariant). */
+function compareStrings(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
 function validateArms(kase: LearningLiftCase): void {
-  const declared = [...kase.arms].sort();
-  const expected = [...CONDITION_ARMS].sort();
+  const declared = [...kase.arms].sort(compareStrings);
+  const expected = [...CONDITION_ARMS].sort(compareStrings);
   const matches =
     declared.length === expected.length && declared.every((arm, i) => arm === expected[i]);
   if (!matches) {
@@ -183,7 +188,12 @@ function validateRunsN(kase: LearningLiftCase): void {
 
 function validateThresholds(kase: LearningLiftCase): void {
   const t = kase.thresholds;
-  if (!(t.liftDelta > 0)) {
+  // NaN-safe equivalent of `!(t.liftDelta > 0)` without the double-negation
+  // SonarCloud flags (S1940): `NaN > 0` is `false`, so the original also
+  // throws on NaN — a plain `t.liftDelta <= 0` flip would NOT (`NaN <= 0` is
+  // also `false`), silently letting a malformed NaN threshold through. This
+  // form preserves the original's exact throw-on-NaN-or-non-positive semantics.
+  if (Number.isNaN(t.liftDelta) || t.liftDelta <= 0) {
     throw new Error(`memory-utilization manifest: case "${kase.id}" thresholds.liftDelta must be > 0`);
   }
   if (!(t.contaminationThreshold > 0 && t.contaminationThreshold <= 1)) {

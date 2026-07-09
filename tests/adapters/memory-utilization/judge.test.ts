@@ -124,7 +124,7 @@ describe("gradeArmsWithJudge — verdict mapping", () => {
   it("accepts a dash separator and is case-insensitive for the PASS/FAIL token", async () => {
     const { client } = makeRecordingClient(() => "answer a - pass\nANSWER B - fail\nAnswer C: Pass");
     const verdicts = await gradeArmsWithJudge(client, CRITERION, ARMS, "probe-1:0");
-    expect(verdicts.filter((v) => v.passed).length).toBe(2);
+    expect(verdicts.filter((v) => v.passed)).toHaveLength(2);
   });
 
   it("ignores a verdict line for a label that was never presented (hallucinated/extra label)", async () => {
@@ -135,7 +135,7 @@ describe("gradeArmsWithJudge — verdict mapping", () => {
     // Only the 3 presented arms are ever returned — the hallucinated "Answer D"
     // line does not spuriously appear or affect the real labels' verdicts.
     expect(verdicts).toHaveLength(3);
-    expect(verdicts.filter((v) => v.passed).length).toBe(2);
+    expect(verdicts.filter((v) => v.passed)).toHaveLength(2);
   });
 });
 

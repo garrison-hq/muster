@@ -43,8 +43,20 @@ export interface JudgeVerdict {
   readonly passed: boolean;
 }
 
-/** `"Answer A: PASS"`, `"Answer B - FAIL"`, etc. — colon/dash separator, case-insensitive verdict token. */
-const VERDICT_LINE_RE = /Answer\s+([A-Za-z0-9]+)\s*[:\-]?\s*(PASS|FAIL)\b/gi;
+/**
+ * `"Answer A: PASS"`, `"Answer B - FAIL"`, etc. — colon/dash separator,
+ * case-insensitive verdict token.
+ *
+ * The label class is `[A-Z0-9]` (not `[A-Za-z0-9]`): the trailing `/i` flag
+ * already folds case, so an explicit lowercase range would be a redundant
+ * duplicate (SonarCloud S5869). The separator run is a single quantified
+ * character class (`[\s:-]*`, dash last — no escape needed, S6535) rather
+ * than three back-to-back quantified fragments (`\s*[:\-]?\s*`), which
+ * avoids the ambiguous-partitioning super-linear backtracking shape
+ * SonarCloud flags under S8786 while still matching every colon/dash/space
+ * separator combination the original pattern accepted.
+ */
+const VERDICT_LINE_RE = /Answer\s+([A-Z0-9]+)[\s:-]*(PASS|FAIL)\b/gi;
 
 interface JudgePromptParts {
   readonly system: string;

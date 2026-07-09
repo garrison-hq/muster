@@ -251,7 +251,7 @@ const ADAPTER_REGISTRY: Record<string, () => InstanceType<typeof HeartbeatAdapte
 
 async function doCheck(
   soul: string,
-  opts: GlobalOpts & { adapter?: string; profile?: string; state?: string; restrictRefs?: RestrictRefsFlag },
+  opts: GlobalOpts & { adapter?: string; profile?: string; state?: string; restrictRefs?: string | boolean },
   io: Io
 ): Promise<number> {
   // Heartbeat adapter path: runs the heartbeat lint pipeline (not Soul.md RFC-1).
@@ -291,7 +291,7 @@ async function doResolve(
     profile?: string;
     state?: string;
     outputFormat: string;
-    restrictRefs?: RestrictRefsFlag;
+    restrictRefs?: string | boolean;
   },
   io: Io
 ): Promise<number> {
@@ -328,7 +328,7 @@ async function doResolve(
 
 async function doCtsRun(
   manifest: string,
-  opts: GlobalOpts & { filter?: string; restrictRefs?: RestrictRefsFlag },
+  opts: GlobalOpts & { filter?: string; restrictRefs?: string | boolean },
   io: Io
 ): Promise<number> {
   const loaded = await loadManifest(toAbsolute(manifest));
@@ -361,7 +361,7 @@ interface BehaveOpts extends GlobalOpts {
   model?: string;
   temperature?: number;
   runs?: number;
-  restrictRefs?: RestrictRefsFlag;
+  restrictRefs?: string | boolean;
 }
 
 /**
@@ -837,9 +837,9 @@ function formatMemoryUtilizationResultHuman(report: MemoryUtilizationReport): st
     const icon = c.ok ? "PASS" : "FAIL";
     lines.push(
       `  [${icon}] ${c.caseId}: verdict=${c.measurement.verdict} delta=${c.measurement.delta.toFixed(4)} ` +
-        `mcnemarMidP=${c.measurement.mcnemarMidP.toFixed(4)} mde=${c.measurement.mde.toFixed(4)}`
+        `mcnemarMidP=${c.measurement.mcnemarMidP.toFixed(4)} mde=${c.measurement.mde.toFixed(4)}`,
+      ...memoryUtilizationCaseDetailLines(c)
     );
-    lines.push(...memoryUtilizationCaseDetailLines(c));
   }
   return lines.join("\n");
 }

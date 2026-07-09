@@ -224,7 +224,12 @@ function solvePhi(ctx: TangoContext, delta: number): number {
 function tangoScoreStatistic(ctx: TangoContext, delta: number): number {
   const phi = solvePhi(ctx, delta);
   const variance = (phi - delta * delta) / ctx.n;
-  if (!(variance > 0)) return Number.NaN;
+  // `variance <= 0` (not `!(variance > 0)`, S1940): when `phi` is NaN (an
+  // infeasible root in solvePhi), `variance` is NaN too, `variance <= 0` is
+  // `false`, and control falls through — but `Math.sqrt(NaN)` is NaN, so the
+  // final returned value is NaN either way. The two forms are output-equivalent
+  // here, so the simplification is safe.
+  if (variance <= 0) return Number.NaN;
   return (ctx.dHat - delta) / Math.sqrt(variance);
 }
 

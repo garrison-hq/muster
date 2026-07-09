@@ -58,11 +58,20 @@ const SCRAMBLE_POOL: readonly string[] = [
   "The bike racks outside are covered but not locked.",
 ] as const;
 
-/** FNV-1a 32-bit hash — pure, deterministic, no crypto/PRNG dependency. */
+/**
+ * FNV-1a 32-bit hash — pure, deterministic, no crypto/PRNG dependency.
+ *
+ * Iterates by UTF-16 code unit (`i++`, not by code point) and reads each
+ * unit with `codePointAt` rather than `charCodeAt` (SonarCloud S7758). For
+ * the ASCII/BMP fact ids this adapter's fixtures use, `codePointAt(i)` and
+ * `charCodeAt(i)` return identical values at every index, so the hash output
+ * is unchanged (verified by the existing scrambleFactText determinism
+ * tests). `?? 0` is unreachable here — `i` never exceeds `input.length - 1`.
+ */
 function fnv1aHash(input: string): number {
   let hash = 0x811c9dc5;
   for (let i = 0; i < input.length; i++) {
-    hash ^= input.charCodeAt(i);
+    hash ^= input.codePointAt(i) ?? 0;
     hash = Math.imul(hash, 0x01000193);
   }
   return hash >>> 0;

@@ -86,7 +86,11 @@ function criticalZSum(resolved: { alpha: number; power: number }): number {
  *   n = (z_{α/2}+z_β)²·(ω²+σ²_A/K_A+σ²_B/K_B) / δ²
  */
 export function computeSampleSize(delta: number, params: PowerParams): number {
-  if (!(delta > 0)) {
+  // NaN-safe equivalent of `!(delta > 0)` without the double-negation
+  // SonarCloud flags (S1940): `NaN > 0` is `false`, so the original also
+  // throws on NaN — a plain `delta <= 0` flip would NOT, silently accepting
+  // a malformed NaN delta.
+  if (Number.isNaN(delta) || delta <= 0) {
     throw new Error(`computeSampleSize: delta must be > 0, got ${delta}`);
   }
   validateVarianceComponents(params);
@@ -149,7 +153,11 @@ function resolveLiftVerdict(ci: ConfidenceInterval, liftThreshold: number): Lift
  * threshold falls inside the CI).
  */
 export function evaluateLiftVerdict(ci: ConfidenceInterval, liftThreshold: number): LiftVerdictResult {
-  if (!(liftThreshold > 0)) {
+  // NaN-safe equivalent of `!(liftThreshold > 0)` without the double-negation
+  // SonarCloud flags (S1940): `NaN > 0` is `false`, so the original also
+  // throws on NaN — a plain `liftThreshold <= 0` flip would NOT, silently
+  // accepting a malformed NaN threshold.
+  if (Number.isNaN(liftThreshold) || liftThreshold <= 0) {
     throw new Error(`evaluateLiftVerdict: liftThreshold must be > 0, got ${liftThreshold}`);
   }
   if (ci.lower > ci.upper) {

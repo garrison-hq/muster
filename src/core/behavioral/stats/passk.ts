@@ -186,7 +186,11 @@ function validateConjunctiveInputs(n: number, c: number, k: number, prior: BetaP
   if (!Number.isInteger(k) || k < 1) {
     throw new Error(`conjunctivePassKPosterior: k must be a positive integer, got ${k}`);
   }
-  if (!(prior.alpha > 0) || !(prior.beta > 0)) {
+  // NaN-safe equivalent of `!(prior.alpha > 0) || !(prior.beta > 0)` without
+  // the double-negations SonarCloud flags (S1940): `NaN > 0` is `false`, so
+  // the original throws on a NaN prior too. A plain `<= 0` flip would NOT
+  // (`NaN <= 0` is also `false`), silently accepting a malformed NaN prior.
+  if (Number.isNaN(prior.alpha) || prior.alpha <= 0 || Number.isNaN(prior.beta) || prior.beta <= 0) {
     throw new Error(`conjunctivePassKPosterior: prior.alpha and prior.beta must be > 0, got ${JSON.stringify(prior)}`);
   }
 }
