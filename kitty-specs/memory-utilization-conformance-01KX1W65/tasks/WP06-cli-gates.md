@@ -20,7 +20,7 @@ subtasks:
 - T022
 phase: Phase 3 - Fixtures, CLI, gates
 assignee: ''
-agent: ''
+agent: "claude"
 shell_pid: '2217087'
 history:
 - timestamp: '2026-07-09T00:00:00Z'
@@ -57,3 +57,7 @@ Expose the capability as a muster CLI subcommand with a machine-readable report 
 
 ## Verification
 `spec-kitty` + `pnpm build` + `pnpm test` all green; CLI runs the WP05 example end-to-end producing a valid verdict; CI smoke profile deterministic; SonarCloud passes.
+
+## Activity Log
+
+- 2026-07-09T02:49:22Z – claude – shell_pid=2217087 – Moved to for_review
