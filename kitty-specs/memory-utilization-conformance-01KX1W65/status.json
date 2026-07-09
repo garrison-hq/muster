@@ -1,7 +1,7 @@
 {
-  "event_count": 23,
-  "last_event_id": "01KX29WCPH4J2RF89BH0PCZ7SK",
-  "materialized_at": "2026-07-09T02:04:06.225110+00:00",
+  "event_count": 25,
+  "last_event_id": "01KX29WN37PXXXZT4YM9T4S8Y5",
+  "materialized_at": "2026-07-09T02:04:14.823133+00:00",
   "mission_number": "",
   "mission_slug": "memory-utilization-conformance-01KX1W65",
   "mission_type": "software-dev",
@@ -12,9 +12,9 @@
     "claimed": 0,
     "done": 0,
     "for_review": 0,
-    "in_progress": 1,
+    "in_progress": 2,
     "in_review": 0,
-    "planned": 2
+    "planned": 1
   },
   "work_packages": {
     "WP01": {
@@ -46,11 +46,11 @@
       "last_transition_at": "2026-07-09T02:04:06.225110+00:00"
     },
     "WP05": {
-      "actor": "finalize-tasks",
+      "actor": "implement-command",
       "force_count": 0,
-      "lane": "planned",
-      "last_event_id": "01KX24JB3J4MNZFQ42Y7KSN5G3",
-      "last_transition_at": "2026-07-09T00:31:14.034726+00:00"
+      "lane": "in_progress",
+      "last_event_id": "01KX29WN37PXXXZT4YM9T4S8Y5",
+      "last_transition_at": "2026-07-09T02:04:14.823133+00:00"
     },
     "WP06": {
       "actor": "finalize-tasks",
