@@ -50,9 +50,9 @@ core-additive (WP01, `src/core/behavioral/{types,report}.ts`), statistics (WP02,
 | T017 | Fixtures: memory (real/none/scrambled), contamination-clean probe set, abstention probes | WP05 | [D] |
 | T018 | Any vendored corpus license-verified (LICENSE + CITATION); else document none needed | WP05 | [D] |
 | T019 | Runnable `examples/memory-utilization/` + manifest | WP05 | | [D] |
-| T020 | CLI `memory-utilization run` subcommand + machine-readable report + exit codes | WP06 | |
-| T021 | Pilot-protocol doc (estimate ω²/score-correlation) + `quickstart.md` | WP06 | [P] |
-| T022 | CI smoke profile; `tsc` strict + full Vitest green + SonarCloud; byte-stability of offline paths | WP06 | |
+| T020 | CLI `memory-utilization run` subcommand + machine-readable report + exit codes | WP06 | | [D] |
+| T021 | Pilot-protocol doc (estimate ω²/score-correlation) + `quickstart.md` | WP06 | [D] |
+| T022 | CI smoke profile; `tsc` strict + full Vitest green + SonarCloud; byte-stability of offline paths | WP06 | | [D] |
 
 ## Phase 1 — Foundations (WP01, WP02 — parallel)
 
