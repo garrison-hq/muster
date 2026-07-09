@@ -17,7 +17,7 @@ subtasks:
 - T003
 phase: Phase 1 - Foundations
 assignee: ''
-agent: ''
+agent: "claude"
 shell_pid: '1956086'
 history:
 - timestamp: '2026-07-09T00:00:00Z'
@@ -53,3 +53,7 @@ The behavioral layer computes `computePassRate` internally then collapses it to 
 
 ## Verification
 `pnpm build` (tsc strict) + `pnpm test` green; snapshot diff confirms no change to existing report bytes; new fields covered by unit tests.
+
+## Activity Log
+
+- 2026-07-09T01:18:32Z – claude – shell_pid=1956086 – Moved to for_review
