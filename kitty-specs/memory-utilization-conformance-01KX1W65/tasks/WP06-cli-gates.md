@@ -21,6 +21,7 @@ subtasks:
 phase: Phase 3 - Fixtures, CLI, gates
 assignee: ''
 agent: ''
+shell_pid: '2217087'
 history:
 - timestamp: '2026-07-09T00:00:00Z'
   agent: system
