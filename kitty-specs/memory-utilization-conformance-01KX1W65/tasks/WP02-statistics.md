@@ -21,7 +21,7 @@ subtasks:
 - T008
 phase: Phase 1 - Foundations
 assignee: ''
-agent: ''
+agent: "claude"
 shell_pid: '1992528'
 history:
 - timestamp: '2026-07-09T00:00:00Z'
@@ -66,3 +66,7 @@ Implement the statistics from `research.md` §4A as **pure, dependency-free** fu
 
 ## Verification
 `pnpm build` + `pnpm test` green; known-answer tests pass; boundary coverage; no new runtime dependency in `package.json`.
+
+## Activity Log
+
+- 2026-07-09T01:18:38Z – claude – shell_pid=1992528 – Moved to for_review
