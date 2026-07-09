@@ -1,0 +1,46 @@
+{
+  "entries": [
+    {
+      "created_at": "2026-07-08T22:04:47.431134Z",
+      "decision_id": "01KX1W66E7EFZQF5CYVEHCE8JY",
+      "final_answer": null,
+      "input_key": "problem_statement",
+      "mission_id": "01KX1W65HYFFCTQSPM4FK0BYMH",
+      "mission_slug": "memory-utilization-conformance",
+      "opened_by": "info@moes-media.be",
+      "options": [],
+      "origin_flow": "specify",
+      "other_answer": false,
+      "question": "What problem does this feature solve?",
+      "rationale": null,
+      "resolved_at": null,
+      "resolved_by": null,
+      "slot_key": null,
+      "status": "open",
+      "step_id": "specify.problem_statement",
+      "summary_json": null
+    },
+    {
+      "created_at": "2026-07-09T00:20:23.439843Z",
+      "decision_id": "01KX23YFRF802QRZFZQM1VZ9TM",
+      "final_answer": null,
+      "input_key": "approach",
+      "mission_id": "01KX1W65HYFFCTQSPM4FK0BYMH",
+      "mission_slug": "memory-utilization-conformance-01KX1W65",
+      "opened_by": "info@moes-media.be",
+      "options": [],
+      "origin_flow": "plan",
+      "other_answer": false,
+      "question": "What is the high-level implementation approach?",
+      "rationale": null,
+      "resolved_at": null,
+      "resolved_by": null,
+      "slot_key": null,
+      "status": "open",
+      "step_id": "plan.approach",
+      "summary_json": null
+    }
+  ],
+  "mission_id": "01KX1W65HYFFCTQSPM4FK0BYMH",
+  "version": 1
+}
