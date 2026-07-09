@@ -1,5 +1,5 @@
 ---
-version: "1.0.0"
+version: "2.0.0"
 date: "2026-07-09"
 status: "normative"
 ---
@@ -113,45 +113,54 @@ optional Tier 2 extension in §6.1; Tier 1 (this rubric) does not require it.
 > All four conditions are conjunctive. A lift that satisfies (a) alone is an
 > *apparent* lift, not a *conforming* one.
 
-### §2.2 Baseline-Validity Guard (Two-Sided)
+### §2.2 Baseline-Validity Guard (Asymmetric)
 
-**[MUSTER-OWN]**, parallel to (but distinct from) `crosslayer/rule-survival.ts`'s
-existing `BASELINE_THRESHOLD` guard.
+**[MUSTER-OWN]**, related to but *deliberately not* a mirror of
+`crosslayer/rule-survival.ts`'s `BASELINE_THRESHOLD` guard.
 
-`rule-survival.ts` gates a **single-sided** floor: it measures downward
-*erosion* from an already-compliant baseline, so only "baseline too low to
-have anything to erode" is invalid (`baselinePassRate < BASELINE_THRESHOLD`
-⇒ `"baseline-failure"`).
+`rule-survival.ts` measures downward **erosion** from an already-compliant
+baseline, so its **single-sided floor** ("baseline too low to have anything to
+erode" ⇒ `"baseline-failure"`) is correct *for erosion* — erosion needs a high
+starting point.
 
-Learning-lift measures **upward** movement instead, and — per spec.md's edge
-case — either extreme of the **no-memory** baseline pass-rate invalidates
-the measurement, not just the low one:
+Learning-lift measures **upward** movement, which needs a **low** starting
+point. The two arms therefore play different roles, and the guard is
+**asymmetric** — not a two-sided mirror of the baseline:
 
-- **Floor** (no-memory pass-rate ≈ 0): a fair no-memory baseline should
-  reflect the model's genuine, non-zero task competence on in-scope probes.
-  A baseline this degenerate more often indicates a broken grader, a
-  mis-staged fixture, or an out-of-scope probe set than genuine "the model
-  can never do this without memory" — the same "can't measure X from an
-  already-degenerate baseline" logic `rule-survival.ts` applies to erosion,
-  applied here to lift instead.
-- **Ceiling** (no-memory pass-rate ≈ 1): no headroom remains for `M` to
-  demonstrate improvement — a ceiling effect makes any measured "no lift"
-  uninformative (it may only reflect saturation, not memory's uselessness).
-  This is a distinct failure mode from contamination (§2.4): a saturated
-  baseline is a *design* problem (the probe is too easy outright), whereas
-  contamination is a *leakage* problem (the specific fact is answerable from
-  parametric memory even though the probe set overall is not trivial).
+- **Ceiling — on the no-memory baseline.** If the no-memory arm already aces
+  the probes (`p̂ ≈ 1`, ≥ ceiling) there is no headroom for `M` to demonstrate
+  improvement; any measured "no lift" is uninformative (it may only reflect
+  saturation, not memory's uselessness). ⇒ `baseline-invalid`. Distinct from
+  contamination (§2.4): a saturated baseline is a *design* problem (the probe
+  is too easy outright); contamination is a *leakage* problem (the specific
+  fact is answerable parametrically even when the set overall is not trivial).
 
-Both extremes degrade the paired apparatus for the same underlying reason:
-near `p̂ ≈ 0` or `p̂ ≈ 1`, the achievable headroom for any real δ shrinks
-toward zero and the Wilson/Tango intervals become boundary-truncated,
-which can manufacture spurious significance or mask a genuine effect. muster
-therefore gates on **both** sides, before computing any paired statistic,
-and reports `baseline-invalid` rather than a (potentially spurious)
-`no-lift`. The concrete floor/ceiling constants are an adapter-owned
-(`src/adapters/memory-utilization/verdict.ts`) numeric judgment call that
-cites this clause; this rubric mandates the two-sided *shape* of the guard,
-not a single universally-mandated number (no such number is citable — §1).
+- **Floor — on the WITH-memory (treatment) arm, NOT the baseline.** A floored
+  **no-memory** baseline (`p̂ ≈ 0`) is the *ideal* condition for this layer:
+  §2.4's contamination gate *defines* a well-formed lift probe as one the
+  no-memory arm **cannot** answer, so a genuinely clean suite floors the
+  no-memory arm **by construction** — and that low baseline is exactly what
+  makes a lift visible. The floor guard therefore applies to the **treatment**
+  arm: only when even *with* memory the pass-rate floors
+  (`passRateWithMemory ≤ floor`) are the probes unanswerable/broken and no lift
+  measurable ⇒ `baseline-invalid`.
+
+> **Correction (rubric v2.0.0 — breaking grading-semantics change).** Earlier
+> this clause applied the floor to the *no-memory baseline* by direct analogy
+> to `rule-survival.ts` (a two-sided guard). That inverted the ideal condition
+> into a failure: a contamination-clean suite — the very thing §2.4 mandates —
+> floors the no-memory arm and so could **never** return `lift-confirmed`
+> (confirmed by a live run: no-memory 0.0, with-memory 0.5, all controls
+> correct, yet `baseline-invalid`). The floor belongs on the treatment arm, not
+> the baseline. Broken-grader / mis-staged-fixture concerns remain caught: the
+> treatment arm also floors (⇒ `baseline-invalid`), or the all-refuse guard
+> (§discrimination controls) fires when all three arms are zero.
+
+The concrete floor/ceiling constants are an adapter-owned
+(`src/adapters/memory-utilization/verdict.ts`) numeric judgment call that cites
+this clause; this rubric mandates the *shape* of the guard (ceiling on the
+baseline, floor on the treatment arm), not a single universally-mandated number
+(no such number is citable — §1).
 
 ### §2.3 Scrambled-Memory Negative Control
 

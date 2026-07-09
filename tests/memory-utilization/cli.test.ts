@@ -713,12 +713,14 @@ describe("muster memory-utilization run (WP06, FR-008, FR-010, FR-012)", () => {
         );
 
         expect(stderr).toBe("");
-        // The faithful/noise-free scripted model floors the no-memory arm to
-        // exactly 0, which trips the two-sided baseline-validity guard (the
-        // same documented behavior as suite.test.ts's fixture-driven test) —
-        // a real endpoint's grading noise across runsN keeps a genuine run
-        // inside the valid window. `baseline-invalid` (exit 1) is still a
-        // valid report + exit code, which is what this test asserts.
+        // The faithful/noise-free scripted model recites every fact under
+        // memory (with-memory = 1.0) and floors the no-memory arm to 0 — the
+        // ideal, VALID setup (a floored *baseline* is expected for a
+        // contamination-clean fixture; the asymmetric guard only invalidates on
+        // a saturated baseline or a floored *treatment* arm). The example ships
+        // only 4 lift probes, so the paired McNemar mid-p (0.0625) does not
+        // reach alpha=0.05 -> the honest verdict is `no-lift` with a reported
+        // MDE (a bounded/powered null, FR-008), exit 1 (not lift-confirmed).
         expect(code).toBe(1);
         const report = JSON.parse(stdout) as {
           ok: boolean;
@@ -736,7 +738,7 @@ describe("muster memory-utilization run (WP06, FR-008, FR-010, FR-012)", () => {
         expect(report.cases).toHaveLength(1);
         const caseReport = report.cases[0]!;
         expect(caseReport.caseId).toBe("memory-utilization-example-halcyon");
-        expect(caseReport.measurement.verdict).toBe("baseline-invalid");
+        expect(caseReport.measurement.verdict).toBe("no-lift");
         expect(Number.isFinite(caseReport.measurement.mde)).toBe(true);
         // The declared memory genuinely helps: with-memory recites every fact.
         expect(caseReport.measurement.passRateWithMemory).toBe(1);

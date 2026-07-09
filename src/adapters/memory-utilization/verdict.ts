@@ -49,17 +49,32 @@ export interface LiftMeasurement {
 
 /**
  * Baseline-validity guard (spec.md edge case "Baseline already
- * saturated/floored"; research.md §3 prerequisite). Re-parameterizes
- * rule-survival's single-sided `BASELINE_THRESHOLD` guard
- * (`src/crosslayer/rule-survival.ts`: `baselinePassRate < BASELINE_THRESHOLD`
- * -> "baseline-failure") into a TWO-sided guard here: rule-survival asks
- * "is SOP-alone compliance already too LOW to observe erosion?"; this
- * mission asks "is the no-memory arm already too HIGH (aces the probes) OR
- * too LOW (floors them) to observe a lift?" — a different failure mode, so
- * the guard checks both tails, not one.
+ * saturated/floored"; research.md §3). ASYMMETRIC by design for
+ * memory-utilization — the two arms play different roles in a lift:
+ *   - CEILING, on the no-memory baseline: if the no-memory arm already aces
+ *     the probes (>= ceiling) there is no headroom to observe a lift -> invalid.
+ *   - FLOOR, on the WITH-memory (treatment) arm: a floored *no-memory* baseline
+ *     is the *ideal* condition for this layer — a contamination-clean fixture
+ *     supplies facts the model cannot know without the memory, so the no-memory
+ *     arm SHOULD floor, and that low baseline is exactly what makes a lift
+ *     visible. The floor guard therefore applies to the TREATMENT arm: only if
+ *     even *with* memory the pass rate is at/below the floor are the probes
+ *     unanswerable/broken and no lift measurable -> invalid.
+ *
+ * (Corrects an over-applied `rule-survival` analogy: rule-survival's single-sided
+ * `baselinePassRate < BASELINE_THRESHOLD` guard makes sense for erosion — you
+ * cannot erode a rule the model already fails. Mirroring it onto the no-memory
+ * *baseline* here returned `baseline-invalid` on exactly the contamination-clean
+ * fixtures this layer exists to grade, e.g. a live no-memory arm of 0.0 vs a
+ * with-memory lift. The floor belongs on the treatment arm, not the baseline.)
  */
-export function isBaselineValid(noMemoryPassRate: number, floor: number, ceiling: number): boolean {
-  return noMemoryPassRate > floor && noMemoryPassRate < ceiling;
+export function isBaselineValid(
+  noMemoryPassRate: number,
+  withMemoryPassRate: number,
+  floor: number,
+  ceiling: number
+): boolean {
+  return noMemoryPassRate < ceiling && withMemoryPassRate > floor;
 }
 
 export interface ComputeLiftMeasurementInput {
@@ -148,6 +163,7 @@ export function computeLiftMeasurement(input: ComputeLiftMeasurementInput): Lift
 
   const baselineValid = isBaselineValid(
     input.passRateNoMemory,
+    input.passRateWithMemory,
     input.thresholds.baselineFloor,
     input.thresholds.baselineCeiling
   );

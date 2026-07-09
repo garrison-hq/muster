@@ -201,18 +201,17 @@ describe("project/case.json — contamination-clean (FR-006, FR-014)", () => {
     // Abstention probes correctly refuse rather than fabricate (FR-007).
     expect(caseResult.abstention.passed).toBe(true);
 
-    // NB: with this fully deterministic, noise-free scripted model the
-    // no-memory arm floors to *exactly* zero, which trips the adapter's
-    // two-sided baseline-validity guard (verdict.ts `isBaselineValid`) --
-    // `baseline-invalid`, not `lift-confirmed`. That is expected and correct
-    // here: this simulation exists to prove contamination-cleanliness, not
-    // to produce a lift verdict. A real endpoint's grading noise across
-    // `runsN` samples (NFR-002: "decisions rest on N-sampled pass-rates ...
-    // not single draws") is what keeps a real baseline inside the valid
-    // window; spec.md names the all-zero floor explicitly as the
-    // "baseline already saturated/floored" edge case.
-    expect(caseResult.measurement.baselineValid).toBe(false);
-    expect(caseResult.measurement.verdict).toBe("baseline-invalid");
+    // The no-memory arm floors to exactly zero — which is the IDEAL condition
+    // for this layer, not an error: a contamination-clean fixture supplies
+    // facts the model cannot know without the memory. The baseline-validity
+    // guard (verdict.ts `isBaselineValid`) is ASYMMETRIC — a floored no-memory
+    // baseline is valid; only a saturated baseline (ceiling) or a floored
+    // *with-memory* (treatment) arm invalidates. With every lift probe fully
+    // recalled under memory, the paired McNemar mid-p and Tango CI both clear
+    // the threshold -> `lift-confirmed` (this is the regression guard for the
+    // C-1 baseline-floor defect: a clean floored suite MUST be able to confirm).
+    expect(caseResult.measurement.baselineValid).toBe(true);
+    expect(caseResult.measurement.verdict).toBe("lift-confirmed");
   });
 
   it("the case's configured contamination threshold (0.5) would flag a genuinely leaked probe", () => {

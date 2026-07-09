@@ -54,7 +54,7 @@ The measurement reuses muster's existing `crosslayer/rule-survival` primitive �
 
 ### Edge Cases
 
-- **Baseline already saturated/floored** — if the no-memory arm already aces or floors the probes, the lift is unmeasurable → `baseline-invalid` (rule-survival's `BASELINE_THRESHOLD` guard), not a false `no-lift`.
+- **Baseline already saturated (ceiling)** — if the no-memory arm already aces the probes, there is no headroom for a lift → `baseline-invalid`. (A *floored* no-memory baseline is NOT invalid — it is the ideal condition for this layer, since a contamination-clean probe cannot be answered without the memory; the floor guard applies to the *with-memory* treatment arm instead. See rubric §2.2.)
 - **Under-powered probe set** — n too small to detect the rubric's target effect → the verdict reports the achievable MDE and flags the suite under-powered rather than claiming `no-lift`.
 - **Judge sees arm identity** — if arm order/label leaks to the judge, position bias no longer cancels → the run is invalid until blinding is restored.
 - **Conjunctive pass^k on a safety-critical probe** — the disjunctive `pass@k` estimator does not apply; muster uses its own published pass^k estimator (rubric) rather than a biased closed form.

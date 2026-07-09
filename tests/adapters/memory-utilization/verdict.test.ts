@@ -2,7 +2,8 @@
  * Unit tests for src/adapters/memory-utilization/verdict.ts.
  *
  * Covers FR-004 (verdict precedence: baseline-invalid > contaminated >
- * lift-confirmed/no-lift), the two-sided baseline-validity guard, and the
+ * lift-confirmed/no-lift), the asymmetric baseline-validity guard (ceiling on
+ * the no-memory baseline, floor on the with-memory treatment arm), and the
  * bounded/powered MDE the "no-lift" branch always reports (FR-008).
  */
 
@@ -35,18 +36,25 @@ const CONCORDANT_PAIRS: PairedOutcome[] = [
 ];
 
 describe("isBaselineValid", () => {
-  it("is valid strictly between floor and ceiling", () => {
-    expect(isBaselineValid(0.5, 0.05, 0.95)).toBe(true);
+  it("is valid when the no-memory baseline has headroom and the treatment can answer", () => {
+    expect(isBaselineValid(0.5, 0.9, 0.05, 0.95)).toBe(true);
   });
 
-  it("rejects at or below the floor (baseline floored)", () => {
-    expect(isBaselineValid(0.05, 0.05, 0.95)).toBe(false);
-    expect(isBaselineValid(0, 0.05, 0.95)).toBe(false);
+  it("a floored NO-MEMORY baseline is VALID — the ideal setup for memory-utilization", () => {
+    // A contamination-clean fixture supplies facts the model cannot know without
+    // the memory, so the no-memory arm SHOULD floor while the with-memory arm lifts.
+    expect(isBaselineValid(0, 1.0, 0.05, 0.95)).toBe(true);
+    expect(isBaselineValid(0, 0.5, 0.05, 0.95)).toBe(true);
   });
 
-  it("rejects at or above the ceiling (baseline saturated)", () => {
-    expect(isBaselineValid(0.95, 0.05, 0.95)).toBe(false);
-    expect(isBaselineValid(1, 0.05, 0.95)).toBe(false);
+  it("rejects when the TREATMENT (with-memory) arm floors — even memory can't answer, probes are broken", () => {
+    expect(isBaselineValid(0, 0.05, 0.05, 0.95)).toBe(false);
+    expect(isBaselineValid(0, 0.0, 0.05, 0.95)).toBe(false);
+  });
+
+  it("rejects when the no-memory baseline is saturated at/above the ceiling (no headroom for a lift)", () => {
+    expect(isBaselineValid(0.95, 1.0, 0.05, 0.95)).toBe(false);
+    expect(isBaselineValid(0.98, 1.0, 0.05, 0.95)).toBe(false);
   });
 });
 
@@ -122,23 +130,29 @@ describe("computeLiftMeasurement — verdict precedence (FR-004)", () => {
     expect(measurement.baselineValid).toBe(false);
   });
 
-  it("baseline-invalid (floored) also takes precedence — a full 0->1 swing is unmeasurable, not a clean lift", () => {
+  it("floored no-memory baseline is VALID (the ideal case) — a strong lift reads lift-confirmed, not baseline-invalid", () => {
     const measurement = computeLiftMeasurement({
-      caseId: "case-baseline-floored",
-      liftPairs: [
-        { armA: true, armB: false },
-        { armA: true, armB: false },
-        { armA: true, armB: false },
-        { armA: true, armB: false },
-      ],
-      scrambledPairs: [
-        { armA: false, armB: false },
-        { armA: false, armB: false },
-        { armA: false, armB: false },
-        { armA: false, armB: false },
-      ],
+      caseId: "case-baseline-floored-ideal",
+      liftPairs: STRONG_LIFT_PAIRS,
+      scrambledPairs: NO_DISCORDANCE_PAIRS,
       passRateWithMemory: 1.0,
-      passRateNoMemory: 0, // floored: at/below the default floor
+      passRateNoMemory: 0, // floored no-memory baseline — the contamination-clean ideal
+      passRateScrambledMemory: 0,
+      contaminatedIds: [],
+      thresholds: THRESHOLDS,
+      runsN: 3,
+    });
+    expect(measurement.baselineValid).toBe(true);
+    expect(measurement.verdict).toBe("lift-confirmed");
+  });
+
+  it("baseline-invalid when the TREATMENT arm also floors — probes unanswerable even with memory", () => {
+    const measurement = computeLiftMeasurement({
+      caseId: "case-treatment-floored",
+      liftPairs: Array.from({ length: 4 }, () => ({ armA: false, armB: false })),
+      scrambledPairs: Array.from({ length: 4 }, () => ({ armA: false, armB: false })),
+      passRateWithMemory: 0, // even with memory nothing is answerable -> broken probes
+      passRateNoMemory: 0,
       passRateScrambledMemory: 0,
       contaminatedIds: [],
       thresholds: THRESHOLDS,
