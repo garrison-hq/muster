@@ -59,3 +59,4 @@ muster's cite-a-source rule has no upstream normative standard here (C-003), so 
 ## Activity Log
 
 - 2026-07-09T02:17:00Z – claude – shell_pid=2153771 – Moved to for_review
+- 2026-07-09T02:17:03Z – claude – shell_pid=2153771 – Reviewed: rubric covers all clauses (lift def, McNemar/Tango/Miller cited, own pass^k derivation, judge-bias+blinding); rubric.ts 100% cov, 17 tests (citations resolve, blinding deterministic + no armId leak); 3133 tests green
