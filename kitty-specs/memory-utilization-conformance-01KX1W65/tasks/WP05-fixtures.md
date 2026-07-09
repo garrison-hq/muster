@@ -57,3 +57,4 @@ Fixtures load; every probe fails closed-book (contamination-clean) under the WP0
 ## Activity Log
 
 - 2026-07-09T02:19:19Z – claude – shell_pid=2156193 – Moved to for_review
+- 2026-07-09T02:19:22Z – claude – shell_pid=2156193 – Reviewed: contamination-clean suite (every lift probe scores 0 closed-book, gate non-vacuous); abstention + example; 3243 tests green; no new dep; FR-014/C-004
