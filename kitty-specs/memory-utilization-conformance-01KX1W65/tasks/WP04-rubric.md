@@ -17,7 +17,7 @@ subtasks:
 - T016
 phase: Phase 2 - Adapter + rubric
 assignee: ''
-agent: ''
+agent: "claude"
 shell_pid: '2153771'
 history:
 - timestamp: '2026-07-09T00:00:00Z'
@@ -55,3 +55,7 @@ muster's cite-a-source rule has no upstream normative standard here (C-003), so 
 
 ## Verification
 `pnpm build` + `pnpm test` green; rubric doc present and cited by every check; blinding test passes.
+
+## Activity Log
+
+- 2026-07-09T02:17:00Z – claude – shell_pid=2153771 – Moved to for_review
