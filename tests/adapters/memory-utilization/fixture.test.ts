@@ -32,6 +32,49 @@ describe("loadRealFacts", () => {
     const languageFact = facts.find((f) => f.id === "memory-facts-0");
     expect(languageFact?.text).toBe("The user's favorite programming language is Rust.");
   });
+
+  // ---------------------------------------------------------------------
+  // L-3 remediation — path-traversal rejection. A manifest is untrusted
+  // input; `memoryPath`/`userPath` must not be able to walk this adapter
+  // outside the declared fixture's own directory (dirname(manifestPath)).
+  // ---------------------------------------------------------------------
+
+  it("rejects a memoryPath that escapes the fixture's own directory", () => {
+    const ref: MemoryFixtureRef = {
+      ...FIXTURE_REF,
+      memoryPath: "tests/fixtures/memory-utilization/basic/../../../../etc/passwd",
+    };
+    expect(() => loadRealFacts(ref)).toThrow(/path-traversal guard/);
+    expect(() => loadRealFacts(ref)).toThrow(/memoryPath/);
+  });
+
+  it("rejects a userPath that escapes the fixture's own directory", () => {
+    const ref: MemoryFixtureRef = {
+      ...FIXTURE_REF,
+      userPath: "../../../../etc/passwd",
+    };
+    expect(() => loadRealFacts(ref)).toThrow(/path-traversal guard/);
+    expect(() => loadRealFacts(ref)).toThrow(/userPath/);
+  });
+
+  it("never touches the filesystem for the escaping path — the guard fires before any readFileSync", () => {
+    // "/etc/passwd" or similar sensitive paths may not even exist in every
+    // sandboxed test environment; the guard must throw purely from path
+    // comparison, never attempt the read (NFR-001: pure, no I/O on
+    // escaping paths — mirrors src/adapters/skills/layout.ts's convention).
+    const ref: MemoryFixtureRef = {
+      ...FIXTURE_REF,
+      memoryPath: "../../../../definitely-does-not-exist-anywhere/secret.md",
+    };
+    expect(() => loadRealFacts(ref)).toThrow(/path-traversal guard/);
+  });
+
+  it("still accepts legitimate sibling paths declared relative to the fixture directory", () => {
+    // Regression: the containment guard must not reject the normal,
+    // already-working case (memoryPath/userPath co-located with
+    // manifestPath — every shipped fixture bundle's actual layout).
+    expect(() => loadRealFacts(FIXTURE_REF)).not.toThrow();
+  });
 });
 
 describe("stageFixture", () => {

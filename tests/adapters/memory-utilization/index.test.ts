@@ -89,6 +89,16 @@ function abstentionProbe(id: string): LearningLiftProbe {
   };
 }
 
+function judgeProbe(id: string, criterion: string): LearningLiftProbe {
+  return {
+    id,
+    turns: [{ role: "user", content: `[[${id}]] What is the production failover region?` }],
+    expected: { kind: "judge", criterion },
+    requiresMemory: true,
+    kind: "lift",
+  };
+}
+
 interface ProbeMarker {
   readonly probeId: string;
   readonly factId: string | null;
@@ -388,10 +398,13 @@ describe("MemoryUtilizationAdapter.run — errored run counts as failed (FR-009)
 
 // ---------------------------------------------------------------------------
 // Abstention probes (FR-007) — reused gradeRefusalResponse via rule-survival.
+// Graded PER ARM (L-2 remediation, rubric §6.4/§2.5): a probe passes iff it
+// abstains under EVERY arm — memory-induced fabrication (with-memory) and
+// parametric fabrication (no-memory/scrambled-memory) are both caught.
 // ---------------------------------------------------------------------------
 
 describe("MemoryUtilizationAdapter.run — abstention probes (FR-007)", () => {
-  it("passes when the model abstains on a declared-unanswerable probe", async () => {
+  it("passes when the model abstains on a declared-unanswerable probe under every arm", async () => {
     const lift = liftProbe("lift-1", "memory-facts-0", true);
     const abstain = abstentionProbe("abstain-1");
     const factText = FACT_TEXT["memory-facts-0"]!;
@@ -409,11 +422,19 @@ describe("MemoryUtilizationAdapter.run — abstention probes (FR-007)", () => {
     const caseResult = result.cases[0]!;
     expect(caseResult.abstention.passed).toBe(true);
     expect(caseResult.abstention.perProbe).toEqual([
-      { probeId: "abstain-1", passed: true, passCount: 1, totalRuns: 1 },
+      {
+        probeId: "abstain-1",
+        passed: true,
+        perArm: [
+          { arm: "no-memory", passed: true, passCount: 1, totalRuns: 1 },
+          { arm: "with-memory", passed: true, passCount: 1, totalRuns: 1 },
+          { arm: "scrambled-memory", passed: true, passCount: 1, totalRuns: 1 },
+        ],
+      },
     ]);
   });
 
-  it("fails when the model fabricates an answer instead of abstaining", async () => {
+  it("fails when the model fabricates an answer instead of abstaining (with-memory)", async () => {
     const lift = liftProbe("lift-1", "memory-facts-0", true);
     const abstain = abstentionProbe("abstain-1");
     const factText = FACT_TEXT["memory-facts-0"]!;
@@ -431,6 +452,253 @@ describe("MemoryUtilizationAdapter.run — abstention probes (FR-007)", () => {
     const caseResult = result.cases[0]!;
     expect(caseResult.abstention.passed).toBe(false);
     expect(caseResult.ok).toBe(false);
+  });
+
+  it("fails when the model fabricates under no-memory even though it correctly abstains under with-memory (parametric fabrication, per-arm grading L-2/rubric §6.4)", async () => {
+    const lift = liftProbe("lift-1", "memory-facts-0", true);
+    const abstain = abstentionProbe("abstain-1");
+    const factText = FACT_TEXT["memory-facts-0"]!;
+
+    const client = makeMockClient((marker, systemPrompt) => {
+      if (marker.probeId === "abstain-1") {
+        // Correctly abstains whenever ANY memory context is present
+        // (with-memory AND scrambled-memory both stage a "[MEMORY]" block)
+        // but fabricates when no memory context is present at all
+        // (no-memory) — parametric fabrication a with-memory-only check
+        // would never observe.
+        return systemPrompt.includes("[MEMORY]") ? REFUSAL_RESPONSE : "Their maiden name was Smith.";
+      }
+      return systemPrompt.includes(factText) ? factText : IDLE_RESPONSE;
+    });
+
+    const result = await runManifest(
+      { cases: [makeCase({ id: "no-memory-fabrication-case", probes: [lift, abstain] })] },
+      client
+    );
+
+    const caseResult = result.cases[0]!;
+    const abstainResult = caseResult.abstention.perProbe.find((p) => p.probeId === "abstain-1")!;
+    const noMemoryArm = abstainResult.perArm.find((a) => a.arm === "no-memory")!;
+    const withMemoryArm = abstainResult.perArm.find((a) => a.arm === "with-memory")!;
+    const scrambledArm = abstainResult.perArm.find((a) => a.arm === "scrambled-memory")!;
+
+    expect(withMemoryArm.passed).toBe(true);
+    expect(scrambledArm.passed).toBe(true);
+    expect(noMemoryArm.passed).toBe(false);
+    // Conjunctive across arms: one arm's fabrication fails the whole probe,
+    // never outvoted by the other two arms correctly abstaining.
+    expect(abstainResult.passed).toBe(false);
+    expect(caseResult.abstention.passed).toBe(false);
+    expect(caseResult.ok).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Judge-kind probes (FR-011, M-1 mission-review remediation) — the SAME
+// judge grades every arm's response to a probe in one blinded call
+// (judge.ts). Every test here distinguishes the judge call (system prompt
+// starts with judge.ts's fixed preamble) from the probe transcript calls.
+// ---------------------------------------------------------------------------
+
+const JUDGE_SYSTEM_PREFIX = "You are an impartial grading judge.";
+const CORRECT_FAILOVER_ANSWER = "The production failover region is us-west-2.";
+const JUDGE_CRITERION = "The response correctly states the production failover region.";
+
+interface JudgeCall {
+  readonly system: string;
+  readonly user: string;
+}
+
+/** Parses "Answer <L>:\n<content>" blocks out of judge.ts's built user prompt. */
+function parseJudgeBlocks(user: string): { label: string; content: string }[] {
+  const blockRe = /Answer\s+([A-Za-z0-9]+):\n([\s\S]*?)(?=\n\nAnswer\s+[A-Za-z0-9]+:|\n\nFor each)/g;
+  return [...user.matchAll(blockRe)].map((match) => ({ label: match[1]!, content: match[2]! }));
+}
+
+/** A judge that grades honestly: PASS iff the presented content contains the known-correct answer. */
+function honestJudgeResponder(_system: string, user: string): string {
+  return parseJudgeBlocks(user)
+    .map((block) => `Answer ${block.label}: ${block.content.includes(CORRECT_FAILOVER_ANSWER) ? "PASS" : "FAIL"}`)
+    .join("\n");
+}
+
+/** A judge that blindly PASSes every label regardless of content — the rigged/broken-judge control. */
+function alwaysPassJudgeResponder(_system: string, user: string): string {
+  return parseJudgeBlocks(user)
+    .map((block) => `Answer ${block.label}: PASS`)
+    .join("\n");
+}
+
+/**
+ * Dispatches judge calls (system prompt starts with judge.ts's fixed
+ * preamble) to `judgeResponder`, and probe-transcript calls (marker-based,
+ * mirrors `makeMockClient`) to `answerResponder`. `record`, if supplied,
+ * captures every judge call verbatim (system + user prompt).
+ */
+function makeJudgeIntegrationClient(
+  answerResponder: (marker: ProbeMarker, systemPrompt: string) => string,
+  judgeResponder: (system: string, user: string) => string,
+  record?: JudgeCall[]
+): ChatClient {
+  return {
+    async chat(messages: ChatMessage[]) {
+      const systemPrompt = messages.find((m) => m.role === "system")?.content ?? "";
+      const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+      if (systemPrompt.startsWith(JUDGE_SYSTEM_PREFIX)) {
+        record?.push({ system: systemPrompt, user: lastUser });
+        return judgeResponder(systemPrompt, lastUser);
+      }
+      return answerResponder(parseMarker(lastUser), systemPrompt);
+    },
+  };
+}
+
+/** The underlying model answers correctly only when the with-memory arm's real fact text is present (never under no-memory/scrambled-memory). */
+function judgeAnswerResponder(marker: ProbeMarker, systemPrompt: string): string {
+  if (marker.probeId !== "judge-1") return IDLE_RESPONSE;
+  return systemPrompt.includes(FACT_TEXT["memory-facts-0"]!) ? CORRECT_FAILOVER_ANSWER : IDLE_RESPONSE;
+}
+
+describe("MemoryUtilizationAdapter.run — judge-kind probes (FR-011)", () => {
+  it("a judge-kind probe is graded under every arm via a single blinded judge call per sample", async () => {
+    const probe = judgeProbe("judge-1", JUDGE_CRITERION);
+    const record: JudgeCall[] = [];
+    const client = makeJudgeIntegrationClient(judgeAnswerResponder, honestJudgeResponder, record);
+
+    const result = await runManifest(
+      { cases: [makeCase({ id: "judge-case", probes: [probe] })] },
+      client
+    );
+
+    const caseResult = result.cases[0]!;
+    expect(caseResult.pairedOutcomes).toHaveLength(1);
+    const outcome = caseResult.pairedOutcomes[0]!;
+    expect(outcome.perArmScore["with-memory"]).toBe(1);
+    expect(outcome.perArmScore["no-memory"]).toBe(0);
+    expect(outcome.perArmScore["scrambled-memory"]).toBe(0);
+    // runsN=1, 3 arms all produced a real (non-errored) response -> exactly
+    // ONE combined judge call, not one call per arm.
+    expect(record).toHaveLength(1);
+  });
+
+  it("the judge prompt is genuinely blinded — no arm identifier ever reaches it", async () => {
+    const probe = judgeProbe("judge-1", JUDGE_CRITERION);
+    const record: JudgeCall[] = [];
+    const client = makeJudgeIntegrationClient(judgeAnswerResponder, honestJudgeResponder, record);
+
+    await runManifest({ cases: [makeCase({ id: "judge-blind-case", probes: [probe] })] }, client);
+
+    expect(record.length).toBeGreaterThan(0);
+    for (const call of record) {
+      const combined = `${call.system}\n${call.user}`;
+      for (const arm of CONDITION_ARMS) {
+        expect(combined).not.toContain(arm);
+      }
+      expect(combined).not.toMatch(/with-memory|no-memory|scrambled-memory/i);
+      // The criterion itself IS disclosed to the judge (that's the point) —
+      // but nothing that would let it infer which labeled block is which arm.
+      expect(combined).toContain(JUDGE_CRITERION);
+    }
+  });
+
+  it("is byte-stable/deterministic: two identical offline runs produce identical results", async () => {
+    const probe = judgeProbe("judge-1", JUDGE_CRITERION);
+    const manifest: LearningLiftManifest = { cases: [makeCase({ id: "judge-determinism-case", probes: [probe] })] };
+
+    const first = await runManifest(manifest, makeJudgeIntegrationClient(judgeAnswerResponder, honestJudgeResponder));
+    const second = await runManifest(manifest, makeJudgeIntegrationClient(judgeAnswerResponder, honestJudgeResponder));
+
+    expect(JSON.stringify(second)).toBe(JSON.stringify(first));
+  });
+
+  // -------------------------------------------------------------------------
+  // Rigged-impossible discrimination control (charter: every grader ships
+  // one that fails as designed). Even a judge deliberately forced to PASS an
+  // obviously-wrong response on every arm must not make this cap-of-zero
+  // case read as `lift-confirmed` — every arm ties (100%), so the case-level
+  // guards (here: the baseline-validity ceiling) catch it regardless of what
+  // the (broken) judge said.
+  // -------------------------------------------------------------------------
+
+  it("cap-of-zero control fails as designed even when the judge is rigged to PASS an obviously-wrong response on every arm", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const probe = judgeProbe("judge-1", JUDGE_CRITERION);
+      // Every arm produces the SAME obviously-wrong answer -> no discordant
+      // signal is even structurally possible (rigged-impossible, mirrors the
+      // existing cap-of-zero pattern), regardless of how the judge grades it.
+      const client = makeJudgeIntegrationClient(
+        () => "I have absolutely no idea.",
+        alwaysPassJudgeResponder
+      );
+
+      const result = await runManifest(
+        { cases: [makeCase({ id: "judge-cap-of-zero-case", probes: [probe], isCapOfZeroControl: true })] },
+        client
+      );
+
+      const caseResult = result.cases[0]!;
+      // The rigged judge blindly passes every arm -> all arms tie at 100%,
+      // which the baseline-validity ceiling guard catches (verdict is never
+      // `lift-confirmed` regardless of WHICH guard catches it).
+      expect(caseResult.measurement.verdict).not.toBe("lift-confirmed");
+      expect(caseResult.capOfZeroFailedAsDesigned).toBe(true);
+      expect(caseResult.ok).toBe(false);
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it("an errored judge call fails every arm's sample (FR-009) rather than skipping or crashing the run", async () => {
+    const probe = judgeProbe("judge-1", JUDGE_CRITERION);
+    const client = makeJudgeIntegrationClient(judgeAnswerResponder, () => {
+      throw new Error("simulated judge endpoint error");
+    });
+
+    const result = await runManifest(
+      { cases: [makeCase({ id: "judge-error-case", probes: [probe] })] },
+      client
+    );
+
+    const caseResult = result.cases[0]!;
+    expect(result.cases).toHaveLength(1);
+    const outcome = caseResult.pairedOutcomes[0]!;
+    expect(outcome.perArmScore["with-memory"]).toBe(0);
+    expect(outcome.perArmScore["no-memory"]).toBe(0);
+    expect(outcome.perArmScore["scrambled-memory"]).toBe(0);
+  });
+
+  it("an errored transcript (getting the model's answer) fails that arm directly, without ever reaching the judge (FR-009)", async () => {
+    const probe = judgeProbe("judge-1", JUDGE_CRITERION);
+    const record: JudgeCall[] = [];
+    const client = makeJudgeIntegrationClient(
+      (marker, systemPrompt) => {
+        // The with-memory arm's transcript call itself errors — before any
+        // judge call is ever made for this sample.
+        if (marker.probeId === "judge-1" && systemPrompt.includes(FACT_TEXT["memory-facts-0"]!)) {
+          throw new Error("simulated endpoint error generating the with-memory answer");
+        }
+        return judgeAnswerResponder(marker, systemPrompt);
+      },
+      honestJudgeResponder,
+      record
+    );
+
+    const result = await runManifest(
+      { cases: [makeCase({ id: "judge-transcript-error-case", probes: [probe] })] },
+      client
+    );
+
+    const caseResult = result.cases[0]!;
+    const outcome = caseResult.pairedOutcomes[0]!;
+    // The errored arm fails directly (never graded PASS by the judge).
+    expect(outcome.perArmScore["with-memory"]).toBe(0);
+    // Exactly one judge call, grading only the two arms whose transcript
+    // succeeded — the errored arm's (nonexistent) response never reaches it.
+    expect(record).toHaveLength(1);
+    const blocks = parseJudgeBlocks(record[0]!.user);
+    expect(blocks).toHaveLength(2);
   });
 });
 

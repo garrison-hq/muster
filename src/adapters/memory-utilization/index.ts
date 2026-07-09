@@ -13,9 +13,13 @@
  *     which fits 3-arm memory-fixture staging with fact-substring grading.
  *   - `gradeRefusalResponse` IS imported and reused directly for abstention
  *     probes (FR-007): "the model must abstain, not fabricate" is exactly
- *     what that function already grades.
+ *     what that function already grades. Abstention is graded PER ARM
+ *     (rubric §6.4/§2.5): a probe passes iff it abstains under every arm.
  *   - `conjunctivePassK` (core) aggregates abstention probes: safety-critical
  *     ("never fabricate"), so a single failure across N runs fails the probe.
+ *   - `judge.ts`'s `gradeArmsWithJudge` grades `expected.kind: "judge"` lift
+ *     probes (FR-011): the same judge grades every arm's response to one
+ *     probe sample in a single blinded call (`rubric.ts`'s `blindArmOrder`).
  *   - WP01's `PairedOutcome` (core/behavioral/types.ts) is the retained
  *     per-probe cross-arm record (C-005); WP02's `stats/paired.ts` /
  *     `stats/power.ts` compute the McNemar/Tango/MDE apparatus from a
@@ -58,6 +62,7 @@ import {
   type AllRefuseGuardResult,
   type ScrambledControlResult,
 } from "./controls.js";
+import { gradeArmsWithJudge, type ArmResponse, type JudgeVerdict } from "./judge.js";
 
 export type {
   MemoryFixtureRef,
@@ -83,6 +88,8 @@ export {
   evaluateAllRefuseGuard,
   evaluateScrambledControl,
 } from "./controls.js";
+export type { ArmResponse, JudgeVerdict } from "./judge.js";
+export { gradeArmsWithJudge } from "./judge.js";
 
 // ---------------------------------------------------------------------------
 // Run options — the injected ChatClient overload mirrors the Memory
@@ -120,7 +127,15 @@ interface ProbeRunContext {
   readonly realFactsById: ReadonlyMap<string, string>;
 }
 
-/** Mechanical grading (FR-011/judge-blinding is WP04 scope; WP03 is judge-free). */
+/**
+ * Mechanical grading for fact-substring/abstain probes (FR-007). Judge-kind
+ * probes (FR-011) are never routed here — they are graded exclusively via
+ * `sampleJudgeProbeAcrossArms`/`gradeArmsWithJudge` (judge.ts), which grades
+ * every arm's response to the SAME probe sample in one blinded call. Reached
+ * here with `expected.kind === "judge"`, this throws — an internal routing
+ * invariant, not a user-facing manifest error (`validateCase` already
+ * guarantees `criterion` is non-empty for judge probes).
+ */
 function gradeProbeResponse(
   probe: LearningLiftProbe,
   response: string,
@@ -130,15 +145,30 @@ function gradeProbeResponse(
     // FR-007 reuse: "must abstain, not fabricate" is exactly what this grades.
     return gradeRefusalResponse(response);
   }
+  if (probe.expected.kind === "judge") {
+    throw new Error(
+      `memory-utilization adapter: probe "${probe.id}" declares expected.kind "judge" — judge probes ` +
+        "must be graded via sampleJudgeProbeAcrossArms/gradeArmsWithJudge, never gradeProbeResponse " +
+        "(internal routing bug)."
+    );
+  }
   const requiredText = realFactsById.get(probe.expected.requiredFactId) ?? "";
   return requiredText.length > 0 && response.toLowerCase().includes(requiredText.toLowerCase());
 }
 
-async function runProbeOnce(
+/**
+ * Execute one probe's scripted turn list against `systemPrompt`, returning
+ * the final assistant response. A thrown error is captured here, not
+ * propagated — the caller decides how an errored transcript scores (FR-009:
+ * always as a failed run, never skipped/retried); judge-kind grading also
+ * needs the raw response text before it can build its blinded prompt, so
+ * transcript execution and grading are deliberately separate steps.
+ */
+async function executeProbeTranscript(
   probe: LearningLiftProbe,
   systemPrompt: string,
   ctx: ProbeRunContext
-): Promise<RunResult> {
+): Promise<{ response: string } | { errorMessage: string }> {
   try {
     const messages: ChatMessage[] = [{ role: "system", content: systemPrompt }];
     let lastResponse = "";
@@ -151,12 +181,24 @@ async function runProbeOnce(
       messages.push({ role: "assistant", content: response });
       lastResponse = response;
     }
-    return { passed: gradeProbeResponse(probe, lastResponse, ctx.realFactsById) };
+    return { response: lastResponse };
   } catch (error) {
-    // FR-009: an errored run counts as a failed run — never skipped, never retried.
     const errorMessage = error instanceof Error ? error.message : String(error);
-    return { passed: false, errorMessage };
+    return { errorMessage };
   }
+}
+
+async function runProbeOnce(
+  probe: LearningLiftProbe,
+  systemPrompt: string,
+  ctx: ProbeRunContext
+): Promise<RunResult> {
+  const outcome = await executeProbeTranscript(probe, systemPrompt, ctx);
+  // FR-009: an errored run counts as a failed run — never skipped, never retried.
+  if ("errorMessage" in outcome) {
+    return { passed: false, errorMessage: outcome.errorMessage };
+  }
+  return { passed: gradeProbeResponse(probe, outcome.response, ctx.realFactsById) };
 }
 
 async function runProbeNTimes(
@@ -216,6 +258,112 @@ async function sampleProbeAcrossArms(
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// Judge-kind probe sampling (FR-011) — the same judge grades every arm's
+// response to the SAME probe sample in ONE blinded call (judge.ts), so
+// verbosity/self-enhancement/miscalibration bias is common-mode and cancels
+// in the paired delta (rubric §5.1); only position/order bias survives, and
+// `blindArmOrder` spreads that across probes/samples rather than attaching
+// it to one arm (§5.2). An errored transcript, or an errored/unparseable
+// judge verdict, fails that sample's arm (FR-009) without ever leaking arm
+// identity to the judge for the OTHER arms in the same call.
+// ---------------------------------------------------------------------------
+
+function judgeCriterionOf(probe: LearningLiftProbe): string {
+  if (probe.expected.kind !== "judge") {
+    throw new Error(
+      `memory-utilization adapter: probe "${probe.id}" was routed to the judge grader but declares ` +
+        `expected.kind "${probe.expected.kind}" (expected "judge") — internal routing bug.`
+    );
+  }
+  return probe.expected.criterion;
+}
+
+type TranscriptOutcome = { response: string } | { errorMessage: string };
+
+/** One sample's transcript, sequentially, under every arm (rate-kindness to local endpoints — no `Promise.all`). */
+async function collectArmTranscripts(
+  probe: LearningLiftProbe,
+  armPrompts: Readonly<Record<ConditionArmName, string>>,
+  ctx: ProbeRunContext
+): Promise<Record<ConditionArmName, TranscriptOutcome>> {
+  const out = {} as Record<ConditionArmName, TranscriptOutcome>;
+  for (const arm of CONDITION_ARMS) {
+    out[arm] = await executeProbeTranscript(probe, armPrompts[arm], ctx);
+  }
+  return out;
+}
+
+/**
+ * Grade one sample's cross-arm transcripts via a single blinded judge call.
+ * An arm whose transcript itself errored fails directly (FR-009) — it never
+ * reaches the judge, and its response text never appears in the judge
+ * prompt for the other arms.
+ */
+async function gradeSampleWithJudge(
+  criterion: string,
+  outcomes: Record<ConditionArmName, TranscriptOutcome>,
+  seed: string,
+  client: ChatClient
+): Promise<Record<ConditionArmName, RunResult>> {
+  const results = {} as Record<ConditionArmName, RunResult>;
+  const gradable: ArmResponse[] = [];
+  for (const arm of CONDITION_ARMS) {
+    const outcome = outcomes[arm];
+    if ("errorMessage" in outcome) {
+      results[arm] = { passed: false, errorMessage: outcome.errorMessage };
+    } else {
+      gradable.push({ armId: arm, response: outcome.response });
+    }
+  }
+  if (gradable.length === 0) return results;
+
+  const verdicts: JudgeVerdict[] = await gradeArmsWithJudge(client, criterion, gradable, seed);
+  for (const verdict of verdicts) {
+    results[verdict.armId as ConditionArmName] = { passed: verdict.passed };
+  }
+  return results;
+}
+
+async function sampleJudgeProbeAcrossArms(
+  probe: LearningLiftProbe,
+  armPrompts: Readonly<Record<ConditionArmName, string>>,
+  n: number,
+  ctx: ProbeRunContext
+): Promise<Record<ConditionArmName, ProbeArmSample>> {
+  const criterion = judgeCriterionOf(probe);
+  const perArmResults: Record<ConditionArmName, RunResult[]> = {
+    "no-memory": [],
+    "with-memory": [],
+    "scrambled-memory": [],
+  };
+  for (let sampleIndex = 0; sampleIndex < n; sampleIndex++) {
+    const outcomes = await collectArmTranscripts(probe, armPrompts, ctx);
+    // Seed is a pure function of (probeId, sampleIndex) — deterministic,
+    // never wall-clock time (NFR-001) — so every sample gets its own
+    // independently-derived blinded presentation order (rubric §5.2).
+    const graded = await gradeSampleWithJudge(criterion, outcomes, `${probe.id}:${sampleIndex}`, ctx.client);
+    for (const arm of CONDITION_ARMS) perArmResults[arm].push(graded[arm]);
+  }
+  const out = {} as Record<ConditionArmName, ProbeArmSample>;
+  for (const arm of CONDITION_ARMS) {
+    out[arm] = { results: perArmResults[arm], passRate: passRateOf(perArmResults[arm]) };
+  }
+  return out;
+}
+
+/** Dispatch mechanical vs. judge grading per probe (FR-011); the rest of the pipeline is grading-method-agnostic. */
+function sampleAnyProbeAcrossArms(
+  probe: LearningLiftProbe,
+  armPrompts: Readonly<Record<ConditionArmName, string>>,
+  n: number,
+  ctx: ProbeRunContext
+): Promise<Record<ConditionArmName, ProbeArmSample>> {
+  return probe.expected.kind === "judge"
+    ? sampleJudgeProbeAcrossArms(probe, armPrompts, n, ctx)
+    : sampleProbeAcrossArms(probe, armPrompts, n, ctx);
+}
+
 interface LiftAccumulator {
   readonly pairedOutcomes: RetainedPairedOutcome[];
   readonly contamination: ContaminationResult[];
@@ -231,7 +379,7 @@ async function accumulateLiftProbes(
 ): Promise<LiftAccumulator> {
   const acc: LiftAccumulator = { pairedOutcomes: [], contamination: [], liftPairs: [], scrambledPairs: [] };
   for (const probe of liftProbes) {
-    const armSamples = await sampleProbeAcrossArms(probe, armPrompts, kase.runsN, ctx);
+    const armSamples = await sampleAnyProbeAcrossArms(probe, armPrompts, kase.runsN, ctx);
     const withRate = armSamples["with-memory"].passRate;
     const withoutRate = armSamples["no-memory"].passRate;
     const scrambledRate = armSamples["scrambled-memory"].passRate;
@@ -257,15 +405,31 @@ async function accumulateLiftProbes(
 }
 
 // ---------------------------------------------------------------------------
-// Abstention probes (FR-007) — run only under the with-memory arm; pass^k
-// (safety-critical: any single fabrication across N runs fails the probe).
+// Abstention probes (FR-007) — graded PER ARM, not only under with-memory
+// (rubric §6.4/§2.5: injecting a memory fixture can make a model MORE
+// willing to assert an answer even to a probe the fixture does not resolve
+// — over-confidence induced by the mere presence of context, distinct from
+// genuine recall — so a model that correctly abstains closed-book but
+// fabricates once memory is present must still fail). A probe passes iff it
+// abstains under EVERY arm: conjunctive both within an arm (pass^k,
+// safety-critical — any single fabrication across N runs fails that arm)
+// AND across arms (memory-induced fabrication and parametric fabrication
+// are both caught; an abstention failure is never "outvoted" by an
+// otherwise-positive lift).
 // ---------------------------------------------------------------------------
 
-export interface AbstentionProbeResult {
-  readonly probeId: string;
+export interface AbstentionArmResult {
+  readonly arm: ConditionArmName;
   readonly passed: boolean;
   readonly passCount: number;
   readonly totalRuns: number;
+}
+
+export interface AbstentionProbeResult {
+  readonly probeId: string;
+  /** True iff the probe abstains under every arm (rubric §6.4). */
+  readonly passed: boolean;
+  readonly perArm: readonly AbstentionArmResult[];
 }
 
 export interface AbstentionResult {
@@ -273,18 +437,31 @@ export interface AbstentionResult {
   readonly perProbe: readonly AbstentionProbeResult[];
 }
 
+async function runAbstentionProbeAcrossArms(
+  probe: LearningLiftProbe,
+  armPrompts: Readonly<Record<ConditionArmName, string>>,
+  n: number,
+  ctx: ProbeRunContext
+): Promise<AbstentionProbeResult> {
+  const perArm: AbstentionArmResult[] = [];
+  for (const arm of CONDITION_ARMS) {
+    const results = await runProbeNTimes(probe, armPrompts[arm], n, ctx);
+    const passCount = results.filter((r) => r.passed).length;
+    const armPassed = conjunctivePassK(results.map((r) => r.passed));
+    perArm.push({ arm, passed: armPassed, passCount, totalRuns: results.length });
+  }
+  return { probeId: probe.id, passed: perArm.every((a) => a.passed), perArm };
+}
+
 async function runAbstentionProbes(
   probes: readonly LearningLiftProbe[],
-  withMemorySystemPrompt: string,
+  armPrompts: Readonly<Record<ConditionArmName, string>>,
   n: number,
   ctx: ProbeRunContext
 ): Promise<AbstentionResult> {
   const perProbe: AbstentionProbeResult[] = [];
   for (const probe of probes) {
-    const results = await runProbeNTimes(probe, withMemorySystemPrompt, n, ctx);
-    const passCount = results.filter((r) => r.passed).length;
-    const passed = conjunctivePassK(results.map((r) => r.passed));
-    perProbe.push({ probeId: probe.id, passed, passCount, totalRuns: results.length });
+    perProbe.push(await runAbstentionProbeAcrossArms(probe, armPrompts, n, ctx));
   }
   const passed = perProbe.every((p) => p.passed);
   return { passed, perProbe };
@@ -352,12 +529,7 @@ async function runCase(kase: LearningLiftCase, client: ChatClient): Promise<Case
   checkCapOfZeroControl(kase, measurement.verdict);
   const capPassed = capOfZeroFailedAsDesigned(kase, measurement.verdict);
 
-  const abstention = await runAbstentionProbes(
-    abstentionProbes,
-    armPrompts["with-memory"],
-    kase.runsN,
-    ctx
-  );
+  const abstention = await runAbstentionProbes(abstentionProbes, armPrompts, kase.runsN, ctx);
 
   const ok =
     measurement.verdict === "lift-confirmed" &&

@@ -211,6 +211,25 @@ function betaPosteriorKthMoment(a: number, b: number, k: number): number {
  * module-header derivation above. Unlike `passAtK`, n=0 is valid (a
  * pure-prior estimate); there is no n ≥ k requirement, because this predicts
  * forward rather than resampling from an already-observed set.
+ *
+ * Published reference estimator (muster's own published rubric): this is
+ * the concrete implementation `docs/rubric/memory-utilization-taxonomy.md`
+ * §4.2 (beta-binomial posterior derivation) / §4.3 (Jeffreys-prior default)
+ * cites and derives. It answers a FORECASTING question — "how confident
+ * should we be that k FUTURE trials would all succeed?" — which is why it
+ * takes a `prior` and returns a continuous probability rather than a
+ * pass/fail boolean.
+ *
+ * This is deliberately NOT what the memory-utilization adapter's abstention
+ * pipeline uses to decide pass/fail today. Abstention is a safety-critical
+ * conformance check on trials ALREADY OBSERVED ("did every one of the N
+ * sampled runs abstain?"), not a forecast about unobserved future trials —
+ * the correct tool for that is the boolean all-must-pass `conjunctivePassK`
+ * (`pass-k.ts`, `passFlags.every(Boolean)`), which the adapter calls
+ * directly. Both estimators are legitimately "conjunctive pass^k" in the
+ * charter's safety-critical-aggregation sense; they answer different
+ * questions (observed-set conformance vs. forward-looking reliability
+ * forecast) and are not interchangeable.
  */
 export function conjunctivePassKPosterior(
   n: number,

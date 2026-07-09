@@ -14,6 +14,7 @@
  */
 
 import { readFileSync } from "node:fs";
+import { dirname, resolve as resolvePath, sep } from "node:path";
 import { FactParser, type FactManifest, type MemoryFact } from "../memory/lint.js";
 import type { ConditionArmName, MemoryFixtureRef } from "./manifest.js";
 
@@ -77,6 +78,48 @@ export function scrambleFactText(fact: MemoryFact): string {
 }
 
 // ---------------------------------------------------------------------------
+// Path containment (security remediation) — a `LearningLiftManifest` is
+// untrusted input (it may originate from a fixture author other than the
+// operator running the suite). `memoryPath`/`userPath`/`manifestPath` must
+// never be able to walk this adapter outside the declared fixture bundle's
+// own directory (e.g. a manifest declaring `memoryPath: "../../../../etc/
+// passwd"`). `manifestPath` (the fact-label manifest — see FactManifest
+// above) is the fixture bundle's anchor: MEMORY.md/USER.md/manifest.json are
+// always co-located (see tests/fixtures/memory-utilization/*), so every
+// declared path is resolved and checked against `dirname(manifestPath)`
+// before any `readFileSync` call. Pure string/path comparison — no I/O
+// (NFR-001).
+// ---------------------------------------------------------------------------
+
+function assertWithinFixtureRoot(fieldName: string, declaredPath: string, root: string): string {
+  const resolved = resolvePath(declaredPath);
+  if (resolved !== root && !resolved.startsWith(`${root}${sep}`)) {
+    throw new Error(
+      `memory-utilization fixture: ${fieldName} "${declaredPath}" resolves outside the declared ` +
+        `fixture's own directory ("${root}") — rejected (path-traversal guard).`
+    );
+  }
+  return resolved;
+}
+
+interface SanitizedFixtureRef {
+  readonly memoryPath: string;
+  readonly userPath: string;
+  readonly manifestPath: string;
+}
+
+/** Resolve + containment-check every declared fixture path against the fact-label manifest's own directory. */
+function sanitizeFixtureRef(ref: MemoryFixtureRef): SanitizedFixtureRef {
+  const manifestPath = resolvePath(ref.manifestPath);
+  const root = dirname(manifestPath);
+  return {
+    manifestPath,
+    memoryPath: assertWithinFixtureRoot("memoryPath", ref.memoryPath, root),
+    userPath: assertWithinFixtureRoot("userPath", ref.userPath, root),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Loading — reuses the Memory adapter's FactParser (FR-002).
 // ---------------------------------------------------------------------------
 
@@ -86,10 +129,11 @@ function loadFactManifest(manifestPath: string): FactManifest {
 
 /** Parse MEMORY.md + USER.md into the real declared facts (reused parser, FR-002). */
 export function loadRealFacts(ref: MemoryFixtureRef): MemoryFact[] {
+  const sanitized = sanitizeFixtureRef(ref);
   const parser = new FactParser();
-  const manifest = loadFactManifest(ref.manifestPath);
-  const memoryFacts = parser.parse(ref.memoryPath, manifest);
-  const userFacts = parser.parse(ref.userPath, manifest);
+  const manifest = loadFactManifest(sanitized.manifestPath);
+  const memoryFacts = parser.parse(sanitized.memoryPath, manifest);
+  const userFacts = parser.parse(sanitized.userPath, manifest);
   return [...memoryFacts, ...userFacts];
 }
 

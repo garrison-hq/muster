@@ -31,13 +31,20 @@ export interface MemoryFixtureRef {
 }
 
 /**
- * A probe's grading target (data-model.md `Probe.expected`). Only the
- * mechanical (non-judge) targets are implemented in WP03 — LLM-judge grading
- * and its blinding/bias apparatus is FR-011/WP04 scope.
+ * A probe's grading target (data-model.md `Probe.expected`).
+ *
+ * - `fact-substring`/`abstain` are graded mechanically (fixture.ts/index.ts).
+ * - `judge` (FR-011 remediation) is graded by an LLM judge: the SAME judge
+ *   grades every condition arm's response to the probe in one blinded call
+ *   (`criterion` is the natural-language pass/fail rubric text, e.g. "The
+ *   response correctly states the production failover region."). See
+ *   `judge.ts` (`gradeArmsWithJudge`) and `rubric.ts` (`blindArmOrder`, §5.2)
+ *   — arm identity/order is never disclosed to the judge.
  */
 export type ProbeExpectation =
   | { readonly kind: "fact-substring"; readonly requiredFactId: string }
-  | { readonly kind: "abstain" };
+  | { readonly kind: "abstain" }
+  | { readonly kind: "judge"; readonly criterion: string };
 
 /**
  * A scenario whose correct answer requires the declared memory
@@ -149,6 +156,23 @@ function validateProbes(kase: LearningLiftCase): void {
   }
 }
 
+/**
+ * FR-011: a `judge`-kind probe must carry a non-empty natural-language
+ * criterion — the judge grader (`judge.ts`) has nothing to grade against
+ * otherwise, and an empty/whitespace-only criterion would silently produce a
+ * meaningless judge prompt rather than failing fast at manifest load time.
+ */
+function validateProbeExpectations(kase: LearningLiftCase): void {
+  for (const probe of kase.probes) {
+    if (probe.expected.kind === "judge" && probe.expected.criterion.trim().length === 0) {
+      throw new Error(
+        `memory-utilization manifest: case "${kase.id}" probe "${probe.id}" declares expected.kind ` +
+          '"judge" with an empty criterion — a judge probe must carry a non-empty natural-language criterion'
+      );
+    }
+  }
+}
+
 function validateRunsN(kase: LearningLiftCase): void {
   if (!Number.isInteger(kase.runsN) || kase.runsN < 1) {
     throw new Error(
@@ -182,6 +206,7 @@ function validateThresholds(kase: LearningLiftCase): void {
 export function validateCase(kase: LearningLiftCase): void {
   validateArms(kase);
   validateProbes(kase);
+  validateProbeExpectations(kase);
   validateRunsN(kase);
   validateThresholds(kase);
 }

@@ -177,6 +177,46 @@ describe("newcombeMoverCI — closed-form cross-check", () => {
     expect(newcombe.upper).toBeGreaterThan(tango.lower);
   });
 
+  // ---------------------------------------------------------------------
+  // L-1 remediation (memory-utilization mission review): §3.3 cites BOTH
+  // Tango (primary) and Newcombe (closed-form cross-check) as legitimate
+  // methods for the same paired-difference CI. `newcombeMoverCI` is
+  // published but never called by the memory-utilization pipeline itself
+  // (`verdict.ts` uses only `tangoScoreCI`) — this quantitative cross-check
+  // is what makes it a LIVE §3.3 cross-check rather than dead code: it
+  // proves the two independently-derived methods actually agree on shared
+  // paired data, not merely that both compile and run.
+  // ---------------------------------------------------------------------
+  it("agrees with tangoScoreCI within a documented tolerance across several shared paired datasets (§3.3 live cross-check)", () => {
+    // Tango (asymptotic-score) and Newcombe (square-and-add/MOVER) are two
+    // independently-derived closed-form/root-finding methods for the SAME
+    // estimand. They are not identical (different derivations/asymptotics),
+    // but for non-degenerate, moderate-n paired data their bounds should
+    // stay close. Documented tolerance: 0.08 absolute on each bound — loose
+    // enough to tolerate the two methods' different approximations, tight
+    // enough to catch a real regression in either implementation. (Datasets
+    // with a very small number of discordant pairs are excluded here: the
+    // two methods' small-sample behavior diverges more at that extreme,
+    // which is exactly why McNemar mid-p — not either CI method — decides
+    // significance in the paired verdict; see verdict.ts §6.2.)
+    const TOLERANCE = 0.08;
+    const datasets = [
+      makePairs({ aOnly: 6, bOnly: 2, bothPass: 5, bothFail: 3 }),
+      makePairs({ aOnly: 4, bOnly: 1, bothPass: 3, bothFail: 2 }),
+      makePairs({ aOnly: 10, bOnly: 3, bothPass: 8, bothFail: 4 }),
+      makePairs({ aOnly: 3, bOnly: 3, bothPass: 10, bothFail: 10 }),
+      makePairs({ aOnly: 8, bOnly: 8, bothPass: 2, bothFail: 2 }),
+      makePairs({ aOnly: 20, bOnly: 5, bothPass: 30, bothFail: 10 }),
+    ];
+    for (const pairs of datasets) {
+      const tango = tangoScoreCI(pairs);
+      const newcombe = newcombeMoverCI(pairs);
+      expect(newcombe.estimate).toBeCloseTo(tango.estimate, 9);
+      expect(Math.abs(newcombe.lower - tango.lower)).toBeLessThanOrEqual(TOLERANCE);
+      expect(Math.abs(newcombe.upper - tango.upper)).toBeLessThanOrEqual(TOLERANCE);
+    }
+  });
+
   it("throws on empty pairs", () => {
     expect(() => newcombeMoverCI([])).toThrow();
   });

@@ -278,6 +278,35 @@ WP06) estimates them empirically per deployment; Miller's own illustrative
 figures (`≈969` probes to detect `δ=0.03` at 80% power, `α=0.05`) are cited
 here only as an order-of-magnitude sanity anchor, not a mandated `n`.
 
+### §3.5 Dichotomization of Per-Probe Rates
+
+**[MUSTER-OWN]** — an explicit design decision, flagged for revision.
+
+The paired significance (§3.2) and delta CI (§3.3) operate on **matched-pairs
+booleans**: each probe's per-arm continuous pass-rate (over `runsN` samples) is
+reduced to a single boolean by a majority threshold (`rate ≥ 0.5`,
+`src/adapters/memory-utilization/index.ts`) before the McNemar / Tango
+estimators see it. This is a deliberate trade-off:
+
+- **What it buys.** McNemar mid-p and the Tango score interval are *exact*
+  small-sample paired-binary methods (§3.2/§3.3, Fagerland/Lydersen/Laake) —
+  well-behaved on the handful of probes a conformance suite typically ships,
+  with no distributional assumption on the per-probe rate.
+- **What it costs.** It discards the per-probe *continuous* variance-reduction
+  that Miller's paired design describes (§3.4, `arXiv:2411.00640`): a probe at
+  `with = 0.4 / without = 0.0` dichotomizes to `(false, false)` — concordant —
+  and contributes nothing to the paired statistic despite a real continuous
+  lift. The continuous rates are still **retained and reported** per probe
+  (FR-003 / C-005, `pairedOutcomes[].perArmScore`), so nothing is lost from the
+  *output*; only the *decision* runs on the dichotomized view.
+
+muster gates on the dichotomized paired-binary view because its exactness on
+small `n` is the more defensible default absent a pilot-estimated `ω²` (§3.4,
+FR-015). A future revision MAY move the decision onto a continuous paired test
+(e.g. a paired difference of per-probe rates with a bootstrap / cluster-robust
+interval) once the pilot protocol supplies the variance components — a breaking
+grading-semantics change that would bump this rubric's major version.
+
 ---
 
 ## §4 muster's Own Conjunctive `pass^k` Estimator
@@ -491,12 +520,15 @@ significance is disqualifying by design (spec.md acceptance scenario 5:
 "a suite whose lift is explained by parametric-knowledge leakage is
 reported `contaminated`, not `lift-confirmed`").
 
-### §6.4 Abstention-Under-With-Memory
+### §6.4 Abstention — Graded Per Arm
 
 **[MUSTER-OWN]**, extending §2.5 with a with-memory-specific concern.
 
-§2.5 requires abstention on unanswerable probes under every arm. The
-with-memory-specific concern this clause formalizes: injecting a memory
+§2.5 requires abstention on unanswerable probes under every arm, and the adapter
+grades them **under every arm** (`src/adapters/memory-utilization/index.ts`
+`runAbstentionProbes`), passing a probe iff it abstains in all of no-memory,
+with-memory, and scrambled-memory. The with-memory arm is the notable
+failure direction this clause formalizes: injecting a memory
 fixture can make a model **more** willing to assert an answer — even to a
 probe the fixture does not actually resolve — because the presence of *some*
 contextual material lowers the model's apparent uncertainty

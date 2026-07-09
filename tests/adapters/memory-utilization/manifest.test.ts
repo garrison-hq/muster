@@ -108,4 +108,65 @@ describe("validateCase", () => {
       )
     ).toThrow(/baselineFloor/);
   });
+
+  // -------------------------------------------------------------------------
+  // FR-011 — judge-kind probe expectation (M-1 remediation).
+  // -------------------------------------------------------------------------
+
+  it("accepts a well-formed judge-kind probe", () => {
+    expect(() =>
+      validateCase(
+        baseCase({
+          probes: [
+            {
+              id: "judge-probe-1",
+              turns: [{ role: "user", content: "What is the production failover region?" }],
+              expected: {
+                kind: "judge",
+                criterion: "The response correctly states the production failover region.",
+              },
+              requiresMemory: true,
+              kind: "lift",
+            },
+          ],
+        })
+      )
+    ).not.toThrow();
+  });
+
+  it("rejects a judge-kind probe with an empty criterion", () => {
+    expect(() =>
+      validateCase(
+        baseCase({
+          probes: [
+            {
+              id: "judge-probe-1",
+              turns: [{ role: "user", content: "What is the production failover region?" }],
+              expected: { kind: "judge", criterion: "" },
+              requiresMemory: true,
+              kind: "lift",
+            },
+          ],
+        })
+      )
+    ).toThrow(/criterion/);
+  });
+
+  it("rejects a judge-kind probe with a whitespace-only criterion", () => {
+    expect(() =>
+      validateCase(
+        baseCase({
+          probes: [
+            {
+              id: "judge-probe-1",
+              turns: [{ role: "user", content: "What is the production failover region?" }],
+              expected: { kind: "judge", criterion: "   \n\t  " },
+              requiresMemory: true,
+              kind: "lift",
+            },
+          ],
+        })
+      )
+    ).toThrow(/criterion/);
+  });
 });
