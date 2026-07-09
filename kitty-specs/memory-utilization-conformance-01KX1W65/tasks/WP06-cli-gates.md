@@ -61,3 +61,4 @@ Expose the capability as a muster CLI subcommand with a machine-readable report 
 ## Activity Log
 
 - 2026-07-09T02:49:22Z – claude – shell_pid=2217087 – Moved to for_review
+- 2026-07-09T02:49:25Z – claude – shell_pid=2217087 – Reviewed: additive CLI; e2e example real exit codes; report cites rubric+MDE+bounded null; 3317 tests green; byte-stable
