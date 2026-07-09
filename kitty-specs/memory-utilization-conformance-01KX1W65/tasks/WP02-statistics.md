@@ -10,6 +10,9 @@ tracker_refs: []
 planning_base_branch: chore/spec-kitty-3.2.5-upgrade
 merge_target_branch: chore/spec-kitty-3.2.5-upgrade
 branch_strategy: Planning artifacts for this mission were generated on chore/spec-kitty-3.2.5-upgrade. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into chore/spec-kitty-3.2.5-upgrade unless the human explicitly redirects the landing branch.
+base_branch: kitty/mission-memory-utilization-conformance-01KX1W65
+base_commit: 4e99e2f3ac51748ae9ebf0ab763b39a6ffd6156a
+created_at: '2026-07-09T00:52:38.145002+00:00'
 subtasks:
 - T004
 - T005
@@ -19,6 +22,7 @@ subtasks:
 phase: Phase 1 - Foundations
 assignee: ''
 agent: ''
+shell_pid: '1992528'
 history:
 - timestamp: '2026-07-09T00:00:00Z'
   agent: system
