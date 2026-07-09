@@ -10,5 +10,7 @@
   "purpose_tldr": "memory utilization conformance",
   "slug": "memory-utilization-conformance-01KX1W65",
   "target_branch": "chore/spec-kitty-3.2.5-upgrade",
-  "topology": "single_branch"
+  "topology": "single_branch",
+  "vcs": "git",
+  "vcs_locked_at": "2026-07-09T00:39:47.965822+00:00"
 }
