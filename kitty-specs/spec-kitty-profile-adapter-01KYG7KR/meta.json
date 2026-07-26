@@ -12,7 +12,7 @@
   "purpose_tldr": "Static conformance adapter for Spec Kitty agent-profile YAML (*.agent.yaml) plus the rubric surface M4 depends on.",
   "slug": "spec-kitty-profile-adapter-01KYG7KR",
   "source_description": "GitHub issue garrison-hq/muster#58 ([M2] spec-kitty-profile-adapter): static agent-profile adapter (src/adapters/spec-kitty-profile/) validating *.agent.yaml against the upstream schema plus muster-authored cross-profile lints (handoff-graph, doctrine-reference resolution, context-sources integrity, profile-id filename legality, projection drift vs .kittify/agent_profiles_manifest.json), and three docs/rubric/ documents (profile taxonomy, behavioral axes for M4, sop-rule-taxonomy v1.1 appendix). Manifest-runner shaped per D1 -- deliberately does not implement SpecAdapter.",
-  "target_branch": "main",
+  "target_branch": "kitty/mission-spec-kitty-profile-adapter",
   "topology": "coord",
   "vcs": "git"
 }
