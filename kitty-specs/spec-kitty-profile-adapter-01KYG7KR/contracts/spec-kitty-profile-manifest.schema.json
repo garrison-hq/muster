@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://garrison-hq.github.io/muster/contracts/spec-kitty-profile-manifest.schema.json",
+  "title": "muster spec-kitty-profile adapter manifest",
+  "description": "Input manifest for `muster skprofile run <manifest>` (FR-001; doctrineRoot per plan.md research.md R2 — a field the literal FR-001 list omits but FR-004/FR-005 require). All paths are relative to this manifest file's own directory.",
+  "type": "object",
+  "required": ["version", "profilesDir", "schemaPath", "schemaSha", "doctrineRoot", "cases"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Manifest schema version for drift detection, e.g. \"1.0.0\"."
+    },
+    "profilesDir": {
+      "type": "string",
+      "description": "Directory containing *.agent.yaml profiles to validate as one graph."
+    },
+    "schemaPath": {
+      "type": "string",
+      "description": "Path to the vendored agent-profile.schema.yaml fixture (C-004)."
+    },
+    "schemaSha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,40}$",
+      "description": "Upstream spec-kitty commit SHA the vendored schema was pinned from (FR-002). Used to build source.normative as a /blob/<sha>/<path> URL, never a literal @<SHA> path segment."
+    },
+    "doctrineRoot": {
+      "type": "string",
+      "description": "Directory containing sibling directives/, tactics/, toolguides/, styleguides/ trees (FR-004/FR-005 resolution root; research.md R2)."
+    },
+    "activationConfigPath": {
+      "type": "string",
+      "description": "Optional YAML file exposing flat top-level activated_directives[]/activated_tactics[] keys (research.md R3). When omitted, every unresolved directive/tactic reference is an error (no warning tier)."
+    },
+    "projectionManifestPath": {
+      "type": "string",
+      "description": "Optional path to a .kittify/agent_profiles_manifest.json-shaped file (schema_version 1, 9 fields per entry). When omitted, the projection-drift check class is skipped entirely (FR-007)."
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Named report-grouping filters (research.md R1) — not independent runs, not expectation gates. Every profile in profilesDir is always schema- and graph-checked regardless of case coverage.",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "profileId": {
+            "type": "string",
+            "description": "Optional: filter this case's findings to one profile-id. Omitted = the whole profilesDir set."
+          }
+        }
+      }
+    }
+  }
+}
