@@ -54,6 +54,7 @@
             "handoff-asymmetric",
             "reference-unresolved",
             "reference-not-activated",
+            "activation-config-unrecognized-shape",
             "context-source-missing",
             "profile-id-illegal",
             "profile-id-filename-mismatch",

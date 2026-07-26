@@ -38,6 +38,19 @@ interface SkProfileCase {
 }
 ```
 
+**Deliberate convention break, documented so it does not read as an
+oversight**: `SkProfileCase` is the only case shape in the repo carrying no
+per-case expected-outcome field (`memory-utilization`, `skills`, `tools`, and
+`heartbeat` all carry one). This is intentional, not an omission: spec.md
+never specifies `cases[]` semantics, and every check class here is
+graph-wide (R1) — a whole-graph checker cannot cleanly assign a single
+expected pass/fail outcome to one named case without either forcing
+redundant whole-graph re-runs per case or silently under-checking profiles
+no case names (see R1's rejected alternatives). `SkProfileCase` is
+deliberately filter-only; a future adapter author or cross-adapter tooling
+reading this shape should not treat the absence of an expectation field as
+a gap to fill in.
+
 `validateManifest` throws (manifest error, exit 2) on: empty `cases`,
 duplicate `case.id`, or a `case.profileId` that resolves to no profile after
 the profile set loads — a malformed manifest must fail fast and loudly, never
@@ -111,6 +124,21 @@ in two stages:
    is skipped entirely — every unresolved reference is an error either way
    (spec.md edge case).
 
+**Activation-config shape validation (post-plan-gate correction, research.md
+R3)**: when `activationConfigPath` is supplied, the adapter validates the
+parsed top-level YAML object exposes at least one of `activated_directives` /
+`activated_tactics` *before* running stage 2 above. If neither key is
+present (e.g. a `charter.yaml`-shaped project the adapter is not coded for),
+this is a resolved, loud failure mode, not silent activation-blindness: the
+run emits one `activation-config-unrecognized-shape` finding (warning,
+`profileId: "(manifest)"`, `path: "activationConfigPath"`) exactly once per
+run — never once per reference — and every reference-lint stage 2 check
+still runs, degrading gracefully to "no reference is activated" for that
+run. This is explicitly distinct from a recognized activation config whose
+`activated_directives`/`activated_tactics` array is present but empty: that
+case activation-gates normally (every reference reports
+`reference-not-activated`) with no shape complaint at all.
+
 ### ContextSource (conceptual)
 
 `context-sources.{directives,tactics,toolguides,styleguides}[]` (FR-005) —
@@ -163,6 +191,7 @@ type SkProfileFindingKind =
   | "handoff-asymmetric"
   | "reference-unresolved"
   | "reference-not-activated"
+  | "activation-config-unrecognized-shape"
   | "context-source-missing"
   | "profile-id-illegal"
   | "profile-id-filename-mismatch"
@@ -187,6 +216,17 @@ kept identical to `Violation`'s for cross-codebase readability. This mirrors
 `openclaw-sop`'s own locally-defined `SOPLintFinding` (which also does not
 reuse `Violation`), not `skills`' reuse (which is required there only because
 `skillsAdapter` *does* implement `SpecAdapter`).
+
+**Citation correction (post-plan-gate)**: the object-shaped `source: {
+normative }` field above is *not* precedented by `SOPLintFinding.source`,
+which is a flat string (`src/adapters/openclaw-sop/manifest.ts:71-81`) —
+every other finding type in the codebase uses a flat string. The object
+shape is deliberately kept here anyway, precedented instead by
+`SOPRuleManifestEntry.source` (`src/adapters/openclaw-sop/manifest.ts:53-58`,
+`{ normative: string; supporting?: string }`), because it carries
+`normative` explicitly and unambiguously, which FR-009 requires — a flat
+string would leave "is this string the normative citation or just a free-
+text source note" implicit at every call site.
 
 ### AdapterResult / Report
 

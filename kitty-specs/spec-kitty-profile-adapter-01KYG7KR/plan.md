@@ -58,10 +58,16 @@ reads anywhere in the static path; every check cites a normative source
 rubric (`docs/rubric/spec-kitty-profile-taxonomy.md`) for FR-003..007; every
 new lint class ships a rigged-impossible discrimination fixture (C-004,
 SC-003); never shells out to `spec-kitty`, never imports from it (C-003).
-**Scale/Scope**: one new adapter (12 modules, see Project Structure), three
-published rubric documents, one fixture suite (clean + broken +
-muster-local vendored doctrine tree), one runnable example, one CLI command
-group (`skprofile run`).
+**Scale/Scope**: one new adapter (11 modules under
+`src/adapters/spec-kitty-profile/`, see Project Structure) plus additive
+wiring in the two existing CLI-layer files (`src/cli/index.ts`,
+`src/cli/output.ts`) — *(post-plan-gate correction: previously stated as "12
+modules," which conflated the 11 new adapter-directory modules with the
+CLI-layer wiring; reconciled here so the tasks phase does not propagate the
+wrong count into a work-package scope line)* — three published rubric
+documents, one fixture suite (clean + broken + muster-local vendored
+doctrine tree), one runnable example, one CLI command group
+(`skprofile run`).
 
 ## Charter Check
 
@@ -70,11 +76,17 @@ group (`skprofile run`).
 - **Spec-agnostic core / adapter boundary** (C-001) — PASS: every SK-specific
   concept (agent-profile schema, handoff roles, directive/tactic codes,
   activation config, projection manifest) lives entirely in
-  `src/adapters/spec-kitty-profile/`; `src/core/` is not touched at all —
-  stronger than `memory-utilization`'s "additive core changes only" bar,
-  since this adapter needs *no* core surface whatsoever (no behavioral
-  runner, no `ChatClient`). NI-002 (`tests/unit/invariants.test.ts`) verifies
-  this mechanically (AC-3, Scenario 13).
+  `src/adapters/spec-kitty-profile/`; `src/core/` is not touched at all.
+  *(Post-plan-gate correction: NI-002 (`tests/unit/invariants.test.ts`)
+  mechanically enforces only C-001 — it scans `src/core/**` and asserts no
+  line contains the literal `"adapters"`; it does not scan
+  `src/adapters/spec-kitty-profile/` for imports from `src/core/`. This
+  plan's stronger claim — that the adapter needs *no* core surface
+  whatsoever (no behavioral runner, no `ChatClient`), unlike
+  `memory-utilization`'s "additive core changes only" bar — is an
+  aspirational design target this mission holds itself to, not a target
+  NI-002 mechanically verifies. AC-3/Scenario 13 correctly cite NI-002 only
+  for the C-001 direction it does enforce.)*
 - **Offline & deterministic static path** (C-002) — PASS: every check is a
   file read + comparison; no clock reads; `--json` output is byte-stable
   across repeated runs on one machine (research.md R5 notes the one
@@ -228,12 +240,20 @@ check.
   `depends_on_lanes` edge between them.
 - **Risks**: the role-vs-profile-id handoff typing is muster's own
   interpretive reading (`[MUSTER-OWN]` in the rubric) — mitigated by treating
-  asymmetry as warning, not error, exactly as spec.md requires; the
-  activation-config format decision (research.md R3, "state clearly which
-  shape is read") means a project using the unverified nested
-  `charter.yaml` shape will see every reference as unconditionally
-  activation-blind (never warned, only resolved/unresolved) until that
-  shape is independently verified in a future mission.
+  asymmetry as warning, not error, exactly as spec.md requires.
+- **Resolved behavior (post-plan-gate correction — was previously an
+  accepted risk, now closed)**: the activation-config format decision
+  (research.md R3, "state clearly which shape is read") means a project
+  using the unverified nested `charter.yaml` shape presents valid-but-
+  unrecognized YAML at `activationConfigPath`. Rather than letting this
+  silently degrade every reference to activation-blind with no signal, the
+  adapter validates the parsed top-level YAML exposes at least one of
+  `activated_directives`/`activated_tactics`; when neither is present it
+  emits a dedicated `activation-config-unrecognized-shape` finding
+  (warning, once per run), distinct from a recognized-but-genuinely-empty
+  activation config. Spec-kitty's own repo is mid-migration between these
+  two shapes, so this is expected to occur in practice, not a hypothetical
+  edge case.
 
 ### IC-03 — Projection drift + CLI + fixtures/examples
 

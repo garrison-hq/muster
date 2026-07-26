@@ -138,14 +138,39 @@ same code-prefix trick resolves both on-disk files and activation-slug
 membership) is a useful implementation simplification worth keeping in one
 shared helper.
 
+**Shape-validation (post-plan-gate correction — resolved, not accepted, risk)**:
+committing to the flat `.kittify/config.yaml` shape above creates a silent
+under-coverage failure mode if `activationConfigPath` instead points at a
+`charter.yaml`-shaped project (the shape spec-kitty's own repo is
+mid-migration toward): the file parses as valid YAML, but exposes neither
+`activated_directives` nor `activated_tactics` at the top level, so every
+reference would silently read as "not activated" indistinguishably from a
+project that has activated nothing. This is closed, not accepted: when
+`activationConfigPath` is supplied, the adapter validates that the parsed
+top-level YAML object exposes **at least one** of `activated_directives` /
+`activated_tactics`. If neither key is present, the run emits a dedicated
+`activation-config-unrecognized-shape` finding (severity: warning) **exactly
+once per run** (not once per reference) — explicitly distinct from the case
+where the file *does* expose one of those keys but its array is genuinely
+empty (that case activation-gates normally: every reference resolves as
+found-but-inactive via `reference-not-activated`, with no shape complaint).
+This is a structural, whole-manifest check, so it runs once at
+activation-config load time, not once per profile/reference.
+
 ---
 
 ## R4 — Ajv schema draft: the upstream schema requires Ajv2020, not default Ajv
 
-**Decision**: import `Ajv2020` from `ajv/dist/2020.js` (the same
-default-interop pattern already used in `src/adapters/openclaw-sop/manifest.ts`:
-`const Ajv = (AjvModule as any).default ?? AjvModule`), not plain `new
-Ajv()`.
+**Decision**: import `Ajv2020` from `ajv/dist/2020.js`, not plain `new
+Ajv()`, applying to it the same `.default ?? AjvModule` interop idiom
+`src/adapters/openclaw-sop/manifest.ts` already uses for its own Ajv import
+(`const Ajv = (AjvModule as any).default ?? AjvModule`). *(Post-plan-gate
+citation correction: `openclaw-sop` itself validates against draft-07 using
+plain default `Ajv`, not `ajv/dist/2020` — it is precedent only for the
+`.default ?? AjvModule` CJS/ESM interop idiom, not for the 2020-draft entry
+point. The `ajv/dist/2020` choice below is independently verified correct
+against the upstream schema's own `$schema` header, not by house
+precedent.)*
 
 **Rationale**: verified `agent-profile.schema.yaml`'s own header:
 `$schema: https://json-schema.org/draft/2020-12/schema`. Ajv 8.x's default
@@ -222,6 +247,7 @@ as a same-mission ordering note in spec.md, not a lane dependency).
 | `handoff-asymmetric` | warning | FR-003 | handoff-graph symmetry |
 | `reference-unresolved` | error | FR-004 | doctrine-reference resolution |
 | `reference-not-activated` | warning | FR-004 | doctrine-reference vs activation set |
+| `activation-config-unrecognized-shape` | warning | FR-004 (R3 shape-validation correction) | doctrine-reference vs activation set — activation config present but exposes neither `activated_directives` nor `activated_tactics`; emitted once per run, distinct from a recognized-but-empty activation config |
 | `context-source-missing` | error | FR-005 | context-sources integrity |
 | `profile-id-illegal` | error | FR-006 | profile-id-as-filename legality |
 | `profile-id-filename-mismatch` | error | FR-006 | profile-id-as-filename legality |
