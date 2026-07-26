@@ -23,9 +23,9 @@ Each WP file **MUST** use YAML frontmatter:
 work_package_id: "WP01"
 title: "Work Package Title"
 dependencies: []
-planning_base_branch: "feat/spec-kitty-profile-adapter"
-merge_target_branch: "feat/spec-kitty-profile-adapter"
-branch_strategy: "Planning artifacts were generated on feat/spec-kitty-profile-adapter; completed changes must merge back into feat/spec-kitty-profile-adapter."
+planning_base_branch: "kitty/mission-spec-kitty-profile-adapter-01KYG7KR"
+merge_target_branch: "kitty/mission-spec-kitty-profile-adapter-01KYG7KR"
+branch_strategy: "Planning artifacts were generated on kitty/mission-spec-kitty-profile-adapter-01KYG7KR; completed changes must merge back into kitty/mission-spec-kitty-profile-adapter-01KYG7KR."
 subtasks:
   - "T001"
   - "T002"
