@@ -379,35 +379,3 @@ artifact.
   (that phrase never appeared there); replaced with the actual code-level
   facts — WP02's `RUBRIC_CITATION` type excludes `profile-parse-error`, and
   WP03's `index.ts` emits it via a fixed non-rubric literal.
-- 2026-07-27T01:11:00Z – curator-carla – Review rejection remediated
-  (commit `f89d52a`). `spec-kitty-behavioral-axes.md`: added an Integration
-  Contract section (M4's `promptTemplate` must carry the profile excerpt
-  each axis grades against); redefined §2 from an undecidable
-  "capability containment" reading (no tool-grant field exists upstream)
-  to domain-scope containment against the real `capabilities` field;
-  rewrote §4.4's rubric text around the real, schema-defined
-  `collaboration.canonical-verbs` field in place of a circular
-  self-reference; corrected §1.4/§3.4 to name exact YAML paths
-  (`specialization.avoidance-boundary`, `roles`/`role`,
-  `collaboration.handoff-to`); bumped to 1.1.0.
-  `spec-kitty-profile-taxonomy.md`: corrected §7.1's provenance
-  (`profile_urn` matching is muster's own improvement over upstream's
-  `output_path` keying — verified at `manifest.py:71,75,79` and
-  `agent_profiles.py:209-214` — not a traced upstream behavior);
-  corrected §6.1/§6.2 provenance against the actual upstream schema
-  pattern and retagged §6.2 `[CONVENTION]`; added the 13-row
-  clause-id→label table and pinned the `profile-parse-error` literal
-  (`structural: malformed *.agent.yaml`) in "Citation Format for Emitted
-  Findings"; added a clean-fixture control to the Discrimination
-  Controls Policy; documented `output_path`'s accepted absolute/relative
-  dual form in §7.2; bumped to 1.1.0. `sop-rule-taxonomy.md`: retagged
-  v1.1.4 `[MUSTER-OWN]`, fixed the "v1.1.1–v1.1.4" undercount to
-  "v1.1.1–v1.1.5", documented the un-coded URL form for
-  `reconcile-change-scope-tensions.directive.yaml` in v1.1.5, and
-  softened v1.1.1's overstated corpus claim per the review's advisory
-  note (method unchanged). All `sop-rule-taxonomy.md` edits confined to
-  the `## v1.1` appendix; v1.0.0 content (including front matter)
-  verified byte-identical via diff before and after. No item in the
-  review's "confirmed good" list (13 kind→clause mappings, the
-  Discrimination Controls Policy judgment, the T024 deferral) was
-  touched. WP04 moved `in_progress` → `for_review`.
