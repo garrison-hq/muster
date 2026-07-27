@@ -89,7 +89,7 @@ query's triggers / that query's runs) and its own pass/fail verdict against
 0.5. Muster's `gradeAxis` (`trigger.ts:200-206`) pools every query's runs
 into a single axis-level rate (`sum(runsTriggered) / sum(runsTotal)` across
 *all* queries in the axis) before comparing to 0.5 — there is no per-query
-verdict anywhere in this codebase (`QueryRunResult`, `types.ts:162-168`,
+verdict anywhere in this codebase (`QueryRunResult`, `types.ts:165-171`,
 carries no `passed` field). The same 0.5 number is therefore being checked
 against a materially different quantity than the one upstream describes; see
 "K-of-N Aggregation Rationale" below for the masking consequence. Muster also
@@ -124,7 +124,7 @@ trigger rate and its own verdict.
 verdicts.** `gradeAxis` (`trigger.ts:200-206`) does not compute a verdict per
 query. It sums `runsTriggered` and `runsTotal` across *every* query in the
 axis first, then compares one pooled rate to the threshold.
-`QueryRunResult` (`types.ts:162-168`) has no `passed` field to hold a
+`QueryRunResult` (`types.ts:165-171`) has no `passed` field to hold a
 per-query outcome even if one were computed — there is no per-query verdict
 anywhere in this codebase. This pooling is muster's own choice, applying the
 charter's existing two-tier behavioral-grading posture (safety-critical
@@ -161,15 +161,45 @@ against a correctly functioning model and correctly functioning grader.
 **Where this is actually enforced**: `runTriggerConformance` itself
 (`trigger.ts`) does not block on an unexpectedly-passing control — it only
 emits a `console.warn` (`trigger.ts:429-434`) and still returns
-`passed: true` on the resulting `TriggerVerdict`. The mechanical enforcement
-lives one layer up, in WP04's live-model acceptance gate
-(`tests/cts/skills-suite.test.ts`, SC-004), which asserts the control case's
-`verdict.passed` is literally `false` and fails the test run if it is not. A
-control reporting `passed: true` is a mission-blocking finding about the
-grader or the model — but the blocking happens at that acceptance gate, not
-inside `trigger.ts` itself. This control is not itself sourced from the
-upstream page — it is muster's own falsification mechanism for the grader as
-a whole.
+`passed: true` on the resulting `TriggerVerdict` (the `passed` value is
+returned unmutated, `trigger.ts:438-440`). The mechanical enforcement lives
+one layer up, in `tests/cts/skills-suite.test.ts` — a file owned by WP01, not
+WP04, and whose discrimination-control assertions predate this mission
+entirely (`git log` on that file shows only two commits, `8ae5c0f` and
+`2135429`, both already merged to `main` before this mission existed).
+
+The assertion that actually runs unconditionally in CI is the **static-mode
+mocked analog** at `tests/cts/skills-suite.test.ts:231-307`: a
+`TriggerChatClient` mock that always returns no tool call is injected into
+`runTriggerConformance` with the rigged-impossible query set, and the test
+asserts `verdict.passed` is `false` (line 297-300). This is the assertion
+that gives the discrimination control its actual enforcement in every
+ordinary run of the suite.
+
+A second, **live-model** block exists at `tests/cts/skills-suite.test.ts:312-403`,
+gated `it.skipIf(!process.env["MUSTER_BASE_URL"])` — it does not run in
+ordinary CI and only executes when a real endpoint is configured. It repeats
+the same `passed:false` assertion (lines 386-391) against a live model as an
+addition on top of the static-mode analog, not as the primary enforcement.
+
+Both assertions carry the label `SC-004` in the test file's own strings and
+`describe` block name (lines 231, 297, 390). That label is **legacy
+numbering carried over from the earlier `skills-adapter-01KTYKNX` mission**,
+whose `spec.md` defines `SC-004` as "the trigger grader demonstrably fails
+its rigged-impossible control." In *this* mission's `spec.md`, `SC-004`
+means something unrelated ("a structurally invalid manifest fails at
+`exit 2`..."); the discrimination-control criterion here is **`SC-005`**
+("the rigged-impossible discrimination control is reachable... and is
+observed failing... both in the offline mock-client test suite... and...
+in a real, recorded live run"). The `SC-004` string inside the test file is
+stale relative to this mission's numbering and should not be read as this
+mission's own criterion.
+
+A control reporting `passed: true` is a mission-blocking finding about the
+grader or the model — but the blocking happens at the test-suite assertions
+above, not inside `trigger.ts` itself. This control is not itself sourced
+from the upstream page — it is muster's own falsification mechanism for the
+grader as a whole.
 
 ---
 
