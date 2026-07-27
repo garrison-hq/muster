@@ -1,0 +1,25 @@
+# Muster-local discrimination-control fixture (SC-002/SC-003, WP05 T017
+# step 2, research.md R6). Rigs EXACTLY ONE violation:
+# context-sources.directives names a directive code ("999") that does not
+# resolve to any file under ../doctrine/directives/ (only "001" exists
+# there). Intended finding kind: context-source-missing (FR-005, rubric §5.1).
+#
+# Kept otherwise schema-legal and free of every other checked field (no
+# collaboration block, no directive/tactic/toolguide/styleguide
+# references) so this fixture cannot also trip a different finding kind
+# and muddy which check actually fired.
+profile-id: context-source-missing
+name: Context Source Missing (fixture)
+description: >
+  Discrimination-control fixture: rigs a context-sources.directives entry
+  that does not resolve on disk, and nothing else.
+purpose: Exist solely to trip context-source-missing and no other lint class.
+roles:
+  - context-source-missing-role
+
+specialization:
+  primary-focus: Discrimination-control fixture authoring.
+
+context-sources:
+  directives:
+    - "999"

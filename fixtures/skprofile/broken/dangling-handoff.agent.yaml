@@ -1,0 +1,25 @@
+# Muster-local discrimination-control fixture (SC-002/SC-003, WP05 T017
+# step 2, research.md R6). Rigs EXACTLY ONE violation:
+# collaboration.handoff-to names a role ("nobody-holds-this-role") that no
+# other profile in fixtures/skprofile/broken/ declares in its roles/role.
+# Intended finding kind: handoff-unresolved (FR-003, rubric §3.1).
+#
+# Kept otherwise schema-legal and free of every other checked field
+# (no handoff-from/works-with entries, no directive/tactic/toolguide/
+# styleguide references, no context-sources) so this fixture cannot also
+# trip a different finding kind and muddy which check actually fired.
+profile-id: dangling-handoff
+name: Dangling Handoff (fixture)
+description: >
+  Discrimination-control fixture: rigs a dangling collaboration.handoff-to
+  role and nothing else.
+purpose: Exist solely to trip handoff-unresolved and no other lint class.
+roles:
+  - dangling-handoff-role
+
+specialization:
+  primary-focus: Discrimination-control fixture authoring.
+
+collaboration:
+  handoff-to:
+    - nobody-holds-this-role

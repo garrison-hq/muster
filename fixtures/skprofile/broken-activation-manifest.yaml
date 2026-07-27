@@ -1,0 +1,18 @@
+# Muster-local discrimination-control manifest (WP05 remediation, F-1 §4.3)
+# — isolates the activation-config-unrecognized-shape warning path from
+# every other lint class. Points at ./broken/activation-shape/, a
+# dedicated, deliberately zero-finding profilesDir (see that directory's
+# valid-profile.agent.yaml header), and at ./bad-activation-config.yaml,
+# which exposes neither activated_directives nor activated_tactics.
+#
+# Expected (verified by driving WP01/WP02's real checkReferences directly):
+# ok === true (the sole finding is warning-severity), findings.length === 1,
+# exactly one activation-config-unrecognized-shape warning, zero errors.
+version: "1.0.0"
+profilesDir: ./broken/activation-shape
+schemaPath: ./agent-profile.schema.yaml
+schemaSha: ebfbaddd653789417f89b040320ccfe452f15424
+doctrineRoot: ./doctrine
+activationConfigPath: ./bad-activation-config.yaml
+cases:
+  - id: all-profiles

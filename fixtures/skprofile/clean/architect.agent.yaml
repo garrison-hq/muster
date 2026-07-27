@@ -1,0 +1,57 @@
+# Muster-local clean-fixture profile (WP05 T017 step 1, C-004) — legal by
+# construction: reciprocal handoffs with planner.agent.yaml, resolvable
+# directive/tactic/toolguide/styleguide references and context-sources
+# against ../doctrine/, a legal profile-id matching this file's name stem,
+# and the array `roles` form (matches real upstream usage — verified
+# against spec-kitty-conformance's shipped profiles).
+profile-id: architect
+name: Architect (fixture)
+description: >
+  Muster-local fixture profile (C-004) exercising the clean pass path for
+  every lint class this mission checks.
+purpose: >
+  Design system architecture and validate technical decisions for the
+  muster-local fixture profile set.
+roles:
+  - architect
+
+specialization:
+  primary-focus: System architecture and component boundaries.
+  secondary-awareness: Implementation feasibility.
+  avoidance-boundary: Direct code implementation.
+  success-definition: Clear, actionable architectural decisions.
+
+collaboration:
+  handoff-to:
+    - planner
+  handoff-from:
+    - planner
+  works-with:
+    - planner
+
+context-sources:
+  directives:
+    - "001"
+  tactics:
+    - development-bdd
+  toolguides:
+    - contextive
+  styleguides:
+    - prose
+
+directive-references:
+  - code: "001"
+    name: Architectural Integrity Standard
+    rationale: Ensures designs maintain clear component boundaries.
+
+tactic-references:
+  - id: development-bdd
+    rationale: Express behavioral contracts before implementation begins.
+
+toolguide-references:
+  - id: contextive
+    rationale: Manage ubiquitous language terms for this fixture set.
+
+styleguide-references:
+  - id: prose
+    rationale: Keep fixture prose consistent with muster's writing style.
