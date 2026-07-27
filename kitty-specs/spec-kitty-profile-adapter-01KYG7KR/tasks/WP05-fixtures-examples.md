@@ -513,3 +513,127 @@ the deferral explicitly in the Activity Log per step 2.
   `created_at` frontmatter fields) was observed already present before
   this entry was written and was left untouched — it is not this WP's
   concern and predates this remediation session.
+
+- 2026-07-27T18:00:00Z – claude (implementer, node-norris) – **Digest-fix
+  remediation on top of F-3/A1 (`d502427` on lane-e,
+  `fix(spec-kitty-profile): correct §7.3 fixture header misquote (F-3) +
+  drop non-schema _comment keys (A1)`), landed as lane-e commit `e53e2a4`
+  (`fix(spec-kitty-profile): correct stale digests folded into F-3's header
+  edit`).**
+
+  **This entry supersedes the two recomputed-digest values recorded above
+  at lines 344 and 413** (`c3734807cf8967130f0ece027257c4962c65f6aabf802c
+  201f5d70eb280b2578` for `projection-hash-drift.agent.yaml`'s own bytes,
+  and `53e6d5e8e50fbd082c30e64e73298362cb608374b49a989c98a0f14c09d48490`
+  for `outputs/hash-drift.md`). Both were accurate when this WP's original
+  F-1/F-2 remediation captured them, and both were carried over verbatim,
+  unrecomputed, into `projection-hash-drift.agent.yaml`'s header by
+  `d502427`'s F-3 rewrite of that same header — which is exactly the class
+  of defect F-3 itself was raised to fix (a header making a false factual
+  claim about a file it names), reintroduced by F-3's own fix.
+
+  **What was wrong, and what was done about it:**
+
+  1. `projection-hash-drift.agent.yaml`'s header claimed its own real
+     sha256 was `c3734807...b280b2578`. That value is stale (d502427
+     rewrote this very header, changing this file's bytes) and,
+     independent of staleness, **unfixable by construction**: a file
+     cannot correctly quote its own digest — recording the true value
+     changes the bytes and re-invalidates the claim, a fixed point no edit
+     can reach. **Removed outright, not corrected** — the header now
+     states plainly that no self-digest is recorded and why, rather than
+     substituting a new value that would only go stale again at the next
+     edit.
+  2. The same header claimed `outputs/hash-drift.md`'s real sha256 was
+     `53e6d5e8...c09d48490`. `outputs/hash-drift.md` is a separate file,
+     untouched by d502427 or by this fix, so a correct value here is
+     stable. Recomputed independently two ways — `sha256sum
+     fixtures/skprofile/broken/projection/outputs/hash-drift.md` and a
+     from-scratch Node `createHash("sha256")` re-implementation of rubric
+     §7.2/§7.3's projection-drift algorithm driven against
+     `broken-projection-manifest.yaml` — both agree:
+     `ba652c9944928a73cbf70f4fdb0144ee1517d29497797972039ce15f3228b807`.
+     **Corrected the header to this value** (preferred over deleting it,
+     per the operator's guidance: this digest lives in a different, stable
+     file, so a maintainer pasting it into `file_hash` gets the real
+     discrimination-control signal rather than a silently-wrong one).
+  3. **Advisory, also applied**: `projection-manifest.json`'s
+     `source_hash` for the `projection-output-missing` entry
+     (`070d48f2d1f56913d200bfaa4515473a934c17349957ea055700ff4fae81d14e`)
+     went stale in the same commit — d502427 also rewrote
+     `projection-output-missing.agent.yaml`'s header text (correcting its
+     own quoted `output_path` literal), which changed that file's bytes to
+     a real sha256 of
+     `64b658baf947825b837cd9d96c031b82a72072b3cf8480bb3cf513f6b45bdb8c`.
+     Non-behavioral (§7.3 is gated on `output_path` existing, which for
+     this entry it does not, so no spurious warning was ever at risk) but
+     the field read as an intentional real digest while being silently
+     wrong. **Decision: zeroed it** (`0000...0000`, 64 hex digits) to match
+     its sibling `file_hash` field's existing all-zero placeholder in the
+     same entry, rather than pinning it to `64b658ba...` — pinning would
+     recreate the identical fixed-point trap one file removed (this
+     manifest field records another file's hash; any future edit to that
+     file's header text goes stale again with no comment support in JSON
+     to flag it for re-pinning). Zeroing removes the trap entirely at zero
+     behavioral cost.
+
+  **Sweep of every remaining factual claim under `broken/projection/`**
+  (the same check applied file-by-file, not just to the two corrected
+  claims): `projection-hash-drift.agent.yaml`'s quoted `output_path`
+  literal and its "DOES exist on disk" claim — true (verified against
+  `projection-manifest.json` and the filesystem).
+  `projection-output-missing.agent.yaml`'s quoted `output_path` literal and
+  its "does NOT exist on disk" claim — true (verified the same way;
+  `output-missing-does-not-exist.md` confirmed absent). `outputs/hash-
+  drift.md`'s claim that its own real sha256 "deliberately does NOT match"
+  the manifest's recorded `file_hash` — true (`deadbeef...` vs.
+  `ba652c99...`), and its `../../../projection-manifest.json` relative-path
+  claim — true (three levels up from `outputs/hash-drift.md` resolves to
+  `fixtures/skprofile/projection-manifest.json`). No other digest or path
+  claim about file contents/bytes remains in `broken/projection/`.
+
+  **Regression re-verification** (independent driver: WP01/WP02's real
+  exported check functions — `loadSkProfileManifest`/
+  `resolveSkProfileManifestPaths`/`validateManifest`/`loadProfileSet`/
+  `checkSchemaConformance`/`checkHandoffs`/`checkReferences`/
+  `checkContextSources`/`checkIdentity` — plus the from-scratch
+  §7.2/§7.3 projection-drift re-implementation described above; uncommitted
+  scratch script, deleted after use, never inside `owned_files` or
+  `src/`):
+
+  - `fixtures/skprofile/broken-manifest.yaml` → `TOTAL FINDINGS: 13`,
+    `errors=12 warnings=1 ok=false` — unchanged.
+  - `fixtures/skprofile/manifest.yaml` → `TOTAL FINDINGS: 2`, both
+    `reference-not-activated(warning)` (`architect`, `planner`),
+    `errors=0 warnings=2 ok=true` — unchanged.
+  - `fixtures/skprofile/broken-activation-manifest.yaml` → `TOTAL
+    FINDINGS: 1`, `(manifest) -> activation-config-unrecognized-shape
+    (warning)`, `errors=0 warnings=1 ok=true` — unchanged.
+  - `examples/skprofile/manifest.yaml` → `TOTAL FINDINGS: 0`, `errors=0
+    warnings=0 ok=true` — unchanged.
+  - `fixtures/skprofile/broken-projection-manifest.yaml` → `TOTAL
+    FINDINGS: 2`: `projection-output-missing(error)` +
+    `projection-hash-drift(warning)`, the latter's own driver output
+    reporting `recorded=deadbeef...deadbeef actual=ba652c99...b807` —
+    independently re-confirming this entry's corrected digest via a
+    second, different code path (Node `crypto.createHash`, not the
+    `sha256sum` CLI used for the header text itself). `errors=1 warnings=1
+    ok=false` — unchanged.
+
+  `pnpm build` → exit 0. `pnpm typecheck` → exit 0. `pnpm test` → exit 0,
+  `164 passed (164)` test files, `3531 passed | 3 skipped (3534)` tests —
+  identical totals to the F-1/F-2 entry above (fixture/comment-only change,
+  no `src/` file touched). `tests/unit/invariants.test.ts` (including
+  NI-002) re-run directly: `2 passed (2)` files, `12 passed (12)` tests.
+
+  **CLI-deferral restated (still true after this fix):** this WP still has
+  no CLI to run — `muster skprofile run` and `projection.ts` are WP03's
+  deliverables and do not exist on this WP's dependency chain. The
+  independent Node `createHash` re-implementation above is not WP03's own
+  `projection.ts`; WP03's own T020 real-CLI verification remains the actual
+  proof of live behavior.
+
+  No file outside `owned_files` (`fixtures/skprofile/**`,
+  `examples/skprofile/**`) was touched on lane-e for this fix; this
+  Activity Log entry itself is the only planning-repo change made as part
+  of it.
