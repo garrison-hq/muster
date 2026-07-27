@@ -273,7 +273,7 @@ also uses in `docs/rubric/spec-kitty-profile-taxonomy.md` and
 `docs/rubric/spec-kitty-behavioral-axes.md` (itself inherited from
 `memory-utilization-taxonomy.md`, v2.0.0, dated 2026-07-09 — after this
 document's original v1.0.0 date of 2026-06-13). This appendix's own new
-clauses (v1.1.1–v1.1.4 below) **do** carry that tag, applied for the first
+clauses (v1.1.1–v1.1.5 below) **do** carry that tag, applied for the first
 time in this document, rather than retroactively tagging the untouched
 v1.0.0 classes above this line — retagging v1.0.0 would itself be a change
 to the document beyond pure addition, which the "no existing line altered"
@@ -309,7 +309,16 @@ declare that `integrity_rules` must map to binary grading or
 arrays of strings, with no schema-level distinction beyond the field name.
 The mapping above is muster's own reading of what each field name is
 naturally shaped to describe, verified by inspection of the 25 (of 26)
-shipped directives that populate both fields.
+shipped directives that populate both fields. That inspection also found
+`integrity_rules` entries that do not share the fixed-assertion, binary
+`ruleText` shape this document's classes 1–5 expect — for example,
+`029-agent-commit-signing-policy`'s "must not depend on interactive key
+configuration" and `039-lynn-cole-engineering-culture`'s "Cleverness must
+justify itself" are both judgment calls, not trace-decidable assertions —
+so the naming convention above is a **strong default**, not a guarantee
+that every `integrity_rules` entry fits a binary class; v1.1.2 step 1
+already redirects an entry that does not fit into judge-rubric material
+instead of forcing it into `ruleText`.
 
 ### v1.1.2 — Decidability mapping onto the five binary + two judge classes
 
@@ -387,10 +396,16 @@ unchanged):
 
 ### v1.1.4 — The 038 exception: directives with no `integrity_rules`/`validation_criteria`
 
-**[NORMATIVE]** — traceable directly to the shipped directive corpus: of the
-26 built-in directives, exactly one
-(`038-structured-prompt-boundary.directive.yaml`) carries neither
-`integrity_rules` nor `validation_criteria`.
+**[MUSTER-OWN]** — a census of the shipped directive corpus (of the 26
+built-in directives, exactly one,
+`038-structured-prompt-boundary.directive.yaml`, carries neither
+`integrity_rules` nor `validation_criteria`) is evidence for how often this
+case arises, not an upstream authority for what to do about it. Spec Kitty
+does not itself specify a handling rule for a directive with neither field
+present; the operative rule below — exclude, never force-map, document the
+exclusion — is muster's own judgment call, consistent with this document's
+existing "errored counts as failed, never silently skipped" posture, not a
+traced upstream behavior.
 
 A directive with neither field present is **not mappable** to this
 document's rule shape at all under v1.1.1–v1.1.3 above — there is no
@@ -420,6 +435,18 @@ citations already use elsewhere in this mission set:
 
 ```
 https://github.com/Priivacy-ai/spec-kitty/blob/<SHA>/src/doctrine/directives/built-in/<code>-<slug>.directive.yaml
+```
+
+This `<code>-<slug>.directive.yaml` template presumes every shipped
+directive filename carries a numeric code, which is not universally true:
+of the 26 built-in directives, exactly one,
+`reconcile-change-scope-tensions.directive.yaml`, ships with no leading
+numeric code at all. For that directive (and any future directive filename
+shaped the same way), the URL is constructed with the **un-coded** form
+instead — the filename verbatim, with no `<code>-` prefix segment:
+
+```
+https://github.com/Priivacy-ai/spec-kitty/blob/<SHA>/src/doctrine/directives/built-in/<slug>.directive.yaml
 ```
 
 In prose (Activity Logs, review notes, this document itself), the shorthand

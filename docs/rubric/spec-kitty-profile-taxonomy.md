@@ -1,5 +1,5 @@
 ---
-version: "1.0.0"
+version: "1.1.0"
 date: "2026-07-27"
 status: "normative"
 ---
@@ -42,6 +42,19 @@ clause ids below (FR-009); see "Citation Format for Emitted Findings" at the
 end of this document. The document is versioned; any change to check
 semantics increments the version and is a breaking change for callers
 pinning a clause id + version pair.
+
+**Version note (1.1.0)**: this revision remediates a rejected review of the
+1.0.0 draft. No clause id, check semantics, or finding-kind mapping changed.
+The fixes are entirely provenance and completeness: §7.1's matching-rule
+provenance is corrected (it is muster's own improvement over upstream's
+`output_path` keying, not a traced upstream behavior); §6.1/§6.2's
+`[NORMATIVE]` tags are corrected to disclose where muster's rule diverges
+from (and is looser than) the actual upstream pattern, and §6.2 is retagged
+`[CONVENTION]`; the Citation Format section gains the clause-id → label
+table and the pinned `profile-parse-error` literal that §2.1/"Citation
+Format for Emitted Findings" always described but never spelled out; the
+Discrimination Controls Policy gains a clean-fixture control; §7.2 states
+that `output_path` is accepted in both absolute and repo-relative form.
 
 ---
 
@@ -263,30 +276,52 @@ context source is a softer violation the way an unactivated reference is.
 
 ### §6.1 Legal Character Set and Length
 
-**[NORMATIVE]**
+**[NORMATIVE]** for the character-set floor; **[CONVENTION]** for the `≤64`
+length ceiling — see the disclosure below.
 
 A profile's `profile-id` must match `^[a-z0-9-]+$` and be at most 64
-characters. This is not a style preference: the `profile-id` becomes the
-literal filename stem of the profile's projected native artefact
-(`.claude/agents/<id>.md`), so an illegal id is a real filesystem
-constraint violation — an id containing characters illegal in a portable
-filename, or long enough to risk truncation on some filesystems, cannot
-safely become that file.
+characters. Upstream's own schema pins a **stricter, narrower** pattern —
+`^[a-z][a-z0-9-]*$`, requiring the first character to be a letter, with
+**no `maxLength` at all**
+(`src/doctrine/schemas/agent-profile.schema.yaml`'s `profile-id` property).
+muster's `^[a-z0-9-]+$` is honestly disclosed here as **looser** than
+upstream on the leading character — it accepts `-x` or `9x`, which
+upstream's own pattern rejects — so this clause does not add a new
+constraint upstream lacks; §1.1's schema-conformance delegation already
+enforces upstream's stricter pattern, and this clause's character-set
+portion is a restatement of a real filesystem floor (the `profile-id`
+becomes the literal filename stem of `.claude/agents/<id>.md`, so
+characters illegal in a portable filename are a genuine constraint) that
+happens to be looser than, not stricter than, what §1.1 already catches.
+The `≤64` ceiling has **no upstream basis at all** (upstream declares no
+`maxLength`) and no filesystem basis either (the POSIX filename-component
+limit is 255, not 64) — it is muster's own `[CONVENTION]` for human/tool
+navigability (a shorter id is easier to read in a terminal, a log line, or
+a file listing), not a constraint any real filesystem requires.
 
 **Finding kind**: `profile-id-illegal` (error). `path` = `"profile-id"`.
 
 ### §6.2 Filename-Stem Match
 
-**[NORMATIVE]**
+**[CONVENTION]**
 
 A profile's `profile-id` must equal the YAML file's own basename with the
-`.agent.yaml` suffix removed (`fileNameStem` in `AgentProfile`). This is the
-same native-filename constraint as §6.1 applied in the other direction: if
-the declared id does not match the file it lives in, then either the
-source file or its own projected `.claude/agents/<id>.md` artefact is named
-wrong relative to the other — a hard violation, not a naming-convention
-nit, because a human or tool navigating by filename would resolve the wrong
-identity.
+`.agent.yaml` suffix removed (`fileNameStem` in `AgentProfile`). This is
+**not** a hard filesystem-conflict constraint the way §6.1/§6.3 are: Spec
+Kitty itself builds a profile's projected output path from the **declared**
+`profile-id`, not from the source filename
+(`_PATH_PATTERN = ".claude/agents/{profile_id}.md"`,
+`src/specify_cli/tool_surface/providers/agent_profiles.py:64`), and its own
+profile loader keys the in-memory profile registry by declared id as well
+(`self._profiles[profile.profile_id] = profile`,
+`src/doctrine/agent_profiles/repository.py:489`) — never by the source
+file's basename. A stem mismatch therefore produces **no** filesystem
+conflict anywhere in Spec Kitty's own pipeline: two files can disagree with
+their own declared ids and still each project cleanly. This clause exists
+for human/tool navigability instead — a source file whose name does not
+match the id it declares is confusing to a person or script that expects to
+find `foo-bar.agent.yaml` when they already know `profile-id: foo-bar`, even
+though nothing downstream actually breaks.
 
 **Finding kind**: `profile-id-filename-mismatch` (error). `path` =
 `"profile-id"`.
@@ -313,21 +348,34 @@ both legitimately own one output filename.
 
 ### §7.1 Matching Rule — `profile_urn`, Never `source_path`
 
-**[NORMATIVE]** — traceable to Spec Kitty's own projector implementation and
-its `doctor` command's matching behavior, independently verified against the
-real `.kittify/agent_profiles_manifest.json` on disk.
+**[MUSTER-OWN]** — the matching *key* is muster's own deliberate improvement
+over upstream's own keying, not a traced upstream behavior. Spec Kitty
+itself keys its projection manifest by **`output_path`**, not by
+`profile_urn`: `ProfileManifest` stores and looks up entries via
+`self._entries[str(entry.output_path)]`
+(`src/specify_cli/tool_surface/profiles/manifest.py:71,75,79`), and the
+`providers/agent_profiles.py` surface-instance construction reads
+`native.output_path` the same way
+(`src/specify_cli/tool_surface/providers/agent_profiles.py:209-214`). There
+is no Spec Kitty `doctor` precedent that matches by `profile_urn` for this
+adapter to delegate to. muster deliberately matches by `profile_urn`
+instead, because muster's own live manifest
+(`.kittify/agent_profiles_manifest.json`) stores an absolute `source_path`
+pointing into a machine-specific `uv tool` install directory — matching on
+`source_path` (or, symmetrically, on an absolute `output_path` recorded by
+a different machine) would make the check spuriously fail on every machine
+other than the one that produced the manifest, while `profile_urn` is
+derived from the portable `profile-id` and is stable across machines. This
+divergence from upstream's own keying is the point, not an oversight.
 
-A locally-loaded `AgentProfile` is matched to a
-`.kittify/agent_profiles_manifest.json` entry by
-`entry.profile_urn === "agent_profile:" + profile.profileId` — **never** by
-comparing `entry.source_path` literally. `source_path` records the path on
-the machine that *ran* Spec Kitty's projector (verified: it points at that
-machine's own installed package directory), which will essentially never
-equal this adapter's local `profilesDir`; matching on it would make the
-check spuriously fail on every machine other than the one that produced the
-manifest. Both `source_hash` and `file_hash` are SHA-256 hex digests of raw
-UTF-8 file bytes (`sha256(bytes).hexdigest()`, verified against Spec Kitty's
-own `hash_content`/`hash_file` functions) — no line-ending normalization, no
+What genuinely **is** traceable to upstream, and independently verified, is
+the *shape* of the two fields this check compares once a match is found:
+`entry.profile_urn === "agent_profile:" + profile.profileId` matches Spec
+Kitty's own `profile_urn` construction
+(`src/doctrine/agent_profiles/repository.py`'s `_profile_urn`), and both
+`source_hash` and `file_hash` are SHA-256 hex digests of raw UTF-8 file
+bytes (`sha256(bytes).hexdigest()`, verified against Spec Kitty's own
+`hash_content`/`hash_file` functions) — no line-ending normalization, no
 text canonicalization. The adapter recomputes both hashes independently
 from the locally-loaded files and compares them to the manifest's recorded
 values; re-verifying independently of Spec Kitty's own `doctor` command is
@@ -346,6 +394,20 @@ does not exist on disk, is reported identically: the projected native
 artefact this profile is supposed to have does not exist where the manifest
 says it should. This is an error, mirroring the severity Spec Kitty's own
 `doctor` assigns to the same missing-output condition.
+
+**`output_path` resolution**: both an absolute and a repo-relative
+`output_path` are accepted, resolved relative to the manifest file's own
+parent directory's parent (the project root) when relative. Spec Kitty's
+own writer relativizes `output_path` on save
+(`relativize_under_root(entry.output_path, project_root)`,
+`src/specify_cli/tool_surface/profiles/manifest.py:112`) while keeping the
+in-memory/lookup-key form absolute — but this is not the only form actually
+observed in the wild: muster's own live
+`.kittify/agent_profiles_manifest.json` stores `output_path` as a fully
+absolute path (e.g.
+`/home/.../muster/.claude/agents/architect-alphonso.md`), not a
+repo-relative one. Both forms are therefore accepted inputs to this check,
+not just the one upstream's own writer currently produces.
 
 **Finding kind**: `projection-output-missing` (error). `path` =
 `"projectionManifestPath"` (manifest-level) or the profile's own identity
@@ -400,6 +462,21 @@ at least one fixture each that resolves-but-warns rather than errors, to
 prove the warning/error split is real and not a single undifferentiated
 failure signal.
 
+A violation-only fixture suite is not, by itself, sufficient: a checker
+that **always** returns a non-passing verdict — regardless of input — would
+pass every rigged-violation fixture above without ever having run a single
+lint correctly. This taxonomy therefore also requires a **clean-fixture
+control**: a fully valid `profilesDir` (every profile schema-conformant,
+every handoff resolved and symmetric, every reference resolved and
+activated, every context source present, every id legal/matched/unique,
+and — when a `projectionManifestPath` is supplied — every projection
+present with matching hashes) that the adapter must run against and report
+`ok: true` / exit `0` for. A checker that fails this fixture despite it
+being genuinely clean is broken in the opposite direction from the
+always-fail case, and only the pairing of both controls (rigged-violation
+fixtures that must fail, and this clean fixture that must pass) actually
+proves the checker is discriminating rather than trivially constant.
+
 ---
 
 ## Citation Format for Emitted Findings
@@ -419,12 +496,47 @@ carry a `source.normative` string resolving to one of two shapes:
    where `§X.Y` matches a clause heading in this document verbatim (e.g.
    `§3.1`, `§7.3`).
 
+`<short label>` is not free text left to the caller's judgment — it is
+fixed per clause id, one row per finding kind, covering all 13 kinds in
+`SkProfileFindingKind`:
+
+| Finding kind | Clause id | `<short label>` |
+|---|---|---|
+| `schema-conformance-violation` | §1.1 | *(cited via the schema URL, shape 1 above — never via this `§X.Y (<short label>)` form)* |
+| `profile-parse-error` | §2.1 | *(no clause citation at all — see the pinned literal below)* |
+| `handoff-unresolved` | §3.1 | handoff resolution |
+| `handoff-asymmetric` | §3.2 | handoff symmetry |
+| `reference-unresolved` | §4.1 | doctrine-reference resolution |
+| `reference-not-activated` | §4.2 | doctrine-reference activation |
+| `activation-config-unrecognized-shape` | §4.3 | doctrine-reference activation |
+| `context-source-missing` | §5.1 | context-sources integrity |
+| `profile-id-illegal` | §6.1 | profile-id-as-filename legality |
+| `profile-id-filename-mismatch` | §6.2 | profile-id-as-filename legality |
+| `profile-id-collision` | §6.3 | profile-id-as-filename legality |
+| `projection-output-missing` | §7.2 | projection drift |
+| `projection-hash-drift` | §7.3 | projection drift |
+
+For example, `handoff-unresolved`'s citation string is exactly `muster
+spec-kitty-profile rubric §3.1 (handoff resolution) —
+docs/rubric/spec-kitty-profile-taxonomy.md`. Two clause ids (§4.2/§4.3 and
+§6.1/§6.2/§6.3) share one label each because their finding kinds are
+siblings under the same §-area — a shared label is not a defect, the clause
+id (`§X.Y`) is what disambiguates the citation, not the label.
+
 `profile-parse-error` (§2.1) is the sole exception: it carries no citation
 into this document at all. The adapter emits it with a fixed, non-rubric
 literal `source.normative` string instead — this is a deliberate,
-documented departure from the citation contract above, not an oversight; a
-lint that expects every finding kind to resolve into this document's clause
-ids must special-case this one kind exactly as `schema-conformance-
+documented departure from the citation contract above, not an oversight.
+That literal is pinned here, verbatim, so WP02's `RUBRIC_CITATION` map (and
+any lint asserting against it) can special-case this exact value rather
+than an unstated placeholder:
+
+```
+structural: malformed *.agent.yaml
+```
+
+A lint that expects every finding kind to resolve into this document's
+clause ids must special-case this one kind exactly as `schema-conformance-
 violation` is special-cased for shape (1) above.
 
 A finding whose `source.normative` does not resolve to one of these three
