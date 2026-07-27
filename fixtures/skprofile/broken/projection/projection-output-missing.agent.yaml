@@ -6,7 +6,8 @@
 #
 # `../../projection-manifest.json` records a matching `profile_urn` entry
 # ("agent_profile:projection-output-missing") for this profile, but that
-# entry's `output_path` ("./outputs/output-missing-does-not-exist.md")
+# entry's `output_path`
+# ("./skprofile/broken/projection/outputs/output-missing-does-not-exist.md")
 # deliberately does NOT exist on disk — the projected native artefact this
 # profile is supposed to have was never written. Per rubric §7.2 this is
 # reported identically to "no matching entry at all": projection-output-

@@ -3,7 +3,10 @@
 # every other lint class. Points at ./broken/projection/, a dedicated
 # profilesDir containing exactly two deliberately clean-except-for-
 # projection profiles, and at ./projection-manifest.json (SS7.2/SS7.3's
-# rigged entries — see that file's own comments for the exact vector).
+# rigged entries — a plain-data file with no comments of its own by
+# design, so it parses under a strict JSON-shape validator; see each
+# fixture's own .agent.yaml header, in ./broken/projection/, for the
+# exact vector).
 #
 # No activationConfigPath here: this manifest isolates FR-007 only.
 #
