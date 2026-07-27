@@ -8,7 +8,7 @@
       "format": "claude-agent",
       "file_hash": "0000000000000000000000000000000000000000000000000000000000000000",
       "source_path": "fixtures/skprofile/broken/projection/projection-output-missing.agent.yaml",
-      "source_hash": "070d48f2d1f56913d200bfaa4515473a934c17349957ea055700ff4fae81d14e",
+      "source_hash": "0000000000000000000000000000000000000000000000000000000000000000",
       "projection_version": 1
     },
     {

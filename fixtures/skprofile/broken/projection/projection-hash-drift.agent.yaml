@@ -12,13 +12,17 @@
 # fixtures/skprofile/broken/projection/outputs/hash-drift.md) DOES exist on
 # disk — but the entry's recorded `source_hash` and `file_hash` are both
 # deliberately wrong 64-hex-digit placeholders that do not match the real
-# sha256 of this file's own bytes or of outputs/hash-drift.md's bytes. (The
-# real digests are c3734807cf8967130f0ece027257c4962c65f6aabf802c201f5d70e
-# b280b2578 for this source .agent.yaml and 53e6d5e8e50fbd082c30e64e732983
-# 62cb608374b49a989c98a0f14c09d48490 for outputs/hash-drift.md — recorded
-# here, not in projection-manifest.json, so that file keeps a strict
-# 9-field entry shape with no non-schema `_comment` keys.) Per rubric §7.3
-# this is a WARNING (the artefact exists, it is merely stale), never an
+# sha256 of this file's own bytes or of outputs/hash-drift.md's bytes. (This
+# source .agent.yaml's own real digest is deliberately NOT quoted here: a
+# file cannot state its own sha256 without the act of writing it changing
+# its bytes and invalidating the claim — a fixed point no edit can reach —
+# so that value is omitted rather than recorded and later left stale. The
+# real digest of outputs/hash-drift.md — a separate, stable file whose
+# bytes this header edit does not touch — is
+# ba652c9944928a73cbf70f4fdb0144ee1517d29497797972039ce15f3228b807,
+# recorded here, not in projection-manifest.json, so that file keeps a
+# strict 9-field entry shape with no non-schema `_comment` keys.) Per rubric
+# §7.3 this is a WARNING (the artefact exists, it is merely stale), never an
 # error.
 #
 # Expected vector (this profile alone, against
