@@ -90,9 +90,11 @@ function checkField(
 export function checkHandoffs(profiles: readonly AgentProfile[]): SkProfileFinding[] {
   const findings: SkProfileFinding[] = [];
   for (const profile of profiles) {
-    findings.push(...checkField(profile, profiles, "handoffTo"));
-    findings.push(...checkField(profile, profiles, "handoffFrom"));
-    findings.push(...checkField(profile, profiles, "worksWith"));
+    findings.push(
+      ...checkField(profile, profiles, "handoffTo"),
+      ...checkField(profile, profiles, "handoffFrom"),
+      ...checkField(profile, profiles, "worksWith")
+    );
   }
   return findings;
 }
