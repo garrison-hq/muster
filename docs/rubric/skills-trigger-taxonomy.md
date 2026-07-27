@@ -160,7 +160,7 @@ against a correctly functioning model and correctly functioning grader.
 
 **Where this is actually enforced**: `runTriggerConformance` itself
 (`trigger.ts`) does not block on an unexpectedly-passing control — it only
-emits a `console.warn` (`trigger.ts:429-434`) and still returns
+emits a `console.warn` (`trigger.ts:430-435`) and still returns
 `passed: true` on the resulting `TriggerVerdict` (the `passed` value is
 returned unmutated, `trigger.ts:438-440`). The mechanical enforcement lives
 one layer up, in `tests/cts/skills-suite.test.ts` — a file owned by WP01, not
