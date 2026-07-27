@@ -142,6 +142,18 @@ dependency for this fixture's own test coverage.
 2. Confirm the control case (`isControl: true`) reports `passed: false` when
    the mock client never selects the rigged tool, and — per C-004 —
    contributes to a non-zero exit code when it is the only non-skipped case.
+3. **Also assert `passed: true`, by case id, for the new should-trigger
+   (weather) case from T001**, when the mock client does select/route to the
+   expected tool. This is the step that actually closes the loop with T002's
+   `MIN_QUERIES_PER_AXIS = 8` hard gate (`trigger.ts:61`, `:359-362`): that
+   gate only catches an undersized query file if something asserts the
+   weather case **passes** — asserting only the control case's
+   `passed: false` (step 2) never exercises the passing path at all. Name
+   this test to include the literal substring `"should-trigger case"` — WP04's
+   Acceptance Evidence below filters on that literal string. Do not rely on
+   the whole-file `numPassedTests -ge 1` check elsewhere in this WP's DoD to
+   stand in for this — that check is satisfied by pre-existing tests
+   regardless of whether this specific assertion exists.
 
 **Files**: `tests/skills/cli.test.ts` (~60-100 lines added)
 **Validation**: see WP04 Acceptance Evidence's FR-006 block below.
@@ -182,6 +194,16 @@ echo "exit=$?"   # expect 0 (vitest process exit; FR-006's own stated verificati
 test "$(jq '.numPassedTests' /tmp/fr006.json)" -ge 1; echo "match_exit=$?"   # MUST be 0 — this
 # WP is the one authoring the new mock-client tests this file gains, so a nonzero-match
 # assertion is included here rather than trusting the bare exit code alone
+
+# T003's specific weather/should-trigger passing assertion, isolated by name — the whole-file
+# check above is satisfied by pre-existing tests regardless of whether this one exists, so it
+# cannot stand in for it.
+pnpm vitest run tests/skills/cli.test.ts -t "should-trigger case" --reporter=json > /tmp/fr006-weather.json
+echo "exit=$?"   # expect 0
+test "$(jq '.numPassedTests' /tmp/fr006-weather.json)" -ge 1; echo "weather_case_match_exit=$?"
+# MUST be 0 — proves the new should-trigger case actually asserts passed:true by id, closing the
+# loop with T002's MIN_QUERIES_PER_AXIS=8 hard gate (an undersized query file only gets caught if
+# something asserts the weather case PASSES, not only that the control case fails)
 
 # Mission-level regression, now finally satisfiable: FR-001's own literal AC-1a command,
 # against examples/skills/manifest.yaml (deferred here because this is the first point in the
@@ -232,15 +254,26 @@ test "$WEATHER_PASSED" = "true"; echo "weather_gate_exit=$?"
 # record the failure in quickstart.md as an open defect. Never retry the control check above.
 
 # 4. quickstart.md's results table must contain NO "_pending_" string once this gate has run for
-#    real — an absence check as a COUNT, never a bare grep exit status.
-command grep -c "_pending_" kitty-specs/skills-behavioral-enablement-01KYJFAC/quickstart.md
-# expect the printed count to be the literal string 0 (all nine table rows filled with real
-# observed values: date/time, attempt #, both passed booleans, both observed trigger rates,
-# overall exit code, portability endpoint, portability result, blocking findings)
+#    real — an absence check as a COUNT, asserted, never a bare grep exit status. grep -c's exit
+#    code is INVERTED relative to intent (0 matches -> exit 1; >=1 match -> exit 0), so checking
+#    $? directly would give exactly the wrong answer — the count itself must be compared.
+PENDING_COUNT=$(command grep -c "_pending_" kitty-specs/skills-behavioral-enablement-01KYJFAC/quickstart.md)
+test "$PENDING_COUNT" -eq 0; echo "pending_gate_exit=$?"
+# MUST be 0 (all nine table rows filled with real observed values: date/time, attempt #, both
+# passed booleans, both observed trigger rates, overall exit code, portability endpoint,
+# portability result, blocking findings)
 
 # 5. Credential hygiene: the key VALUE must never appear in argv (ps) or in the recorded output.
-ps aux | command grep -c "MUSTER_API_KEY=\|OPENAI_API_KEY=\|sk-"; # expect 0
-command grep -c "MUSTER_API_KEY\|OPENAI_API_KEY" /tmp/skills-live-run.json   # expect 0
+# Same grep -c inversion applies — assert the count, not grep's own $?.
+PS_LEAK_COUNT=$(ps aux | command grep -c "MUSTER_API_KEY=\|OPENAI_API_KEY=\|sk-")
+test "$PS_LEAK_COUNT" -eq 0; echo "ps_leak_gate_exit=$?"
+# MUST be 0 — this is the only mechanical enforcement of the charter constraint that keys never
+# appear in argv.
+
+OUTPUT_LEAK_COUNT=$(command grep -c "MUSTER_API_KEY\|OPENAI_API_KEY" /tmp/skills-live-run.json)
+test "$OUTPUT_LEAK_COUNT" -eq 0; echo "output_leak_gate_exit=$?"
+# MUST be 0 — this is the only mechanical enforcement of the charter constraint that keys never
+# appear in recorded output/logs.
 
 # 6. Portability check (step 4 of the Live-Model Verification Plan) — same fixtures, only env
 #    vars differ. Not a second acceptance gate; still recorded in quickstart.md.
@@ -250,16 +283,32 @@ echo "exit=$?"
 ```
 
 This WP's `done`/`approved` state requires: `control_gate_exit=0` AND
-`weather_gate_exit=0` (after at most one retry) AND the `_pending_` count
-above is `0`. Any other outcome is an open defect, recorded in
-`quickstart.md`, and this WP stays not-done until resolved — **no
-exceptions, no model-swapping to force a pass.**
+`weather_gate_exit=0` (after at most one retry) AND `pending_gate_exit=0` AND
+`ps_leak_gate_exit=0` AND `output_leak_gate_exit=0`. Any other outcome is an
+open defect, recorded in `quickstart.md`, and this WP stays not-done until
+resolved — **no exceptions, no model-swapping to force a pass.**
 
 ## Risks
 
 - **Started before WP01/WP02 merged**: this WP's lane must not cut its
-  merge-base until both WP01 and WP02 are merged. Verify `lanes.json` shows
-  `depends_on_lanes` including both before starting implementation.
+  merge-base until both WP01 and WP02 are merged. **`depends_on_lanes` cannot
+  be used to verify this.** WP01/WP02/WP04 are collapsed into a single lane
+  (`lane-a`); their dependency is therefore intra-lane, and `depends_on_lanes`
+  only carries cross-lane edges — `lane-a.depends_on_lanes` is `[]` and always
+  will be. An implementer checking for it there would find it permanently
+  failing. Instead, confirm `lanes.json`'s `collapse_report.events` cites the
+  collapse reason: two `write_scope_overlap` events, one whose evidence
+  includes "WP02 depends on WP01" and one whose evidence includes "WP04
+  depends on WP01" (both present in this mission's `lanes.json` as of this
+  remediation pass).
+  **What actually enforces WP01 → WP02 → WP04 ordering**: as far as the
+  artifacts demonstrate on their own, it is each file's `dependencies:`
+  frontmatter (WP02 lists `WP01`; WP04 lists `WP01`/`WP02`) plus the prose in
+  each file's Context/Risks sections instructing the implementer not to cut a
+  lane's merge-base early — **not a mechanical lane-level gate**. There is no
+  automated check in this mission's artifacts that blocks WP02 or WP04's
+  implementation from starting before WP01/WP02 merge; correct ordering
+  depends on the implementer/orchestrator honoring the stated dependency.
 - **Live-model gate run against the wrong tree**: the gate must be run
   against the **mission coordination branch**, after WP01/WP02/WP03 have all
   merged — not against this WP's own isolated pre-merge worktree. Running it
@@ -275,14 +324,21 @@ exceptions, no model-swapping to force a pass.**
 ## Reviewer Guidance
 
 - Do not approve this WP on the offline mock-client tests alone — the
-  live-model gate's three literal conditions
-  (`control_gate_exit=0`/`weather_gate_exit=0`/`_pending_` count `0`) must
-  all be independently verified, with `quickstart.md`'s results table shown
-  filled with real values, not placeholders.
+  live-model gate's five literal conditions (`control_gate_exit=0`,
+  `weather_gate_exit=0`, `pending_gate_exit=0`, `ps_leak_gate_exit=0`,
+  `output_leak_gate_exit=0`) must all be independently verified, with
+  `quickstart.md`'s results table shown filled with real values, not
+  placeholders.
 - Confirm the control case's `passed:false` and the should-trigger case's
   `passed:true` are the **exact literal values recorded**, not summarized as
   "looks good."
 - Confirm no credential value appears in `/tmp/skills-live-run.json` or in
-  any pasted `ps aux` output attached as evidence.
+  any pasted `ps aux` output attached as evidence — verify `ps_leak_gate_exit`
+  and `output_leak_gate_exit` were actually computed from a real count, not
+  assumed.
+- Confirm the T003 `"should-trigger case"` test exists and its
+  `weather_case_match_exit=0` was actually observed — the whole-file
+  `numPassedTests -ge 1` check alone does not prove this specific assertion
+  exists.
 
 **Implementation command**: `spec-kitty agent action implement WP04 --agent claude`

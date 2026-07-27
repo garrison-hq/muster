@@ -176,8 +176,13 @@ itself but not this file).
 
 **Files**: `src/adapters/skills/trigger.ts` (~10-15 lines changed, doc
 comments + one endpoint default + discrimination-control source string)
-**Validation**: `command grep -n "agentskills.io/specification#trigger-testing" src/adapters/skills/trigger.ts | wc -l`
-must print `0` after this subtask.
+**Validation**:
+```bash
+CITATION_COUNT=$(command grep -c "agentskills.io/specification#trigger-testing" src/adapters/skills/trigger.ts)
+test "$CITATION_COUNT" -eq 0; echo "citation_repoint_exit=$?"
+# MUST be 0 after this subtask. grep -c's own exit code is inverted relative to intent (0
+# matches -> exit 1; >=1 match -> exit 0) — assert the count, never grep -c's bare $?.
+```
 
 ## Subtask T004: `.env.example` + `skills run --help` text
 
@@ -272,11 +277,16 @@ muster skills run fixtures/skills/skills-manifest.yaml --json
 echo "exit=$?"   # expect 0; both behavioral cases show skipped:true, passed:true; static cases unaffected
 
 # FR-002 — falsification: MUSTER_BASE_URL alone must still work, with a warning; both set, canonical wins with NO warning
-MUSTER_BASE_URL=http://localhost:11434/v1 muster skills run fixtures/skills/skills-manifest.yaml 2>&1 | command grep -ic deprecat
-# expect: printed count exactly 1 (a count read as a number, never grep's own exit status)
-MUSTER_ENDPOINT=http://localhost:11434/v1 MUSTER_BASE_URL=http://unreachable-should-not-be-used:1/v1 \
-  muster skills run fixtures/skills/skills-manifest.yaml 2>&1 | command grep -ic deprecat
-# expect: printed count exactly 0
+# grep -ic's exit code is inverted relative to intent (0 matches -> exit 1; >=1 match -> exit 0) —
+# assert the printed count, never grep's own $?.
+DEPRECATION_COUNT_ALIAS_ONLY=$(MUSTER_BASE_URL=http://localhost:11434/v1 muster skills run fixtures/skills/skills-manifest.yaml 2>&1 | command grep -ic deprecat)
+test "$DEPRECATION_COUNT_ALIAS_ONLY" -eq 1; echo "ac2a_gate_exit=$?"
+# MUST be 0 (alias-only warns exactly once)
+
+DEPRECATION_COUNT_BOTH_SET=$(MUSTER_ENDPOINT=http://localhost:11434/v1 MUSTER_BASE_URL=http://unreachable-should-not-be-used:1/v1 \
+  muster skills run fixtures/skills/skills-manifest.yaml 2>&1 | command grep -ic deprecat)
+test "$DEPRECATION_COUNT_BOTH_SET" -eq 0; echo "ac2c_gate_exit=$?"
+# MUST be 0 (canonical wins silently when both are set — no warning)
 
 # C-001 regression — verified with a MATCH COUNT, not a bare exit code. vitest's "-t" flag
 # exits 0 whether it matches-and-passes OR matches NOTHING at all (reproduced live in this

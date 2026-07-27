@@ -108,7 +108,13 @@ actually found — do not let it degrade into a no-op.
    the SOP precedent's own throw-then-CLI-rewraps pattern).
 
 **Files**: `src/adapters/skills/schema.ts` (~40-70 lines added)
-**Validation**: unit-testable in isolation before wiring into the CLI (T002).
+**Validation**: this subtask has no independent test of its own in this WP —
+the only mechanical check on `SKILLS_MANIFEST_SCHEMA`/`validateManifest` is
+T004's malformed-manifest test, exercised through the wired CLI path
+(`doSkillsRun` → `exit 2`), not an isolated unit test against the schema
+module directly. The design goal (small, dependency-free, easy to unit-test
+later) is met structurally, but no such test exists yet — treat T004 as this
+WP's sole mechanical coverage for the schema validator.
 
 ## Subtask T002: Wire schema validation into `doSkillsRun`
 
@@ -236,8 +242,16 @@ coordination branch.
 
 - **Started before WP01 merged**: if this WP's lane is cut before WP01
   merges, the two lanes race on `SkillsCaseResult` and
-  `tests/skills/cli.test.ts` blind to each other. Verify `lanes.json` shows
-  this WP's `depends_on_lanes` including WP01 before starting implementation.
+  `tests/skills/cli.test.ts` blind to each other. **`depends_on_lanes` cannot
+  be used to verify this** — WP01/WP02/WP04 are collapsed into a single lane
+  (`lane-a`), so this dependency is intra-lane; `lane-a.depends_on_lanes` is
+  `[]` and always will be. Instead, confirm `lanes.json`'s
+  `collapse_report.events` includes a `write_scope_overlap` event whose
+  evidence cites "WP02 depends on WP01" (it does, as of this remediation
+  pass). What actually enforces WP01 → WP02 ordering is this file's
+  `dependencies:` frontmatter (`WP01`) plus this Context/Risks prose — not a
+  mechanical lane-level gate; there is no automated check that blocks this
+  WP's implementation from starting before WP01 merges.
 - **Delete-direction test degraded to a no-op**: the most likely way to get
   this subtly wrong is writing a test that never actually deletes anything
   (e.g. asserting against the fixture's *presence* rather than genuinely

@@ -119,7 +119,11 @@ citation target every other repoint in this WP points at.
 1. Repoint the 1 occurrence (line 97) to `docs/rubric/skills-trigger-taxonomy.md`.
 
 **Files**: `src/adapters/skills/types.ts` (1 line changed)
-**Validation**: `command grep -c "agentskills.io/specification#trigger-testing" src/adapters/skills/types.ts` → `0`.
+**Validation**:
+```bash
+COUNT=$(command grep -c "agentskills.io/specification#trigger-testing" src/adapters/skills/types.ts)
+test "$COUNT" -eq 0; echo "types_citation_exit=$?"   # MUST be 0
+```
 
 ## Subtask T003: Repoint citation in `rigged-impossible-queries.yaml`
 
@@ -127,7 +131,11 @@ citation target every other repoint in this WP points at.
 1. Repoint the 1 occurrence (line 2) to `docs/rubric/skills-trigger-taxonomy.md`.
 
 **Files**: `fixtures/skills/trigger-queries/rigged-impossible-queries.yaml` (1 line changed)
-**Validation**: `command grep -c "agentskills.io/specification#trigger-testing" fixtures/skills/trigger-queries/rigged-impossible-queries.yaml` → `0`.
+**Validation**:
+```bash
+COUNT=$(command grep -c "agentskills.io/specification#trigger-testing" fixtures/skills/trigger-queries/rigged-impossible-queries.yaml)
+test "$COUNT" -eq 0; echo "rigged_queries_citation_exit=$?"   # MUST be 0
+```
 
 ## Subtask T004: Repoint citation in `weather-skill-queries.yaml`
 
@@ -135,7 +143,11 @@ citation target every other repoint in this WP points at.
 1. Repoint the 1 occurrence (line 2) to `docs/rubric/skills-trigger-taxonomy.md`.
 
 **Files**: `fixtures/skills/trigger-queries/weather-skill-queries.yaml` (1 line changed)
-**Validation**: `command grep -c "agentskills.io/specification#trigger-testing" fixtures/skills/trigger-queries/weather-skill-queries.yaml` → `0`.
+**Validation**:
+```bash
+COUNT=$(command grep -c "agentskills.io/specification#trigger-testing" fixtures/skills/trigger-queries/weather-skill-queries.yaml)
+test "$COUNT" -eq 0; echo "weather_queries_citation_exit=$?"   # MUST be 0
+```
 
 ## Subtask T005: Repoint citations in `tests/unit/skills-trigger.test.ts`
 
@@ -157,13 +169,16 @@ existing tests, unfiltered — confirmed by direct count during plan review).
 ```bash
 test -f docs/rubric/skills-trigger-taxonomy.md; echo "exit=$?"   # expect 0 (file exists)
 
-# absence check as a COUNT, never a grep exit code
-command grep -rl "agentskills.io/specification#trigger-testing" src/ fixtures/ examples/ docs/ | wc -l
-# expect the printed count to be the literal string 0
+# absence check as a COUNT, asserted, never a grep exit code. grep -rl | wc -l always exits 0
+# regardless of the count, so the count itself must be compared.
+CITATION_FILES_COUNT=$(command grep -rl "agentskills.io/specification#trigger-testing" src/ fixtures/ examples/ docs/ | wc -l)
+test "$CITATION_FILES_COUNT" -eq 0; echo "fr004_citation_gate_exit=$?"
+# MUST be 0
 
 # broadened per grounding correction #1 — if this WP's tests/ addition is accepted:
-command grep -rl "agentskills.io/specification#trigger-testing" src/ fixtures/ examples/ docs/ tests/ | wc -l
-# expect the printed count to be the literal string 0 (repo-wide, matching SC-006's literal claim)
+CITATION_FILES_COUNT_REPO_WIDE=$(command grep -rl "agentskills.io/specification#trigger-testing" src/ fixtures/ examples/ docs/ tests/ | wc -l)
+test "$CITATION_FILES_COUNT_REPO_WIDE" -eq 0; echo "sc006_citation_gate_exit=$?"
+# MUST be 0 (repo-wide, matching SC-006's literal claim)
 
 pnpm vitest run tests/unit/skills-trigger.test.ts
 echo "exit=$?"   # expect 0 (whole-file run, unfiltered — not exposed to the "-t" no-match quirk)
@@ -195,7 +210,8 @@ evidence, **and** again after merge to the mission coordination branch.
 - Confirm the rubric doc actually distinguishes upstream prior art from
   `[MUSTER-OWN]` enforcement — do not accept a version that presents the
   hard 8-minimum gate as itself upstream-mandated.
-- Run both `command grep -rl` counts above yourself rather than trusting the
-  WP's own reported numbers.
+- Run both `fr004_citation_gate_exit`/`sc006_citation_gate_exit` checks
+  above yourself rather than trusting the WP's own reported numbers — confirm
+  the printed count was actually compared with `test`, not just eyeballed.
 
 **Implementation command**: `spec-kitty agent action implement WP03 --agent claude`
