@@ -1452,6 +1452,41 @@ async function runBehavioralSkillCase(
 }
 
 /**
+ * Wraps `runBehavioralSkillCase` so a case-level execution error (a missing
+ * `skillDir` or `querySetPath`, or a malformed query-set/skill fixture) is
+ * fail-closed for that one case — `{passed:false, skipped:false}` — instead
+ * of an uncaught throw that aborts the entire manifest run (HIGH-2
+ * remediation). Mirrors `runStaticSkillCase`'s own try/catch pattern
+ * (FR-007): a case-level dependency read failure is never swallowed and
+ * never reinterpreted as a skip, but it also never discards every other
+ * case's already-computed result.
+ *
+ * An unreadable *manifest* itself is unaffected by this wrapper and still
+ * exits 2 (C-004) — that failure is caught separately, before this function
+ * is ever reached, in `doSkillsRun`'s own manifest-read try/catch.
+ */
+async function runBehavioralSkillCaseSafe(
+  c: SkillsManifestBehavioralCase,
+  baseDir: string,
+  endpoint: EndpointConfig,
+  triggerClientFactory: (endpoint: EndpointConfig) => TriggerChatClient
+): Promise<SkillsCaseResult> {
+  try {
+    return await runBehavioralSkillCase(c, baseDir, endpoint, triggerClientFactory);
+  } catch (error) {
+    return {
+      id: c.id,
+      type: "behavioral",
+      passed: false,
+      skipped: false,
+      violations: [
+        { path: "(execution)", message: errorMessage(error), severity: "error" },
+      ],
+    };
+  }
+}
+
+/**
  * Run the skills manifest (FR-013, FR-014).
  *
  * Static cases always run (offline, deterministic, byte-stable — NFR-001, C-003).
@@ -1490,7 +1525,7 @@ async function doSkillsRun(
       results.push({ id: c.id, type: "behavioral", passed: true, skipped: true });
     } else {
       results.push(
-        await runBehavioralSkillCase(c, baseDir, behavioralEndpoint, triggerClientFactory)
+        await runBehavioralSkillCaseSafe(c, baseDir, behavioralEndpoint, triggerClientFactory)
       );
     }
   }

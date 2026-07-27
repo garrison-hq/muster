@@ -460,4 +460,134 @@ describe("muster skills run (CLI wiring, FR-013)", () => {
       }
     );
   });
+
+  it("HIGH-2 regression: a missing behavioral querySetPath fails only that case, never the whole run", async () => {
+    await withSkillsEndpointEnv(
+      { MUSTER_ENDPOINT: "http://mock-endpoint.invalid/v1" },
+      async () => {
+        const { writeFileSync, unlinkSync } = await import("node:fs");
+        const tmpPath = "/tmp/skills-cli-missing-queryset-manifest.yaml";
+        const validSkillDir = resolvePath(repoRoot, "fixtures/skills/valid/minimal");
+        const missingQuerySetPath = resolvePath(
+          repoRoot,
+          "fixtures/skills/trigger-queries/does-not-exist-queries.yaml"
+        );
+        const manifest = [
+          "cases:",
+          "  - id: static-still-runs",
+          "    type: static",
+          `    skillDir: ${validSkillDir}`,
+          "    profile: base",
+          "    expectations:",
+          "      ok: true",
+          "      violations: []",
+          "  - id: behavioral-missing-queryset",
+          "    type: behavioral",
+          `    skillDir: ${validSkillDir}`,
+          "    profile: base",
+          `    querySetPath: ${missingQuerySetPath}`,
+          "    runsPerQuery: 3",
+          "    threshold: 0.5",
+          "    isControl: false",
+        ].join("\n");
+        writeFileSync(tmpPath, manifest);
+        try {
+          const { code, stdout, stderr } = await run(
+            ["skills", "run", tmpPath, "--json"],
+            { skillsTriggerClientFactory: () => createSmartMockTriggerClient() }
+          );
+          // Must not be the manifest-level exit 2 ("unexpected error"/ENOENT)
+          // that previously discarded the whole run, including the
+          // already-passing static case.
+          expect(code).toBe(1);
+          expect(stderr).not.toContain("unexpected error");
+          expect(() => JSON.parse(stdout)).not.toThrow();
+          const parsed = JSON.parse(stdout) as {
+            results: {
+              id: string;
+              type: string;
+              passed: boolean;
+              skipped?: boolean;
+            }[];
+          };
+          const staticCase = parsed.results.find((r) => r.id === "static-still-runs");
+          const brokenCase = parsed.results.find(
+            (r) => r.id === "behavioral-missing-queryset"
+          );
+          // The unrelated static case must not be discarded.
+          expect(staticCase?.passed).toBe(true);
+          // Fail-closed for the broken case itself — not swallowed, not
+          // reinterpreted as a skip.
+          expect(brokenCase?.passed).toBe(false);
+          expect(brokenCase?.skipped).toBe(false);
+        } finally {
+          unlinkSync(tmpPath);
+        }
+      }
+    );
+  });
+
+  it("HIGH-2 regression: a missing behavioral skillDir fails only that case, never the whole run", async () => {
+    await withSkillsEndpointEnv(
+      { MUSTER_ENDPOINT: "http://mock-endpoint.invalid/v1" },
+      async () => {
+        const { writeFileSync, unlinkSync } = await import("node:fs");
+        const tmpPath = "/tmp/skills-cli-missing-skilldir-manifest.yaml";
+        const validSkillDir = resolvePath(repoRoot, "fixtures/skills/valid/minimal");
+        const missingSkillDir = resolvePath(
+          repoRoot,
+          "fixtures/skills/valid/does-not-exist"
+        );
+        const querySetPath = resolvePath(
+          repoRoot,
+          "fixtures/skills/trigger-queries/weather-skill-queries.yaml"
+        );
+        const manifest = [
+          "cases:",
+          "  - id: static-still-runs",
+          "    type: static",
+          `    skillDir: ${validSkillDir}`,
+          "    profile: base",
+          "    expectations:",
+          "      ok: true",
+          "      violations: []",
+          "  - id: behavioral-missing-skilldir",
+          "    type: behavioral",
+          `    skillDir: ${missingSkillDir}`,
+          "    profile: base",
+          `    querySetPath: ${querySetPath}`,
+          "    runsPerQuery: 3",
+          "    threshold: 0.5",
+          "    isControl: false",
+        ].join("\n");
+        writeFileSync(tmpPath, manifest);
+        try {
+          const { code, stdout, stderr } = await run(
+            ["skills", "run", tmpPath, "--json"],
+            { skillsTriggerClientFactory: () => createSmartMockTriggerClient() }
+          );
+          expect(code).toBe(1);
+          expect(stderr).not.toContain("unexpected error");
+          expect(() => JSON.parse(stdout)).not.toThrow();
+          const parsed = JSON.parse(stdout) as {
+            results: {
+              id: string;
+              type: string;
+              passed: boolean;
+              skipped?: boolean;
+            }[];
+          };
+          const staticCase = parsed.results.find((r) => r.id === "static-still-runs");
+          const brokenCase = parsed.results.find(
+            (r) => r.id === "behavioral-missing-skilldir"
+          );
+          expect(staticCase?.passed).toBe(true);
+          expect(brokenCase?.passed).toBe(false);
+          expect(brokenCase?.skipped).toBe(false);
+        } finally {
+          unlinkSync(tmpPath);
+        }
+      }
+    );
+  });
 });
