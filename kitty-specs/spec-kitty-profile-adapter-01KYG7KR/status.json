@@ -2,7 +2,7 @@
   "event_count": 47,
   "last_event_id": "01KYJD957Y5F7ESKBX3SX10HE4",
   "materialized_at": "2026-07-27T18:27:03.038682+00:00",
-  "mission_number": "5",
+  "mission_number": "",
   "mission_slug": "spec-kitty-profile-adapter-01KYG7KR",
   "mission_type": "software-dev",
   "summary": {
@@ -20,131 +20,52 @@
     "WP01": {
       "actor": "merge",
       "agent": "claude",
-      "agent_profile": "__resolved_profile_absent__",
-      "agent_profile_version": "__resolved_profile_version_absent__",
       "force_count": 0,
       "lane": "done",
       "last_event_id": "01KYJD919GFYDV9CZ8DSGEWM99",
       "last_transition_at": "2026-07-27T18:26:58.992988+00:00",
-      "model": "__resolved_model_absent__",
-      "notes": [
-        "WP01 complete: findings.ts/manifest.ts/profile.ts/schema.ts + manifest.test.ts/schema.test.ts. pnpm build/typecheck/test all exit 0; NI-002 green; no src/core/ or dependency changes."
-      ],
-      "provider": "__resolved_provider_absent__",
-      "role": "reviewer",
       "shell_pid": 743592,
-      "shell_pid_created_at": "1785112873.96",
-      "subtasks": {
-        "T001": "done",
-        "T002": "done",
-        "T003": "done",
-        "T004": "done",
-        "T005": "done",
-        "T006": "done"
-      }
+      "shell_pid_created_at": "1785112873.96"
     },
     "WP02": {
       "actor": "merge",
       "agent": "claude",
-      "agent_profile": "__resolved_profile_absent__",
-      "agent_profile_version": "__resolved_profile_version_absent__",
       "force_count": 1,
       "lane": "done",
       "last_event_id": "01KYJD93942Y4MBWQPW05NATJR",
       "last_transition_at": "2026-07-27T18:27:01.028316+00:00",
-      "model": "__resolved_model_absent__",
-      "notes": [
-        "Ready for review"
-      ],
-      "provider": "__resolved_provider_absent__",
-      "role": "reviewer",
       "shell_pid": 1472861,
-      "shell_pid_created_at": "1785137830.72",
-      "subtasks": {
-        "T007": "done",
-        "T008": "done",
-        "T009": "done",
-        "T010": "done",
-        "T011": "done",
-        "T012": "done",
-        "T013": "done"
-      }
+      "shell_pid_created_at": "1785137830.72"
     },
     "WP03": {
       "actor": "merge",
       "agent": "claude",
-      "agent_profile": "__resolved_profile_absent__",
-      "agent_profile_version": "__resolved_profile_version_absent__",
       "force_count": 0,
       "lane": "done",
       "last_event_id": "01KYJD957Y5F7ESKBX3SX10HE4",
       "last_transition_at": "2026-07-27T18:27:03.038682+00:00",
-      "model": "__resolved_model_absent__",
-      "notes": [
-        "T014-T016/T019/T020 complete: projection.ts (profile_urn matching, output_path resolved against projection-manifest parent's parent per rubric §7.2), SpecKittyProfileAdapter factory+run(), additive skprofile CLI wiring. Real-CLI verification (T020) observed exit 0/1/2 and the real 18-profile run (43 findings: 7 handoff-unresolved, 9 handoff-asymmetric, 27 reference-not-activated) — transcript in Activity Log. pnpm build/typecheck/test all green."
-      ],
-      "provider": "__resolved_provider_absent__",
-      "role": "reviewer",
       "shell_pid": 1735012,
-      "shell_pid_created_at": "1785169660.37",
-      "subtasks": {
-        "T014": "done",
-        "T015": "done",
-        "T016": "done",
-        "T019": "done",
-        "T020": "done"
-      }
+      "shell_pid_created_at": "1785169660.37"
     },
     "WP04": {
       "actor": "merge",
       "agent": "claude",
-      "agent_profile": "__resolved_profile_absent__",
-      "agent_profile_version": "__resolved_profile_version_absent__",
       "force_count": 2,
       "lane": "done",
       "last_event_id": "01KYJD92AEW3HXG5V9Q7HPFSCE",
       "last_transition_at": "2026-07-27T18:27:00.046215+00:00",
-      "model": "__resolved_model_absent__",
-      "notes": [
-        "Rubric surface complete: spec-kitty-profile-taxonomy.md and spec-kitty-behavioral-axes.md created, sop-rule-taxonomy.md v1.1 appendix added. T024 cross-check: WP02 has not landed yet, follow-up recorded in Activity Log.",
-        "Review REJECTED by reviewer-renata: 10 blockers (behavioral-axes rubricText not self-contained/decidable for 3 of 4 axes; citation format under-specified for WP02; [NORMATIVE] provenance overreach in profile-taxonomy 7.1/6.1/6.2 and sop v1.1.4). See review report.",
-        "Re-review pass 2 (reviewer-renata): all 10 blockers B1-B10 + advisory VERIFIED CLOSED at their stated locations; both rewritten RUBRIC instruments judged sound and materially better; sop-rule-taxonomy v1.0.0 confirmed byte-identical below front matter by independent git diff. APPROVED ON THE MERITS. Cannot record 'approved': commit a5b5d4e placed the WP04 Activity Log entry (kitty-specs/) on the LANE branch, which the mission git gate forbids - move-task --to approved is hard-blocked and --force is not appropriate. Required to close (all mechanical, none touch anything WP02 depends on): (1) move the a5b5d4e Activity Log entry from the lane branch to kitty/mission-spec-kitty-profile-adapter; (2) append the missing T024 entry - DoD box 4 is unticked, no Activity Log entry records the reconciliation outcome; verified independently that src/adapters/spec-kitty-profile/rubric.ts exists on NO branch, so 'WP02 not landed, follow-up at merge' is the correct and only content; (3) spec-kitty-profile-taxonomy.md:315 cites repository.py:489 for 'self._profiles[profile.profile_id] = profile' - actual line is 486 (a second occurrence is at 877); (4) spec-kitty-profile-taxonomy.md:279-280 gives 6.1 TWO provenance tags, contradicting the same document's Introduction line 32 'exactly one provenance tag' - either split 6.1 or soften the Introduction. Re-review is a read of these four edits only; the three rubric documents' substance is accepted as-is."
-      ],
-      "provider": "__resolved_provider_absent__",
-      "role": "reviewer",
       "shell_pid": 723071,
-      "shell_pid_created_at": "1785112673.87",
-      "subtasks": {
-        "T021": "done",
-        "T022": "done",
-        "T023": "done",
-        "T024": "done"
-      }
+      "shell_pid_created_at": "1785112673.87"
     },
     "WP05": {
       "actor": "merge",
-      "agent": "claude",
-      "agent_profile": "__resolved_profile_absent__",
-      "agent_profile_version": "__resolved_profile_version_absent__",
+      "agent": "implement-command",
       "force_count": 4,
       "lane": "done",
       "last_event_id": "01KYJD946V4ZZZR4BFQ4GK1ASZ",
       "last_transition_at": "2026-07-27T18:27:01.979526+00:00",
-      "model": "__resolved_model_absent__",
-      "notes": [
-        "T017/T018 complete: fixtures/skprofile/** + examples/skprofile/** authored, self-verified against WP01/WP02's real check functions (each broken fixture trips exactly its intended finding kind; clean sets zero findings with no activation-config; clean+activation-config trips only the intended 2 reference-not-activated warnings). pnpm build/typecheck/test all exit 0 (164 files, 3531 passed, 3 skipped). Live CLI exit-0 confirmation for examples/skprofile deferred to WP03 T020 per this WP's own scope.",
-        "F-3 fixed: SS7.3 fixture header misquote corrected (output_path literal now matches projection-manifest.json exactly); hash-drift.md's relative path to projection-manifest.json corrected (../.. -> ../../..). A1: removed projection-manifest.json's non-schema _comment keys so its shape matches the real .kittify/agent_profiles_manifest.json exactly; explanatory text folded into the .agent.yaml headers instead. Re-verified: broken-manifest.yaml 13 findings (12 error/1 warning, ok=false); clean control 2 reference-not-activated warnings/0 errors; broken-activation-manifest.yaml 1 warning/0 errors; examples 0 findings; broken-projection-manifest.yaml unchanged (projection-output-missing error + projection-hash-drift warning). pnpm build/typecheck/test all green (164 files, 3531 passed | 3 skipped); NI-002 12 passed. No manifest data changed, confirmed via diff.",
-        "F-3 digest-fix remediation: removed unfixable self-referential source-file digest from projection-hash-drift.agent.yaml header, corrected outputs/hash-drift.md's digest to the recomputed value, zeroed projection-manifest.json's one remaining stale-but-inert source_hash, and recorded the full digest-fix Activity Log entry on the planning branch (supersedes lines 344/413 of the prior F-1/F-2 entry). All four regression counts re-verified unchanged; pnpm build/typecheck/test/NI-002 green. Lane-e commit e53e2a4; planning-branch commit 7584c67.",
-        "4th-round fix: corrected false stability claim about outputs/hash-drift.md (18:00Z entry item 2), removed the pinned digest live trap from projection-hash-drift.agent.yaml (lane-e f7ff0f9), and made the F-1/F-2<->18:00Z supersession bidirectional with in-place [SUPERSEDED] markers. Regression re-verification unchanged: broken-manifest.yaml 13/12/1/false, manifest.yaml 2/0/2/true, broken-activation-manifest.yaml 1/0/1/true, examples/skprofile/manifest.yaml 0/true, broken/projection 1 error+1 warning/false. pnpm build/typecheck/test green (164 files, 3531 passed | 3 skipped), NI-002 (2 files, 12 tests) green."
-      ],
-      "provider": "__resolved_provider_absent__",
-      "role": "reviewer",
       "shell_pid": 1794879,
-      "shell_pid_created_at": "1785143698.12",
-      "subtasks": {
-        "T017": "done",
-        "T018": "done"
-      }
+      "shell_pid_created_at": "1785143698.12"
     }
   }
 }
