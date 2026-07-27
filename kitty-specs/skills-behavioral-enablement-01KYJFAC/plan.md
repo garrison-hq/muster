@@ -3,6 +3,13 @@
 **Branch**: `kitty/mission-skills-behavioral-enablement` | **Date**: 2026-07-27 | **Spec**: `kitty-specs/skills-behavioral-enablement-01KYJFAC/spec.md`
 **Input**: Feature specification from `kitty-specs/skills-behavioral-enablement-01KYJFAC/spec.md` (post-review, remediated at `e3bd1434f`)
 **Grounded against**: `garrison-hq/muster` @ `e3bd1434f` (this mission's branch tip), verified directly (not re-derived from the spec's own citations, several of which are noted stale below)
+**Amended**: 2026-07-27, post-plan-review remediation (HIGH-1 live-model gate now literal WP04
+acceptance evidence; HIGH-2 every `-t`-filtered vitest check re-verified with a match count, not
+a bare exit code; MEDIUM-1 citation count corrected to 9 occurrences/5 files, units made explicit,
+SC-006 rewording recommended; MEDIUM-2 FR-002's manifest substitution now disclosed; MEDIUM-4
+mission-FSM desync assessed with a recommendation, not unilaterally remediated; LOW-1 unrelated
+`.env`/NI-001 caveat added). All corrections re-verified directly against the current tree during
+this remediation pass, not copied from the review's own text.
 
 ## Summary
 
@@ -26,26 +33,50 @@ right. None of these change what the FRs require; they change what the WPs must 
 to satisfy those FRs honestly. Reported here rather than silently absorbed, per this
 programme's citation-discipline standard applied to itself.
 
-1. **FR-004's occurrence count is incomplete.** The spec names 4 files / "four real
-   occurrences" of `agentskills.io/specification#trigger-testing`. Direct `command grep` at
-   current HEAD finds **9 occurrences across 6 files**: `trigger.ts` (lines 34, 188, 290, 346 —
-   4, matches spec), `types.ts` (line 97 — 1, matches spec), `fixtures/skills/trigger-queries/
-   rigged-impossible-queries.yaml` (line 2 — 1, matches spec), `fixtures/skills/trigger-queries/
-   weather-skill-queries.yaml` (line 2 — 1, matches spec) — **and, not named anywhere in the
-   spec, `tests/unit/skills-trigger.test.ts` (lines 20 and 59 — 2 more)**. FR-004's own
-   verification command greps only `src/ fixtures/ examples/ docs/` (deliberately excluding
-   `tests/`), so its literal exit criterion (count `0`) is satisfiable without touching
+1. **FR-004's occurrence count is incomplete, and this plan's own re-derivation had an arithmetic
+   error, corrected here.** The spec names 4 files / "four real occurrences" of
+   `agentskills.io/specification#trigger-testing` — that "four" is itself a **file** count
+   (`git grep -rl | wc -l`), not an occurrence count; the spec's own prose conflates the two
+   units in that one sentence (not fixed here — out of scope for a plan-only amendment, flagged
+   for whoever next touches `spec.md`). Direct `command grep -n` at current HEAD, re-verified
+   during post-plan remediation, finds **9 occurrences across 5 files** (previously miscounted
+   in this plan as "6 files" — corrected): `trigger.ts` (lines 34, 188, 290, 346 — 4 occurrences,
+   1 file, matches spec), `types.ts` (line 97 — 1 occurrence, 1 file, matches spec),
+   `fixtures/skills/trigger-queries/rigged-impossible-queries.yaml` (line 2 — 1 occurrence, 1
+   file, matches spec), `fixtures/skills/trigger-queries/weather-skill-queries.yaml` (line 2 — 1
+   occurrence, 1 file, matches spec) — **and, not named anywhere in the spec,
+   `tests/unit/skills-trigger.test.ts` (lines 20 and 59 — 2 occurrences, 1 file, more)**. That is
+   4 files / 7 occurrences from the spec's own list, plus 1 file / 2 occurrences not in that
+   list = **5 files / 9 occurrences total** — the "6 files" figure previously in this plan did
+   not correspond to any actual recount and is simply wrong; re-running the same `command grep`
+   command during remediation reproduces 5/9, not 6/9. FR-004's own verification command greps
+   only `src/ fixtures/ examples/ docs/` (deliberately excluding `tests/`), so its literal exit
+   criterion (count `0`, a **file** count) is satisfiable without touching
    `tests/unit/skills-trigger.test.ts`. But SC-006 says the fabricated anchor must "no longer
-   appear **anywhere in the repo**" — broader than FR-004's own check. That is a real
-   contradiction between FR-004's verification command and SC-006's success criterion, not a
-   planning artifact. **Resolution taken in this plan**: WP03's `write_scope` is extended by
-   one file, `tests/unit/skills-trigger.test.ts`, beyond the spec's literal list, so SC-006 is
-   actually satisfied and not just FR-004's narrower grep. This file is a plain unit test for
-   code already inside this mission's `write_scope` (`src/adapters/skills/trigger.ts`) — no
-   hazard-1 conflict, it enforces nothing outside this lane's own power to fix. Flagging this
-   explicitly for the operator rather than deciding it silently: if the narrower FR-004 check
-   is intentional and `tests/` really should stay untouched, drop this file from WP03 and accept
-   that SC-006's "anywhere in the repo" claim is then over-broad.
+   appear **anywhere in the repo**" — broader than FR-004's own check, and, taken fully
+   literally, unsatisfiable: `kitty-specs/skills-behavioral-enablement-01KYJFAC/` (this mission's
+   own `spec.md`, `plan.md`, `checklists/requirements.md`, `status.events.jsonl`, and a
+   `decisions/` record) necessarily quote the fabricated anchor as the defect under discussion,
+   as does the older `kitty-specs/skills-adapter-01KTYKNX/` mission's `data-model.md` and two
+   `tasks/` files from a sibling mission (confirmed live via `command grep -rl` across
+   `kitty-specs/` — 9 additional hits there, none in this mission's or WP03's `write_scope`).
+   Neither the narrow nor the broadened grep command below excludes `kitty-specs/`, and neither
+   should need to: both already scope only to `src/ fixtures/ examples/ docs/ (tests/)`, which
+   never touches `kitty-specs/` in the first place — the mechanical checks are already correctly
+   scoped, only SC-006's **prose** overclaims "anywhere in the repo." **Recommendation for
+   whoever next touches `spec.md`** (out of scope to edit here): reword SC-006 to name its real
+   scope explicitly — `src/ fixtures/ examples/ docs/ tests/` — and explicitly exclude
+   mission-planning artifacts (`kitty-specs/**`) that document the historical defect by design,
+   rather than leaving "anywhere in the repo" as a literal, unsatisfiable claim. **Resolution
+   taken in this plan (unchanged by the count correction above)**: WP03's `write_scope` is
+   extended by one file, `tests/unit/skills-trigger.test.ts`, beyond the spec's literal list, so
+   the corrected/narrowed SC-006 is actually satisfied on the code-surface side, and not just
+   FR-004's narrower grep. This file is a plain unit test for code already inside this mission's
+   `write_scope` (`src/adapters/skills/trigger.ts`) — no hazard-1 conflict, it enforces nothing
+   outside this lane's own power to fix. Flagging this explicitly for the operator rather than
+   deciding it silently: if the narrower FR-004 check is intentional and `tests/` really should
+   stay untouched, drop this file from WP03 and accept that SC-006's "anywhere in the repo"
+   claim is then over-broad even after the reword above.
 
 2. **FR-001's own acceptance example cites a manifest that cannot satisfy it yet.** FR-001's AC-1a
    runs `muster skills run examples/skills/manifest.yaml --json` and expects a populated
@@ -57,6 +88,22 @@ programme's citation-discipline standard applied to itself.
    below uses the fixture manifest for this reason. A regression assertion against
    `examples/skills/manifest.yaml` (the spec's literal AC-1a command) is added as a mission-level
    check once WP04 lands, not as one of WP01's own gates.
+
+   **The identical substitution applies to FR-002's AC-2a/b/c, and is disclosed here explicitly
+   rather than silently, per the post-plan review (this correction previously covered only
+   AC-1a; AC-1a's own disclosure was credited as a grounding correction, AC-2a/b/c's was not —
+   both are the same underlying fact and both are disclosed now).** The spec's AC-2a/b/c also
+   run against `examples/skills/manifest.yaml`. Beyond the "no behavioral case exists yet"
+   problem AC-1a already has, there is a second, independent reason that manifest cannot
+   exercise FR-002's env-alias/deprecation-warning logic: confirmed directly against
+   `doSkillsRun` (`index.ts:1341-1348`), the endpoint-resolution/warning code path is reached
+   only inside the loop's `behavioral`-case branch — against a manifest with **zero** behavioral
+   cases, that branch never executes, so the deprecation-warning check would report a printed
+   count of `0` (the spec's own expected outcome for the "wins silently" case, AC-2c) even if the
+   alias-resolution logic were completely broken, simply because the code that would emit the
+   warning is never reached at all. WP01's acceptance evidence below therefore substitutes
+   `fixtures/skills/skills-manifest.yaml` for FR-002's AC-2a/b/c checks too, for the same
+   grounding reason as AC-1a above.
 
 3. **`SkillsCaseResult` (`index.ts:1254-1260`) has no fields for a `TriggerVerdict` today** —
    no `shouldTriggerAxis`, `nearMissAxis`, or `isControl`. FR-001/FR-005 require extending this
@@ -187,13 +234,28 @@ MUSTER_ENDPOINT=http://localhost:11434/v1 MUSTER_BASE_URL=http://unreachable-sho
   muster skills run fixtures/skills/skills-manifest.yaml 2>&1 | command grep -ic deprecat
 # expect: printed count exactly 0
 
-# C-001 regression (new test, run via vitest, not shell)
-pnpm vitest run tests/skills/cli.test.ts -t "errored trigger run"
-echo "exit=$?"   # expect 0; assertion inside: runsErrored increments, axis fails, contributes to overall failed run
+# C-001 regression (new test, run via vitest, not shell) — verified with a MATCH COUNT, not a
+# bare exit code (HIGH-2 remediation): vitest exits 0 whether "-t" matches and passes, or
+# matches NOTHING at all. Reproduced live in this checkout, pre-implementation: this exact
+# command against today's tree prints "Test Files 1 passed | 2 skipped (2)" / "Tests 16 skipped
+# (16)" and exits 0 — a renamed test or a stray `it.skip` would produce an identical green.
+pnpm vitest run tests/skills/cli.test.ts -t "errored trigger run" --reporter=json > /tmp/c001.json
+echo "exit=$?"   # expect 0
+test "$(jq '.numPassedTests' /tmp/c001.json)" -ge 1; echo "match_exit=$?"
+# MUST be 0 (numPassedTests >= 1) — this is the actual pass/fail signal, not the bare exit code
+# above; assertion inside the passing test: runsErrored increments, axis fails, contributes to
+# overall failed run
 
 # C-003 / hazard-1 proof
 pnpm vitest run tests/unit/invariants.test.ts
-echo "exit=$?"   # expect 0
+echo "exit=$?"   # expect 0 — CAVEAT (LOW-1): in this checkout, this currently exits 1 for a
+# reason unrelated to this WP's own changes — NI-001 (no committed secrets) trips on the
+# gitignored, untracked local .env file (an "sk-"-shaped key at index 15), because the
+# invariant walks the filesystem directly rather than `git ls-files`, so it reads .env even
+# though it is gitignored. Confirmed live: `pnpm vitest run tests/unit/invariants.test.ts`
+# exits 1 with exactly that failure today, on a tree with none of this WP's changes applied.
+# An implementer seeing red here should check for this specific, pre-existing, unrelated
+# failure before assuming their own change broke NI-001/NI-002/NI-003.
 
 # Pre-existing exit contract, must stay green (C-004 regression, unchanged path)
 muster skills run /nonexistent-manifest.yaml; echo "exit=$?"   # expect 2
@@ -246,13 +308,20 @@ EOF
 muster skills run /tmp/.../bad-skills-manifest.yaml; echo "exit=$?"   # expect 2, message names the missing field(s)
 
 # also: type outside the static|behavioral enum, and expectations.ok as a string — both exit 2
-pnpm vitest run tests/skills/cli.test.ts -t "manifest schema"
+# Verified with a MATCH COUNT, not a bare exit code (HIGH-2 remediation — same vitest quirk as
+# WP01's C-001 check: "-t" matching nothing still exits 0).
+pnpm vitest run tests/skills/cli.test.ts -t "manifest schema" --reporter=json > /tmp/fr003.json
 echo "exit=$?"   # expect 0
+test "$(jq '.numPassedTests' /tmp/fr003.json)" -ge 1; echo "match_exit=$?"   # MUST be 0
 
-# FR-007 — delete-direction test, against a temp copy (grounding correction #4)
-pnpm vitest run tests/skills/cli.test.ts -t "delete-direction"
-echo "exit=$?"   # expect 0; assertion inside: passed must NOT be true after the copy's fixture dir is removed;
-                 # a dedicated errored:true (or passed:false) outcome is required, exit contribution is 1
+# FR-007 — delete-direction test, against a temp copy (grounding correction #4). Same
+# match-count fix applied (HIGH-2).
+pnpm vitest run tests/skills/cli.test.ts -t "delete-direction" --reporter=json > /tmp/fr007.json
+echo "exit=$?"   # expect 0
+test "$(jq '.numPassedTests' /tmp/fr007.json)" -ge 1; echo "match_exit=$?"
+# MUST be 0; assertion inside the passing test: passed must NOT be true after the copy's
+# fixture dir is removed; a dedicated errored:true (or passed:false) outcome is required, exit
+# contribution is 1
 
 # Whole-tree gates
 pnpm build; echo "build_exit=$?"
@@ -347,8 +416,12 @@ listed here because that is where its acceptance evidence lives, not because it 
 
 **Acceptance evidence**:
 ```bash
-pnpm vitest run tests/skills/cli.test.ts
+pnpm vitest run tests/skills/cli.test.ts --reporter=json > /tmp/fr006.json
 echo "exit=$?"   # expect 0 (vitest process exit; FR-006's own stated verification command)
+test "$(jq '.numPassedTests' /tmp/fr006.json)" -ge 1; echo "match_exit=$?"   # MUST be 0 — not a
+# named -t filter, but this WP is the one authoring the new mock-client tests this file gains,
+# so a nonzero-match assertion is included here too rather than trusting the bare exit code
+# (HIGH-2 audit — see the rigor-audit note before the dependency graph)
 
 # Mission-level regression, now finally satisfiable: FR-001's own literal AC-1a command,
 # against examples/skills/manifest.yaml (grounding correction #2 — deferred here because this
@@ -360,7 +433,99 @@ pnpm build; echo "build_exit=$?"
 pnpm test; echo "test_exit=$?"
 ```
 
+**Live-model gate — literal, checkable acceptance evidence (HIGH-1 remediation).** This is the
+mission's actual acceptance precondition, not a prose claim living only in the "Live-Model
+Verification" section below: **WP04 must not be marked `done`/`approved` until every check in
+this block passes**, run against the mission coordination branch after WP01, WP02, and WP03 have
+all merged (WP04's own code depends only on WP01+WP02; running this block also after WP03 merges
+is what makes SC-006 fully closed at the point this gate is checked, not a functional dependency
+of the live run itself). This closes the gap the post-plan review found: `spec-kitty accept
+--diagnose`/`--mode checklist` check structure only (artifact presence, WP completion) and never
+grep `quickstart.md` for `_pending_` or inspect any recorded verdict — so this WP's own
+acceptance evidence is now the one place the live-model requirement is mechanically checked.
+
+```bash
+# 1. Offline baseline first (must be green, zero network calls, before the live run touches
+#    anything).
+pnpm test; echo "test_exit=$?"   # expect 0
+
+# 2. The live run itself. Credentials via environment variable only (.env, gitignored) — never
+#    argv, never logged. Pinned, not negotiable: gpt-4o-mini, https://api.openai.com/v1,
+#    runsPerQuery: 3, threshold: 0.5 (already checked into fixtures/skills/skills-manifest.yaml's
+#    two behavioral cases — this command changes no fixture content).
+node --env-file=.env dist/cli/index.js skills run fixtures/skills/skills-manifest.yaml --json \
+  > /tmp/skills-live-run.json
+echo "exit=$?"   # expect 0 or 1, never bare-skip (never skipped:true — that would itself be a
+                 # mission-blocking finding, since MUSTER_ENDPOINT/credentials are set for this run)
+
+# 3. Assert the EXACT LITERAL boolean values — not "truthy", not "the run didn't crash".
+CONTROL_PASSED=$(jq -r '.results[] | select(.id=="behavioral-rigged-control") | .passed' /tmp/skills-live-run.json)
+WEATHER_PASSED=$(jq -r '.results[] | select(.id=="behavioral-weather-skill") | .passed' /tmp/skills-live-run.json)
+echo "control=$CONTROL_PASSED weather=$WEATHER_PASSED"
+
+test "$CONTROL_PASSED" = "false"; echo "control_gate_exit=$?"
+# MUST be 0. The control reporting passed:true even ONCE is immediately mission-blocking and
+# NON-RETRYABLE, no exceptions — do not retry, do not swap models, investigate instead.
+
+test "$WEATHER_PASSED" = "true"; echo "weather_gate_exit=$?"
+# If this is nonzero on the FIRST attempt: retry the step-2 command exactly once, unmodified
+# (same model/manifest/env vars). A second consecutive failure BLOCKS this WP from done/approved;
+# record the failure in quickstart.md as an open defect. Never retry the control check above.
+
+# 4. quickstart.md's results table must contain NO "_pending_" string once this gate has run for
+#    real — an absence check as a COUNT, never a bare grep exit status (this programme's own
+#    standing lesson, applied here too).
+command grep -c "_pending_" kitty-specs/skills-behavioral-enablement-01KYJFAC/quickstart.md
+# expect the printed count to be the literal string 0 (all nine table rows filled with real
+# observed values: date/time, attempt #, both passed booleans, both observed trigger rates,
+# overall exit code, portability endpoint, portability result, blocking findings)
+
+# 5. Credential hygiene: the key VALUE must never appear in argv (ps) or in the recorded output.
+ps aux | command grep -c "MUSTER_API_KEY=\|OPENAI_API_KEY=\|sk-"; # expect 0
+command grep -c "MUSTER_API_KEY\|OPENAI_API_KEY" /tmp/skills-live-run.json   # expect 0
+
+# 6. Portability check (step 4 of the Live-Model Verification Plan) — same fixtures, only env
+#    vars differ. Not a second acceptance gate; still recorded in quickstart.md.
+MUSTER_ENDPOINT=<second-endpoint> MUSTER_MODEL=<local-model> \
+  node dist/cli/index.js skills run fixtures/skills/skills-manifest.yaml --json
+echo "exit=$?"
+```
+
+This WP's `done`/`approved` state requires: `control_gate_exit=0` AND `weather_gate_exit=0` (after
+at most one retry) AND the `_pending_` count above is `0`. Any other outcome is an open defect,
+recorded in `quickstart.md`, and this WP stays not-done until resolved — no exceptions, no
+model-swapping to force a pass.
+
 ---
+
+## Acceptance-evidence rigor audit (HIGH-2 — every command audited, not just the three named)
+
+The post-plan review demonstrated live, in this checkout, that vitest's `-t` flag exits `0`
+whether the pattern matches and passes **or matches nothing at all**:
+
+```
+pnpm vitest run tests/skills/cli.test.ts -t "errored trigger run"
+→ "Test Files 1 passed | 2 skipped (2)", "Tests 16 skipped (16)", exit 0
+```
+
+`--reporter=json`'s `numPassedTests` field distinguishes the two (`0` in the reproduction above,
+confirmed via `jq '.numPassedTests'` against the JSON reporter's output on the same command).
+Every `pnpm vitest run` line in this plan was re-audited against this specific failure shape:
+
+| Location | Command | `-t` filtered? | Verdict |
+|---|---|---|---|
+| WP01, C-001 | `... cli.test.ts -t "errored trigger run"` | Yes | **Fixed** — now asserts `numPassedTests >= 1` via `--reporter=json`, not the bare exit code |
+| WP01, hazard-1/C-003 | `... invariants.test.ts` (whole file) | No | Not exposed to the `-t` no-match quirk — a whole-file run always executes every test the file actually contains. Residual risk (empty/all-skip file) is structurally different and not present here: the file has 6 existing tests today (confirmed by direct count; vitest's own typecheck pass reports these again under a `TS` prefix, so the reporter's own summary shows 12 — 6 real + 6 typecheck duplicates, not 12 distinct assertions), further reduced only by LOW-1's unrelated `.env`/NI-001 failure, called out separately in WP01's evidence |
+| WP02, FR-003 | `... cli.test.ts -t "manifest schema"` | Yes | **Fixed** — same `numPassedTests >= 1` treatment |
+| WP02, FR-007 | `... cli.test.ts -t "delete-direction"` | Yes | **Fixed** — same treatment |
+| WP03 | `... skills-trigger.test.ts` (whole file) | No | Whole-file, unfiltered; the file already has 48 existing tests (confirmed by direct count) and WP03 only edits citation strings inside them, not test structure — negligible risk of this shape |
+| WP04, FR-006 | `... cli.test.ts` (whole file) | No | Whole-file, unfiltered, but WP04 is the WP *authoring* the new tests this run is meant to prove exist — a stray `it.skip` on just the new tests could hide inside an otherwise-passing whole-file run. Given the audit standard applied to the named three, the same `numPassedTests >= 1` assertion was added here too (see WP04's acceptance evidence) rather than leaving this as the one remaining bare-exit-code check on newly authored test content |
+
+No other `pnpm vitest run … -t "…"` lines exist in `plan.md`, `spec.md`, or `quickstart.md`
+(re-verified with `command grep -n '-t "' ` across all three files during this remediation pass —
+exactly the three rows marked "Fixed" above were the only matches). `pnpm test`/`pnpm build`
+whole-suite gates elsewhere in this plan are not filtered and run the repo's full test suite
+(hundreds of tests); the zero-match failure mode does not apply to them in any realistic sense.
 
 ## Dependency graph
 
@@ -386,12 +551,27 @@ this `depends_on` declaration must still be verified at accept time, not assumed
 
 ## Live-Model Verification — ownership and execution point
 
-**No single WP owns the live run.** The spec's own Live-Model Verification Plan ties it to "once
-WP01-WP03 land" — i.e., it requires the mission branch's fully merged state (behavioral wiring +
-schema validation + catch-block fix + citation repoint all present), not any one WP's isolated
-tree. This plan designates it as a **mission-level pre-accept gate**, executed after WP01, WP02,
-WP03, and WP04 have all merged into the mission coordination branch, before that branch is
-squash-merged into `main` (`integrate_mission_into_target`):
+**Revised per post-plan review (HIGH-1): WP04 owns this mechanically, not just narratively.**
+This plan previously said "no single WP owns the live run" and described the procedure only in
+prose here — the post-plan review found that prose description was never actually wired into any
+WP's `done`/`approved` gate, and confirmed by running the tool that `spec-kitty accept
+--diagnose`/`--mode checklist` check structure only (artifact presence, WP completion), never
+`quickstart.md`'s content, and nothing greps for `_pending_`. So the mission's real acceptance
+precondition was asserted here in prose and absent from the one artifact mechanically checked at
+accept time — the same shape as two prior findings in this programme (M7's IC-00, M7's
+C-002/C-003). **Fixed**: the exact same procedure below is now also WP04's own literal
+acceptance evidence (see WP04's "Live-model gate" block above) — WP04, which already covers
+FR-005 (verification-only) and FR-006, is the WP named as the one that "must not be marked
+done/approved" until the control's `passed:false` and the should-trigger case's `passed:true` are
+both observed and recorded. This section retains the procedure and policy narrative; WP04's own
+block above is the checkable, gating copy.
+
+The spec's own Live-Model Verification Plan ties this to "once WP01-WP03 land" — i.e., it
+requires the mission branch's fully merged state (behavioral wiring + schema validation +
+catch-block fix + citation repoint all present), not any one WP's isolated tree. Practically,
+this means WP04's live-model gate is run against the mission coordination branch after WP01,
+WP02, WP03, and WP04 have all merged, before that branch is squash-merged into `main`
+(`integrate_mission_into_target`):
 
 1. `pnpm test` fully offline first — zero network calls, must be green (baseline before the live
    run touches anything).
@@ -433,11 +613,93 @@ branch never incorporated. If `main` moves again before this mission reaches acc
 given this repo's concurrency pattern noted in the mission brief), re-run this reconciliation
 immediately before the squash, not once, early, and then forgotten.
 
+## Mission FSM desync — assessment and recommendation (MEDIUM-4, assessed, not remediated here)
+
+Confirmed live during this remediation pass: `spec-kitty next --mission
+skills-behavioral-enablement-01KYJFAC --json` reports `mission_state: "not_started"`,
+`preview_step: "discovery"`, despite `spec.md`, `plan.md`, `quickstart.md`,
+`checklists/requirements.md`, and both decisions being complete. `status.events.jsonl` holds only
+6 events (`MissionCreated`, `SpecifyStarted`, two `DecisionPointOpened`, two
+`DecisionPointResolved`) — no `SpecifyCompleted`, no `PlanStarted`/`PlanCompleted` event exists,
+even though `plan.md` (this file) is fully written and committed. The event log lags the actual
+artifact state.
+
+**Misroute risk — real, not hypothetical.** Because `next`'s FSM view is derived from the event
+log, not from artifact presence, an agent invoking `spec-kitty next` (or a `tasks-outline` step
+built on the same state read) for this mission today would be routed back toward
+specify/`discovery`, not forward toward tasks — the runtime has no signal that specify or plan
+ever completed. Left as-is, the very next `spec-kitty next` call on this mission risks re-entering
+early-lifecycle steps against artifacts that are already done, rather than refusing cleanly; it is
+a misroute, not a refusal.
+
+**This is not the same problem as the repo's "migration required" banner, and `spec-kitty upgrade`
+is the wrong tool for it.** Checked directly, per this task's explicit instruction not to run it
+unilaterally:
+
+- `spec-kitty upgrade --project --dry-run` reports `Current version: 3.2.5` / `Target version:
+  3.2.5` — **"Project is already up to date!"** at the CLI/schema-version level. The only thing
+  it flags repo-wide is a **TeamSpace Mission-State Migration** blocker, finding code
+  `SNAPSHOT_DRIFT`, "1 blocker across 1 mission."
+- `spec-kitty doctor mission-state --audit --fail-on teamspace-blocker` (repo-wide, read-only)
+  identifies that one blocker as belonging to **`spec-kitty-profile-adapter-01KYG7KR`** (1 error,
+  16 warnings, 96 info; codes include `ACTOR_DRIFT`, `MISSING_EVIDENCE`, `SNAPSHOT_DRIFT`,
+  `UNKNOWN_SHAPE`) — a **different mission**, not this one, and one whose `tasks/` files were
+  already showing as locally modified/uncommitted at the start of this session (per this
+  worktree's own git status) — exactly the kind of mid-edit state a repo-wide migration
+  command should not be run against unprompted.
+- Scoped to just this mission, `spec-kitty doctor mission-state --audit --mission
+  skills-behavioral-enablement-01KYJFAC --json` reports **0 errors, 0 warnings, 2 info** — both
+  info findings are benign (`UNKNOWN_SHAPE` on `meta.json` keys `flattened` and `topology`, i.e.
+  schema keys this doctor build doesn't yet recognize, not a structural defect). The mission-state
+  doctor considers this mission's artifacts themselves healthy; the desync is confined to the
+  event-log/FSM projection, not the artifacts.
+- `spec-kitty reconcile --mission skills-behavioral-enablement-01KYJFAC --json` returns `"status":
+  "error"`, `"error": "no recorded snapshot to reconcile against"` — there is no baseline snapshot
+  yet to diverge from, consistent with a mission whose lifecycle events were never fully emitted
+  rather than one whose snapshot has drifted from reality.
+
+**Two mission-scoped, dry-run-verified remedies exist, narrower than the repo-wide `upgrade`:**
+
+1. `spec-kitty migrate normalize-lifecycle --mission skills-behavioral-enablement-01KYJFAC
+   --dry-run --json` → `lifecycle_state: "recoverable"`, single action: "Would regenerate
+   canonical status/progress/lifecycle views." Clean, mission-scoped, no errors/warnings.
+2. `spec-kitty migrate backfill-runtime-state --mission skills-behavioral-enablement-01KYJFAC
+   --dry-run --json` → `verify_ok: true`, `would_flip: true`, `would_seed: false`, zero
+   mismatches, zero errors. (`would_seed: false` because the frontmatter/checkbox-derived runtime
+   state this command seeds from already matches what the event log needs — nothing new to seed,
+   only the `status_phase` flip to snapshot-authority is pending.)
+
+Both commands were run **only** with `--dry-run` during this pass; neither was executed for real,
+per this task's instruction to assess and recommend rather than unilaterally remediate.
+
+**Recommendation**: do **not** run repo-wide `spec-kitty upgrade` to fix this mission's FSM
+desync — it is the wrong tool (the project is already at its target version; the one thing it
+would actually act on repo-wide is the unrelated `spec-kitty-profile-adapter-01KYG7KR` TeamSpace
+blocker, on a mission with its own uncommitted edits in flight) and it carries repo-wide blast
+radius across every mission, including merged ones, which this mission's own operator note
+already flags as a concern. Instead, the safest remedy is the **targeted, mission-scoped
+reconciliation** above: `spec-kitty migrate normalize-lifecycle --mission
+skills-behavioral-enablement-01KYJFAC` followed by `spec-kitty migrate backfill-runtime-state
+--mission skills-behavioral-enablement-01KYJFAC` (both without `--dry-run`, once the operator
+approves), scoped to this one mission slug only. **Trade-off**: this targeted fix repairs only
+this mission's own event log/lifecycle projection; it does not touch, and is not a substitute
+for, the separate `SNAPSHOT_DRIFT` finding on `spec-kitty-profile-adapter-01KYG7KR`, which remains
+open and belongs to whoever owns that mission to resolve — ideally not while that mission's
+`tasks/` files are mid-edit. Executing either targeted migrate command is left to the operator's
+explicit go-ahead; it was not run here.
+
 ## Complexity Tracking
 
 No new runtime dependency (ajv already present). No new environment variable beyond the
 `MUSTER_ENDPOINT`/`MUSTER_BASE_URL` alias relationship (per Scope Guard). No structural
-exception to the charter. The one open item requiring operator confirmation, not silently
-resolved, is grounding correction #1 (WP03's `write_scope` addition of
-`tests/unit/skills-trigger.test.ts`, beyond the spec's literal file list, to make SC-006's
-"anywhere in the repo" claim actually true).
+exception to the charter. Open items requiring operator action, not silently resolved:
+
+1. Grounding correction #1 (WP03's `write_scope` addition of `tests/unit/skills-trigger.test.ts`,
+   beyond the spec's literal file list, to make SC-006's "anywhere in the repo" claim actually
+   true) — confirm or reject.
+2. SC-006's wording in `spec.md` should be narrowed to `src/ fixtures/ examples/ docs/ tests/`,
+   explicitly excluding `kitty-specs/**` — recommended here, not applied here (plan-only
+   amendment; `spec.md` is out of scope for this pass).
+3. The mission FSM desync (see "Mission FSM desync — assessment and recommendation" above) —
+   recommended remedy is the two mission-scoped `spec-kitty migrate` dry-run-verified commands
+   above, run for real on the operator's go-ahead; not executed during this pass.
