@@ -101,6 +101,27 @@ describe("checkIdentity — collision", () => {
     expect(findings.filter((f) => f.kind === "profile-id-collision")).toHaveLength(2);
     expect(findings.filter((f) => f.kind === "profile-id-filename-mismatch")).toHaveLength(1);
   });
+
+  it("names the OTHER colliding file(s) by stem, so the two findings are distinguishable", () => {
+    const a = profile({ profileId: "shared-id", fileNameStem: "shared-id-a" });
+    const b = profile({ profileId: "shared-id", fileNameStem: "shared-id-b" });
+    const [findingA, findingB] = checkIdentity([a, b]).filter((f) => f.kind === "profile-id-collision");
+    expect(findingA?.message).toBe('profile-id "shared-id" is shared by 2 profiles (also: shared-id-b)');
+    expect(findingB?.message).toBe('profile-id "shared-id" is shared by 2 profiles (also: shared-id-a)');
+    expect(findingA?.message).not.toBe(findingB?.message);
+  });
+
+  it("a three-way collision names every OTHER stem, in input order", () => {
+    const a = profile({ profileId: "triple", fileNameStem: "triple-a" });
+    const b = profile({ profileId: "triple", fileNameStem: "triple-b" });
+    const c = profile({ profileId: "triple", fileNameStem: "triple-c" });
+    const [findingA, findingB, findingC] = checkIdentity([a, b, c]).filter(
+      (f) => f.kind === "profile-id-collision"
+    );
+    expect(findingA?.message).toBe('profile-id "triple" is shared by 3 profiles (also: triple-b, triple-c)');
+    expect(findingB?.message).toBe('profile-id "triple" is shared by 3 profiles (also: triple-a, triple-c)');
+    expect(findingC?.message).toBe('profile-id "triple" is shared by 3 profiles (also: triple-a, triple-b)');
+  });
 });
 
 describe("RUBRIC_CITATION completeness (T012 step 5)", () => {

@@ -89,12 +89,13 @@ function checkCollisions(profiles: readonly AgentProfile[]): SkProfileFinding[] 
     if (profile.profileId === "") continue;
     const group = groups.get(profile.profileId);
     if (group && group.length > 1) {
+      const otherStems = group.filter((other) => other !== profile).map((other) => other.fileNameStem);
       findings.push(
         err(
           "profile-id-collision",
           profile.profileId,
           "profile-id",
-          `profile-id "${profile.profileId}" is shared by ${group.length} profiles`,
+          `profile-id "${profile.profileId}" is shared by ${group.length} profiles (also: ${otherStems.join(", ")})`,
           RUBRIC_CITATION["profile-id-collision"]
         )
       );
