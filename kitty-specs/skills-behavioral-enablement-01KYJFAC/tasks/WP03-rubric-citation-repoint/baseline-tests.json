@@ -1,0 +1,13 @@
+{
+  "wp_id": "WP03",
+  "captured_at": "2026-07-27T20:52:00Z",
+  "base_branch": "kitty/mission-skills-behavioral-enablement",
+  "base_commit": "524417b5b784df6ea023e9d20dba3d3a9de68bba",
+  "test_runner": "pytest",
+  "total": 0,
+  "passed": 0,
+  "failed": 0,
+  "skipped": 0,
+  "failures": [],
+  "source_identity": "GateCoverageScopeSource/junit_xml"
+}
