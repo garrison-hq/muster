@@ -341,7 +341,7 @@ the deferral explicitly in the Activity Log per step 2.
   | 4 | §3.2 handoff-asymmetric (warning) | `broken/asymmetric-a.agent.yaml` + `broken/asymmetric-b.agent.yaml` (pair) | handoff-asymmetric(warning) x1, on asymmetric-a's `collaboration.handoff-to[0]` only; asymmetric-b contributes zero findings. Proves the warning/error split (resolves cleanly, is merely unreciprocated). | Matches exactly. |
   | 5 | §4.3 activation-config-unrecognized-shape (warning) | `bad-activation-config.yaml` (nested `charter:`-shaped, exposes neither `activated_directives` nor `activated_tactics`) + `broken/activation-shape/valid-profile.agent.yaml` (deliberately zero-finding profile) + `broken-activation-manifest.yaml` (new manifest, isolates this class) | Exactly 1 finding for the whole manifest run: activation-config-unrecognized-shape(warning), `profileId: "(manifest)"`. `ok === true`. | Matches exactly. |
   | 6 | §7.2 projection-output-missing (error) | `broken/projection/projection-output-missing.agent.yaml` + `projection-manifest.json` (entry's `output_path` deliberately points at a file that is never created) + `broken-projection-manifest.yaml` (new manifest, isolates FR-007) | projection-output-missing(error) only, for this profile. | Matches exactly (verified via the independent re-implementation described above, not WP03's own code). |
-  | 7 | §7.3 projection-hash-drift (warning) | `broken/projection/projection-hash-drift.agent.yaml` + `projection-manifest.json` (matching entry, real `output_path` at `broken/projection/outputs/hash-drift.md`, but both `source_hash` and `file_hash` recorded as deliberately-wrong placeholders) | projection-hash-drift(warning) only, for this profile; recomputed real hashes (`c3734807...` source, `53e6d5e8...` output) independently confirmed to differ from the manifest's recorded placeholders. | Matches exactly. |
+  | 7 | §7.3 projection-hash-drift (warning) | `broken/projection/projection-hash-drift.agent.yaml` + `projection-manifest.json` (matching entry, real `output_path` at `broken/projection/outputs/hash-drift.md`, but both `source_hash` and `file_hash` recorded as deliberately-wrong placeholders) | projection-hash-drift(warning) only, for this profile; recomputed real hashes (`c3734807...` source, `53e6d5e8...` output) independently confirmed to differ from the manifest's recorded placeholders. `[SUPERSEDED — see entry 2026-07-27T18:00Z]` both recomputed values in this row went stale the moment `d502427` edited `projection-hash-drift.agent.yaml`'s and `outputs/hash-drift.md`'s own headers; do not cite `c3734807...`/`53e6d5e8...` as current. | Matches exactly. |
 
   **Full post-remediation `fixtures/skprofile/broken/` table** (10 → 11
   direct `*.agent.yaml` children; `broken/activation-shape/` and
@@ -411,6 +411,7 @@ the deferral explicitly in the Activity Log per step 2.
 
   $ tsx verify-projection.ts fixtures/skprofile/broken/projection fixtures/skprofile/projection-manifest.json
   projection-hash-drift -> projection-hash-drift (warning; source_hash and file_hash differ; recomputed source_hash=c3734807cf8967130f0ece027257c4962c65f6aabf802c201f5d70eb280b2578 file_hash=53e6d5e8e50fbd082c30e64e73298362cb608374b49a989c98a0f14c09d48490)
+  [SUPERSEDED — see entry 2026-07-27T18:00Z] both recomputed values above went stale once `d502427` edited the two files' own comment headers; do not cite them as current.
   projection-output-missing -> projection-output-missing (output_path ".../fixtures/skprofile/broken/projection/outputs/output-missing-does-not-exist.md" does not exist)
 
   $ tsx verify.ts fixtures/skprofile/broken/projection fixtures/skprofile/doctrine \
@@ -545,9 +546,16 @@ the deferral explicitly in the Activity Log per step 2.
      substituting a new value that would only go stale again at the next
      edit.
   2. The same header claimed `outputs/hash-drift.md`'s real sha256 was
-     `53e6d5e8...c09d48490`. `outputs/hash-drift.md` is a separate file,
-     untouched by d502427 or by this fix, so a correct value here is
-     stable. Recomputed independently two ways — `sha256sum
+     `53e6d5e8...c09d48490`. That value was stale: `d502427` **did** edit
+     `outputs/hash-drift.md` itself — it rewrote that file's own comment
+     header, correcting its relative path back to `projection-manifest.json`
+     from `../../` to `../../../` — and the `53e6d5e8...` digest recorded in
+     `projection-hash-drift.agent.yaml`'s header was carried over verbatim,
+     unrecomputed, across that very edit. The edit to `outputs/hash-drift.md`
+     plus the stale, un-recomputed carry-over of its pre-edit digest are
+     exactly why `53e6d5e8...` went wrong — this is not a hypothetical risk,
+     it already happened once, in the same commit that was supposed to fix
+     the header. Recomputed independently two ways — `sha256sum
      fixtures/skprofile/broken/projection/outputs/hash-drift.md` and a
      from-scratch Node `createHash("sha256")` re-implementation of rubric
      §7.2/§7.3's projection-drift algorithm driven against
@@ -557,6 +565,12 @@ the deferral explicitly in the Activity Log per step 2.
      per the operator's guidance: this digest lives in a different, stable
      file, so a maintainer pasting it into `file_hash` gets the real
      discrimination-control signal rather than a silently-wrong one).
+     `[SUPERSEDED — see entry 2026-07-27T20:00Z]` this preference was
+     itself reversed by a later operator decision: the pin was removed
+     outright, because `outputs/hash-drift.md` also carries a
+     self-describing header that had already been edited once (see item 2's
+     own opening sentence above) — the same live-trap shape as item 1,
+     recognized one file too late here.
   3. **Advisory, also applied**: `projection-manifest.json`'s
      `source_hash` for the `projection-output-missing` entry
      (`070d48f2d1f56913d200bfaa4515473a934c17349957ea055700ff4fae81d14e`)
@@ -637,3 +651,103 @@ the deferral explicitly in the Activity Log per step 2.
   `examples/skprofile/**`) was touched on lane-e for this fix; this
   Activity Log entry itself is the only planning-repo change made as part
   of it.
+
+- 2026-07-27T20:00:00Z – claude (implementer, node-norris) – **Fourth-round
+  fix, closing the recurring defect class named by the operator**
+  ("documentation asserting facts about files, in files that get edited,
+  with nothing verifying the assertions"): three prior rounds each fixed one
+  instance and introduced the next (the §7.3 header misquote → the digests
+  it folded in going stale → the entry above's own stability claim about
+  `outputs/hash-drift.md` being false). This round closes it by removing the
+  claim rather than correcting it again, per the operator's explicit
+  guidance that only removal or a claim about something immutable is
+  durable. Landed as lane-e commit `f7ff0f9`
+  (`fix(spec-kitty-profile): drop pinned outputs/hash-drift.md digest
+  (4th-round fix)`).
+
+  1. **Corrected the false statement above** (item 2 of the 2026-07-27T18:00Z
+     entry): that item's own opening sentence claimed `outputs/hash-drift.md`
+     was "untouched by d502427 or by this fix, so a correct value here is
+     stable." False — `d502427` did edit that file's own comment header
+     (its relative path back to `projection-manifest.json`, `../../` →
+     `../../../`), which is exactly why the digest recorded before that edit
+     (`53e6d5e8...`) had gone stale in the first place. The sentence now
+     states this plainly instead of asserting forward-looking stability.
+  2. **Removed the pinned digest** (`ba652c99...3228b807`) from
+     `fixtures/skprofile/broken/projection/projection-hash-drift.agent.yaml`'s
+     header, applying decision #3's own principle (never pin a value a
+     future, unrelated edit can silently invalidate with nothing checking
+     it) to the one place in the file tree it had not yet been applied.
+     Rationale recorded in the fixture file's own header comment, not here:
+     `outputs/hash-drift.md` carries a self-describing header that has
+     already been edited once, so any pin here restales at that file's next
+     edit exactly as this profile's own digest could never have been safely
+     pinned; the manifest's `deadbeef...` placeholders are self-evidently
+     deliberate without a real-digest cross-reference; a reader who needs
+     the current value can recompute it directly
+     (`sha256sum fixtures/skprofile/broken/projection/outputs/hash-drift.md`).
+  3. **Made the supersession bidirectional**: `7584c67` (which added the
+     2026-07-27T09:52Z entry) was insertions-only, so its own table row 7
+     (line ~344) and transcript line (line ~413) presented `c3734807...`/
+     `53e6d5e8...` as current evidence with no pointer forward to the
+     2026-07-27T18:00Z entry that superseded them. Added an in-place
+     `[SUPERSEDED — see entry 2026-07-27T18:00Z]` marker at both locations.
+     Symmetrically, added `[SUPERSEDED — see entry 2026-07-27T20:00Z]` at
+     the 2026-07-27T18:00Z entry's own item 2 conclusion ("Corrected the
+     header to this value"), since that action is what step 2 above
+     reverses — closing the same forward-pointer gap one level down, rather
+     than repeating it.
+
+  **Sweep, this round** (every claim touched or neighbouring an edit,
+  checked against the fixture tree at lane-e HEAD `f7ff0f9`, via the same
+  independent driver technique as prior rounds — uncommitted `tsx` scratch
+  script run from this repo's own real WP01/WP02 exports plus a
+  from-scratch §7.2/§7.3 projection-drift re-implementation, deleted after
+  use, never inside `owned_files` or `src/`): `projection-hash-drift.agent
+  .yaml`'s remaining quoted claims (`output_path` literal, "DOES exist on
+  disk") — true, unchanged from the prior sweep. `outputs/hash-drift.md`'s
+  own claims (real sha256 "deliberately does NOT match" `file_hash`;
+  `../../../projection-manifest.json` relative path) — true, unchanged;
+  this fix touched neither this file's bytes nor its own header, only
+  `projection-hash-drift.agent.yaml`'s header (comment-only). No digest or
+  path claim about file contents/bytes remains anywhere in
+  `broken/projection/` outside the two lines just discussed. The other
+  facts under `broken/projection/` this fix neighbours (the zeroed
+  `source_hash` decision, the regression counts, the projection vector,
+  scope/determinism/C-004) were independently re-verified as part of this
+  round's driver run below and remain unchanged — not re-litigated
+  claim-by-claim here since none of them names a digest or path this fix
+  touched.
+
+  **Regression re-verification** (same independent driver): `broken-manifest
+  .yaml` → `TOTAL FINDINGS: 13`, `errors=12 warnings=1 ok=false` —
+  unchanged. `manifest.yaml` → `TOTAL FINDINGS: 2`, both
+  `reference-not-activated(warning)` (`architect`, `planner`),
+  `errors=0 warnings=2 ok=true` — unchanged. `broken-activation-manifest
+  .yaml` → `TOTAL FINDINGS: 1`, `(manifest) ->
+  activation-config-unrecognized-shape(warning)`, `errors=0 warnings=1
+  ok=true` — unchanged. `examples/skprofile/manifest.yaml` →
+  `TOTAL FINDINGS: 0`, `errors=0 warnings=0 ok=true` — unchanged.
+  `broken/projection` (isolated by `broken-projection-manifest.yaml`) →
+  `projection-output-missing(error)` + `projection-hash-drift(warning)`,
+  the latter's driver output reporting `recorded_file_hash=deadbeef...
+  actual_file_hash=ba652c99...3228b807` — independently re-confirming the
+  real digest again, via the same Node `crypto.createHash` path as the
+  prior round; `errors=1 warnings=1 ok=false` — unchanged. `broken/`
+  `*.agent.yaml` file count: `11` — unchanged.
+
+  `pnpm build` → exit 0. `pnpm typecheck` → exit 0. `pnpm test` → exit 0,
+  `164 passed (164)` test files, `3531 passed | 3 skipped (3534)` tests —
+  identical totals to both prior fixture-only rounds (no `src/` file
+  touched). `tests/unit/invariants.test.ts` (including NI-002) re-run
+  directly: `2 passed (2)` files, `12 passed (12)` tests.
+
+  **CLI-deferral restated (still true after this fix):** this WP still has
+  no CLI to run — `muster skprofile run` and `projection.ts` are WP03's
+  deliverables and do not exist on this WP's dependency chain; WP03's own
+  T020 real-CLI verification remains the actual proof of live behavior.
+
+  No file outside `owned_files` (`fixtures/skprofile/**`,
+  `examples/skprofile/**`) was touched on lane-e for this fix; this
+  Activity Log entry and the two in-place `[SUPERSEDED]` markers it
+  describes are the only planning-repo changes made as part of it.
