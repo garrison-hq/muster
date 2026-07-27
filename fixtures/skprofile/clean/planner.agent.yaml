@@ -1,0 +1,43 @@
+# Muster-local clean-fixture profile (WP05 T017 step 1, C-004) — legal by
+# construction, and deliberately uses the deprecated scalar `role` field
+# (rather than `roles`) so this WP's fixture set exercises both forms
+# `profile.ts`'s `extractRoles` normalises (WP01). Reciprocal handoffs
+# with architect.agent.yaml; resolvable references/context-sources.
+profile-id: planner
+name: Planner (fixture)
+description: >
+  Muster-local fixture profile (C-004) exercising the deprecated scalar
+  `role` field alongside architect.agent.yaml's array `roles` form.
+purpose: >
+  Sequence delivery work handed off from the architect profile in this
+  muster-local fixture set.
+role: planner
+
+specialization:
+  primary-focus: Task sequencing and delivery planning.
+  secondary-awareness: Architectural constraints.
+  avoidance-boundary: System design decisions.
+  success-definition: An actionable, sequenced delivery plan.
+
+collaboration:
+  handoff-to:
+    - architect
+  handoff-from:
+    - architect
+  works-with:
+    - architect
+
+context-sources:
+  directives:
+    - "001"
+  tactics:
+    - development-bdd
+
+directive-references:
+  - code: "001"
+    name: Architectural Integrity Standard
+    rationale: Planner must respect architectural boundaries when sequencing work.
+
+tactic-references:
+  - id: development-bdd
+    rationale: Plan delivery around the behavioral contracts established during design.

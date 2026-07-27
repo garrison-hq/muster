@@ -1,0 +1,18 @@
+# Muster-local discrimination-control manifest (SC-002/SC-003, WP05 T017
+# step 6) — points at broken/, the same vendored schema + doctrine tree as
+# manifest.yaml. No activationConfigPath here: broken/'s five fixtures are
+# each rigged to trip exactly one lint class, and activation gating is
+# deliberately out of scope for this manifest so it cannot add an
+# unintended sixth finding kind to the run.
+#
+# Expected (see quickstart.md §4): exit code 1, report.ok === false, and
+# findings including at least one of each of handoff-unresolved,
+# reference-unresolved, profile-id-filename-mismatch,
+# schema-conformance-violation, context-source-missing.
+version: "1.0.0"
+profilesDir: ./broken
+schemaPath: ./agent-profile.schema.yaml
+schemaSha: ebfbaddd653789417f89b040320ccfe452f15424
+doctrineRoot: ./doctrine
+cases:
+  - id: all-profiles

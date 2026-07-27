@@ -1,0 +1,32 @@
+# Muster-local runnable example manifest (WP05 T018, AC-1/Scenario 9,
+# C-004) — the one guaranteed fully-clean run: `muster skprofile run
+# examples/skprofile/manifest.yaml` must exit 0 with ZERO findings of any
+# severity (not just `ok: true`).
+#
+# Entirely self-contained under examples/skprofile/ — profilesDir,
+# schemaPath, and doctrineRoot all resolve within this directory, never
+# back into fixtures/skprofile/, so the example demonstrates real usage
+# rather than test plumbing.
+#
+# No activationConfigPath: activation gating is what fixtures/skprofile/
+# manifest.yaml uses to deliberately exercise a warning-tier finding
+# (reference-not-activated) — that is explicitly out of scope here, since
+# AC-1 requires this run to be perfectly clean.
+#
+# IMPORTANT — sequencing note (WP05 T018 step 2): this WP cannot itself run
+# `muster skprofile run` — the CLI is WP03's deliverable (T016), and WP03
+# depends on this WP, not the reverse. This manifest is constructed to be
+# clean BY CONSTRUCTION, applying the exact same reference-resolution/
+# handoff/context-source/identity rules already used and self-verified for
+# fixtures/skprofile/clean/ (see this WP's Activity Log / final report for
+# the literal finding output from driving WP01/WP02's real check functions
+# directly against these files). The live `exitCode: 0`/`ok: true`/
+# zero-findings CLI confirmation is deferred to WP03's T020, the first
+# point in the dependency chain where the CLI exists to run it.
+version: "1.0.0"
+profilesDir: ./profiles
+schemaPath: ./agent-profile.schema.yaml
+schemaSha: ebfbaddd653789417f89b040320ccfe452f15424
+doctrineRoot: ./doctrine
+cases:
+  - id: all-profiles

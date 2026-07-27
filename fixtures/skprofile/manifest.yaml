@@ -1,0 +1,20 @@
+# Muster-local fixture manifest (C-004, WP05 T017 step 5) — points at the
+# clean/ profile set, the vendored schema (agent-profile.schema.yaml)
+# pinned to its real upstream SHA, the muster-local doctrine tree, and the
+# activation-config that exercises the FR-004 reference-not-activated
+# warning path against clean/'s tactic references (both `architect` and
+# `planner` reference `development-bdd`, which this activation config
+# deliberately leaves out of `activated_tactics` — see activation-config.yaml).
+#
+# This means a run against this manifest is expected to be `ok: true` but
+# NOT zero-findings (two warning-severity `reference-not-activated`
+# findings) — see quickstart.md §3's own caveat and this WP's DoD.
+# `examples/skprofile/manifest.yaml` is the one guaranteed-zero-findings run.
+version: "1.0.0"
+profilesDir: ./clean
+schemaPath: ./agent-profile.schema.yaml
+schemaSha: ebfbaddd653789417f89b040320ccfe452f15424
+doctrineRoot: ./doctrine
+activationConfigPath: ./activation-config.yaml
+cases:
+  - id: all-profiles

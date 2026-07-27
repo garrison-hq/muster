@@ -1,0 +1,12 @@
+# Muster-local fixture stub (C-004). The real upstream tree (spec-kitty
+# commit ebfbaddd653789417f89b040320ccfe452f15424) does not ship a file
+# with this exact stem — this fixture invents a plausibly-named
+# styleguide purely to exercise the styleguide-references/
+# context-sources.styleguides resolution path (research.md R2's table),
+# since WP02's checks never validate doctrine YAML content, only
+# filename resolution.
+schema_version: "1.0"
+id: prose
+title: Prose Style (fixture stub)
+summary: >
+  Fixture stub only — content is never validated by this mission's checks.

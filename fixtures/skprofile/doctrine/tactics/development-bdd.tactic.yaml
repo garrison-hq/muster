@@ -1,0 +1,10 @@
+# Muster-local fixture stub (C-004) — mirrors the real upstream filename
+# shape at spec-kitty commit ebfbaddd653789417f89b040320ccfe452f15424
+# (src/doctrine/tactics/built-in/architecture/development-bdd.tactic.yaml).
+# Tactics resolve by exact filename-stem match (research.md R2) — content
+# is never validated by this mission's checks, so this stub is minimal.
+schema_version: "1.0"
+id: development-bdd
+name: BDD as Behavioral Contract Design (fixture stub)
+purpose: >
+  Fixture stub only — content is never validated by this mission's checks.
