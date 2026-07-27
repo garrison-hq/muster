@@ -605,3 +605,176 @@ validation artifact for this subtask.
   now explicitly excludes that kind; the fixed non-rubric literal in T015's
   first "5." is the sole path). T016's formatter placement corrected to
   `src/cli/index.ts` (8 existing formatters there vs. 4 in `output.ts`).
+- 2026-07-27T16:46:01Z – claude – shell_pid=1735012 – T020 real-CLI verification — verbatim transcripts (all four exit-code
+scenarios actually observed, not assumed). Commands run from the lane
+worktree after `pnpm build`.
+
+STEP 2 — clean fixture manifest, exit 0:
+$ node dist/cli/index.js skprofile run fixtures/skprofile/manifest.yaml --json
+```
+{
+  "ok": true,
+  "summary": "spec-kitty-profile adapter: 0 error finding(s) across 2 profile(s)",
+  "exitCode": 0,
+  "findings": [reference-not-activated x2 (architect, planner) — see fixture header, expected]
+}
+```
+$ echo $? -> 0
+
+STEP 3 — broken fixture manifest, exit 1:
+$ node dist/cli/index.js skprofile run fixtures/skprofile/broken-manifest.yaml --json
+```
+{
+  "ok": false,
+  "summary": "spec-kitty-profile adapter: 12 error finding(s) across 11 profile(s)",
+  "exitCode": 1,
+  "findings": [13 total — handoff-asymmetric(warning) x1, handoff-unresolved(error) x1,
+    reference-unresolved(error) x1, context-source-missing(error) x1,
+    profile-id-filename-mismatch(error) x3, profile-id-illegal(error) x2,
+    profile-id-collision(error) x2, schema-conformance-violation(error) x2]
+}
+```
+$ echo $? -> 1
+(Matches fixtures.test.ts's pinned 13-finding vector exactly.)
+
+STEP 4 — real 18 shipped Spec Kitty profiles (read-only), run TWICE for
+byte-stability comparison:
+$ git -C /home/jeroennouws/dev/spec-kitty-conformance rev-parse HEAD
+268f01634fec75574bb02d0f6f97b72d95a4d1fc
+Manifest (schemaSha pinned to that HEAD, activationConfigPath pointed at
+this repo's own .kittify/config.yaml for a fuller demonstration):
+```yaml
+version: "1.0.0"
+profilesDir: /home/jeroennouws/dev/spec-kitty-conformance/src/doctrine/agent_profiles/built-in
+schemaPath: /home/jeroennouws/dev/spec-kitty-conformance/src/doctrine/schemas/agent-profile.schema.yaml
+schemaSha: 268f01634fec75574bb02d0f6f97b72d95a4d1fc
+doctrineRoot: /home/jeroennouws/dev/spec-kitty-conformance/src/doctrine
+activationConfigPath: <this-worktree>/.kittify/config.yaml
+cases:
+  - id: real-profiles
+```
+$ node dist/cli/index.js skprofile run /tmp/skprofile-real-run-manifest.yaml --json > /tmp/real-run-1.json
+$ echo $? -> 1  (report.ok: false, report.exitCode: 1)
+Observed finding-kind counts: handoff-asymmetric: 9, handoff-unresolved: 7,
+reference-not-activated: 27 — total 43 findings, 7 error-severity
+(the handoff-unresolved ones) + 36 warning-severity. This matches the
+externally-reported expectation (7/9/27, 43 total) exactly.
+
+**Post-acceptance pre-merge review correction (2026-07-27)**: this exact
+configuration is now checked in at
+`kitty-specs/spec-kitty-profile-adapter-01KYG7KR/verification/real-profile-run-manifest.yaml`
+(schemaSha re-pinned to the fork's current HEAD, `c425bc188…`, at time of
+checking-in; the 18 profiles' own content — and therefore this 43/7/9/27
+figure — is unchanged since `91eeced1d`, 2026-06-22). Re-derived
+independently against the checked-in manifest: still exactly 43 findings
+(7/9/27), `report.ok === false`, exit `1`. Without `activationConfigPath`
+supplied, the same profile set yields 16 (7 + 9 only) — the 27 is a
+function of the activation config, which is why it is now pinned in a
+checked-in file rather than restated from memory.
+
+Literal findings[] content (profileId, kind, path, message — extracted
+directly from the JSON, not paraphrased):
+  WARNING handoff-asymmetric      curator-carla              collaboration.handoff-to[0]
+          role "researcher" in collaboration.handoff-to is not reciprocated by any holder's handoff-from
+  WARNING handoff-asymmetric      curator-carla              collaboration.handoff-to[1]
+          role "planner" in collaboration.handoff-to is not reciprocated by any holder's handoff-from
+  WARNING handoff-asymmetric      doctrine-daphne            collaboration.handoff-to[0]
+          role "curator" in collaboration.handoff-to is not reciprocated by any holder's handoff-from
+  WARNING handoff-asymmetric      doctrine-daphne            collaboration.handoff-to[1]
+          role "reviewer" in collaboration.handoff-to is not reciprocated by any holder's handoff-from
+  ERROR   handoff-unresolved      frontend-freddy            collaboration.works-with[3]
+          role "node-norris" declared in collaboration.works-with does not match any other profile's roles
+  WARNING handoff-asymmetric      generic-agent              collaboration.handoff-to[1]
+          role "planner" in collaboration.handoff-to is not reciprocated by any holder's handoff-from
+  ERROR   handoff-unresolved      node-norris                collaboration.works-with[3]
+          role "frontend-freddy" declared in collaboration.works-with does not match any other profile's roles
+  WARNING handoff-asymmetric      paula-patterns             collaboration.handoff-to[2]
+          role "architect" in collaboration.handoff-to is not reciprocated by any holder's handoff-from
+  ERROR   handoff-unresolved      paula-patterns             collaboration.handoff-from[2]
+          role "debugger" declared in collaboration.handoff-from does not match any other profile's roles
+  ERROR   handoff-unresolved      planner-priti              collaboration.works-with[1]
+          role "manager" declared in collaboration.works-with does not match any other profile's roles
+  WARNING handoff-asymmetric      randy-reducer              collaboration.handoff-to[1]
+          role "implementer" in collaboration.handoff-to is not reciprocated by any holder's handoff-from
+  ERROR   handoff-unresolved      randy-reducer              collaboration.works-with[2]
+          role "debugger" declared in collaboration.works-with does not match any other profile's roles
+  WARNING handoff-asymmetric      retrospective-facilitator  collaboration.handoff-to[0]
+          role "human-in-charge" in collaboration.handoff-to is not reciprocated by any holder's handoff-from
+  ERROR   handoff-unresolved      retrospective-facilitator  collaboration.handoff-to[1]
+          role "synthesize-command" declared in collaboration.handoff-to does not match any other profile's roles
+  ERROR   handoff-unresolved      retrospective-facilitator  collaboration.handoff-from[4]
+          role "generic-agent" declared in collaboration.handoff-from does not match any other profile's roles
+  WARNING handoff-asymmetric      reviewer-renata            collaboration.handoff-to[1]
+          role "planner" in collaboration.handoff-to is not reciprocated by any holder's handoff-from
+  WARNING reference-not-activated architect-alphonso         directive-references[4].code
+          directive code "041" resolves on disk but is not in the activated set
+  WARNING reference-not-activated architect-alphonso         directive-references[5].code
+          directive code "043" resolves on disk but is not in the activated set
+  WARNING reference-not-activated architect-alphonso         directive-references[6].code
+          directive code "044" resolves on disk but is not in the activated set
+  WARNING reference-not-activated doctrine-daphne            directive-references[3].code
+          directive code "043" resolves on disk but is not in the activated set
+  WARNING reference-not-activated doctrine-daphne            directive-references[4].code
+          directive code "044" resolves on disk but is not in the activated set
+  WARNING reference-not-activated implementer-ivan           directive-references[1].code
+          directive code "043" resolves on disk but is not in the activated set
+  WARNING reference-not-activated implementer-ivan           directive-references[2].code
+          directive code "044" resolves on disk but is not in the activated set
+  WARNING reference-not-activated implementer-ivan           directive-references[3].code
+          directive code "045" resolves on disk but is not in the activated set
+  WARNING reference-not-activated paula-patterns             directive-references[4].code
+          directive code "041" resolves on disk but is not in the activated set
+  WARNING reference-not-activated paula-patterns             tactic-references[0].id
+          tactic id "paula-patterns-architecture-scout-review" resolves on disk but is not in the activated set
+  WARNING reference-not-activated python-pedro               directive-references[5].code
+          directive code "041" resolves on disk but is not in the activated set
+  WARNING reference-not-activated python-pedro               directive-references[6].code
+          directive code "043" resolves on disk but is not in the activated set
+  WARNING reference-not-activated python-pedro               directive-references[7].code
+          directive code "044" resolves on disk but is not in the activated set
+  WARNING reference-not-activated python-pedro               directive-references[8].code
+          directive code "045" resolves on disk but is not in the activated set
+  WARNING reference-not-activated python-pedro               tactic-references[0].id
+          tactic id "test-scaffolding-as-design-smell" resolves on disk but is not in the activated set
+  WARNING reference-not-activated python-pedro               tactic-references[1].id
+          tactic id "delete-the-assertion-not-the-test" resolves on disk but is not in the activated set
+  WARNING reference-not-activated randy-reducer              directive-references[5].code
+          directive code "041" resolves on disk but is not in the activated set
+  WARNING reference-not-activated randy-reducer              tactic-references[0].id
+          tactic id "semantic-compression-behavioral-boundary-mapping" resolves on disk but is not in the activated set
+  WARNING reference-not-activated randy-reducer              tactic-references[1].id
+          tactic id "semantic-compression-redundancy-discovery" resolves on disk but is not in the activated set
+  WARNING reference-not-activated randy-reducer              tactic-references[2].id
+          tactic id "semantic-compression-abstraction-extraction" resolves on disk but is not in the activated set
+  WARNING reference-not-activated randy-reducer              tactic-references[3].id
+          tactic id "semantic-compression-dead-weight-elimination" resolves on disk but is not in the activated set
+  WARNING reference-not-activated randy-reducer              tactic-references[4].id
+          tactic id "semantic-compression-semantic-consolidation" resolves on disk but is not in the activated set
+  WARNING reference-not-activated randy-reducer              tactic-references[5].id
+          tactic id "semantic-compression-equivalence-verification" resolves on disk but is not in the activated set
+  WARNING reference-not-activated randy-reducer              tactic-references[6].id
+          tactic id "test-scaffolding-as-design-smell" resolves on disk but is not in the activated set
+  WARNING reference-not-activated reviewer-renata            directive-references[4].code
+          directive code "041" resolves on disk but is not in the activated set
+  WARNING reference-not-activated reviewer-renata            tactic-references[4].id
+          tactic id "test-scaffolding-as-design-smell" resolves on disk but is not in the activated set
+  WARNING reference-not-activated reviewer-renata            tactic-references[5].id
+          tactic id "delete-the-assertion-not-the-test" resolves on disk but is not in the activated set
+
+$ node dist/cli/index.js skprofile run /tmp/skprofile-real-run-manifest.yaml --json > /tmp/real-run-2.json
+$ diff /tmp/real-run-1.json /tmp/real-run-2.json
+(no output — byte-identical across these two consecutive runs on this
+machine, as required; NOT claimed byte-identical across machines, per
+research.md R5's scoping note, since profilesDir/schemaPath/doctrineRoot
+here are this machine's absolute paths, baked into schema-conformance
+citation text and hypothetically into any future projection entries.)
+
+STEP 6 — exit-code-2 path, invalid-JSON projectionManifestPath:
+$ echo '{ not valid json' > /tmp/skprofile-bad-projection.json
+$ node dist/cli/index.js skprofile run /tmp/skprofile-exit2-manifest.yaml --json
+muster: spec-kitty-profile adapter run failed: spec-kitty-profile projection manifest: could not parse "/tmp/skprofile-bad-projection.json" as JSON: Expected property name or '}' in JSON at position 2 (line 1 column 3)
+$ echo $? -> 2
+
+STEP 7 — `pnpm test` re-run after T020, full suite green: 170 test files
+passed, 3599 passed | 3 skipped (3602 total), Type Errors: no errors
+(tests/unit/invariants.test.ts's NI-002 assertion included and green).
