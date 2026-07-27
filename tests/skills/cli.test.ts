@@ -665,4 +665,64 @@ describe("muster skills run (CLI wiring, FR-013)", () => {
       expect(stderr.length).toBeGreaterThan(0);
     });
   });
+
+  describe("FR-007: runStaticSkillCase catch-block fail-closed fix", () => {
+    it("delete-direction: deleting a case's skill dir after the manifest is written reports a distinguishable execution error, never passed:true", async () => {
+      const { mkdtempSync, mkdirSync, cpSync, rmSync, writeFileSync } = await import("node:fs");
+      const { tmpdir } = await import("node:os");
+      const { join } = await import("node:path");
+
+      // Copy the checked-in broken fixture into a throwaway temp dir — the
+      // delete below must never touch the tracked
+      // fixtures/skills/broken/name-dir-mismatch path itself (grounding
+      // correction #4 / reviewer guidance).
+      const workDir = mkdtempSync(join(tmpdir(), "muster-skills-delete-direction-"));
+      const copiedSkillDir = join(workDir, "name-dir-mismatch-copy");
+      mkdirSync(copiedSkillDir, { recursive: true });
+      cpSync(
+        resolvePath(repoRoot, "fixtures/skills/broken/name-dir-mismatch"),
+        copiedSkillDir,
+        { recursive: true }
+      );
+
+      const manifestPath = join(workDir, "delete-direction-manifest.yaml");
+      const manifestYaml = [
+        "cases:",
+        "  - id: delete-direction-case",
+        "    type: static",
+        `    skillDir: ${copiedSkillDir}`,
+        "    profile: base",
+        "    expectations:",
+        // The fixture is a name/dir mismatch (expected non-conformant), so
+        // expectations.ok is false — the pre-fix bug derived `passed` from
+        // this very expectation on ANY execution error, including one
+        // caused by the skill dir no longer existing at all.
+        "      ok: false",
+        "      violations: []",
+      ].join("\n");
+      writeFileSync(manifestPath, manifestYaml);
+
+      try {
+        // Genuinely delete the temp copy — this is the direction issue #62
+        // found: the fixture disappears out from under the manifest.
+        rmSync(copiedSkillDir, { recursive: true, force: true });
+
+        const { code, stdout } = await run(["skills", "run", manifestPath, "--json"]);
+        const parsed = JSON.parse(stdout) as {
+          results: { id: string; passed: boolean; errored?: boolean }[];
+        };
+        const deleted = parsed.results.find((r) => r.id === "delete-direction-case");
+        expect(deleted).toBeDefined();
+        // The pre-fix bug reported `passed: true` here (ok=false matched
+        // expectations.ok=false) even though nothing was ever actually
+        // linted — an execution error must never be scored as a correctly
+        // detected non-conformance.
+        expect(deleted?.passed).toBe(false);
+        expect(deleted?.errored).toBe(true);
+        expect(code).toBe(1);
+      } finally {
+        rmSync(workDir, { recursive: true, force: true });
+      }
+    });
+  });
 });
