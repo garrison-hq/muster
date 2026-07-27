@@ -1,5 +1,5 @@
 ---
-version: "1.1.0"
+version: "1.2.0"
 date: "2026-07-27"
 status: "normative"
 ---
@@ -55,6 +55,19 @@ table and the pinned `profile-parse-error` literal that §2.1/"Citation
 Format for Emitted Findings" always described but never spelled out; the
 Discrimination Controls Policy gains a clean-fixture control; §7.2 states
 that `output_path` is accepted in both absolute and repo-relative form.
+
+**Version note (1.2.0)**: this revision resolves a self-contradiction the
+1.1.0 fix introduced: the former §6.1 ("Legal Character Set and Length")
+carried both `[NORMATIVE]` (for the character-set floor) and `[CONVENTION]`
+(for the `≤64` length ceiling) on one clause, violating this document's own
+Introduction rule that every clause carries exactly one provenance tag. The
+former §6.1 is split into §6.1 (Legal Character Set, `[NORMATIVE]`) and §6.2
+(Length Ceiling, `[CONVENTION]`); the former §6.2 (Filename-Stem Match) is
+renumbered §6.3 and the former §6.3 (Cross-Profile Collision) is renumbered
+§6.4. No check semantics or finding-kind changed — `profile-id-illegal`
+still fires for the same two conditions, now cited via two clause ids
+instead of one. The clause-id → label table and all in-document
+cross-references to the former §6.2/§6.3 are updated accordingly.
 
 ---
 
@@ -274,15 +287,13 @@ context source is a softer violation the way an unactivated reference is.
 
 ## §6 Profile-Id-as-Native-Filename Legality
 
-### §6.1 Legal Character Set and Length
+### §6.1 Legal Character Set
 
-**[NORMATIVE]** for the character-set floor; **[CONVENTION]** for the `≤64`
-length ceiling — see the disclosure below.
+**[NORMATIVE]**
 
-A profile's `profile-id` must match `^[a-z0-9-]+$` and be at most 64
-characters. Upstream's own schema pins a **stricter, narrower** pattern —
-`^[a-z][a-z0-9-]*$`, requiring the first character to be a letter, with
-**no `maxLength` at all**
+A profile's `profile-id` must match `^[a-z0-9-]+$`. Upstream's own schema
+pins a **stricter, narrower** pattern — `^[a-z][a-z0-9-]*$`, requiring the
+first character to be a letter
 (`src/doctrine/schemas/agent-profile.schema.yaml`'s `profile-id` property).
 muster's `^[a-z0-9-]+$` is honestly disclosed here as **looser** than
 upstream on the leading character — it accepts `-x` or `9x`, which
@@ -293,21 +304,36 @@ portion is a restatement of a real filesystem floor (the `profile-id`
 becomes the literal filename stem of `.claude/agents/<id>.md`, so
 characters illegal in a portable filename are a genuine constraint) that
 happens to be looser than, not stricter than, what §1.1 already catches.
-The `≤64` ceiling has **no upstream basis at all** (upstream declares no
-`maxLength`) and no filesystem basis either (the POSIX filename-component
-limit is 255, not 64) — it is muster's own `[CONVENTION]` for human/tool
-navigability (a shorter id is easier to read in a terminal, a log line, or
-a file listing), not a constraint any real filesystem requires.
 
 **Finding kind**: `profile-id-illegal` (error). `path` = `"profile-id"`.
 
-### §6.2 Filename-Stem Match
+### §6.2 Length Ceiling
+
+**[CONVENTION]**
+
+A profile's `profile-id` must be at most 64 characters. This ceiling has
+**no upstream basis at all** (upstream declares no `maxLength`) and no
+filesystem basis either (the POSIX filename-component limit is 255, not
+64) — it is muster's own `[CONVENTION]` for human/tool navigability (a
+shorter id is easier to read in a terminal, a log line, or a file
+listing), not a constraint any real filesystem requires. It is tagged
+separately from §6.1 because the two sub-rules do not share a provenance:
+the character set traces (loosely) to a genuine upstream pattern, the
+length ceiling does not trace to anything upstream or filesystem-mandated
+at all.
+
+**Finding kind**: `profile-id-illegal` (error). `path` = `"profile-id"`.
+Both §6.1 and §6.2 share this finding kind — see "Citation Format for
+Emitted Findings" below for how a citing implementation picks between the
+two clause ids.
+
+### §6.3 Filename-Stem Match
 
 **[CONVENTION]**
 
 A profile's `profile-id` must equal the YAML file's own basename with the
 `.agent.yaml` suffix removed (`fileNameStem` in `AgentProfile`). This is
-**not** a hard filesystem-conflict constraint the way §6.1/§6.3 are: Spec
+**not** a hard filesystem-conflict constraint the way §6.1/§6.4 are: Spec
 Kitty itself builds a profile's projected output path from the **declared**
 `profile-id`, not from the source filename
 (`_PATH_PATTERN = ".claude/agents/{profile_id}.md"`,
@@ -326,19 +352,19 @@ though nothing downstream actually breaks.
 **Finding kind**: `profile-id-filename-mismatch` (error). `path` =
 `"profile-id"`.
 
-### §6.3 Cross-Profile Collision
+### §6.4 Cross-Profile Collision
 
 **[NORMATIVE]**
 
 Two profiles in the same `profilesDir` must not declare the same
-`profile-id`, even if each is independently legal under §6.1 and
-self-consistent under §6.2. A collision is reported as a **distinct**
+`profile-id`, even if each is independently legal under §6.1 and §6.2 and
+self-consistent under §6.3. A collision is reported as a **distinct**
 finding from a filename mismatch — both are id-legality concerns, but they
 are different violations: a mismatch is one profile disagreeing with its
 own file, while a collision is two different profiles racing to become the
 same projected `.claude/agents/<id>.md` file. The same native-filename
-reasoning as §6.1/§6.2 makes this a hard constraint: two source files cannot
-both legitimately own one output filename.
+reasoning as §6.1/§6.2/§6.3 makes this a hard constraint: two source files
+cannot both legitimately own one output filename.
 
 **Finding kind**: `profile-id-collision` (error). `path` = `"profile-id"`.
 
@@ -452,11 +478,11 @@ violation per lint class defined above, so that a checker returning
 `ok: true`/exit `0` against that rigged set is provably indistinguishable
 from a checker that never ran its lints — and is therefore caught by the
 fixture suite that asserts against it, not merely trusted to work. §3.1's
-`handoff-unresolved`, §4.1's `reference-unresolved`, and §6.2's
+`handoff-unresolved`, §4.1's `reference-unresolved`, and §6.3's
 `profile-id-filename-mismatch` are the three discrimination-control fixtures
 this rubric's own governing specification names explicitly as the required
-minimum; every other error-severity clause above (§1.1, §5.1, §6.1, §6.3,
-§7.2) additionally needs at least one rigged fixture of its own for full
+minimum; every other error-severity clause above (§1.1, §5.1, §6.1, §6.2,
+§6.4, §7.2) additionally needs at least one rigged fixture of its own for full
 per-class coverage, and §3.2/§4.2/§4.3/§7.3's warning-severity clauses need
 at least one fixture each that resolves-but-warns rather than errors, to
 prove the warning/error split is real and not a single undifferentiated
@@ -510,18 +536,26 @@ fixed per clause id, one row per finding kind, covering all 13 kinds in
 | `reference-not-activated` | §4.2 | doctrine-reference activation |
 | `activation-config-unrecognized-shape` | §4.3 | doctrine-reference activation |
 | `context-source-missing` | §5.1 | context-sources integrity |
-| `profile-id-illegal` | §6.1 | profile-id-as-filename legality |
-| `profile-id-filename-mismatch` | §6.2 | profile-id-as-filename legality |
-| `profile-id-collision` | §6.3 | profile-id-as-filename legality |
+| `profile-id-illegal` | §6.1/§6.2 | profile-id-as-filename legality |
+| `profile-id-filename-mismatch` | §6.3 | profile-id-as-filename legality |
+| `profile-id-collision` | §6.4 | profile-id-as-filename legality |
 | `projection-output-missing` | §7.2 | projection drift |
 | `projection-hash-drift` | §7.3 | projection drift |
 
 For example, `handoff-unresolved`'s citation string is exactly `muster
 spec-kitty-profile rubric §3.1 (handoff resolution) —
 docs/rubric/spec-kitty-profile-taxonomy.md`. Two clause ids (§4.2/§4.3 and
-§6.1/§6.2/§6.3) share one label each because their finding kinds are
+§6.1/§6.2/§6.3/§6.4) share one label each because their finding kinds are
 siblings under the same §-area — a shared label is not a defect, the clause
-id (`§X.Y`) is what disambiguates the citation, not the label.
+id (`§X.Y`) is what disambiguates the citation, not the label. `§6.1/§6.2`
+is a distinct case from the others: it is one finding kind
+(`profile-id-illegal`) mapped to *two* clause ids rather than two finding
+kinds sharing one label. A citing implementation resolves this by checking
+which sub-rule actually failed: cite §6.1 when the `^[a-z0-9-]+$` character
+set is violated, §6.2 when the id is otherwise legal but exceeds 64
+characters. The two sub-rules were split into separate clauses specifically
+so each keeps its own unambiguous provenance tag ([NORMATIVE] for §6.1,
+[CONVENTION] for §6.2) rather than one clause carrying both.
 
 `profile-parse-error` (§2.1) is the sole exception: it carries no citation
 into this document at all. The adapter emits it with a fixed, non-rubric
