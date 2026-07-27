@@ -11,10 +11,10 @@ planning_base_branch: kitty/mission-skills-behavioral-enablement
 merge_target_branch: kitty/mission-skills-behavioral-enablement
 branch_strategy: Planning artifacts for this mission were generated on kitty/mission-skills-behavioral-enablement. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into kitty/mission-skills-behavioral-enablement unless the human explicitly redirects the landing branch.
 subtasks:
-- T001
-- T002
-- T003
-- T004
+- T018
+- T019
+- T020
+- T021
 phase: Phase 3 - Examples, tests, and the mission's live-model acceptance gate (depends on WP01, WP02)
 history:
 - timestamp: '2026-07-27T00:00:00Z'
@@ -92,7 +92,7 @@ grep `quickstart.md` for `_pending_` or inspect any recorded verdict. This
 WP's own acceptance evidence (below) is the one place the live-model
 requirement is mechanically checked.
 
-## Subtask T001: Add behavioral + control cases to `examples/skills/manifest.yaml`
+## Subtask T018: Add behavioral + control cases to `examples/skills/manifest.yaml`
 
 **Purpose**: FR-006 requires `examples/skills/manifest.yaml` to gain a real
 `type: behavioral` case and a real `isControl: true` case.
@@ -110,14 +110,14 @@ requirement is mechanically checked.
 **Files**: `examples/skills/manifest.yaml` (~20-30 lines added)
 **Validation**: manifest still parses/validates against WP02's schema.
 
-## Subtask T002: Companion query-set files under `examples/skills/trigger-queries/`
+## Subtask T019: Companion query-set files under `examples/skills/trigger-queries/`
 
 **Purpose**: Each new behavioral/control case needs its own query-set file.
 
 **Steps**:
 1. Create `examples/skills/trigger-queries/` (new directory, mirroring the
    existing `fixtures/skills/trigger-queries/` convention).
-2. Add two companion query-set YAML files (one per new case from T001), each
+2. Add two companion query-set YAML files (one per new case from T018), each
    with **≥8 should-trigger and ≥8 near-miss queries**, `runsPerQuery: 3`,
    `threshold: 0.5` — both pinned values, matching the Live-Model
    Verification Plan's pinned numbers so these fixtures stay usable for the
@@ -131,20 +131,20 @@ requirement is mechanically checked.
 lines each)
 **Validation**: each file has ≥8/≥8 queries; `runsPerQuery: 3`; `threshold: 0.5`.
 
-## Subtask T003: Mock-client tests in `tests/skills/cli.test.ts`
+## Subtask T020: Mock-client tests in `tests/skills/cli.test.ts`
 
 **Purpose**: FR-006 requires offline, deterministic coverage — no live model
 dependency for this fixture's own test coverage.
 
 **Steps**:
 1. Add new/extended tests against a mock `TriggerChatClient` exercising
-   T001's two new cases through `doSkillsRun`.
+   T018's two new cases through `doSkillsRun`.
 2. Confirm the control case (`isControl: true`) reports `passed: false` when
    the mock client never selects the rigged tool, and — per C-004 —
    contributes to a non-zero exit code when it is the only non-skipped case.
 3. **Also assert `passed: true`, by case id, for the new should-trigger
-   (weather) case from T001**, when the mock client does select/route to the
-   expected tool. This is the step that actually closes the loop with T002's
+   (weather) case from T018**, when the mock client does select/route to the
+   expected tool. This is the step that actually closes the loop with T019's
    `MIN_QUERIES_PER_AXIS = 8` hard gate (`trigger.ts:61`, `:359-362`): that
    gate only catches an undersized query file if something asserts the
    weather case **passes** — asserting only the control case's
@@ -158,7 +158,7 @@ dependency for this fixture's own test coverage.
 **Files**: `tests/skills/cli.test.ts` (~60-100 lines added)
 **Validation**: see WP04 Acceptance Evidence's FR-006 block below.
 
-## Subtask T004: Execute and record the live-model gate
+## Subtask T021: Execute and record the live-model gate
 
 **Purpose**: This is the mission's hard acceptance precondition. Run it for
 real, against the pinned model, after WP01/WP02/WP03 have all merged into the
@@ -195,14 +195,14 @@ test "$(jq '.numPassedTests' /tmp/fr006.json)" -ge 1; echo "match_exit=$?"   # M
 # WP is the one authoring the new mock-client tests this file gains, so a nonzero-match
 # assertion is included here rather than trusting the bare exit code alone
 
-# T003's specific weather/should-trigger passing assertion, isolated by name — the whole-file
+# T020's specific weather/should-trigger passing assertion, isolated by name — the whole-file
 # check above is satisfied by pre-existing tests regardless of whether this one exists, so it
 # cannot stand in for it.
 pnpm vitest run tests/skills/cli.test.ts -t "should-trigger case" --reporter=json > /tmp/fr006-weather.json
 echo "exit=$?"   # expect 0
 test "$(jq '.numPassedTests' /tmp/fr006-weather.json)" -ge 1; echo "weather_case_match_exit=$?"
 # MUST be 0 — proves the new should-trigger case actually asserts passed:true by id, closing the
-# loop with T002's MIN_QUERIES_PER_AXIS=8 hard gate (an undersized query file only gets caught if
+# loop with T019's MIN_QUERIES_PER_AXIS=8 hard gate (an undersized query file only gets caught if
 # something asserts the weather case PASSES, not only that the control case fails)
 
 # Mission-level regression, now finally satisfiable: FR-001's own literal AC-1a command,
@@ -336,7 +336,7 @@ resolved — **no exceptions, no model-swapping to force a pass.**
   any pasted `ps aux` output attached as evidence — verify `ps_leak_gate_exit`
   and `output_leak_gate_exit` were actually computed from a real count, not
   assumed.
-- Confirm the T003 `"should-trigger case"` test exists and its
+- Confirm the T020 `"should-trigger case"` test exists and its
   `weather_case_match_exit=0` was actually observed — the whole-file
   `numPassedTests -ge 1` check alone does not prove this specific assertion
   exists.

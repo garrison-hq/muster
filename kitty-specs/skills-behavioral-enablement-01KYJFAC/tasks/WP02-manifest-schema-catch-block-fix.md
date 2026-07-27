@@ -10,11 +10,11 @@ planning_base_branch: kitty/mission-skills-behavioral-enablement
 merge_target_branch: kitty/mission-skills-behavioral-enablement
 branch_strategy: Planning artifacts for this mission were generated on kitty/mission-skills-behavioral-enablement. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into kitty/mission-skills-behavioral-enablement unless the human explicitly redirects the landing branch.
 subtasks:
-- T001
-- T002
-- T003
-- T004
-- T005
+- T008
+- T009
+- T010
+- T011
+- T012
 phase: Phase 2 - Schema + fail-closed fix (depends on WP01)
 history:
 - timestamp: '2026-07-27T00:00:00Z'
@@ -78,7 +78,7 @@ used by both `src/adapters/skills/schema.ts` (`Ajv2020`) and
 `src/adapters/openclaw-sop/manifest.ts` (bare `Ajv`) — this WP reuses the
 existing package; **no `package.json` edit** is needed.
 
-**Grounding correction #4 (from `plan.md`) — read before writing T005**: the
+**Grounding correction #4 (from `plan.md`) — read before writing T012**: the
 FR-007 delete-direction test, taken literally from the spec's AC-5 shell
 block, shows `rm -rf fixtures/skills/broken/name-dir-mismatch` as a *manual*
 verification step. The **automated** regression test must not do this against
@@ -92,7 +92,7 @@ If this test skips the case instead of genuinely deleting the temp copy and
 asserting the post-delete verdict, it has not tested the direction issue #62
 actually found — do not let it degrade into a no-op.
 
-## Subtask T001: Ajv manifest schema
+## Subtask T008: Ajv manifest schema
 
 **Purpose**: Add `SKILLS_MANIFEST_SCHEMA` covering the case-shape union
 (`static` | `behavioral`), required fields per branch, and
@@ -110,20 +110,20 @@ actually found — do not let it degrade into a no-op.
 **Files**: `src/adapters/skills/schema.ts` (~40-70 lines added)
 **Validation**: this subtask has no independent test of its own in this WP —
 the only mechanical check on `SKILLS_MANIFEST_SCHEMA`/`validateManifest` is
-T004's malformed-manifest test, exercised through the wired CLI path
+T011's malformed-manifest test, exercised through the wired CLI path
 (`doSkillsRun` → `exit 2`), not an isolated unit test against the schema
 module directly. The design goal (small, dependency-free, easy to unit-test
-later) is met structurally, but no such test exists yet — treat T004 as this
+later) is met structurally, but no such test exists yet — treat T011 as this
 WP's sole mechanical coverage for the schema validator.
 
-## Subtask T002: Wire schema validation into `doSkillsRun`
+## Subtask T009: Wire schema validation into `doSkillsRun`
 
 **Purpose**: A malformed manifest must fail at a well-formed `exit 2`
 boundary, not wherever the first bad field happens to be dereferenced.
 
 **Steps**:
 1. In `src/cli/index.ts`, `doSkillsRun`'s manifest-read block (currently
-   lines 1332-1337): call T001's validator before the case loop starts.
+   lines 1332-1337): call T008's validator before the case loop starts.
 2. Wrap a validation failure in `ExecutionError` (the existing exit-2 path,
    unchanged mechanism, `readFileOrThrow`/`ExecutionError` already at lines
    154, 164-170, 2107-2110) — do not invent a new exit-code path.
@@ -131,7 +131,7 @@ boundary, not wherever the first bad field happens to be dereferenced.
 **Files**: `src/cli/index.ts` (~10-20 lines changed)
 **Validation**: see WP02 Acceptance Evidence's FR-003 block below.
 
-## Subtask T003: Fix `runStaticSkillCase`'s catch-block fail-open bug
+## Subtask T010: Fix `runStaticSkillCase`'s catch-block fail-open bug
 
 **Purpose**: This is FR-007, the mission's one genuine bug fix — closes
 `garrison-hq/muster#62`'s primary finding.
@@ -151,7 +151,7 @@ boundary, not wherever the first bad field happens to be dereferenced.
 **Files**: `src/cli/index.ts` (~10-15 lines changed)
 **Validation**: see WP02 Acceptance Evidence's FR-007 block below.
 
-## Subtask T004: FR-003 malformed-manifest test (in-test temp file)
+## Subtask T011: FR-003 malformed-manifest test (in-test temp file)
 
 **Purpose**: Prove the schema validator actually rejects malformed input at
 `exit 2`, using an in-test temp file, not a new checked-in fixture (avoids an
@@ -168,7 +168,7 @@ unnecessary fixture per the hazard-3 over-creation correction).
 **Files**: `tests/skills/cli.test.ts` (~40-60 lines added)
 **Validation**: see WP02 Acceptance Evidence's FR-003 block below.
 
-## Subtask T005: FR-007 delete-direction regression test (temp copy)
+## Subtask T012: FR-007 delete-direction regression test (temp copy)
 
 **Purpose**: The delete-direction test, not just the flip-direction test —
 issue #62's own point is that every *flip*-direction test already passed
@@ -181,7 +181,7 @@ while the *delete*-direction case silently didn't.
    entirely, and re-runs against the temp manifest.
 2. Assert the case does **not** report `passed: true` after the copy is
    deleted — it must report a distinguishable execution-error outcome
-   (`errored: true` from T003, or `passed: false`).
+   (`errored: true` from T010, or `passed: false`).
 3. **Never `rm -rf` the checked-in `fixtures/skills/broken/name-dir-mismatch`
    path directly inside this automated test** — that would permanently
    delete a committed fixture the first time the suite runs in CI.

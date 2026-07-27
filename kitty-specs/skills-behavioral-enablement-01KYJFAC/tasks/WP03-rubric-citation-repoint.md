@@ -11,11 +11,11 @@ base_branch: kitty/mission-skills-behavioral-enablement-01KYJFAC
 base_commit: 78d582ccea1798380a5da9672e5e9858a57dd3a2
 created_at: '2026-07-27T20:51:57.081746+00:00'
 subtasks:
-- T001
-- T002
-- T003
-- T004
-- T005
+- T013
+- T014
+- T015
+- T016
+- T017
 phase: Phase 1 - Rubric + citation repoint (no dependencies, independent lane)
 history:
 - timestamp: '2026-07-27T00:00:00Z'
@@ -72,7 +72,7 @@ is the one real independent lane in this mission; nothing depends on it, and
 it can merge before, between, or after the WP01→WP02→WP04 chain with no
 reordering risk.
 
-**Grounding correction #1 (from `plan.md`) — read before starting T005.**
+**Grounding correction #1 (from `plan.md`) — read before starting T017.**
 The spec names 4 files / 7 occurrences of the fabricated anchor
 (`trigger.ts` ×4, `types.ts` ×1, `rigged-impossible-queries.yaml` ×1,
 `weather-skill-queries.yaml` ×1). Direct `command grep -n` at this mission's
@@ -85,7 +85,7 @@ longer appear **anywhere in the repo**" — broader than FR-004's own check.
 **This WP's `write_scope` includes `tests/unit/skills-trigger.test.ts`
 specifically so SC-006's broader claim is actually true, not just FR-004's
 narrower grep.** This is flagged in `plan.md` for operator confirmation; if
-the operator rejects this addition, drop T005's edits to this file and accept
+the operator rejects this addition, drop T017's edits to this file and accept
 that SC-006's "anywhere in the repo" wording is then over-broad (a `spec.md`
 wording fix, out of scope for this WP either way).
 
@@ -94,7 +94,7 @@ wording fix, out of scope for this WP either way).
 same-file overlap with this WP, since WP01 is already editing that file's
 endpoint-default logic). **This WP does not touch `trigger.ts`.**
 
-## Subtask T001: Write `docs/rubric/skills-trigger-taxonomy.md`
+## Subtask T013: Write `docs/rubric/skills-trigger-taxonomy.md`
 
 **Purpose**: Publish the muster-authored rubric that FR-004 requires — the
 citation target every other repoint in this WP points at.
@@ -116,7 +116,7 @@ citation target every other repoint in this WP points at.
 **Files**: `docs/rubric/skills-trigger-taxonomy.md` (new file, ~80-150 lines)
 **Validation**: `test -f docs/rubric/skills-trigger-taxonomy.md; echo $?` → 0.
 
-## Subtask T002: Repoint citation in `src/adapters/skills/types.ts`
+## Subtask T014: Repoint citation in `src/adapters/skills/types.ts`
 
 **Steps**:
 1. Repoint the 1 occurrence (line 97) to `docs/rubric/skills-trigger-taxonomy.md`.
@@ -128,7 +128,7 @@ COUNT=$(command grep -c "agentskills.io/specification#trigger-testing" src/adapt
 test "$COUNT" -eq 0; echo "types_citation_exit=$?"   # MUST be 0
 ```
 
-## Subtask T003: Repoint citation in `rigged-impossible-queries.yaml`
+## Subtask T015: Repoint citation in `rigged-impossible-queries.yaml`
 
 **Steps**:
 1. Repoint the 1 occurrence (line 2) to `docs/rubric/skills-trigger-taxonomy.md`.
@@ -140,7 +140,7 @@ COUNT=$(command grep -c "agentskills.io/specification#trigger-testing" fixtures/
 test "$COUNT" -eq 0; echo "rigged_queries_citation_exit=$?"   # MUST be 0
 ```
 
-## Subtask T004: Repoint citation in `weather-skill-queries.yaml`
+## Subtask T016: Repoint citation in `weather-skill-queries.yaml`
 
 **Steps**:
 1. Repoint the 1 occurrence (line 2) to `docs/rubric/skills-trigger-taxonomy.md`.
@@ -152,10 +152,10 @@ COUNT=$(command grep -c "agentskills.io/specification#trigger-testing" fixtures/
 test "$COUNT" -eq 0; echo "weather_queries_citation_exit=$?"   # MUST be 0
 ```
 
-## Subtask T005: Repoint citations in `tests/unit/skills-trigger.test.ts`
+## Subtask T017: Repoint citations in `tests/unit/skills-trigger.test.ts`
 
 **Purpose**: Close the gap grounding correction #1 identifies — without this,
-SC-006's "anywhere in the repo" claim stays false even after T001-T004.
+SC-006's "anywhere in the repo" claim stays false even after T013-T016.
 
 **Steps**:
 1. Repoint the 2 occurrences (lines 20, 59) to `docs/rubric/skills-trigger-taxonomy.md`.
@@ -203,7 +203,7 @@ evidence, **and** again after merge to the mission coordination branch.
   a gap in this WP.
 - **SC-006 scope disagreement**: if the operator rejects the
   `tests/unit/skills-trigger.test.ts` addition (grounding correction #1),
-  drop T005 and narrow the acceptance evidence's second `command grep` block
+  drop T017 and narrow the acceptance evidence's second `command grep` block
   to the FR-004-only scope (`src/ fixtures/ examples/ docs/`, no `tests/`).
 
 ## Reviewer Guidance

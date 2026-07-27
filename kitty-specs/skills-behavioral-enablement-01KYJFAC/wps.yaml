@@ -39,11 +39,11 @@ work_packages:
       - FR-007
     cross_cutting: true
     subtasks:
-      - T001
-      - T002
-      - T003
-      - T004
-      - T005
+      - T008
+      - T009
+      - T010
+      - T011
+      - T012
     prompt_file: "tasks/WP02-manifest-schema-catch-block-fix.md"
 
   - id: WP03
@@ -59,11 +59,11 @@ work_packages:
       - FR-004
     cross_cutting: true
     subtasks:
-      - T001
-      - T002
-      - T003
-      - T004
-      - T005
+      - T013
+      - T014
+      - T015
+      - T016
+      - T017
     prompt_file: "tasks/WP03-rubric-citation-repoint.md"
 
   - id: WP04
@@ -81,8 +81,8 @@ work_packages:
       - FR-006
     cross_cutting: true
     subtasks:
-      - T001
-      - T002
-      - T003
-      - T004
+      - T018
+      - T019
+      - T020
+      - T021
     prompt_file: "tasks/WP04-examples-tests-live-model-gate.md"
