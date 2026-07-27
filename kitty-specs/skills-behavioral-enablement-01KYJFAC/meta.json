@@ -9,6 +9,7 @@
   "purpose_context": "Today doSkillsRun unconditionally records every type:behavioral skills case as {passed:true, skipped:true} and never builds a client, so the already-tested runTriggerConformance grader is unreachable from the shipped CLI. This mission wires the CLI to the existing grader, fixes the MUSTER_BASE_URL vs MUSTER_ENDPOINT inconsistency, adds Ajv schema validation to the skills manifest, publishes the missing skills-trigger-taxonomy rubric so trigger-methodology citations point at a real, SHA-pinned source instead of a fabricated anchor, and closes muster#62's reproduced discrimination-control defect in the skills adapter's static case runner (a deleted control fixture no longer reads as a silent pass).",
   "purpose_tldr": "Make 'muster skills run' actually execute behavioral trigger-routing cases instead of silently marking them skipped, and fix the env-var/manifest seams around it.",
   "slug": "skills-behavioral-enablement-01KYJFAC",
+  "status_phase": "1",
   "target_branch": "kitty/mission-skills-behavioral-enablement",
   "topology": "single_branch"
 }
