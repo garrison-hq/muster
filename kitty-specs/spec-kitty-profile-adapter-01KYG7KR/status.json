@@ -1,7 +1,7 @@
 {
-  "event_count": 26,
-  "last_event_id": "01KYHDHM9GM0HG8X9PFEDTEE5P",
-  "materialized_at": "2026-07-27T09:12:26.160110+00:00",
+  "event_count": 28,
+  "last_event_id": "01KYHDPD44GTRR6GAN4MJB6WYA",
+  "materialized_at": "2026-07-27T09:15:02.659332+00:00",
   "mission_number": "",
   "mission_slug": "spec-kitty-profile-adapter-01KYG7KR",
   "mission_type": "software-dev",
@@ -12,9 +12,9 @@
     "claimed": 0,
     "done": 0,
     "for_review": 0,
-    "in_progress": 0,
+    "in_progress": 1,
     "in_review": 0,
-    "planned": 2
+    "planned": 1
   },
   "work_packages": {
     "WP01": {
@@ -104,11 +104,14 @@
       }
     },
     "WP05": {
-      "actor": "finalize-tasks",
+      "actor": "implement-command",
+      "agent": "implement-command",
       "force_count": 0,
-      "lane": "planned",
-      "last_event_id": "01KYGFQQVN0P264RZ6PA4QPVS6",
-      "last_transition_at": "2026-07-27T00:31:29.141814+00:00"
+      "lane": "in_progress",
+      "last_event_id": "01KYHDPD44GTRR6GAN4MJB6WYA",
+      "last_transition_at": "2026-07-27T09:15:02.659332+00:00",
+      "shell_pid": 1794879,
+      "shell_pid_created_at": "1785143698.12"
     }
   }
 }
