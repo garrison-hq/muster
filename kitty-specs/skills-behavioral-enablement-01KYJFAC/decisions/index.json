@@ -1,0 +1,53 @@
+{
+  "entries": [
+    {
+      "created_at": "2026-07-27T19:02:52.873198Z",
+      "decision_id": "01KYJFARP9P2YYWCE81WMAP4JT",
+      "final_answer": "Fix skills only in M5; file a separate follow-up issue/mission for a2a",
+      "input_key": "a2a_control_inversion_in_scope",
+      "mission_id": "01KYJFACZ1SH8YKA3M2AGDMF8P",
+      "mission_slug": "skills-behavioral-enablement-01KYJFAC",
+      "opened_by": "cli",
+      "options": [
+        "Fix both in M5 (single mission, both adapters)",
+        "Fix skills only in M5; file a separate follow-up issue/mission for a2a",
+        "Fix skills only in M5; no action recorded for a2a"
+      ],
+      "origin_flow": "specify",
+      "other_answer": false,
+      "question": "Issue #62 found a second, structurally-related discrimination-control defect in the a2a adapter's applyControlInversion (a control:true static-lint case whose fixture is deleted inverts a read-error's passed:false to passed:true, same as the skills bug but via inversion rather than the expectation-derived catch). Should M5 (skills-behavioral-enablement) also fix the a2a instance, or stay scoped to the skills adapter and track a2a separately?",
+      "rationale": null,
+      "resolved_at": "2026-07-27T19:03:09.558236Z",
+      "resolved_by": null,
+      "slot_key": "specify.scope.a2a-control-inversion",
+      "status": "resolved",
+      "step_id": null,
+      "summary_json": null
+    },
+    {
+      "created_at": "2026-07-27T19:02:59.578402Z",
+      "decision_id": "01KYJFAZ7T84RSNBFGS3WA76WJ",
+      "final_answer": "Cite the real upstream page+commit-SHA as prior art; mark muster's specific enforcement (hard 8-minimum, aggregation rules) as [MUSTER-OWN] tightening",
+      "input_key": "trigger_testing_citation_resolution",
+      "mission_id": "01KYJFACZ1SH8YKA3M2AGDMF8P",
+      "mission_slug": "skills-behavioral-enablement-01KYJFAC",
+      "opened_by": "cli",
+      "options": [
+        "Cite the real upstream page+commit-SHA as prior art; mark muster's specific enforcement (hard 8-minimum, aggregation rules) as [MUSTER-OWN] tightening",
+        "Drop upstream attribution; mark entire methodology [MUSTER-OWN]"
+      ],
+      "origin_flow": "specify",
+      "other_answer": false,
+      "question": "OQ-1 asked whether agentskills.io/specification#trigger-testing@d8a3f2e1... is real. Verified: that anchor does not exist on /specification. A real, substantively-matching upstream page does exist at agentskills.io/skill-creation/optimizing-descriptions (source: github.com/agentskills/agentskills, docs/skill-creation/optimizing-descriptions.mdx, commit b8d2613ac050aa4aa8bfb2cf28380d81cdfcd1ca) describing 8-10 queries/axis, 3 runs, 0.5 threshold, near-miss framing -- all matching muster's implementation. Should the rubric (FR-004) cite this real upstream source (with the muster-specific hard-minimum/threshold framing marked as muster's own tightening of a soft upstream recommendation), or drop upstream attribution entirely and mark the methodology [MUSTER-OWN]?",
+      "rationale": null,
+      "resolved_at": "2026-07-27T19:03:10.964069Z",
+      "resolved_by": null,
+      "slot_key": "specify.citation.oq1-trigger-testing-anchor",
+      "status": "resolved",
+      "step_id": null,
+      "summary_json": null
+    }
+  ],
+  "mission_id": "01KYJFACZ1SH8YKA3M2AGDMF8P",
+  "version": 1
+}
