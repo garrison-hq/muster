@@ -11,5 +11,7 @@
   "slug": "skills-behavioral-enablement-01KYJFAC",
   "status_phase": "1",
   "target_branch": "kitty/mission-skills-behavioral-enablement",
-  "topology": "single_branch"
+  "topology": "single_branch",
+  "vcs": "git",
+  "vcs_locked_at": "2026-07-27T20:50:11.777669+00:00"
 }
