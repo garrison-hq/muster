@@ -1,33 +1,45 @@
 ---
-work_package_id: "WP01"
-title: "CLI wiring + env alias"
+work_package_id: WP01
+title: CLI wiring + env alias
 dependencies: []
-requirement_refs: ["FR-001", "FR-002", "C-001", "C-003", "C-004"]
-subtasks: ["T001", "T002", "T003", "T004", "T005", "T006", "T007"]
-owned_files:
-  - "src/cli/index.ts"
-  - "src/adapters/skills/trigger.ts"
-  - ".env.example"
-  - "fixtures/skills/skills-manifest.yaml"
-  - "tests/skills/cli.test.ts"
-  - "tests/cts/skills-suite.test.ts"
-authoritative_surface: "src/cli/index.ts"
-execution_mode: "code_change"
-agent_profile: "node-norris"
-role: "implementer"
-agent: "claude"
-model: ""
-planning_base_branch: "kitty/mission-skills-behavioral-enablement"
-merge_target_branch: "kitty/mission-skills-behavioral-enablement"
-branch_strategy: "Planning artifacts were generated on kitty/mission-skills-behavioral-enablement; completed changes must merge back into kitty/mission-skills-behavioral-enablement."
-phase: "Phase 1 - CLI wiring (first WP, no dependencies)"
-task_type: "implement"
-tracker_refs: []
-tags: []
+requirement_refs:
+- FR-001
+- FR-002
+- C-001
+- C-003
+- C-004
+planning_base_branch: kitty/mission-skills-behavioral-enablement
+merge_target_branch: kitty/mission-skills-behavioral-enablement
+branch_strategy: Planning artifacts for this mission were generated on kitty/mission-skills-behavioral-enablement. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into kitty/mission-skills-behavioral-enablement unless the human explicitly redirects the landing branch.
+subtasks:
+- T001
+- T002
+- T003
+- T004
+- T005
+- T006
+- T007
+phase: Phase 1 - CLI wiring (first WP, no dependencies)
 history:
-  - timestamp: "2026-07-27T00:00:00Z"
-    agent: "system"
-    action: "Prompt generated via /spec-kitty.tasks-packages"
+- timestamp: '2026-07-27T00:00:00Z'
+  agent: system
+  action: Prompt generated via /spec-kitty.tasks-packages
+agent_profile: node-norris
+authoritative_surface: src/cli/index.ts
+create_intent: []
+execution_mode: code_change
+model: ''
+owned_files:
+- src/cli/index.ts
+- src/adapters/skills/trigger.ts
+- .env.example
+- fixtures/skills/skills-manifest.yaml
+- tests/skills/cli.test.ts
+- tests/cts/skills-suite.test.ts
+role: implementer
+tags: []
+task_type: implement
+tracker_refs: []
 ---
 
 # Work Package Prompt: WP01 — CLI wiring + env alias

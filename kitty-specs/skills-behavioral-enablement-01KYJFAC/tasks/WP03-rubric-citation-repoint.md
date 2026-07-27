@@ -1,32 +1,39 @@
 ---
-work_package_id: "WP03"
-title: "Rubric doc + citation repoint"
+work_package_id: WP03
+title: Rubric doc + citation repoint
 dependencies: []
-requirement_refs: ["FR-004"]
-subtasks: ["T001", "T002", "T003", "T004", "T005"]
-owned_files:
-  - "docs/rubric/skills-trigger-taxonomy.md"
-  - "src/adapters/skills/types.ts"
-  - "fixtures/skills/trigger-queries/rigged-impossible-queries.yaml"
-  - "fixtures/skills/trigger-queries/weather-skill-queries.yaml"
-  - "tests/unit/skills-trigger.test.ts"
-authoritative_surface: "docs/rubric/skills-trigger-taxonomy.md"
-execution_mode: "code_change"
-agent_profile: "node-norris"
-role: "implementer"
-agent: "claude"
-model: ""
-planning_base_branch: "kitty/mission-skills-behavioral-enablement"
-merge_target_branch: "kitty/mission-skills-behavioral-enablement"
-branch_strategy: "Planning artifacts were generated on kitty/mission-skills-behavioral-enablement; completed changes must merge back into kitty/mission-skills-behavioral-enablement."
-phase: "Phase 1 - Rubric + citation repoint (no dependencies, independent lane)"
-task_type: "implement"
-tracker_refs: []
-tags: []
+requirement_refs:
+- FR-004
+planning_base_branch: kitty/mission-skills-behavioral-enablement
+merge_target_branch: kitty/mission-skills-behavioral-enablement
+branch_strategy: Planning artifacts for this mission were generated on kitty/mission-skills-behavioral-enablement. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into kitty/mission-skills-behavioral-enablement unless the human explicitly redirects the landing branch.
+subtasks:
+- T001
+- T002
+- T003
+- T004
+- T005
+phase: Phase 1 - Rubric + citation repoint (no dependencies, independent lane)
 history:
-  - timestamp: "2026-07-27T00:00:00Z"
-    agent: "system"
-    action: "Prompt generated via /spec-kitty.tasks-packages"
+- timestamp: '2026-07-27T00:00:00Z'
+  agent: system
+  action: Prompt generated via /spec-kitty.tasks-packages
+agent_profile: node-norris
+authoritative_surface: docs/rubric/skills-trigger-taxonomy.md
+create_intent:
+- docs/rubric/skills-trigger-taxonomy.md
+execution_mode: code_change
+model: ''
+owned_files:
+- docs/rubric/skills-trigger-taxonomy.md
+- src/adapters/skills/types.ts
+- fixtures/skills/trigger-queries/rigged-impossible-queries.yaml
+- fixtures/skills/trigger-queries/weather-skill-queries.yaml
+- tests/unit/skills-trigger.test.ts
+role: implementer
+tags: []
+task_type: implement
+tracker_refs: []
 ---
 
 # Work Package Prompt: WP03 — Rubric doc + citation repoint

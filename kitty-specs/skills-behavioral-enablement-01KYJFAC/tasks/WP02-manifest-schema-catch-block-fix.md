@@ -1,30 +1,39 @@
 ---
-work_package_id: "WP02"
-title: "Manifest schema + static catch-block fix"
-dependencies: ["WP01"]
-requirement_refs: ["FR-003", "FR-007"]
-subtasks: ["T001", "T002", "T003", "T004", "T005"]
-owned_files:
-  - "src/adapters/skills/schema.ts"
-  - "src/cli/index.ts"
-  - "tests/skills/cli.test.ts"
-authoritative_surface: "src/adapters/skills/schema.ts"
-execution_mode: "code_change"
-agent_profile: "node-norris"
-role: "implementer"
-agent: "claude"
-model: ""
-planning_base_branch: "kitty/mission-skills-behavioral-enablement"
-merge_target_branch: "kitty/mission-skills-behavioral-enablement"
-branch_strategy: "Planning artifacts were generated on kitty/mission-skills-behavioral-enablement; completed changes must merge back into kitty/mission-skills-behavioral-enablement."
-phase: "Phase 2 - Schema + fail-closed fix (depends on WP01)"
-task_type: "implement"
-tracker_refs: ["garrison-hq/muster#62"]
-tags: []
+work_package_id: WP02
+title: Manifest schema + static catch-block fix
+dependencies:
+- WP01
+requirement_refs:
+- FR-003
+- FR-007
+planning_base_branch: kitty/mission-skills-behavioral-enablement
+merge_target_branch: kitty/mission-skills-behavioral-enablement
+branch_strategy: Planning artifacts for this mission were generated on kitty/mission-skills-behavioral-enablement. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into kitty/mission-skills-behavioral-enablement unless the human explicitly redirects the landing branch.
+subtasks:
+- T001
+- T002
+- T003
+- T004
+- T005
+phase: Phase 2 - Schema + fail-closed fix (depends on WP01)
 history:
-  - timestamp: "2026-07-27T00:00:00Z"
-    agent: "system"
-    action: "Prompt generated via /spec-kitty.tasks-packages"
+- timestamp: '2026-07-27T00:00:00Z'
+  agent: system
+  action: Prompt generated via /spec-kitty.tasks-packages
+agent_profile: node-norris
+authoritative_surface: src/adapters/skills/schema.ts
+create_intent: []
+execution_mode: code_change
+model: ''
+owned_files:
+- src/adapters/skills/schema.ts
+- src/cli/index.ts
+- tests/skills/cli.test.ts
+role: implementer
+tags: []
+task_type: implement
+tracker_refs:
+- garrison-hq/muster#62
 ---
 
 # Work Package Prompt: WP02 — Manifest schema + static catch-block fix

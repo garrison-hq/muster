@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "mission_slug": "skills-behavioral-enablement-01KYJFAC",
+  "mission_id": "01KYJFACZ1SH8YKA3M2AGDMF8P",
+  "mission_branch": "kitty/mission-skills-behavioral-enablement-01KYJFAC",
+  "target_branch": "kitty/mission-skills-behavioral-enablement",
+  "lanes": [
+    {
+      "lane_id": "lane-a",
+      "wp_ids": [
+        "WP01",
+        "WP02",
+        "WP04"
+      ],
+      "write_scope": [
+        ".env.example",
+        "examples/skills/manifest.yaml",
+        "examples/skills/trigger-queries/rigged-impossible-queries.yaml",
+        "examples/skills/trigger-queries/weather-skill-queries.yaml",
+        "fixtures/skills/skills-manifest.yaml",
+        "src/adapters/skills/schema.ts",
+        "src/adapters/skills/trigger.ts",
+        "src/cli/index.ts",
+        "tests/cts/skills-suite.test.ts",
+        "tests/skills/cli.test.ts"
+      ],
+      "predicted_surfaces": [
+        "api",
+        "artifact-rendering",
+        "legacy-cleanup"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    },
+    {
+      "lane_id": "lane-b",
+      "wp_ids": [
+        "WP03"
+      ],
+      "write_scope": [
+        "docs/rubric/skills-trigger-taxonomy.md",
+        "fixtures/skills/trigger-queries/rigged-impossible-queries.yaml",
+        "fixtures/skills/trigger-queries/weather-skill-queries.yaml",
+        "src/adapters/skills/types.ts",
+        "tests/unit/skills-trigger.test.ts"
+      ],
+      "predicted_surfaces": [
+        "api"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    }
+  ],
+  "computed_at": "2026-07-27T20:29:24.387440+00:00",
+  "computed_from": "dependency_graph+ownership",
+  "planning_artifact_wps": [],
+  "collapse_report": {
+    "events": [
+      {
+        "wp_a": "WP01",
+        "wp_b": "WP02",
+        "rule": "write_scope_overlap",
+        "evidence": "overlapping globs: 'src/cli/index.ts' vs 'src/cli/index.ts', 'tests/skills/cli.test.ts' vs 'tests/skills/cli.test.ts'; WP02 depends on WP01"
+      },
+      {
+        "wp_a": "WP01",
+        "wp_b": "WP04",
+        "rule": "write_scope_overlap",
+        "evidence": "overlapping globs: 'tests/skills/cli.test.ts' vs 'tests/skills/cli.test.ts'; WP04 depends on WP01"
+      }
+    ],
+    "total_merges": 2,
+    "independent_wps_collapsed": 0,
+    "by_rule": {
+      "write_scope_overlap": 2
+    }
+  }
+}

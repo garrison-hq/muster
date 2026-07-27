@@ -1,31 +1,41 @@
 ---
-work_package_id: "WP04"
-title: "Examples + tests (behavioral wiring proof + live-model gate)"
-dependencies: ["WP01", "WP02"]
-requirement_refs: ["FR-005", "FR-006"]
-subtasks: ["T001", "T002", "T003", "T004"]
-owned_files:
-  - "examples/skills/manifest.yaml"
-  - "examples/skills/trigger-queries/weather-skill-queries.yaml"
-  - "examples/skills/trigger-queries/rigged-impossible-queries.yaml"
-  - "tests/skills/cli.test.ts"
-authoritative_surface: "examples/skills/"
-execution_mode: "code_change"
-agent_profile: "node-norris"
-role: "implementer"
-agent: "claude"
-model: ""
-planning_base_branch: "kitty/mission-skills-behavioral-enablement"
-merge_target_branch: "kitty/mission-skills-behavioral-enablement"
-branch_strategy: "Planning artifacts were generated on kitty/mission-skills-behavioral-enablement; completed changes must merge back into kitty/mission-skills-behavioral-enablement."
-phase: "Phase 3 - Examples, tests, and the mission's live-model acceptance gate (depends on WP01, WP02)"
-task_type: "implement"
-tracker_refs: []
-tags: []
+work_package_id: WP04
+title: Examples + tests (behavioral wiring proof + live-model gate)
+dependencies:
+- WP01
+- WP02
+requirement_refs:
+- FR-005
+- FR-006
+planning_base_branch: kitty/mission-skills-behavioral-enablement
+merge_target_branch: kitty/mission-skills-behavioral-enablement
+branch_strategy: Planning artifacts for this mission were generated on kitty/mission-skills-behavioral-enablement. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into kitty/mission-skills-behavioral-enablement unless the human explicitly redirects the landing branch.
+subtasks:
+- T001
+- T002
+- T003
+- T004
+phase: Phase 3 - Examples, tests, and the mission's live-model acceptance gate (depends on WP01, WP02)
 history:
-  - timestamp: "2026-07-27T00:00:00Z"
-    agent: "system"
-    action: "Prompt generated via /spec-kitty.tasks-packages"
+- timestamp: '2026-07-27T00:00:00Z'
+  agent: system
+  action: Prompt generated via /spec-kitty.tasks-packages
+agent_profile: node-norris
+authoritative_surface: examples/skills/
+create_intent:
+- examples/skills/trigger-queries/weather-skill-queries.yaml
+- examples/skills/trigger-queries/rigged-impossible-queries.yaml
+execution_mode: code_change
+model: ''
+owned_files:
+- examples/skills/manifest.yaml
+- examples/skills/trigger-queries/weather-skill-queries.yaml
+- examples/skills/trigger-queries/rigged-impossible-queries.yaml
+- tests/skills/cli.test.ts
+role: implementer
+tags: []
+task_type: implement
+tracker_refs: []
 ---
 
 # Work Package Prompt: WP04 — Examples + tests (behavioral wiring proof + live-model gate)
