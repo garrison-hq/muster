@@ -241,10 +241,15 @@ MUSTER_ENDPOINT=http://localhost:11434/v1 MUSTER_BASE_URL=http://unreachable-sho
 # (16)" and exits 0 — a renamed test or a stray `it.skip` would produce an identical green.
 pnpm vitest run tests/skills/cli.test.ts -t "errored trigger run" --reporter=json > /tmp/c001.json
 echo "exit=$?"   # expect 0
-test "$(jq '.numPassedTests' /tmp/c001.json)" -ge 1; echo "match_exit=$?"
-# MUST be 0 (numPassedTests >= 1) — this is the actual pass/fail signal, not the bare exit code
-# above; assertion inside the passing test: runsErrored increments, axis fails, contributes to
-# overall failed run
+test "$(jq '.success' /tmp/c001.json)" = "true"; echo "match_exit=$?"
+# MUST be 0 (.success == true) — this is the actual pass/fail signal, not the bare exit code
+# above. NOTE: `numPassedTests >= 1` was tried first and is INSUFFICIENT: vitest.config.ts has
+# `typecheck.enabled: true`, which runs a parallel type-check pseudo-suite per file whose entries
+# report as passed independently of the real runtime assertions — so numPassedTests can be >= 1
+# on a fully red run (proven live: a deliberately-broken assertion in this exact test produced
+# numPassedTests=1, numFailedTests=1, success=false — the old guard would have reported PASS).
+# `.success` (or `.numFailedTests == 0`) is not fooled by the typecheck duplicates; assertion
+# inside the passing test: runsErrored increments, axis fails, contributes to overall failed run
 
 # C-003 / hazard-1 proof
 pnpm vitest run tests/unit/invariants.test.ts
@@ -312,16 +317,18 @@ muster skills run /tmp/.../bad-skills-manifest.yaml; echo "exit=$?"   # expect 2
 # WP01's C-001 check: "-t" matching nothing still exits 0).
 pnpm vitest run tests/skills/cli.test.ts -t "manifest schema" --reporter=json > /tmp/fr003.json
 echo "exit=$?"   # expect 0
-test "$(jq '.numPassedTests' /tmp/fr003.json)" -ge 1; echo "match_exit=$?"   # MUST be 0
+test "$(jq '.success' /tmp/fr003.json)" = "true"; echo "match_exit=$?"   # MUST be 0. NOT
+# `numPassedTests >= 1` — insufficient, see C-001's note above; typecheck.enabled: true creates
+# a pseudo-suite that can report passed even when the real assertion fails.
 
 # FR-007 — delete-direction test, against a temp copy (grounding correction #4). Same
 # match-count fix applied (HIGH-2).
 pnpm vitest run tests/skills/cli.test.ts -t "delete-direction" --reporter=json > /tmp/fr007.json
 echo "exit=$?"   # expect 0
-test "$(jq '.numPassedTests' /tmp/fr007.json)" -ge 1; echo "match_exit=$?"
-# MUST be 0; assertion inside the passing test: passed must NOT be true after the copy's
-# fixture dir is removed; a dedicated errored:true (or passed:false) outcome is required, exit
-# contribution is 1
+test "$(jq '.success' /tmp/fr007.json)" = "true"; echo "match_exit=$?"
+# MUST be 0 (.success == true, not numPassedTests >= 1 — see C-001's note); assertion inside the
+# passing test: passed must NOT be true after the copy's fixture dir is removed; a dedicated
+# errored:true (or passed:false) outcome is required, exit contribution is 1
 
 # Whole-tree gates
 pnpm build; echo "build_exit=$?"
@@ -418,10 +425,12 @@ listed here because that is where its acceptance evidence lives, not because it 
 ```bash
 pnpm vitest run tests/skills/cli.test.ts --reporter=json > /tmp/fr006.json
 echo "exit=$?"   # expect 0 (vitest process exit; FR-006's own stated verification command)
-test "$(jq '.numPassedTests' /tmp/fr006.json)" -ge 1; echo "match_exit=$?"   # MUST be 0 — not a
+test "$(jq '.success' /tmp/fr006.json)" = "true"; echo "match_exit=$?"   # MUST be 0 — not a
 # named -t filter, but this WP is the one authoring the new mock-client tests this file gains,
-# so a nonzero-match assertion is included here too rather than trusting the bare exit code
-# (HIGH-2 audit — see the rigor-audit note before the dependency graph)
+# so a real-pass assertion is included here too rather than trusting the bare exit code (HIGH-2
+# audit — see the rigor-audit note before the dependency graph). NOT `numPassedTests >= 1` —
+# insufficient, see C-001's note; `.success` (or `.numFailedTests == 0`) is not fooled by the
+# typecheck.enabled: true pseudo-suite.
 
 # Mission-level regression, now finally satisfiable: FR-001's own literal AC-1a command,
 # against examples/skills/manifest.yaml (grounding correction #2 — deferred here because this
@@ -510,16 +519,31 @@ pnpm vitest run tests/skills/cli.test.ts -t "errored trigger run"
 
 `--reporter=json`'s `numPassedTests` field distinguishes the two (`0` in the reproduction above,
 confirmed via `jq '.numPassedTests'` against the JSON reporter's output on the same command).
-Every `pnpm vitest run` line in this plan was re-audited against this specific failure shape:
+
+**Correction (post-remediation, second pass): `numPassedTests >= 1` is itself insufficient and
+has been replaced everywhere below.** `vitest.config.ts:6` sets `typecheck.enabled: true`, which
+runs a parallel type-check pseudo-suite per test file; its entries are counted as independent
+"tests" in the JSON reporter and report `passed` on their own schedule, unrelated to whether the
+matched runtime test's assertions actually pass. Proven live: deliberately breaking a single
+assertion inside the `-t`-matched test and re-running with `--reporter=json` produced
+`numPassedTests=1, numFailedTests=1, success=false` — the `numPassedTests >= 1` guard would have
+reported PASS on a run that was, in fact, red (an implementer's own RED artifact for FR-003
+showed the same shape at `numPassedTests=3, numFailedTests=3, success=false`). Every
+`numPassedTests -ge 1` assertion below has been replaced with `.success == true` (equivalently
+`.numFailedTests == 0`), which is not fooled by the typecheck duplicates. The `echo "exit=$?"`
+pairing is unchanged — it is what has been catching these mistakes throughout.
+
+Every `pnpm vitest run` line in this plan was re-audited against the original (`-t` no-match) and
+the corrected (`typecheck` pseudo-suite) failure shapes:
 
 | Location | Command | `-t` filtered? | Verdict |
 |---|---|---|---|
-| WP01, C-001 | `... cli.test.ts -t "errored trigger run"` | Yes | **Fixed** — now asserts `numPassedTests >= 1` via `--reporter=json`, not the bare exit code |
-| WP01, hazard-1/C-003 | `... invariants.test.ts` (whole file) | No | Not exposed to the `-t` no-match quirk — a whole-file run always executes every test the file actually contains. Residual risk (empty/all-skip file) is structurally different and not present here: the file has 6 existing tests today (confirmed by direct count; vitest's own typecheck pass reports these again under a `TS` prefix, so the reporter's own summary shows 12 — 6 real + 6 typecheck duplicates, not 12 distinct assertions), further reduced only by LOW-1's unrelated `.env`/NI-001 failure, called out separately in WP01's evidence |
-| WP02, FR-003 | `... cli.test.ts -t "manifest schema"` | Yes | **Fixed** — same `numPassedTests >= 1` treatment |
+| WP01, C-001 | `... cli.test.ts -t "errored trigger run"` | Yes | **Fixed** — now asserts `.success == true` via `--reporter=json`, not the bare exit code and not `numPassedTests >= 1` (insufficient, see correction above) |
+| WP01, hazard-1/C-003 | `... invariants.test.ts` (whole file) | No | Not exposed to the `-t` no-match quirk — a whole-file run always executes every test the file actually contains. Residual risk (empty/all-skip file) is structurally different and not present here: the file has 6 existing tests today (confirmed by direct count; vitest's own typecheck pass reports these again under a `TS` prefix, so the reporter's own summary shows 12 — 6 real + 6 typecheck duplicates, not 12 distinct assertions). This is the exact mechanism the correction above documents: had this whole-file run been gated by `numPassedTests >= 1` instead of its actual bare-exit-code check, the typecheck duplicates alone would have satisfied it regardless of the 6 real tests' outcome. Further reduced only by LOW-1's unrelated `.env`/NI-001 failure, called out separately in WP01's evidence |
+| WP02, FR-003 | `... cli.test.ts -t "manifest schema"` | Yes | **Fixed** — same `.success == true` treatment |
 | WP02, FR-007 | `... cli.test.ts -t "delete-direction"` | Yes | **Fixed** — same treatment |
 | WP03 | `... skills-trigger.test.ts` (whole file) | No | Whole-file, unfiltered; the file already has 48 existing tests (confirmed by direct count) and WP03 only edits citation strings inside them, not test structure — negligible risk of this shape |
-| WP04, FR-006 | `... cli.test.ts` (whole file) | No | Whole-file, unfiltered, but WP04 is the WP *authoring* the new tests this run is meant to prove exist — a stray `it.skip` on just the new tests could hide inside an otherwise-passing whole-file run. Given the audit standard applied to the named three, the same `numPassedTests >= 1` assertion was added here too (see WP04's acceptance evidence) rather than leaving this as the one remaining bare-exit-code check on newly authored test content |
+| WP04, FR-006 | `... cli.test.ts` (whole file) | No | Whole-file, unfiltered, but WP04 is the WP *authoring* the new tests this run is meant to prove exist — a stray `it.skip` on just the new tests could hide inside an otherwise-passing whole-file run. Given the audit standard applied to the named three, the same `.success == true` assertion was added here too (see WP04's acceptance evidence) rather than leaving this as the one remaining bare-exit-code check on newly authored test content |
 
 No other `pnpm vitest run … -t "…"` lines exist in `plan.md`, `spec.md`, or `quickstart.md`
 (re-verified with `command grep -n '-t "' ` across all three files during this remediation pass —
