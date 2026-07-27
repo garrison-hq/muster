@@ -120,6 +120,28 @@ describe("muster skprofile run <manifest> (WP03 T016/T019)", () => {
     expect(stderr).toContain("spec-kitty-profile adapter run failed");
   });
 
+  it("exit 2: doctrineRoot is declared but structurally missing (HIGH-2) — never a silent 0 or a fabricated 1", async () => {
+    const manifestPath = join(tempDir, "missing-doctrine-root-skprofile-manifest.yaml");
+    await writeFile(
+      manifestPath,
+      [
+        'version: "1.0.0"',
+        `profilesDir: ${resolvePath(repoRoot, "fixtures/skprofile/clean")}`,
+        `schemaPath: ${resolvePath(repoRoot, "fixtures/skprofile/agent-profile.schema.yaml")}`,
+        "schemaSha: ebfbaddd653789417f89b040320ccfe452f15424",
+        `doctrineRoot: ${join(tempDir, "does-not-exist-doctrine-root")}`,
+        "cases:",
+        "  - id: all-profiles",
+        "",
+      ].join("\n"),
+      "utf-8"
+    );
+
+    const { code, stderr } = await run(["skprofile", "run", manifestPath]);
+    expect(code).toBe(2);
+    expect(stderr).toContain("doctrineRoot");
+  });
+
   it("exit 1: a malformed *.agent.yaml file surfaces as a profile-parse-error finding, never disappears silently", async () => {
     const profilesDir = join(tempDir, "parse-error-profiles");
     await mkdir(profilesDir, { recursive: true });

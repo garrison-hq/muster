@@ -102,10 +102,19 @@ describe("fixtures/skprofile/manifest.yaml — clean-ish discrimination control 
 });
 
 describe("examples/skprofile/manifest.yaml — the guaranteed fully-clean run (AC-1, Scenario 9)", () => {
-  it("reports findings.length === 0 (not merely ok: true)", async () => {
+  it("rigs a *.agent.yaml file count of exactly 2 (independent of the finding assertions below — HIGH-3: without this guard, deleting every profile also trivially satisfies findings.length === 0)", () => {
+    const profilesDir = resolvePath(repoRoot, "examples/skprofile/profiles");
+    const agentYamlFileCount = readdirSync(profilesDir, { withFileTypes: true }).filter(
+      (entry) => entry.isFile() && entry.name.endsWith(".agent.yaml")
+    ).length;
+    expect(agentYamlFileCount).toBe(2);
+  });
+
+  it("reports findings.length === 0 (not merely ok: true), across exactly 2 profiles", async () => {
     const result = await runFixtureManifest("examples/skprofile/manifest.yaml");
     expect(result.ok).toBe(true);
     expect(result.findings).toHaveLength(0);
+    expect(result.summary).toContain("across 2 profile(s)");
   });
 });
 
