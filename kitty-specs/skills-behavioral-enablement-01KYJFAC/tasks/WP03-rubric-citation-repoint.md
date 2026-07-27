@@ -7,6 +7,9 @@ requirement_refs:
 planning_base_branch: kitty/mission-skills-behavioral-enablement
 merge_target_branch: kitty/mission-skills-behavioral-enablement
 branch_strategy: Planning artifacts for this mission were generated on kitty/mission-skills-behavioral-enablement. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into kitty/mission-skills-behavioral-enablement unless the human explicitly redirects the landing branch.
+base_branch: kitty/mission-skills-behavioral-enablement-01KYJFAC
+base_commit: 78d582ccea1798380a5da9672e5e9858a57dd3a2
+created_at: '2026-07-27T20:51:57.081746+00:00'
 subtasks:
 - T001
 - T002
