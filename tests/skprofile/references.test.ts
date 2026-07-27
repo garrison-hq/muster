@@ -127,6 +127,23 @@ describe("doctrine file listing cache — per-call scoping, not process-global",
   });
 });
 
+describe("checkReferences — doctrineRoot itself must exist", () => {
+  it("throws when doctrineRoot does not exist on disk at all (never silently returns zero findings)", async () => {
+    const root = await makeTmpDir();
+    const missingDoctrineRoot = join(root, "does-not-exist");
+    const p = profile({ profileId: "architect-alphonso", directiveRefs: ["001"] });
+    await expect(checkReferences([p], missingDoctrineRoot)).rejects.toThrow(/doctrineRoot/);
+  });
+
+  it("throws when doctrineRoot exists but is a file, not a directory", async () => {
+    const root = await makeTmpDir();
+    const doctrineRootFile = join(root, "not-a-directory");
+    await writeFile(doctrineRootFile, "not a directory\n");
+    const p = profile({ profileId: "architect-alphonso", directiveRefs: ["001"] });
+    await expect(checkReferences([p], doctrineRootFile)).rejects.toThrow(/doctrineRoot/);
+  });
+});
+
 describe("checkReferences — stage 1: on-disk existence", () => {
   it("a resolvable directive code passes stage 1 with no finding", async () => {
     const root = await makeTmpDir();

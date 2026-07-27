@@ -19,7 +19,7 @@
  * C-001/C-003: no import from `src/core/` or from `spec-kitty`.
  */
 
-import { readdirSync } from "node:fs";
+import { readdirSync, statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
@@ -59,6 +59,31 @@ export type DoctrineFileCache = Map<string, readonly string[]>;
 
 export function createDoctrineFileCache(): DoctrineFileCache {
   return new Map<string, readonly string[]>();
+}
+
+/**
+ * FR-001: `doctrineRoot` is a required manifest field — a declared-but-
+ * structurally-missing `doctrineRoot` must fail loudly (the CLI layer maps
+ * a thrown `Error` here to exit code 2), never silently degrade to "zero
+ * references resolve" or "zero findings" (HIGH-2 remediation). Only the
+ * root itself is asserted here: a missing `<doctrineRoot>/<kind>s` subtree
+ * is legitimately "no <kind>s yet" and stays `walkRecursive`'s job to
+ * swallow, unchanged.
+ */
+function assertDoctrineRootExists(doctrineRoot: string): void {
+  let stats: import("node:fs").Stats;
+  try {
+    stats = statSync(doctrineRoot);
+  } catch {
+    throw new Error(
+      `spec-kitty-profile references: doctrineRoot "${doctrineRoot}" does not exist on disk`
+    );
+  }
+  if (!stats.isDirectory()) {
+    throw new Error(
+      `spec-kitty-profile references: doctrineRoot "${doctrineRoot}" is not a directory`
+    );
+  }
 }
 
 function walkRecursive(dir: string): string[] {
@@ -283,6 +308,7 @@ export async function checkReferences(
   activationConfigPath?: string,
   cache: DoctrineFileCache = createDoctrineFileCache()
 ): Promise<SkProfileFinding[]> {
+  assertDoctrineRootExists(doctrineRoot);
   const findings: SkProfileFinding[] = [];
   let activation: ActivationConfig | undefined;
 
