@@ -1,0 +1,27 @@
+id: example-weather-skill-queries
+# Normative source for the 8-minimum-per-axis / near-miss methodology this
+# query set follows (FR-006, T019): muster's own published rubric.
+source: "docs/rubric/skills-trigger-taxonomy.md"
+threshold: 0.5
+shouldTrigger:
+  - "What's the weather like in Rotterdam right now?"
+  - "Will it snow in Denver this weekend?"
+  - "Give me today's forecast for Lisbon"
+  - "Is it humid in Singapore today?"
+  - "What's the wind speed in Chicago this afternoon?"
+  - "Do I need a jacket in Seattle tomorrow morning?"
+  - "What's the temperature outside in Cairo right now?"
+  - "Any chance of hail in Dallas today?"
+  - "How cold will it get overnight in Helsinki?"
+  - "Is a hurricane expected near Miami this week?"
+nearMiss:
+  - "What time zone is Rotterdam in?"
+  - "What's the population of Denver?"
+  - "Recommend a good raincoat brand"
+  - "How does a barometer work?"
+  - "What is the driest desert on Earth?"
+  - "Explain the water cycle"
+  - "What causes seasons to change?"
+  - "History of the National Weather Service"
+  - "What is the jet stream?"
+  - "Best months to visit Lisbon"

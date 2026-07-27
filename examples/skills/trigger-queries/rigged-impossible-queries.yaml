@@ -1,0 +1,28 @@
+id: example-rigged-impossible-queries
+# Normative source for the 8-minimum-per-axis / near-miss methodology this
+# query set follows (FR-006, T019): muster's own published rubric.
+source: "docs/rubric/skills-trigger-taxonomy.md"
+threshold: 0.5
+# These are normal, plausible queries. The rigged skill's description is
+# intentionally nonsensical (ZZZCONTROL-IMPOSSIBLE prefix, see
+# RIGGED_IMPOSSIBLE_DESCRIPTION in trigger.ts). A well-functioning model
+# should NEVER invoke the rigged tool for these queries.
+# The discrimination control asserts: shouldTrigger trigger rate < threshold.
+shouldTrigger:
+  - "Draft an email to reschedule a meeting"
+  - "What's the boiling point of water at sea level?"
+  - "Convert 10 miles to kilometers"
+  - "Give me a synonym for 'happy'"
+  - "Write a haiku about autumn"
+  - "What year did the Berlin Wall fall?"
+  - "Summarize the plot of Romeo and Juliet"
+  - "Explain the difference between TCP and UDP"
+nearMiss:
+  - "ZZZCONTROL placeholder near-miss 1"
+  - "ZZZCONTROL placeholder near-miss 2"
+  - "ZZZCONTROL placeholder near-miss 3"
+  - "ZZZCONTROL placeholder near-miss 4"
+  - "ZZZCONTROL placeholder near-miss 5"
+  - "ZZZCONTROL placeholder near-miss 6"
+  - "ZZZCONTROL placeholder near-miss 7"
+  - "ZZZCONTROL placeholder near-miss 8"
