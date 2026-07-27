@@ -345,7 +345,7 @@ artifact.
       `<RUBRIC>...</RUBRIC>` block.
 - [ ] `docs/rubric/sop-rule-taxonomy.md` has an additive v1.1 appendix; no
       v1.0.0 content altered.
-- [ ] The T024 reconciliation pass is recorded in the Activity Log, even if
+- [x] The T024 reconciliation pass is recorded in the Activity Log, even if
       it concludes "WP02 had not landed yet, follow-up needed."
 - [ ] No file outside `owned_files` touched.
 
@@ -379,3 +379,85 @@ artifact.
   (that phrase never appeared there); replaced with the actual code-level
   facts — WP02's `RUBRIC_CITATION` type excludes `profile-parse-error`, and
   WP03's `index.ts` emits it via a fixed non-rubric literal.
+- 2026-07-27T00:54:49Z – reviewer-renata – shell_pid=723071 – REVIEW VERDICT: REJECTED. Blockers: (B1) all four <RUBRIC> blocks in spec-kitty-behavioral-axes.md reference profile fields the judge prompt does not supply, and name fields that do not exist upstream by those names (avoidance_boundary -> specialization.avoidance-boundary, a free-text string not a list); add an Integration Contract section plus exact YAML paths inside each block. (B2) Axis 2 capability containment is not decidable: agent-profile.schema.yaml has no tool-grant field and capabilities is a free-form skill list (system-design, architecture-review); 2.1's 'tool-grant fields are real, schema-defined fields' is false. (B3) Axis 4 canonical-verb ignores the real upstream field collaboration.canonical-verbs and its rubricText is circular. (B4) Citation Format leaves <short label> undefined per clause and never states the profile-parse-error literal; WP02 cannot implement it without guessing. (B5) 7.1 [NORMATIVE] traceability claim is false - SK's ProfileManifest is keyed by output_path and doctor looks up by output_path, never by profile_urn. (B6) 6.1/6.2 [NORMATIVE] overreach: upstream pattern is ^[a-z][a-z0-9-]* with no maxLength, doc states ^[a-z0-9-]+ / <=64 as a filesystem constraint; 6.2's stem-match has no filesystem basis since SK derives .claude/agents/<id>.md from the declared id. (B7) sop v1.1.4 [NORMATIVE] on a corpus census; also the provenance note says v1.1.1-v1.1.4 but five clauses shipped. (B8) v1.1.5 URL template cannot express reconcile-change-scope-tensions.directive.yaml. (B9) Discrimination Controls Policy needs a clean-fixture control. (B10) 7.2 does not say how output_path resolves. CONFIRMED GOOD: all 13 finding kinds have present, correctly-numbered, semantically-correct clauses; sop-rule-taxonomy v1.0.0 content byte-identical (diff is front matter + pure append); 26-directive corpus and the 038 claim verified against real files; enforcement enum and lenient-adherence/explicit_allowances conditional verified; SHA-256-over-raw-bytes, schema_version 1, 9-field entries and source_path-points-at-installed-package all verified; T024 deferral legitimate (no src/adapters/spec-kitty-profile exists yet); scope clean (3 owned files only).
+- 2026-07-27T01:11:00Z – curator-carla – Review rejection remediated
+  (commit `f89d52a`). `spec-kitty-behavioral-axes.md`: added an Integration
+  Contract section (M4's `promptTemplate` must carry the profile excerpt
+  each axis grades against); redefined §2 from an undecidable
+  "capability containment" reading (no tool-grant field exists upstream)
+  to domain-scope containment against the real `capabilities` field;
+  rewrote §4.4's rubric text around the real, schema-defined
+  `collaboration.canonical-verbs` field in place of a circular
+  self-reference; corrected §1.4/§3.4 to name exact YAML paths
+  (`specialization.avoidance-boundary`, `roles`/`role`,
+  `collaboration.handoff-to`); bumped to 1.1.0.
+  `spec-kitty-profile-taxonomy.md`: corrected §7.1's provenance
+  (`profile_urn` matching is muster's own improvement over upstream's
+  `output_path` keying — verified at `manifest.py:71,75,79` and
+  `agent_profiles.py:209-214` — not a traced upstream behavior);
+  corrected §6.1/§6.2 provenance against the actual upstream schema
+  pattern and retagged §6.2 `[CONVENTION]`; added the 13-row
+  clause-id→label table and pinned the `profile-parse-error` literal
+  (`structural: malformed *.agent.yaml`) in "Citation Format for Emitted
+  Findings"; added a clean-fixture control to the Discrimination
+  Controls Policy; documented `output_path`'s accepted absolute/relative
+  dual form in §7.2; bumped to 1.1.0. `sop-rule-taxonomy.md`: retagged
+  v1.1.4 `[MUSTER-OWN]`, fixed the "v1.1.1–v1.1.4" undercount to
+  "v1.1.1–v1.1.5", documented the un-coded URL form for
+  `reconcile-change-scope-tensions.directive.yaml` in v1.1.5, and
+  softened v1.1.1's overstated corpus claim per the review's advisory
+  note (method unchanged). All `sop-rule-taxonomy.md` edits confined to
+  the `## v1.1` appendix; v1.0.0 content (including front matter)
+  verified byte-identical via diff before and after. No item in the
+  review's "confirmed good" list (13 kind→clause mappings, the
+  Discrimination Controls Policy judgment, the T024 deferral) was
+  touched. WP04 moved `in_progress` → `for_review`.
+- 2026-07-27T13:00:00Z – curator-carla – Re-review of the B1-B10 remediation
+  approved the substance (all ten blockers and the advisory verified
+  closed) but found two mechanical defects and one process gap, closed
+  here: (1) the Activity Log entry above (commit `f89d52a`'s remediation
+  record) had been committed on the lane branch
+  (`kitty/mission-spec-kitty-profile-adapter-01KYG7KR-lane-d`, commit
+  `a5b5d4e`) instead of this planning branch, tripping the
+  "kitty-specs/ changes are not allowed on lane branches" gate; reverted
+  on the lane (commit `71d371b`) and re-authored here. (2) T024's outcome
+  was never actually committed anywhere — see the entry immediately
+  below. (3) `spec-kitty-profile-taxonomy.md`:315 cited
+  `repository.py:489` for `self._profiles[profile.profile_id] = profile`;
+  verified against spec-kitty-conformance's
+  `src/doctrine/agent_profiles/repository.py` — the real line is 486 (a
+  second, unrelated occurrence sits at 877); corrected on the lane
+  (commit `c09ced2`). (4) §6.1 carried both `[NORMATIVE]` and
+  `[CONVENTION]` on one clause, contradicting the Introduction's
+  "exactly one provenance tag" rule; split into §6.1 (Legal Character
+  Set, `[NORMATIVE]`) and §6.2 (Length Ceiling, `[CONVENTION]`), with
+  former §6.2/§6.3 renumbered to §6.3/§6.4 and the 13-row table and all
+  in-document §6.x cross-references updated; bumped to 1.2.0 (lane
+  commit `ad8f583`). No rubric content reopened beyond the tag split
+  itself; all three documents' substance stands as re-reviewed.
+- 2026-07-27T13:00:00Z – curator-carla – T024 reconciliation, final
+  disposition: the cross-check against WP02's shipped `rubric.ts`
+  (`RUBRIC_CITATION` map) cannot be performed — `rubric.ts` exists on no
+  branch as of this entry; WP02 has not landed (verified via `git
+  ls-tree` across all three mission branches: `src/adapters/spec-kitty-
+  profile/` contains only WP01's `findings.ts`, `manifest.ts`,
+  `profile.ts`, `schema.ts`). Recorded here as a follow-up for whoever
+  merges WP02 last (or WP02's own author, mid-implementation): reconcile
+  `rubric.ts`'s `RUBRIC_CITATION` map against the final (v1.2.0) 13-row
+  clause-id → `<short label>` table at
+  `docs/rubric/spec-kitty-profile-taxonomy.md:529-543` —
+  `schema-conformance-violation`→§1.1 (schema-URL form, not `§X.Y`);
+  `profile-parse-error`→no clause citation, use the pinned literal
+  `structural: malformed *.agent.yaml`; `handoff-unresolved`→§3.1;
+  `handoff-asymmetric`→§3.2; `reference-unresolved`→§4.1;
+  `reference-not-activated`→§4.2;
+  `activation-config-unrecognized-shape`→§4.3;
+  `context-source-missing`→§5.1; `profile-id-illegal`→§6.1 (character-
+  set violation) or §6.2 (length violation — disambiguate by which
+  sub-rule actually failed); `profile-id-filename-mismatch`→§6.3;
+  `profile-id-collision`→§6.4; `projection-output-missing`→§7.2;
+  `projection-hash-drift`→§7.3. Reconcile against this table, not
+  research.md R6's draft §-area table, which predates and is superseded
+  by it. T021–T023 shipped in full; this entry is T024's actual
+  disposition — a documented deferral, not a completed reconciliation,
+  since there is nothing on any branch yet to reconcile against.
