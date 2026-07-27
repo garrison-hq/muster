@@ -88,7 +88,14 @@ import {
   validateSkill,
 } from "../adapters/skills/index.js";
 import { checkLayout } from "../adapters/skills/layout.js";
-import type { SkillProfile } from "../adapters/skills/types.js";
+import type { SkillProfile, AxisVerdict, TriggerCase } from "../adapters/skills/types.js";
+import {
+  makeToolClient,
+  resolveEndpointBaseUrl,
+  runTriggerConformance,
+  RIGGED_IMPOSSIBLE_DESCRIPTION,
+  type TriggerChatClient,
+} from "../adapters/skills/trigger.js";
 // SOP adapter imports (C-001: only adapter boundary imported here).
 import { runManifestSuite as runSopManifestSuite } from "../adapters/openclaw-sop/runner.js";
 import type { SOPSuiteReport } from "../adapters/openclaw-sop/index.js";
@@ -148,6 +155,12 @@ export interface RunCliOptions {
   err?: (text: string) => void;
   /** Chat-client factory for `behave run` (defaults to the fetch client). */
   clientFactory?: (endpoint: EndpointConfig) => ChatClient;
+  /**
+   * Trigger-chat-client factory for `skills run`'s behavioral cases (defaults
+   * to `makeToolClient`, the sanctioned Option-B call site — FR-001, C-003).
+   * Tests inject a mock so behavioral wiring stays offline/deterministic.
+   */
+  skillsTriggerClientFactory?: (endpoint: EndpointConfig) => TriggerChatClient;
 }
 
 /** Internal: an execution error (contract exit code 2). */
@@ -1257,6 +1270,14 @@ interface SkillsCaseResult {
   passed: boolean;
   skipped?: boolean;
   violations?: { path: string; message: string; severity: string }[];
+  // TriggerVerdict fields (FR-001, FR-005) — populated for non-skipped
+  // behavioral cases; left undefined for static cases and skipped behavioral
+  // cases. Kept as its own appendable group (not interleaved with the fields
+  // above) so a later WP's own field addition to this interface is a clean,
+  // low-conflict append rather than an interleaved diff.
+  shouldTriggerAxis?: AxisVerdict;
+  nearMissAxis?: AxisVerdict;
+  isControl?: boolean;
 }
 
 /** Structured result for the full skills manifest run. */
@@ -1312,15 +1333,124 @@ function runStaticSkillCase(
 }
 
 /**
+ * Resolve the behavioral-case endpoint for `skills run` (FR-001, FR-002).
+ *
+ * Emits the MUSTER_BASE_URL deprecation notice on `io` (stderr) at most once
+ * per run, and only when the manifest actually contains a behavioral case —
+ * a manifest with zero behavioral cases never reaches this resolution at
+ * all, so it never warns even if the deprecated alias happens to be set
+ * (matches the current default-skip shape's own reachability).
+ *
+ * Returns `undefined` when no endpoint is configured (or the manifest has no
+ * behavioral case) — callers fall back to today's `{ passed: true, skipped:
+ * true }` shape unchanged (FR-001's AC-1b).
+ */
+function resolveSkillsBehavioralEndpoint(
+  cases: readonly SkillsManifestCase[],
+  io: Io
+): EndpointConfig | undefined {
+  const hasBehavioralCase = cases.some((c) => c.type === "behavioral");
+  if (!hasBehavioralCase) {
+    return undefined;
+  }
+  const { baseUrl, usedDeprecatedAlias } = resolveEndpointBaseUrl();
+  if (usedDeprecatedAlias) {
+    io.errLine(
+      "muster: MUSTER_BASE_URL is deprecated — use MUSTER_ENDPOINT instead " +
+        "(MUSTER_BASE_URL remains supported through v1.2.x; see FR-002)."
+    );
+  }
+  if (baseUrl === undefined) {
+    return undefined;
+  }
+  return {
+    baseUrl,
+    model: process.env["MUSTER_MODEL"] ?? "gpt-4o-mini",
+    apiKeyEnv: effectiveApiKeyEnv("MUSTER_API_KEY"),
+  };
+}
+
+/**
+ * Run one behavioral skills case through the real `runTriggerConformance`
+ * grader (FR-001, FR-005). Extracted from `doSkillsRun` to keep its own
+ * cognitive complexity low (S3776).
+ *
+ * Mirrors the sanctioned reference call site (`tests/cts/skills-suite.test.ts`)
+ * exactly: parses the target skill for its name/description, overrides the
+ * description with the rigged-impossible control string for `isControl`
+ * cases, loads the query set referenced by `querySetPath`, and reports the
+ * real `TriggerVerdict` — never a hardcoded skip — through the CLI.
+ */
+async function runBehavioralSkillCase(
+  c: SkillsManifestBehavioralCase,
+  baseDir: string,
+  endpoint: EndpointConfig,
+  triggerClientFactory: (endpoint: EndpointConfig) => TriggerChatClient
+): Promise<SkillsCaseResult> {
+  const absoluteSkillDir = resolvePath(baseDir, c.skillDir);
+  const querySetAbsPath = resolvePath(baseDir, c.querySetPath);
+  const querySetRaw = parseYaml(readFileSync(querySetAbsPath, "utf8")) as {
+    id: string;
+    source: string;
+    shouldTrigger: string[];
+    nearMiss: string[];
+  };
+  const doc = parseSkill(absoluteSkillDir);
+  const fm = doc.frontmatter as Record<string, unknown>;
+  const description = c.isControl
+    ? RIGGED_IMPOSSIBLE_DESCRIPTION
+    : String(fm["description"] ?? "");
+
+  const triggerCase: TriggerCase = {
+    id: c.id,
+    skillDir: absoluteSkillDir,
+    profile: c.profile,
+    querySet: {
+      id: querySetRaw.id,
+      source: querySetRaw.source,
+      shouldTrigger: querySetRaw.shouldTrigger,
+      nearMiss: querySetRaw.nearMiss,
+      threshold: c.threshold,
+    },
+    runsPerQuery: c.runsPerQuery,
+    tools: [
+      {
+        type: "function",
+        function: { name: String(fm["name"] ?? "skill"), description },
+      },
+    ],
+    endpoint,
+  };
+
+  const client = triggerClientFactory(endpoint);
+  const verdict = await runTriggerConformance(triggerCase, client);
+
+  return {
+    id: c.id,
+    type: "behavioral",
+    passed: verdict.passed,
+    // Explicit false (not omitted): FR-001's AC-1a requires `skipped:false`
+    // to appear literally in JSON output for an executed behavioral case,
+    // distinguishing it from the omitted/absent field on static cases.
+    skipped: false,
+    shouldTriggerAxis: verdict.shouldTriggerAxis,
+    nearMissAxis: verdict.nearMissAxis,
+    isControl: verdict.isControl,
+  };
+}
+
+/**
  * Run the skills manifest (FR-013, FR-014).
  *
  * Static cases always run (offline, deterministic, byte-stable — NFR-001, C-003).
- * Behavioral cases require MUSTER_ENDPOINT and are skipped gracefully when absent.
+ * Behavioral cases require MUSTER_ENDPOINT (MUSTER_BASE_URL deprecated alias,
+ * FR-002) and are skipped gracefully when no endpoint is configured.
  */
 async function doSkillsRun(
   manifestPath: string,
   opts: GlobalOpts,
-  io: Io
+  io: Io,
+  triggerClientFactory: (endpoint: EndpointConfig) => TriggerChatClient
 ): Promise<number> {
   let cases: SkillsManifestCase[];
   const absManifestPath = toAbsolute(manifestPath);
@@ -1336,15 +1466,20 @@ async function doSkillsRun(
     throw new ExecutionError(`skills manifest read/parse error: ${errorMessage(error)}`);
   }
 
+  const behavioralEndpoint = resolveSkillsBehavioralEndpoint(cases, io);
   const results: SkillsCaseResult[] = [];
 
   for (const c of cases) {
     if (c.type === "static") {
       results.push(runStaticSkillCase(c, baseDir));
-    } else {
-      // Behavioral trigger-routing cases require MUSTER_ENDPOINT.
-      // They are recorded as skipped (not failed) when absent (graceful skip).
+    } else if (behavioralEndpoint === undefined) {
+      // No endpoint configured (or manifest has no behavioral case at all):
+      // recorded as skipped (not failed) — graceful skip, unchanged shape.
       results.push({ id: c.id, type: "behavioral", passed: true, skipped: true });
+    } else {
+      results.push(
+        await runBehavioralSkillCase(c, baseDir, behavioralEndpoint, triggerClientFactory)
+      );
     }
   }
 
@@ -1680,7 +1815,8 @@ function formatSkProfileResultHuman(report: SkProfileReport): string {
 function buildProgram(
   io: Io,
   setExit: (code: number) => void,
-  clientFactory: (endpoint: EndpointConfig) => ChatClient
+  clientFactory: (endpoint: EndpointConfig) => ChatClient,
+  triggerClientFactory: (endpoint: EndpointConfig) => TriggerChatClient
 ): Command {
   const program = new Command("muster")
     .description("CTS-1 conformance harness for Soul.md RFC-1 (1.0.0-rc1)")
@@ -1960,8 +2096,11 @@ function buildProgram(
     .argument("<manifest>", "path to skills manifest YAML")
     .addHelpText(
       "after",
-      "\nBehavioral trigger cases: set MUSTER_ENDPOINT (and optionally MUSTER_MODEL,\n" +
-        "MUSTER_API_KEY) to run them. Omit MUSTER_ENDPOINT for static-only.\n" +
+      "\nBehavioral trigger cases: set MUSTER_ENDPOINT (canonical; and optionally\n" +
+        "MUSTER_MODEL, MUSTER_API_KEY) to run them. MUSTER_BASE_URL is accepted as a\n" +
+        "deprecated alias — a one-line stderr notice is emitted when it supplies the\n" +
+        "value; MUSTER_ENDPOINT wins silently when both are set. Omit MUSTER_ENDPOINT\n" +
+        "(and MUSTER_BASE_URL) for static-only.\n" +
         "\nExit-code contract:\n" +
         "  0  all non-skipped cases passed (or all cases were skipped)\n" +
         "  1  at least one non-skipped case failed\n" +
@@ -1969,7 +2108,7 @@ function buildProgram(
         "\nCredentials never appear in argv — only env-var names are used (NFR-005)."
     )
     .action(async (manifest: string, _local, cmd: Command) => {
-      setExit(await doSkillsRun(manifest, cmd.optsWithGlobals(), io));
+      setExit(await doSkillsRun(manifest, cmd.optsWithGlobals(), io, triggerClientFactory));
     });
 
   // ─── muster sop ──────────────────────────────────────────────────────────
@@ -2091,7 +2230,8 @@ export async function runCli(
     (code) => {
       exitCode = code;
     },
-    options.clientFactory ?? makeClient
+    options.clientFactory ?? makeClient,
+    options.skillsTriggerClientFactory ?? makeToolClient
   );
 
   try {

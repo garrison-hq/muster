@@ -1,20 +1,31 @@
 /**
- * CLI-level tests for `muster skills run <manifest>` (WP04 deliverable).
+ * CLI-level tests for `muster skills run <manifest>` (WP01/WP04 deliverable).
  *
  * Runs in-process via the exported `runCli(argv, options)` — no subprocess
  * spawn. Exercises the static-only path (no MUSTER_ENDPOINT), --json output,
- * exit-code contract, and error paths.
+ * exit-code contract, error paths, and — since WP01 — the real behavioral
+ * trigger-conformance wiring via an injected mock `TriggerChatClient`
+ * (`skillsTriggerClientFactory`), the MUSTER_ENDPOINT/MUSTER_BASE_URL
+ * env-alias precedence (FR-002), and the C-001 errored-run regression.
  *
  * Normative sources:
  * - contracts/cli.md exit codes: 0 = all pass, 1 = ≥1 failed, 2 = execution error
  * - NFR-001: static path is offline and deterministic
  * - FR-013: manifest runner returns structured results
+ * - FR-001, FR-002, C-001 (this mission, skills-behavioral-enablement)
  */
 
+import { readFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parse as parseYaml } from "yaml";
 import { describe, expect, it } from "vitest";
 import { runCli, type RunCliOptions } from "../../src/cli/index.js";
+import {
+  RIGGED_IMPOSSIBLE_DESCRIPTION,
+  type TriggerChatClient,
+} from "../../src/adapters/skills/trigger.js";
+import type { EndpointConfig } from "../../src/core/behavioral/types.js";
 
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 const skillsManifest = resolvePath(repoRoot, "fixtures/skills/skills-manifest.yaml");
@@ -22,7 +33,7 @@ const skillsManifest = resolvePath(repoRoot, "fixtures/skills/skills-manifest.ya
 /** In-process invocation capturing stdout/stderr bytes exactly. */
 async function run(
   argv: string[],
-  extra: Pick<RunCliOptions, "clientFactory"> = {}
+  extra: Pick<RunCliOptions, "clientFactory" | "skillsTriggerClientFactory"> = {}
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   let stdout = "";
   let stderr = "";
@@ -37,6 +48,78 @@ async function run(
   });
   return { code, stdout, stderr };
 }
+
+/**
+ * Save/restore MUSTER_ENDPOINT and MUSTER_BASE_URL around a test body
+ * (FR-002) — unspecified vars are explicitly cleared, so every test using
+ * this helper starts from a known, isolated env-var state regardless of
+ * what earlier tests left behind.
+ */
+async function withSkillsEndpointEnv(
+  vars: { MUSTER_ENDPOINT?: string; MUSTER_BASE_URL?: string },
+  body: () => Promise<void>
+): Promise<void> {
+  const keys = ["MUSTER_ENDPOINT", "MUSTER_BASE_URL"] as const;
+  const saved = Object.fromEntries(keys.map((k) => [k, process.env[k]])) as Record<
+    (typeof keys)[number],
+    string | undefined
+  >;
+  const applyEnv = (source: Partial<Record<(typeof keys)[number], string>>): void => {
+    for (const key of keys) {
+      const value = source[key];
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  };
+  applyEnv(vars);
+  try {
+    await body();
+  } finally {
+    applyEnv(saved);
+  }
+}
+
+/** The weather query set's shouldTrigger queries, loaded once (mock classifier below). */
+const weatherShouldTrigger = new Set(
+  (
+    parseYaml(
+      readFileSync(
+        resolvePath(repoRoot, "fixtures/skills/trigger-queries/weather-skill-queries.yaml"),
+        "utf8"
+      )
+    ) as { shouldTrigger: string[] }
+  ).shouldTrigger
+);
+
+/**
+ * A deterministic, offline mock `TriggerChatClient` that behaves like a
+ * well-functioning model: never selects the rigged-impossible-control tool
+ * (by description, matching every isControl case regardless of manifest),
+ * and otherwise selects the target tool only for queries known to be in the
+ * weather skill's own shouldTrigger set.
+ */
+function createSmartMockTriggerClient(): TriggerChatClient {
+  return {
+    async chatWithTools(userMessage, tools) {
+      const tool = tools[0];
+      if (tool === undefined) return null;
+      if (tool.function.description === RIGGED_IMPOSSIBLE_DESCRIPTION) {
+        return null;
+      }
+      return weatherShouldTrigger.has(userMessage) ? tool.function.name : null;
+    },
+  };
+}
+
+/** A mock `TriggerChatClient` that errors on every call (C-001 regression). */
+const throwingTriggerClient: TriggerChatClient = {
+  async chatWithTools(): Promise<string | null> {
+    throw new Error("simulated transport failure — every call errors");
+  },
+};
 
 describe("muster skills run (CLI wiring, FR-013)", () => {
   it("static-only: exit 0 with human summary for a passing manifest", async () => {
@@ -58,7 +141,7 @@ describe("muster skills run (CLI wiring, FR-013)", () => {
     }
   });
 
-  it("static-only: human summary contains per-case PASS/SKIP lines", async () => {
+  it("static-only: human summary contains per-case PASS/SKIP lines (AC-1b)", async () => {
     const savedEndpoint = process.env["MUSTER_ENDPOINT"];
     delete process.env["MUSTER_ENDPOINT"];
     try {
@@ -68,7 +151,8 @@ describe("muster skills run (CLI wiring, FR-013)", () => {
       // broken-name-missing expects ok: false → lint fails → outcome matches → [PASS].
       expect(stdout).toContain("[PASS] valid-minimal");
       expect(stdout).toContain("[PASS] broken-name-missing");
-      // Behavioral cases are skipped when MUSTER_ENDPOINT absent
+      // AC-1b: behavioral cases skip gracefully (passed:true, skipped:true —
+      // unchanged shape) when MUSTER_ENDPOINT is absent.
       expect(stdout).toContain("[SKIP] behavioral-weather-skill");
       expect(stdout).toContain("[SKIP] behavioral-rigged-control");
     } finally {
@@ -170,6 +254,13 @@ describe("muster skills run (CLI wiring, FR-013)", () => {
     expect(stdout).toContain("MUSTER_ENDPOINT");
   });
 
+  it("help text documents MUSTER_BASE_URL as a deprecated alias (FR-002)", async () => {
+    const { code, stdout } = await run(["skills", "run", "--help"]);
+    expect(code).toBe(0);
+    expect(stdout).toContain("MUSTER_BASE_URL");
+    expect(stdout.toLowerCase()).toContain("deprecated");
+  });
+
   it("NFR-001 byte-identity: two static-only runs produce identical JSON output", async () => {
     const savedEndpoint = process.env["MUSTER_ENDPOINT"];
     delete process.env["MUSTER_ENDPOINT"];
@@ -183,5 +274,135 @@ describe("muster skills run (CLI wiring, FR-013)", () => {
         process.env["MUSTER_ENDPOINT"] = savedEndpoint;
       }
     }
+  });
+
+  it("AC-1a: behavioral cases execute (skipped:false) via a mock trigger client when MUSTER_ENDPOINT is configured", async () => {
+    await withSkillsEndpointEnv(
+      { MUSTER_ENDPOINT: "http://mock-endpoint.invalid/v1" },
+      async () => {
+        const { code, stdout } = await run(
+          ["skills", "run", skillsManifest, "--json"],
+          { skillsTriggerClientFactory: () => createSmartMockTriggerClient() }
+        );
+        expect([0, 1]).toContain(code);
+        const parsed = JSON.parse(stdout) as {
+          results: {
+            id: string;
+            type: string;
+            skipped?: boolean;
+            passed: boolean;
+          }[];
+        };
+        const behavioral = parsed.results.filter((r) => r.type === "behavioral");
+        expect(behavioral).toHaveLength(2);
+        for (const r of behavioral) {
+          // AC-1a: executed for real, never the hardcoded skip shape.
+          expect(r.skipped).not.toBe(true);
+        }
+        const weather = behavioral.find((r) => r.id === "behavioral-weather-skill");
+        const control = behavioral.find((r) => r.id === "behavioral-rigged-control");
+        expect(weather?.passed).toBe(true);
+        // FR-005/SC-004: the discrimination control must fail (cap-of-zero),
+        // now proven reachable from the CLI itself, not only from trigger.ts's
+        // own unit tests or the CTS reference suite.
+        expect(control?.passed).toBe(false);
+      }
+    );
+  });
+
+  it("AC-2a: MUSTER_ENDPOINT alone resolves the endpoint with no deprecation warning", async () => {
+    await withSkillsEndpointEnv(
+      { MUSTER_ENDPOINT: "http://canonical-endpoint.invalid/v1" },
+      async () => {
+        const captured: { endpoint?: EndpointConfig } = {};
+        const { stderr } = await run(["skills", "run", skillsManifest], {
+          skillsTriggerClientFactory: (endpoint) => {
+            captured.endpoint = endpoint;
+            return createSmartMockTriggerClient();
+          },
+        });
+        expect(stderr.toLowerCase()).not.toContain("deprecat");
+        expect(captured.endpoint?.baseUrl).toBe("http://canonical-endpoint.invalid/v1");
+      }
+    );
+  });
+
+  it("AC-2b: MUSTER_BASE_URL alone works, with exactly one deprecation warning", async () => {
+    await withSkillsEndpointEnv(
+      { MUSTER_BASE_URL: "http://alias-endpoint.invalid/v1" },
+      async () => {
+        const captured: { endpoint?: EndpointConfig } = {};
+        const { stderr } = await run(["skills", "run", skillsManifest], {
+          skillsTriggerClientFactory: (endpoint) => {
+            captured.endpoint = endpoint;
+            return createSmartMockTriggerClient();
+          },
+        });
+        const deprecationLines = stderr
+          .split("\n")
+          .filter((line) => line.toLowerCase().includes("deprecat"));
+        expect(deprecationLines).toHaveLength(1);
+        expect(captured.endpoint?.baseUrl).toBe("http://alias-endpoint.invalid/v1");
+      }
+    );
+  });
+
+  it("AC-2c: both set — MUSTER_ENDPOINT wins silently, no warning", async () => {
+    await withSkillsEndpointEnv(
+      {
+        MUSTER_ENDPOINT: "http://canonical-endpoint.invalid/v1",
+        MUSTER_BASE_URL: "http://unreachable-should-not-be-used.invalid/v1",
+      },
+      async () => {
+        const captured: { endpoint?: EndpointConfig } = {};
+        const { stderr } = await run(["skills", "run", skillsManifest], {
+          skillsTriggerClientFactory: (endpoint) => {
+            captured.endpoint = endpoint;
+            return createSmartMockTriggerClient();
+          },
+        });
+        expect(stderr.toLowerCase()).not.toContain("deprecat");
+        expect(captured.endpoint?.baseUrl).toBe("http://canonical-endpoint.invalid/v1");
+      }
+    );
+  });
+
+  it("errored trigger run", async () => {
+    await withSkillsEndpointEnv(
+      { MUSTER_ENDPOINT: "http://mock-endpoint.invalid/v1" },
+      async () => {
+        const { code, stdout } = await run(
+          ["skills", "run", skillsManifest, "--json"],
+          { skillsTriggerClientFactory: () => throwingTriggerClient }
+        );
+        const parsed = JSON.parse(stdout) as {
+          ok: boolean;
+          results: {
+            id: string;
+            type: string;
+            passed: boolean;
+            shouldTriggerAxis?: {
+              triggerRate: number;
+              queryBreakdown: { runsErrored: number }[];
+            };
+          }[];
+        };
+        const weather = parsed.results.find((r) => r.id === "behavioral-weather-skill");
+        expect(weather).toBeDefined();
+        // C-001: an errored trigger run counts as a failed run — never
+        // retried, never silently skipped — asserted at the CLI-wiring
+        // layer (doSkillsRun), not only via trigger.ts's own unit tests.
+        expect(weather?.passed).toBe(false);
+        expect(weather?.shouldTriggerAxis?.triggerRate).toBe(0);
+        const totalErrored = (weather?.shouldTriggerAxis?.queryBreakdown ?? []).reduce(
+          (sum, q) => sum + q.runsErrored,
+          0
+        );
+        expect(totalErrored).toBeGreaterThan(0);
+        // C-004: this contributes to a non-zero overall exit code.
+        expect(parsed.ok).toBe(false);
+        expect(code).toBe(1);
+      }
+    );
   });
 });
