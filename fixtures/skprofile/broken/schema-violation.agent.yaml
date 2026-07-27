@@ -1,0 +1,18 @@
+# Muster-local discrimination-control fixture (SC-002/SC-003, WP05 T017
+# step 2, research.md R6). Rigs EXACTLY ONE violation: omits the
+# schema-required "purpose" field (agent-profile.schema.yaml's top-level
+# `required` list: profile-id, name, purpose, specialization).
+# Intended finding kind: schema-conformance-violation (FR-002).
+#
+# Kept otherwise schema-legal (profile-id/name/specialization.primary-focus
+# all present, roles satisfies the role/roles anyOf) and free of every
+# other checked field (no collaboration block, no references, no
+# context-sources) so this fixture cannot also trip a different finding
+# kind and muddy which check actually fired.
+profile-id: schema-violation
+name: Schema Violation (fixture)
+roles:
+  - schema-violation-role
+
+specialization:
+  primary-focus: Discrimination-control fixture authoring.

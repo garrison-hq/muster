@@ -1,0 +1,26 @@
+# Muster-local discrimination-control fixture (SC-002/SC-003, WP05 T017
+# step 2, research.md R6). Rigs EXACTLY ONE violation:
+# directive-references[0].code ("999") does not resolve to any file under
+# ../doctrine/directives/ (only "001" exists there).
+# Intended finding kind: reference-unresolved (FR-004, rubric §4.1).
+#
+# Kept otherwise schema-legal and free of every other checked field (no
+# collaboration block, no tactic/toolguide/styleguide references, no
+# context-sources) so this fixture cannot also trip a different finding
+# kind and muddy which check actually fired.
+profile-id: unresolvable-reference
+name: Unresolvable Reference (fixture)
+description: >
+  Discrimination-control fixture: rigs an unresolvable directive-reference
+  code and nothing else.
+purpose: Exist solely to trip reference-unresolved and no other lint class.
+roles:
+  - unresolvable-reference-role
+
+specialization:
+  primary-focus: Discrimination-control fixture authoring.
+
+directive-references:
+  - code: "999"
+    name: Nonexistent Directive
+    rationale: Deliberately unresolvable code for the discrimination control.

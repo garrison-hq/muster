@@ -1,0 +1,33 @@
+# Muster-local discrimination-control fixture (WP05 remediation, F-1 §3.2,
+# rubric §3.2 "Handoff Symmetry" [MUSTER-OWN], warning severity). Paired
+# with asymmetric-b.agent.yaml.
+#
+# This file (role "role-asymmetric-a") declares collaboration.handoff-to:
+# [role-asymmetric-b]. That role name DOES resolve (asymmetric-b.agent.yaml
+# declares roles: [role-asymmetric-b]) — so this is NOT a handoff-unresolved
+# error. But asymmetric-b.agent.yaml does not list "role-asymmetric-a" (this
+# file's own role) in ITS handoff-from, so the handoff is one-directional:
+# A escalates to B, B never hands back. Per rubric §3.2 this is a WARNING,
+# not an error — proving the warning/error split is real.
+#
+# Expected vector for the PAIR: exactly one finding —
+# handoff-asymmetric(warning) on this file's collaboration.handoff-to[0].
+# asymmetric-b.agent.yaml itself declares no handoff-to, so it contributes
+# no finding of its own.
+profile-id: asymmetric-a
+name: Asymmetric Handoff A (fixture)
+description: >
+  Discrimination-control fixture: rigs a one-directional (asymmetric)
+  handoff-to relationship with asymmetric-b.agent.yaml, and nothing else.
+  Resolves cleanly (no handoff-unresolved) but is not reciprocated
+  (handoff-asymmetric warning).
+purpose: Exist solely (with asymmetric-b.agent.yaml) to trip handoff-asymmetric.
+roles:
+  - role-asymmetric-a
+
+specialization:
+  primary-focus: Discrimination-control fixture authoring.
+
+collaboration:
+  handoff-to:
+    - role-asymmetric-b

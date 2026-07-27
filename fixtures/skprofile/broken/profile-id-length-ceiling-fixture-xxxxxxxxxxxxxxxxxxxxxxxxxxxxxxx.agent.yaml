@@ -1,0 +1,28 @@
+# Muster-local discrimination-control fixture (WP05 remediation, F-1 §6.2,
+# rubric §6.2 "Length Ceiling" [CONVENTION]). Rigs a 65-character profile-id
+# (exceeding the 64-char ceiling by exactly one character) that is otherwise
+# fully legal under both muster's own charset rule (§6.1,
+# `^[a-z0-9-]+$`) AND the vendored upstream schema's stricter
+# `^[a-z][a-z0-9-]*$` pattern (which carries no length cap at all — verified
+# against agent-profile.schema.yaml's own `profile-id` property, no
+# `maxLength` key present).
+#
+# This file's own name stem is deliberately the SAME 65-character string as
+# the declared profile-id (the filename below, minus the `.agent.yaml`
+# suffix, is exactly 65 characters), so this fixture is genuinely ONE-KIND:
+# it cannot also trip profile-id-filename-mismatch (§6.3), because the two
+# strings are identical by construction.
+#
+# Expected vector: profile-id-illegal(error, length ceiling) only.
+profile-id: profile-id-length-ceiling-fixture-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+name: Profile Id Length Ceiling (fixture)
+description: >
+  Discrimination-control fixture: rigs a 65-character profile-id exceeding
+  the §6.2 length ceiling, and nothing else — filename stem matches the
+  declared id exactly so this cannot also trip profile-id-filename-mismatch.
+purpose: Exist solely to trip profile-id-illegal (length) and no other lint class.
+roles:
+  - profile-id-length-ceiling-role
+
+specialization:
+  primary-focus: Discrimination-control fixture authoring.

@@ -1,0 +1,22 @@
+# Muster-local discrimination-control fixture (SC-002/SC-003, WP05 T017
+# step 2, research.md R6). Rigs EXACTLY ONE violation: profile-id
+# ("id-filename-mismatched") does not equal this file's name stem
+# ("id-filename-mismatch"). The chosen profile-id is otherwise fully legal
+# (^[a-z0-9-]+$, <= 64 chars) so it does not also trip profile-id-illegal.
+# Intended finding kind: profile-id-filename-mismatch (FR-006, rubric §6.3).
+#
+# Kept otherwise schema-legal and free of every other checked field (no
+# collaboration block, no references, no context-sources) so this fixture
+# cannot also trip a different finding kind and muddy which check actually
+# fired.
+profile-id: id-filename-mismatched
+name: Id Filename Mismatch (fixture)
+description: >
+  Discrimination-control fixture: rigs a profile-id that does not equal
+  its own file's name stem, and nothing else.
+purpose: Exist solely to trip profile-id-filename-mismatch and no other lint class.
+roles:
+  - id-filename-mismatch-role
+
+specialization:
+  primary-focus: Discrimination-control fixture authoring.

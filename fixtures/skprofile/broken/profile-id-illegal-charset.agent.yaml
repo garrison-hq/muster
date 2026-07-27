@@ -1,0 +1,43 @@
+# Muster-local discrimination-control fixture (WP05 remediation, F-1 §6.1,
+# rubric §6.1 "Legal Character Set" [NORMATIVE]). Rigs profile-id
+# "Illegal_ID" — an uppercase letter and an underscore, both outside the
+# `^[a-z0-9-]+$` charset WP02's identity.ts enforces.
+#
+# DOCUMENTED MULTI-KIND VECTOR (observed by driving WP01/WP02's real
+# checkSchemaConformance/checkIdentity against this file — do not "fix" this
+# fixture to be one-kind, the multiplicity is unavoidable by construction):
+#
+#   1. profile-id-illegal (§6.1, charset) — WP02's own identity.ts rule.
+#   2. profile-id-filename-mismatch (§6.3) — this file's name stem
+#      ("profile-id-illegal-charset") cannot equal "Illegal_ID" while also
+#      being a legal, lowercase, human-readable discrimination-control
+#      filename; unavoidable per the operator's own remediation brief.
+#   3. schema-conformance-violation (§1.1) — the vendored upstream schema's
+#      OWN `profile-id` property pattern is `^[a-z][a-z0-9-]*$` (stricter
+#      than muster's own §6.1 rule, requiring a leading letter too). Any
+#      string containing a character outside `[a-z0-9-]` (as "Illegal_ID"
+#      does, twice) necessarily violates upstream's pattern as well —
+#      muster's §6.1 rule is a LOOSER superset-of-legal-chars reading of
+#      upstream's rule (see rubric §6.1's own provenance note), never a
+#      stricter one, so a genuine muster-charset violation can never be
+#      upstream-schema-clean. This third kind was not anticipated by the
+#      remediation brief's "two-finding vector" framing; it is real,
+#      verified by running WP01's actual checkSchemaConformance against this
+#      file's raw parsed YAML, and disclosed here rather than concealed.
+#
+# Expected vector: profile-id-illegal(error), profile-id-filename-mismatch
+# (error), schema-conformance-violation(error). Three findings, all error
+# severity, on this one file.
+profile-id: Illegal_ID
+name: Profile Id Illegal Charset (fixture)
+description: >
+  Discrimination-control fixture: rigs a profile-id charset violation. Also
+  and unavoidably trips profile-id-filename-mismatch and
+  schema-conformance-violation — see the documented three-finding vector
+  above.
+purpose: Exist solely to exercise the §6.1 charset rule (plus its unavoidable co-findings).
+roles:
+  - profile-id-illegal-charset-role
+
+specialization:
+  primary-focus: Discrimination-control fixture authoring.

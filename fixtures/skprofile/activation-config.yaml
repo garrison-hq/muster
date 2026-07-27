@@ -1,0 +1,14 @@
+# Muster-local activation-config fixture (research.md R3's flat shape,
+# WP05 T017 step 7) — mirrors the shape verified in this repo's own
+# `.kittify/config.yaml`: flat top-level `activated_directives`/
+# `activated_tactics` keys.
+#
+# Deliberately activates the "001" directive (so clean/'s
+# directive-references resolve as activated, zero warnings there) but
+# leaves `activated_tactics` empty, so clean/'s `development-bdd`
+# tactic-references resolve on disk but are NOT activated — exercising the
+# FR-004 `reference-not-activated` warning path against at least one
+# reference in clean/, per this WP's DoD.
+activated_directives:
+  - 001-architectural-integrity-standard
+activated_tactics: []

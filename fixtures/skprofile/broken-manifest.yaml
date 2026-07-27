@@ -1,0 +1,70 @@
+# Muster-local discrimination-control manifest (SC-002/SC-003, WP05 T017
+# step 6, remediated post-review per F-1) — points at broken/, the same
+# vendored schema + doctrine tree as manifest.yaml. No activationConfigPath
+# here: activation gating (and its own §4.3 shape-validation control) is
+# deliberately isolated into broken-activation-manifest.yaml instead, so it
+# cannot add an unintended extra finding kind to this run; likewise
+# projection-drift (§7.2/§7.3) is isolated into
+# broken-projection-manifest.yaml.
+#
+# `broken/`'s direct *.agent.yaml children (its nested `activation-shape/`
+# and `projection/` subdirectories are non-recursively excluded by
+# `loadProfileSet`'s flat-directory read, and are consumed by their own
+# dedicated manifests instead) are each rigged to trip at least one lint
+# class; three fixtures are DELIBERATE, DOCUMENTED multi-kind vectors (see
+# each file's own header) because the underlying rules make a strictly
+# one-kind rigging impossible:
+#
+#   - profile-id-illegal-charset.agent.yaml: profile-id-illegal(error) +
+#     profile-id-filename-mismatch(error) + schema-conformance-violation
+#     (error) — 3 findings (a muster-charset violation is always also an
+#     upstream-schema-pattern violation; see the file's own header).
+#   - collision-a.agent.yaml + collision-b.agent.yaml (one pair):
+#     profile-id-collision(error) x2 + profile-id-filename-mismatch(error)
+#     x1 — 3 findings (two files cannot both match one shared id).
+#   - every other fixture below is genuinely one-kind.
+#
+# WP03's fixtures.test.ts assertion contract (pin exactly, per WP05's
+# remediation Activity Log entry):
+#   - report.ok === false, exit code 1.
+#   - findings.length === 13 EXACTLY (12 error-severity, 1 warning-severity)
+#     — not "at least," the literal, pinned total.
+#   - readdirSync('fixtures/skprofile/broken', {withFileTypes:true})
+#     .filter(e => e.isFile() && e.name.endsWith('.agent.yaml')).length
+#     === 11 (a file-count assertion independent of the finding assertions,
+#     so a future accidental deletion fails loudly even if some other
+#     fixture's kind coincidentally papers over the missing finding).
+#   - Per-source-file (fileNameStem -> kind[]) pairing:
+#       asymmetric-a.agent.yaml            -> [handoff-asymmetric(warning)]
+#       asymmetric-b.agent.yaml            -> []
+#       collision-a.agent.yaml + collision-b.agent.yaml (pair)
+#                                           -> [profile-id-collision(error),
+#                                               profile-id-collision(error),
+#                                               profile-id-filename-mismatch(error)]
+#       context-source-missing.agent.yaml  -> [context-source-missing(error)]
+#       dangling-handoff.agent.yaml         -> [handoff-unresolved(error)]
+#       id-filename-mismatch.agent.yaml     -> [profile-id-filename-mismatch(error)]
+#       profile-id-illegal-charset.agent.yaml
+#                                           -> [profile-id-illegal(error),
+#                                               profile-id-filename-mismatch(error),
+#                                               schema-conformance-violation(error)]
+#       profile-id-length-ceiling-fixture-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.agent.yaml
+#                                           -> [profile-id-illegal(error)]
+#       schema-violation.agent.yaml         -> [schema-conformance-violation(error)]
+#       unresolvable-reference.agent.yaml   -> [reference-unresolved(error)]
+#   - Minimum-required kinds still present (unchanged contract):
+#     handoff-unresolved, reference-unresolved, profile-id-filename-mismatch,
+#     schema-conformance-violation, context-source-missing.
+#   - Additionally now present: handoff-asymmetric(warning),
+#     profile-id-illegal(error), profile-id-collision(error).
+#
+# Verified by driving WP01/WP02's real exported check functions directly
+# against every file in this directory (WP05's remediation Activity Log
+# entry records the literal output).
+version: "1.0.0"
+profilesDir: ./broken
+schemaPath: ./agent-profile.schema.yaml
+schemaSha: ebfbaddd653789417f89b040320ccfe452f15424
+doctrineRoot: ./doctrine
+cases:
+  - id: all-profiles
