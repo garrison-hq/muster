@@ -291,13 +291,19 @@ DEPRECATION_COUNT_BOTH_SET=$(MUSTER_ENDPOINT=http://localhost:11434/v1 MUSTER_BA
 test "$DEPRECATION_COUNT_BOTH_SET" -eq 0; echo "ac2c_gate_exit=$?"
 # MUST be 0 (canonical wins silently when both are set — no warning)
 
-# C-001 regression — verified with a MATCH COUNT, not a bare exit code. vitest's "-t" flag
-# exits 0 whether it matches-and-passes OR matches NOTHING at all (reproduced live in this
-# checkout pre-implementation: "Tests 16 skipped (16)", exit=0). numPassedTests distinguishes.
+# C-001 regression — verified with the JSON reporter's overall success flag, not a bare exit
+# code. vitest's "-t" flag exits 0 whether it matches-and-passes OR matches NOTHING at all
+# (reproduced live in this checkout pre-implementation: "Tests 16 skipped (16)", exit=0).
+# NOTE: `numPassedTests >= 1` was tried first here and is INSUFFICIENT — vitest.config.ts sets
+# `typecheck.enabled: true`, which runs a parallel type-check pseudo-suite per file whose entries
+# report passed independently of the real runtime assertions, so numPassedTests can be >= 1 on a
+# fully red run (proven live: deliberately breaking this exact test's assertion and re-running
+# produced numPassedTests=1, numFailedTests=1, success=false — the old guard would have said
+# PASS). `.success` (equivalently `.numFailedTests == 0`) is not fooled by the duplicates.
 pnpm vitest run tests/skills/cli.test.ts -t "errored trigger run" --reporter=json > /tmp/c001.json
 echo "exit=$?"   # expect 0
-test "$(jq '.numPassedTests' /tmp/c001.json)" -ge 1; echo "match_exit=$?"
-# MUST be 0 (numPassedTests >= 1) — this is the actual pass/fail signal, not the bare exit code above
+test "$(jq '.success' /tmp/c001.json)" = "true"; echo "match_exit=$?"
+# MUST be 0 (.success == true) — this is the actual pass/fail signal, not the bare exit code above
 
 # C-003 / hazard-1 proof
 pnpm vitest run tests/unit/invariants.test.ts
@@ -337,6 +343,35 @@ merged tree are both green).
 - **`.env`-driven false-red on invariants test**: see the C-003 caveat above
   — a red `invariants.test.ts` in this checkout may be the pre-existing,
   unrelated `.env`/NI-001 failure, not a regression from this WP.
+- **Mission-level follow-up, recorded not fixed (this WP's surface is the
+  only one that can close it): the bare literal `"rigged-impossible-control"`
+  is duplicated across 4 files this mission touches** — `trigger.ts` (lines
+  341, 420, 467 as of the post-tasks review), `cli/index.ts` (1423, 1432),
+  `tests/cts/skills-suite.test.ts` (282, 355, 358), and
+  `tests/skills/cli.test.ts` (138) — 8 sites total. The correct fix is
+  exporting a `RIGGED_IMPOSSIBLE_TOOL_NAME` constant from `trigger.ts`
+  alongside the existing `RIGGED_IMPOSSIBLE_DESCRIPTION` export, then having
+  all 8 sites reference it instead of the string literal. **Only this WP's
+  `owned_files` covers all four files** (`src/cli/index.ts`,
+  `src/adapters/skills/trigger.ts`, `tests/skills/cli.test.ts`,
+  `tests/cts/skills-suite.test.ts`) — WP02 correctly declined to take this on
+  itself, since a partial fix touching only its own files would leave the
+  hazard open while making it look closed. Not fixed as part of this
+  remediation pass (out of scope: coordinator-only kitty-specs/ fix, no
+  source changes). **Partially unverifiable from the mission/coordination
+  branch as checked out here**: `trigger.ts` and
+  `tests/cts/skills-suite.test.ts` are present in this checkout and were
+  re-grepped for the bare literal `"rigged-impossible-control"` (4 matches
+  confirmed, at `trigger.ts:300,377,424` and
+  `tests/cts/skills-suite.test.ts:282` in this checkout's current line
+  numbering — pre-WP01/WP02 merge, so line numbers will shift once those
+  lanes land). `cli/index.ts` and `tests/skills/cli.test.ts` carry no bare
+  `"rigged-impossible-control"` literal in this checkout because WP01's own
+  wiring (which introduces it there) lives only in the lane-a worktree, not
+  yet merged into this branch — confirming the WP02/lane-cited line numbers
+  for those two files would require entering `.worktrees/…-lane-a`, which is
+  out of bounds for this fix pass. Whoever picks this up next should re-grep
+  post-merge before acting on the exact line numbers above.
 
 ## Reviewer Guidance
 
@@ -359,3 +394,12 @@ merged tree are both green).
 ## Activity Log
 
 - 2026-07-27T21:36:02Z – claude – shell_pid=1183665 – Test-first deviation justification (charter Exception Policy / directive 034-test-first-development, enforcement: required): WP01's original T001-T007 tests were written alongside the implementation in a single pass (commit c2966d9), not strictly red-then-green per behavior. Justification: this was CLI-wiring plumbing reusing an already-tested grader (`runTriggerConformance`) via a well-understood existing reference call site (`tests/cts/skills-suite.test.ts`), assessed at the time as low novel-behavior risk; the omission of a written justification was not recorded contemporaneously, which this entry corrects retroactively. This mission's remediation pass (HIGH-1/HIGH-2/MEDIUM-1 fixes, commits 66906f5/38041d9/a58fa0a) DID follow red→green: each new regression test was confirmed failing before its corresponding fix and passing after (see review evidence).
+- 2026-07-27T22:54:02Z – claude (coordinator) – Recorded a mission-level
+  follow-up on this WP's surface (see Risks above): the bare literal
+  `"rigged-impossible-control"` is duplicated 8 times across the 4 files
+  this WP's `owned_files` covers (`trigger.ts`, `cli/index.ts`,
+  `tests/skills/cli.test.ts`, `tests/cts/skills-suite.test.ts`). Not fixed —
+  this pass is a kitty-specs/ planning-artifact correction only, no source
+  changes. Correct fix: export `RIGGED_IMPOSSIBLE_TOOL_NAME` from
+  `trigger.ts` beside `RIGGED_IMPOSSIBLE_DESCRIPTION` and reference it at all
+  8 sites instead of the string literal.
