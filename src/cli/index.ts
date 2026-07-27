@@ -88,6 +88,7 @@ import {
   validateSkill,
 } from "../adapters/skills/index.js";
 import { checkLayout } from "../adapters/skills/layout.js";
+import { validateManifest as validateSkillsManifest } from "../adapters/skills/schema.js";
 import type { SkillProfile, AxisVerdict, TriggerCase } from "../adapters/skills/types.js";
 import {
   makeToolClient,
@@ -1507,8 +1508,14 @@ async function doSkillsRun(
   const baseDir = dirname(absManifestPath);
   try {
     const raw = await readFileOrThrow(absManifestPath, "skills manifest");
-    const parsed = parseYaml(raw) as { cases: SkillsManifestCase[] };
-    cases = parsed.cases;
+    const parsed = parseYaml(raw);
+    // FR-003: structural schema validation before any case executes — a
+    // malformed manifest (missing required field, bad `type` enum value,
+    // non-boolean `expectations.ok`, ...) fails at a well-formed exit-2
+    // boundary, never wherever the first bad field happens to be
+    // dereferenced deep inside a case runner.
+    validateSkillsManifest(parsed);
+    cases = (parsed as { cases: SkillsManifestCase[] }).cases;
   } catch (error) {
     throw new ExecutionError(`skills manifest read/parse error: ${errorMessage(error)}`);
   }
