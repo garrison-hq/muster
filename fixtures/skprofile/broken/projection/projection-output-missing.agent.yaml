@@ -1,0 +1,28 @@
+# Muster-local discrimination-control fixture (WP05 remediation, F-1 §7.2,
+# rubric §7.2 "Missing Output — Error" [NORMATIVE]). Deliberately clean
+# otherwise (no references/context-sources/collaboration violations of its
+# own) so this profile's ONLY finding comes from the projection-drift
+# re-verification WP03's `projection.ts` performs.
+#
+# `../../projection-manifest.json` records a matching `profile_urn` entry
+# ("agent_profile:projection-output-missing") for this profile, but that
+# entry's `output_path` ("./outputs/output-missing-does-not-exist.md")
+# deliberately does NOT exist on disk — the projected native artefact this
+# profile is supposed to have was never written. Per rubric §7.2 this is
+# reported identically to "no matching entry at all": projection-output-
+# missing (error).
+#
+# Expected vector (this profile alone, against
+# broken-projection-manifest.yaml): projection-output-missing(error), and
+# nothing else.
+profile-id: projection-output-missing
+name: Projection Output Missing (fixture)
+description: >
+  Discrimination-control fixture: rigs a projection-manifest entry whose
+  output_path does not exist on disk, and nothing else.
+purpose: Exist solely to trip projection-output-missing and no other lint class.
+roles:
+  - projection-output-missing-role
+
+specialization:
+  primary-focus: Discrimination-control fixture authoring.

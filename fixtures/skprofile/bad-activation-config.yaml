@@ -1,0 +1,18 @@
+# Muster-local discrimination-control fixture (WP05 remediation, F-1 §4.3,
+# rubric §4.3 "Activation-Config Shape Validation — Loud Failure"
+# [MUSTER-OWN], warning severity).
+#
+# Deliberately shaped like the differently-nested `charter.yaml` migration
+# target rubric §4.2/§4.3 describe (a project that has already migrated away
+# from the flat `activated_directives`/`activated_tactics` shape this
+# adapter is coded for) — it exposes NEITHER top-level key the adapter's
+# `references.ts`'s `loadActivationConfig` looks for, so
+# `ActivationConfig.recognized` is `false` and the run must emit exactly one
+# `activation-config-unrecognized-shape` finding for the whole run (never
+# once per reference), per §4.3 / `references.ts:289-302`.
+charter:
+  directives:
+    activated:
+      - 001-architectural-integrity-standard
+  tactics:
+    activated: []

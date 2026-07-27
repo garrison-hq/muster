@@ -1,0 +1,26 @@
+# Muster-local discrimination-control fixture (WP05 remediation, F-1 §6.4,
+# rubric §6.4 "Cross-Profile Collision" [NORMATIVE]). Paired with
+# collision-a.agent.yaml — both declare the SAME profile-id
+# ("collision-a"). See collision-a.agent.yaml's header for the full
+# documented three-finding pair vector.
+#
+# This file's own contribution: profile-id-collision(error) (it is a member
+# of the two-profile colliding group) PLUS profile-id-filename-mismatch
+# (error), because its own filename stem ("collision-b") cannot equal
+# "collision-a" while collision-a.agent.yaml also legitimately keeps its own
+# matching filename — two files cannot both match one shared id. This is
+# the unavoidable second finding kind the remediation brief names
+# explicitly.
+profile-id: collision-a
+name: Collision B (fixture)
+description: >
+  Discrimination-control fixture: rigs a profile-id collision with
+  collision-a.agent.yaml, and — unavoidably — a profile-id-filename-mismatch
+  on this file specifically (see collision-a.agent.yaml's header for the
+  full pair vector).
+purpose: Exist solely (together with collision-a.agent.yaml) to trip profile-id-collision.
+roles:
+  - collision-b-role
+
+specialization:
+  primary-focus: Discrimination-control fixture authoring.

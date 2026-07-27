@@ -1,0 +1,26 @@
+# Muster-local discrimination-control manifest (WP05 remediation, F-1
+# §7.2/§7.3) — isolates the projection-drift re-verification path from
+# every other lint class. Points at ./broken/projection/, a dedicated
+# profilesDir containing exactly two deliberately clean-except-for-
+# projection profiles, and at ./projection-manifest.json (SS7.2/SS7.3's
+# rigged entries — see that file's own comments for the exact vector).
+#
+# No activationConfigPath here: this manifest isolates FR-007 only.
+#
+# Expected (documented; WP03's projection.ts is this mission's forthcoming
+# consumer of this fixture pair — this WP could not execute
+# checkProjectionDrift itself, since projection.ts does not exist yet on
+# this WP's dependency chain (WP01+WP02 only); see this WP's Activity Log
+# for the manual sha256 cross-check performed instead):
+#   - ok === false (projection-output-missing is error severity).
+#   - findings.length === 2: exactly one projection-output-missing (error)
+#     on "projection-output-missing", and exactly one projection-hash-drift
+#     (warning) on "projection-hash-drift".
+version: "1.0.0"
+profilesDir: ./broken/projection
+schemaPath: ./agent-profile.schema.yaml
+schemaSha: ebfbaddd653789417f89b040320ccfe452f15424
+doctrineRoot: ./doctrine
+projectionManifestPath: ./projection-manifest.json
+cases:
+  - id: all-profiles

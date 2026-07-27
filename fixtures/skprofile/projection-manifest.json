@@ -1,0 +1,30 @@
+{
+  "_comment": "Muster-local discrimination-control projection manifest (WP05 remediation, F-1 SS7.2/SS7.3, C-004). Structurally mirrors the real .kittify/agent_profiles_manifest.json (entries[] + schema_version), verified against this repo's own .kittify/agent_profiles_manifest.json. Relative output_path values below are resolved per rubric SS7.2's stated rule -- relative to this file's own parent directory's parent (this file lives at fixtures/skprofile/projection-manifest.json, so its resolution root is fixtures/) -- so './skprofile/broken/projection/outputs/hash-drift.md' resolves to fixtures/skprofile/broken/projection/outputs/hash-drift.md.",
+  "entries": [
+    {
+      "profile_urn": "agent_profile:projection-output-missing",
+      "source_layer": "fixture",
+      "tool_key": "claude",
+      "output_path": "./skprofile/broken/projection/outputs/output-missing-does-not-exist.md",
+      "format": "claude-agent",
+      "file_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "source_path": "fixtures/skprofile/broken/projection/projection-output-missing.agent.yaml",
+      "source_hash": "070d48f2d1f56913d200bfaa4515473a934c17349957ea055700ff4fae81d14e",
+      "projection_version": 1,
+      "_comment": "SS7.2 fixture: output_path deliberately does not exist on disk -> projection-output-missing (error), regardless of the hash values above."
+    },
+    {
+      "profile_urn": "agent_profile:projection-hash-drift",
+      "source_layer": "fixture",
+      "tool_key": "claude",
+      "output_path": "./skprofile/broken/projection/outputs/hash-drift.md",
+      "format": "claude-agent",
+      "file_hash": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+      "source_path": "fixtures/skprofile/broken/projection/projection-hash-drift.agent.yaml",
+      "source_hash": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+      "projection_version": 1,
+      "_comment": "SS7.3 fixture: output_path exists on disk, but both file_hash and source_hash above are deliberately wrong placeholders (the real sha256 digests are c3734807cf8967130f0ece027257c4962c65f6aabf802c201f5d70eb280b2578 for the source .agent.yaml and 53e6d5e8e50fbd082c30e64e73298362cb608374b49a989c98a0f14c09d48490 for outputs/hash-drift.md) -> projection-hash-drift (warning)."
+    }
+  ],
+  "schema_version": 1
+}

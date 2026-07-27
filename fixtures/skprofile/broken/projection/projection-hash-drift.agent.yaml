@@ -1,0 +1,31 @@
+# Muster-local discrimination-control fixture (WP05 remediation, F-1 §7.3,
+# rubric §7.3 "Hash Drift — Warning" [NORMATIVE]). Deliberately clean
+# otherwise (no references/context-sources/collaboration violations of its
+# own) so this profile's ONLY finding comes from the projection-drift
+# re-verification WP03's `projection.ts` performs.
+#
+# `../../projection-manifest.json` records a matching `profile_urn` entry
+# ("agent_profile:projection-hash-drift") whose `output_path`
+# ("./outputs/hash-drift.md", resolved relative to the projection
+# manifest's own parent directory's parent per rubric §7.2's resolution
+# rule) DOES exist on disk — but the entry's recorded `source_hash` and
+# `file_hash` are both deliberately wrong 64-hex-digit placeholders that do
+# not match the real sha256 of this file's own bytes or of
+# outputs/hash-drift.md's bytes. Per rubric §7.3 this is a WARNING (the
+# artefact exists, it is merely stale), never an error.
+#
+# Expected vector (this profile alone, against
+# broken-projection-manifest.yaml): projection-hash-drift(warning), and
+# nothing else.
+profile-id: projection-hash-drift
+name: Projection Hash Drift (fixture)
+description: >
+  Discrimination-control fixture: rigs a projection-manifest entry whose
+  output_path exists on disk but whose recorded source_hash/file_hash are
+  deliberately wrong, and nothing else.
+purpose: Exist solely to trip projection-hash-drift and no other lint class.
+roles:
+  - projection-hash-drift-role
+
+specialization:
+  primary-focus: Discrimination-control fixture authoring.

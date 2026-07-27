@@ -1,0 +1,24 @@
+# Muster-local discrimination-control fixture (WP05 remediation, F-1 §4.3).
+# Deliberately fully clean — zero directive/tactic/toolguide/styleguide
+# references, zero context-sources, zero collaboration entries, legal and
+# filename-matching profile-id — so this profile contributes ZERO findings
+# of its own. It exists purely as the (isolated) `profilesDir` for
+# `broken-activation-manifest.yaml`, so that manifest's run yields EXACTLY
+# ONE finding: the manifest-level activation-config-unrecognized-shape
+# warning from `bad-activation-config.yaml`, and nothing else. Keeping this
+# profile's own reference/context-source surface at zero avoids any
+# "resolves-on-disk-but-degrades-to-not-activated" noise that a
+# recognized-vs-unrecognized activation config would otherwise both produce
+# identically for a resolvable reference.
+profile-id: valid-profile
+name: Valid Profile (fixture)
+description: >
+  Discrimination-control fixture: a genuinely clean profile used only as
+  the isolated profilesDir for the §4.3 activation-config-shape fixture, so
+  that manifest's run yields exactly one finding.
+purpose: Exist as a zero-finding profile so the §4.3 shape warning is the run's only finding.
+roles:
+  - valid-profile-role
+
+specialization:
+  primary-focus: Discrimination-control fixture authoring.
