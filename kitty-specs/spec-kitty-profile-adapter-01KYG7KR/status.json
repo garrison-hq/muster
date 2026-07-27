@@ -1,19 +1,19 @@
 {
-  "event_count": 13,
-  "last_event_id": "01KYGH7WEXF0JHAM1S26MMSDMH",
-  "materialized_at": "2026-07-27T00:57:46.717093+00:00",
+  "event_count": 14,
+  "last_event_id": "01KYGH7XFTNG0VDGCX92WN2017",
+  "materialized_at": "2026-07-27T00:57:47.770285+00:00",
   "mission_number": "",
   "mission_slug": "spec-kitty-profile-adapter-01KYG7KR",
   "mission_type": "software-dev",
   "summary": {
-    "approved": 0,
+    "approved": 1,
     "blocked": 0,
     "canceled": 0,
     "claimed": 0,
     "done": 0,
     "for_review": 0,
     "in_progress": 1,
-    "in_review": 1,
+    "in_review": 0,
     "planned": 3
   },
   "work_packages": {
@@ -23,9 +23,9 @@
       "agent_profile": "__resolved_profile_absent__",
       "agent_profile_version": "__resolved_profile_version_absent__",
       "force_count": 0,
-      "lane": "in_review",
-      "last_event_id": "01KYGH7WEXF0JHAM1S26MMSDMH",
-      "last_transition_at": "2026-07-27T00:57:46.717093+00:00",
+      "lane": "approved",
+      "last_event_id": "01KYGH7XFTNG0VDGCX92WN2017",
+      "last_transition_at": "2026-07-27T00:57:47.770285+00:00",
       "model": "__resolved_model_absent__",
       "notes": [
         "WP01 complete: findings.ts/manifest.ts/profile.ts/schema.ts + manifest.test.ts/schema.test.ts. pnpm build/typecheck/test all exit 0; NI-002 green; no src/core/ or dependency changes."
