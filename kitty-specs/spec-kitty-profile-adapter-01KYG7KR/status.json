@@ -1,19 +1,19 @@
 {
-  "event_count": 36,
-  "last_event_id": "01KYJ6AKM61VDKS079HKMHF9CP",
-  "materialized_at": "2026-07-27T16:25:30.502812+00:00",
+  "event_count": 37,
+  "last_event_id": "01KYJ6AMS03KC7H1SY4N0PJ9SJ",
+  "materialized_at": "2026-07-27T16:25:31.680721+00:00",
   "mission_number": "",
   "mission_slug": "spec-kitty-profile-adapter-01KYG7KR",
   "mission_type": "software-dev",
   "summary": {
-    "approved": 3,
+    "approved": 4,
     "blocked": 0,
     "canceled": 0,
     "claimed": 0,
     "done": 0,
     "for_review": 0,
     "in_progress": 0,
-    "in_review": 1,
+    "in_review": 0,
     "planned": 1
   },
   "work_packages": {
@@ -109,9 +109,9 @@
       "agent_profile": "__resolved_profile_absent__",
       "agent_profile_version": "__resolved_profile_version_absent__",
       "force_count": 4,
-      "lane": "in_review",
-      "last_event_id": "01KYJ6AKM61VDKS079HKMHF9CP",
-      "last_transition_at": "2026-07-27T16:25:30.502812+00:00",
+      "lane": "approved",
+      "last_event_id": "01KYJ6AMS03KC7H1SY4N0PJ9SJ",
+      "last_transition_at": "2026-07-27T16:25:31.680721+00:00",
       "model": "__resolved_model_absent__",
       "notes": [
         "T017/T018 complete: fixtures/skprofile/** + examples/skprofile/** authored, self-verified against WP01/WP02's real check functions (each broken fixture trips exactly its intended finding kind; clean sets zero findings with no activation-config; clean+activation-config trips only the intended 2 reference-not-activated warnings). pnpm build/typecheck/test all exit 0 (164 files, 3531 passed, 3 skipped). Live CLI exit-0 confirmation for examples/skprofile deferred to WP03 T020 per this WP's own scope.",
