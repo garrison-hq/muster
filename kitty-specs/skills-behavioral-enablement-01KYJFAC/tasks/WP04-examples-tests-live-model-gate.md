@@ -151,7 +151,7 @@ dependency for this fixture's own test coverage.
    `passed: false` (step 2) never exercises the passing path at all. Name
    this test to include the literal substring `"should-trigger case"` — WP04's
    Acceptance Evidence below filters on that literal string. Do not rely on
-   the whole-file `numPassedTests -ge 1` check elsewhere in this WP's DoD to
+   the whole-file `.success == true` check elsewhere in this WP's DoD to
    stand in for this — that check is satisfied by pre-existing tests
    regardless of whether this specific assertion exists.
 
@@ -191,19 +191,23 @@ recorded here, not a lane-ownership claim.
 ```bash
 pnpm vitest run tests/skills/cli.test.ts --reporter=json > /tmp/fr006.json
 echo "exit=$?"   # expect 0 (vitest process exit; FR-006's own stated verification command)
-test "$(jq '.numPassedTests' /tmp/fr006.json)" -ge 1; echo "match_exit=$?"   # MUST be 0 — this
-# WP is the one authoring the new mock-client tests this file gains, so a nonzero-match
-# assertion is included here rather than trusting the bare exit code alone
+test "$(jq '.success' /tmp/fr006.json)" = "true"; echo "match_exit=$?"   # MUST be 0 — this
+# WP is the one authoring the new mock-client tests this file gains, so a real-pass assertion is
+# included here rather than trusting the bare exit code alone. NOT `numPassedTests >= 1` —
+# insufficient: vitest.config.ts sets `typecheck.enabled: true`, whose per-file pseudo-suite
+# entries report passed independently of the real assertions, so numPassedTests can be >= 1 on a
+# fully red run. `.success` (equivalently `.numFailedTests == 0`) is not fooled by the duplicates.
 
 # T020's specific weather/should-trigger passing assertion, isolated by name — the whole-file
 # check above is satisfied by pre-existing tests regardless of whether this one exists, so it
 # cannot stand in for it.
 pnpm vitest run tests/skills/cli.test.ts -t "should-trigger case" --reporter=json > /tmp/fr006-weather.json
 echo "exit=$?"   # expect 0
-test "$(jq '.numPassedTests' /tmp/fr006-weather.json)" -ge 1; echo "weather_case_match_exit=$?"
+test "$(jq '.success' /tmp/fr006-weather.json)" = "true"; echo "weather_case_match_exit=$?"
 # MUST be 0 — proves the new should-trigger case actually asserts passed:true by id, closing the
 # loop with T019's MIN_QUERIES_PER_AXIS=8 hard gate (an undersized query file only gets caught if
-# something asserts the weather case PASSES, not only that the control case fails)
+# something asserts the weather case PASSES, not only that the control case fails). NOT
+# `numPassedTests >= 1` — same typecheck-pseudo-suite hazard as above.
 
 # Mission-level regression, now finally satisfiable: FR-001's own literal AC-1a command,
 # against examples/skills/manifest.yaml (deferred here because this is the first point in the
@@ -241,12 +245,22 @@ echo "exit=$?"   # expect 0 or 1, never bare-skip (never skipped:true — that w
 
 # 3. Assert the EXACT LITERAL boolean values — not "truthy", not "the run didn't crash".
 CONTROL_PASSED=$(jq -r '.results[] | select(.id=="behavioral-rigged-control") | .passed' /tmp/skills-live-run.json)
+CONTROL_ERRORED=$(jq -r '.results[] | select(.id=="behavioral-rigged-control") | .errored' /tmp/skills-live-run.json)
 WEATHER_PASSED=$(jq -r '.results[] | select(.id=="behavioral-weather-skill") | .passed' /tmp/skills-live-run.json)
-echo "control=$CONTROL_PASSED weather=$WEATHER_PASSED"
+echo "control=$CONTROL_PASSED control_errored=$CONTROL_ERRORED weather=$WEATHER_PASSED"
 
 test "$CONTROL_PASSED" = "false"; echo "control_gate_exit=$?"
 # MUST be 0. The control reporting passed:true even ONCE is immediately mission-blocking and
 # NON-RETRYABLE, no exceptions — do not retry, do not swap models, investigate instead.
+
+test "$CONTROL_ERRORED" != "true"; echo "control_not_errored_gate_exit=$?"
+# MUST be 0. WP02 added the `errored?: boolean` field to `SkillsCaseResult` (see
+# `src/cli/index.ts`'s `runStaticSkillCase` catch-block edit) precisely because, since WP02
+# landed, a case-level EXECUTION error (crash/timeout in the trigger run, not a discrimination
+# failure) also yields `passed: false` — indistinguishable from `control_gate_exit=0` above on
+# `.passed` alone. A live run that simply broke would otherwise look identical to a control
+# correctly failing. This assertion is what tells them apart: `control_gate_exit=0` proves the
+# control did not pass; this proves it did not merely error out while doing so.
 
 test "$WEATHER_PASSED" = "true"; echo "weather_gate_exit=$?"
 # If this is nonzero on the FIRST attempt: retry the step-2 command exactly once, unmodified
@@ -283,10 +297,11 @@ echo "exit=$?"
 ```
 
 This WP's `done`/`approved` state requires: `control_gate_exit=0` AND
-`weather_gate_exit=0` (after at most one retry) AND `pending_gate_exit=0` AND
-`ps_leak_gate_exit=0` AND `output_leak_gate_exit=0`. Any other outcome is an
-open defect, recorded in `quickstart.md`, and this WP stays not-done until
-resolved — **no exceptions, no model-swapping to force a pass.**
+`control_not_errored_gate_exit=0` AND `weather_gate_exit=0` (after at most one
+retry) AND `pending_gate_exit=0` AND `ps_leak_gate_exit=0` AND
+`output_leak_gate_exit=0`. Any other outcome is an open defect, recorded in
+`quickstart.md`, and this WP stays not-done until resolved — **no exceptions,
+no model-swapping to force a pass.**
 
 ## Risks
 
@@ -332,13 +347,17 @@ resolved — **no exceptions, no model-swapping to force a pass.**
 - Confirm the control case's `passed:false` and the should-trigger case's
   `passed:true` are the **exact literal values recorded**, not summarized as
   "looks good."
+- Confirm the control case's `errored` field was also recorded and is not
+  `true` — a control that merely errored out (execution failure, not a
+  discrimination failure) is not the same thing as a control that correctly
+  failed, and `passed:false` alone does not distinguish the two since WP02.
 - Confirm no credential value appears in `/tmp/skills-live-run.json` or in
   any pasted `ps aux` output attached as evidence — verify `ps_leak_gate_exit`
   and `output_leak_gate_exit` were actually computed from a real count, not
   assumed.
 - Confirm the T020 `"should-trigger case"` test exists and its
   `weather_case_match_exit=0` was actually observed — the whole-file
-  `numPassedTests -ge 1` check alone does not prove this specific assertion
+  `.success == true` check alone does not prove this specific assertion
   exists.
 
 **Implementation command**: `spec-kitty agent action implement WP04 --agent claude`
