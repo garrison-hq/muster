@@ -145,11 +145,13 @@ describe("checkReferences — doctrineRoot itself must exist", () => {
 });
 
 describe("checkReferences — LOW-C: an unreadable doctrine subtree must error, not degrade to zero findings", () => {
-  it("rethrows when a doctrine subtree exists but is unreadable (EACCES), rather than silently walking as empty", async () => {
+  it("rethrows when a doctrine subtree exists but is unreadable (EACCES), rather than silently walking as empty", async ({
+    skip,
+  }) => {
     if (process.getuid?.() === 0) {
       // Running as root defeats chmod-based permission denial entirely —
       // there is no meaningful assertion to make in that environment.
-      return;
+      skip();
     }
     const root = await makeTmpDir();
     await buildDoctrineTree(root);
