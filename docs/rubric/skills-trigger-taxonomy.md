@@ -42,9 +42,10 @@ whose `shouldTrigger` or `nearMiss` array has fewer than `MIN_QUERIES_PER_AXIS`
 zeroed axis verdicts, rather than grading an under-sized sample (`trigger.ts`,
 hard-gate check ahead of `runSingleQuery` invocation).
 
-**Upstream prior art for the number**: `agentskills.io/skill-creation/
-optimizing-descriptions` recommends roughly 20 queries total, 8-10 per axis,
-as authoring guidance — not an enforced minimum. Muster's `8` sits at the
+**Upstream prior art for the number**:
+`agentskills.io/skill-creation/optimizing-descriptions` recommends roughly 20
+queries total, 8-10 per axis, as authoring guidance — not an enforced
+minimum. Muster's `8` sits at the
 lower bound of that recommended range and turns it into a machine-checked
 requirement; that tightening (a soft "aim for" becoming a hard gate) is
 muster's own decision, not something the upstream page itself mandates.
@@ -68,18 +69,33 @@ the pass condition's direction differs, matching the axis's own semantics
 (should trigger vs. should not).
 
 **Upstream prior art**: the "should-trigger vs. near-miss" framing and its
-own terminology ("near-miss") come directly from `agentskills.io/
-skill-creation/optimizing-descriptions`'s query-design guidance.
+own terminology ("near-miss") come directly from
+`agentskills.io/skill-creation/optimizing-descriptions`'s query-design
+guidance.
 
 ## The 0.5 Default Threshold
 
-**[MUSTER-OWN] tightening of an upstream default.** `createDiscriminationControl`
-(`trigger.ts`) and both existing query-set fixtures
-(`fixtures/skills/trigger-queries/{weather-skill,rigged-impossible}-queries.yaml`)
-pin `threshold: 0.5`. This value is also the upstream page's own stated
-default trigger-rate threshold — not a muster invention on this one number —
-but muster additionally makes it the fixture-level convention checked into
-every shipped query set, rather than leaving it as a per-author choice.
+Upstream states the pass rule directly: "A should-trigger query passes if
+its trigger rate is above a threshold (0.5 is a reasonable default). A
+should-not-trigger query passes if its trigger rate is below that threshold"
+(`optimizing-descriptions.mdx`, "Testing whether a description triggers").
+`createDiscriminationControl` (`trigger.ts`) and both existing query-set
+fixtures (`fixtures/skills/trigger-queries/{weather-skill,rigged-impossible}-queries.yaml`)
+pin `threshold: 0.5` — the numeric value matches upstream's own default.
+
+**[MUSTER-OWN] divergence: the denominator, not just the number.** Upstream's
+0.5 is applied *per query*: each query gets its own trigger rate (that
+query's triggers / that query's runs) and its own pass/fail verdict against
+0.5. Muster's `gradeAxis` (`trigger.ts:200-206`) pools every query's runs
+into a single axis-level rate (`sum(runsTriggered) / sum(runsTotal)` across
+*all* queries in the axis) before comparing to 0.5 — there is no per-query
+verdict anywhere in this codebase (`QueryRunResult`, `types.ts:162-168`,
+carries no `passed` field). The same 0.5 number is therefore being checked
+against a materially different quantity than the one upstream describes; see
+"K-of-N Aggregation Rationale" below for the masking consequence. Muster also
+makes 0.5 the fixture-level convention checked into every shipped query set,
+rather than leaving it as a per-author choice — that packaging decision is
+muster's own, independent of the denominator divergence above.
 
 ## `runsPerQuery` — the 3-Run Default
 
@@ -98,18 +114,39 @@ using a different `runsPerQuery` value.
 
 ## K-of-N Aggregation Rationale
 
-**[MUSTER-OWN]**, applying the charter's existing two-tier behavioral-grading
-posture (safety-critical rules aggregate as pass^k, requiring every run to
-pass; stylistic axes keep k-of-n thresholds) to trigger conformance by
-classification, not by upstream mandate — the upstream page does not specify
-an aggregation model at all. Trigger-routing conformance is classified
-**stylistic**, not safety-critical: a model's routing quality is a k-of-n
-threshold question (`triggerRate >= threshold` or `< threshold`, per axis),
-not an "any single failure fails the whole suite" question. An **errored**
-run is still counted as a non-trigger and contributes to the denominator
-(`runsTotal`) without contributing to the numerator (`runsTriggered`) —
-errored runs are never skipped and never retried, matching the charter's
-repo-wide rule that an errored run counts as a failed run everywhere.
+Upstream *does* define an aggregation model: "A should-trigger query passes
+if its trigger rate is above a threshold... A should-not-trigger query
+passes if its trigger rate is below that threshold" (`optimizing-descriptions.mdx`).
+That is a **per-query** pass rule — every individual query gets its own
+trigger rate and its own verdict.
+
+**[MUSTER-OWN] divergence: axis-level pooling instead of per-query
+verdicts.** `gradeAxis` (`trigger.ts:200-206`) does not compute a verdict per
+query. It sums `runsTriggered` and `runsTotal` across *every* query in the
+axis first, then compares one pooled rate to the threshold.
+`QueryRunResult` (`types.ts:162-168`) has no `passed` field to hold a
+per-query outcome even if one were computed — there is no per-query verdict
+anywhere in this codebase. This pooling is muster's own choice, applying the
+charter's existing two-tier behavioral-grading posture (safety-critical
+rules aggregate as pass^k, requiring every run to pass; stylistic axes keep
+k-of-n thresholds) to trigger conformance by classification. Trigger-routing
+conformance is classified **stylistic**, not safety-critical: a model's
+routing quality is treated as a k-of-n threshold question
+(`triggerRate >= threshold` or `< threshold`, per axis), not an "any single
+failure fails the whole suite" question — but the "n" muster chose to pool
+over is the whole axis, not the single query upstream pools over.
+
+**Consequence (masking)**: axis-level pooling can pass an axis that
+upstream's per-query rule would fail. Example: a `shouldTrigger` axis with
+two queries, 3 runs each. Query A triggers 3/3; query B triggers 0/3. Pooled:
+3/6 = 0.5, which meets `>= 0.5` and the axis passes under muster's grader.
+Under upstream's per-query rule, query B's own rate (0/3 = 0) is below 0.5
+and that query individually fails — a real routing gap on query B is
+invisible to muster's axis-level result. An **errored** run is still counted
+as a non-trigger and contributes to the denominator (`runsTotal`) without
+contributing to the numerator (`runsTriggered`) — errored runs are never
+skipped and never retried, matching the charter's repo-wide rule that an
+errored run counts as a failed run everywhere.
 
 ## Discrimination-Control Requirement
 
@@ -119,11 +156,20 @@ grader specifically. `createDiscriminationControl` (`trigger.ts`) builds a
 case around `RIGGED_IMPOSSIBLE_DESCRIPTION` — a tool description engineered
 so that "this tool is never invoked by any realistic query." The control's
 `shouldTrigger` axis is expected to fail (trigger rate below threshold)
-against a correctly functioning model and correctly functioning grader; a
-control that reports `passed: true` (the rigged tool was actually invoked) is
-a mission-blocking finding about the grader or the model, not a result to
-retry past. This control is not itself sourced from the upstream page — it
-is muster's own falsification mechanism for the grader as a whole.
+against a correctly functioning model and correctly functioning grader.
+
+**Where this is actually enforced**: `runTriggerConformance` itself
+(`trigger.ts`) does not block on an unexpectedly-passing control — it only
+emits a `console.warn` (`trigger.ts:429-434`) and still returns
+`passed: true` on the resulting `TriggerVerdict`. The mechanical enforcement
+lives one layer up, in WP04's live-model acceptance gate
+(`tests/cts/skills-suite.test.ts`, SC-004), which asserts the control case's
+`verdict.passed` is literally `false` and fails the test run if it is not. A
+control reporting `passed: true` is a mission-blocking finding about the
+grader or the model — but the blocking happens at that acceptance gate, not
+inside `trigger.ts` itself. This control is not itself sourced from the
+upstream page — it is muster's own falsification mechanism for the grader as
+a whole.
 
 ---
 
