@@ -355,3 +355,7 @@ merged tree are both green).
   addition is a clean, low-conflict diff on top.
 
 **Implementation command**: `spec-kitty agent action implement WP01 --agent claude`
+
+## Activity Log
+
+- 2026-07-27T21:36:02Z – claude – shell_pid=1183665 – Test-first deviation justification (charter Exception Policy / directive 034-test-first-development, enforcement: required): WP01's original T001-T007 tests were written alongside the implementation in a single pass (commit c2966d9), not strictly red-then-green per behavior. Justification: this was CLI-wiring plumbing reusing an already-tested grader (`runTriggerConformance`) via a well-understood existing reference call site (`tests/cts/skills-suite.test.ts`), assessed at the time as low novel-behavior risk; the omission of a written justification was not recorded contemporaneously, which this entry corrects retroactively. This mission's remediation pass (HIGH-1/HIGH-2/MEDIUM-1 fixes, commits 66906f5/38041d9/a58fa0a) DID follow red→green: each new regression test was confirmed failing before its corresponding fix and passing after (see review evidence).
