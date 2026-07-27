@@ -1,7 +1,7 @@
 {
-  "event_count": 12,
-  "last_event_id": "01KYJSTCGF9ZN4DVDHFRX87ACS",
-  "materialized_at": "2026-07-27T22:06:10.447522+00:00",
+  "event_count": 13,
+  "last_event_id": "01KYJSTS1NN4HHCVER5M8F3SGE",
+  "materialized_at": "2026-07-27T22:06:23.285112+00:00",
   "mission_number": "",
   "mission_slug": "skills-behavioral-enablement-01KYJFAC",
   "mission_type": "software-dev",
@@ -11,9 +11,9 @@
     "canceled": 0,
     "claimed": 0,
     "done": 0,
-    "for_review": 1,
+    "for_review": 0,
     "in_progress": 0,
-    "in_review": 0,
+    "in_review": 1,
     "planned": 2
   },
   "work_packages": {
@@ -52,17 +52,17 @@
       "last_transition_at": "2026-07-27T20:29:21.330817+00:00"
     },
     "WP03": {
-      "actor": "claude",
+      "actor": "user",
       "agent": "claude",
       "agent_profile": "__resolved_profile_absent__",
       "agent_profile_version": "__resolved_profile_version_absent__",
       "force_count": 0,
-      "lane": "for_review",
-      "last_event_id": "01KYJPX7DD1MQX4QXF4B3E24G7",
-      "last_transition_at": "2026-07-27T21:15:17.805834+00:00",
+      "lane": "in_review",
+      "last_event_id": "01KYJSTS1NN4HHCVER5M8F3SGE",
+      "last_transition_at": "2026-07-27T22:06:23.285112+00:00",
       "model": "__resolved_model_absent__",
       "provider": "__resolved_provider_absent__",
-      "role": "implementer",
+      "role": "reviewer",
       "shell_pid": 443562,
       "shell_pid_created_at": "1785185514.45",
       "subtasks": {
