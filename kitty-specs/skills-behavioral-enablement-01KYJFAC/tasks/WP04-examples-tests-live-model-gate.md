@@ -9,7 +9,6 @@ owned_files:
   - "examples/skills/trigger-queries/weather-skill-queries.yaml"
   - "examples/skills/trigger-queries/rigged-impossible-queries.yaml"
   - "tests/skills/cli.test.ts"
-  - "kitty-specs/skills-behavioral-enablement-01KYJFAC/quickstart.md"
 authoritative_surface: "examples/skills/"
 execution_mode: "code_change"
 agent_profile: "node-norris"
@@ -156,7 +155,13 @@ mission coordination branch, and record the results in `quickstart.md`.
    what is specified, no model substitution, ever.
 
 **Files**: `kitty-specs/skills-behavioral-enablement-01KYJFAC/quickstart.md`
-(results table filled in; no structural changes to the rest of the file)
+(results table filled in; no structural changes to the rest of the file).
+**Out-of-`owned_files` rationale**: `quickstart.md` is a mission-level
+artifact, not any WP's `write_scope` — matching how `plan.md` itself is
+mission-level rather than lane-owned (`finalize-tasks` also rejects any WP
+`owned_files` entry under `kitty-specs/`, confirmed live). This WP fills in
+its results table as a small, one-file, well-justified out-of-map edit
+recorded here, not a lane-ownership claim.
 **Validation**: the live-model gate block below, run for real.
 
 ## Definition of Done

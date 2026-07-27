@@ -76,7 +76,6 @@ work_packages:
       - "examples/skills/trigger-queries/weather-skill-queries.yaml"
       - "examples/skills/trigger-queries/rigged-impossible-queries.yaml"
       - "tests/skills/cli.test.ts"
-      - "kitty-specs/skills-behavioral-enablement-01KYJFAC/quickstart.md"
     requirement_refs:
       - FR-005
       - FR-006
