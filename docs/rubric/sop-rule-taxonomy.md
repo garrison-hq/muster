@@ -1,6 +1,6 @@
 ---
-version: "1.0.0"
-date: "2026-06-13"
+version: "1.1.0"
+date: "2026-07-27"
 status: "normative"
 ---
 
@@ -240,3 +240,193 @@ source:
 Any manifest entry missing `source.normative` is a static lint error
 (FR-009). The lint detector `checkRuleTextPresence` and the manifest validator
 enforce this at load time.
+
+---
+
+## v1.1 — Directive-mapping appendix
+
+**Version note**: this section is purely additive. It was authored
+2026-07-27 by the `spec-kitty-profile-adapter-01KYG7KR` mission (WP04) as
+guidance for a **future** mission (M3, MOES-Media/spec-kitty#23) that maps
+Spec Kitty's own governance directives (`src/doctrine/directives/built-in/
+*.directive.yaml`, 26 shipped as of this writing) onto this document's
+already-normative rule classes 1–7 above. Nothing in v1.0.0 is redefined,
+renumbered, or reinterpreted by this appendix — every clause reference above
+this line remains exactly as normative, and exactly as numbered, as it was
+at v1.0.0. M3 is not blocked on this appendix; it may cite the v1.0.0
+classes directly. The version bump from `1.0.0` to `1.1.0` reflects an
+**additive, non-breaking** change (new guidance appended, no existing
+grading semantics altered) — consistent with this document's own
+Introduction, which reserves a version bump for "any change to grading
+semantics." No grading semantics changed; the bump is recorded anyway
+because the document's citable surface area grew, and a caller pinning
+`docs/rubric/sop-rule-taxonomy.md@1.0.0` should not silently pick up new
+content without an explicit version signal.
+
+**Provenance tagging note**: v1.0.0's classes 1–7 above use no bracketed
+provenance tag (`[NORMATIVE]`/`[CONVENTION]`/`[MUSTER-OWN]`) on any
+individual clause — the whole document's Introduction already states its
+own self-published normativity ("muster publishes its own" classification),
+so v1.0.0 tags nothing per-clause. That convention predates the
+`[NORMATIVE]`/`[CONVENTION]`/`[MUSTER-OWN]` tagging convention this mission
+also uses in `docs/rubric/spec-kitty-profile-taxonomy.md` and
+`docs/rubric/spec-kitty-behavioral-axes.md` (itself inherited from
+`memory-utilization-taxonomy.md`, v2.0.0, dated 2026-07-09 — after this
+document's original v1.0.0 date of 2026-06-13). This appendix's own new
+clauses (v1.1.1–v1.1.4 below) **do** carry that tag, applied for the first
+time in this document, rather than retroactively tagging the untouched
+v1.0.0 classes above this line — retagging v1.0.0 would itself be a change
+to the document beyond pure addition, which the "no existing line altered"
+rule for this appendix forbids.
+
+### v1.1.1 — Directive field mapping: `ruleText` vs judge-rubric material
+
+**[CONVENTION]**
+
+A Spec Kitty directive YAML (`directive.schema.yaml`) carries two optional
+array fields relevant to mapping a directive onto this document's rule
+shape: `integrity_rules` and `validation_criteria`. When a directive is
+mapped into a `SOPRuleManifestEntry` (or an entry shaped like it) for a
+future mission's manifest:
+
+- Each string in **`integrity_rules`** becomes one candidate `ruleText`
+  value (verbatim, unedited) for a **binary** class (1–5 above) — an
+  `integrity_rules` entry is, by Spec Kitty's own naming, a rule the
+  directive asserts must structurally hold, which is the same shape as this
+  document's binary `ruleText` values (a verbatim assertion a trace-decidable
+  grader checks).
+- Each string in **`validation_criteria`** becomes candidate **judge-rubric
+  material** — folded into a `JudgeAssertion`'s `rubricText`, not into a
+  binary `ruleText` — because a `validation_criteria` entry, by its own
+  naming and by inspection of the shipped directives, states a *criterion
+  for acceptable quality* rather than a single trace-checkable assertion;
+  this is the same shape as this document's judge classes (6–7).
+
+This mapping is a **naming-convention-driven convention**, not an
+upstream-mandated one: Spec Kitty's `directive.schema.yaml` does not itself
+declare that `integrity_rules` must map to binary grading or
+`validation_criteria` to judge grading — it only types both fields as
+arrays of strings, with no schema-level distinction beyond the field name.
+The mapping above is muster's own reading of what each field name is
+naturally shaped to describe, verified by inspection of the 25 (of 26)
+shipped directives that populate both fields.
+
+### v1.1.2 — Decidability mapping onto the five binary + two judge classes
+
+**[MUSTER-OWN]**
+
+A directive's `integrity_rules`/`validation_criteria` entries do not name
+which of this document's seven existing classes (1–7 above) they belong to
+— that assignment is a per-rule human judgment call at manifest-authoring
+time, not a mechanical function of the directive YAML alone. This appendix
+supplies the **method**, not an automatic mapping:
+
+1. Read each `integrity_rules` string. If it asserts a fixed, trace-
+   decidable condition over a tool-call trace or transcript text (a
+   forbidden action, an ordering constraint, a required confirmation, a
+   forbidden string, or a required output shape), assign it to whichever of
+   classes 1–5 above its shape matches (`never-call-tool`, `tool-order`,
+   `confirm-before-destructive`, `exact-string-non-leakage`,
+   `output-format`). If it asserts something no fixed trace pattern can
+   decide (a stylistic or contextual judgment), it does not belong under
+   `integrity_rules`' `ruleText` shape at all — reclassify it as judge-rubric
+   material per the next step instead of forcing it into a binary class it
+   does not fit.
+2. Read each `validation_criteria` string and fold it into a `rubricText`
+   for whichever of classes 6–7 above its subject matter matches
+   (`refusal-quality` for refusal/quality-of-decline criteria,
+   `tone-persona-adherence` for voice/persona/style criteria). A
+   `validation_criteria` entry whose subject matter fits neither existing
+   judge class is out of scope for this document's rule classes entirely —
+   this appendix does not license inventing an eighth class; a genuinely
+   novel judge-rubric shape is a v2.0.0-or-later decision for this
+   document's own maintainers, not something a manifest author may add
+   unilaterally.
+3. Record the mapping decision (which existing class number a given
+   directive rule was assigned to, and why) in the manifest-authoring
+   mission's own Activity Log or research notes — this document does not
+   define a machine-readable mapping-decision field; it only defines that
+   the decision must be made and be traceable.
+
+No directive rule may be mapped to more than one class; if a single
+`integrity_rules`/`validation_criteria` string plausibly fits two classes,
+the manifest author picks the more specific match (e.g. a rule about a
+specific forbidden tool call is `never-call-tool`, not the more general
+`output-format`, even if both could technically apply) and records the
+choice per step 3.
+
+### v1.1.3 — Enforcement level as a mapping input, not a new class
+
+**[MUSTER-OWN]**
+
+A directive's `enforcement` field (`required` | `lenient-adherence` |
+`advisory`) is not itself a rule-class dimension this document defines, but
+it is relevant input to the v1.1.2 mapping decision and to aggregation
+choice (this document's existing "Aggregation Rules" section above,
+unchanged):
+
+- `enforcement: required` — the directive asserts something that must
+  always hold. A directive rule mapped from a `required` directive should
+  default to the **safety-critical / pass^k** tier (classes 1–5, or a
+  judge class graded with the stricter aggregation) unless a specific rule
+  is clearly stylistic despite the directive's overall `required` status.
+- `enforcement: lenient-adherence` — Spec Kitty's own schema requires such a
+  directive to declare `explicit_allowances` (documented, permitted
+  deviations). A directive rule mapped from a `lenient-adherence` directive
+  is a poor fit for a strict pass^k binary class, because the directive
+  itself contemplates permitted exceptions a pure trace check cannot
+  represent; such rules are better mapped to a judge class (6–7) whose
+  `rubricText` can state the exception explicitly, or left unmapped if no
+  existing judge class's subject matter fits (v1.1.2 step 2).
+- `enforcement: advisory` — an advisory directive is not a candidate for
+  probing under this document's aggregation rules at all by default; a
+  manifest author who chooses to probe an advisory directive's rules anyway
+  should use the **k-of-n stylistic** tier, never pass^k, since `advisory`
+  is Spec Kitty's own weakest enforcement tier and treating it as
+  safety-critical would misrepresent the directive's own declared severity.
+
+### v1.1.4 — The 038 exception: directives with no `integrity_rules`/`validation_criteria`
+
+**[NORMATIVE]** — traceable directly to the shipped directive corpus: of the
+26 built-in directives, exactly one
+(`038-structured-prompt-boundary.directive.yaml`) carries neither
+`integrity_rules` nor `validation_criteria`.
+
+A directive with neither field present is **not mappable** to this
+document's rule shape at all under v1.1.1–v1.1.3 above — there is no
+`ruleText` or judge-rubric material to extract. Such a directive is excluded
+from a manifest built by this appendix's method, not force-mapped to a
+synthetic or invented `ruleText`. This is consistent with this document's
+existing "errored counts as failed, never silently skipped" posture applied
+in the other direction: an excluded directive is a **documented exclusion**,
+recorded in the manifest-authoring mission's Activity Log per v1.1.2 step 3,
+never a silent gap a reader would have to notice on their own.
+
+### v1.1.5 — `source.supporting` citation format for a directive-derived rule
+
+**[CONVENTION]** — mirrors the existing `source.normative`/`source.supporting`
+shape precedent (`SOPRuleManifestEntry.source`,
+`src/adapters/openclaw-sop/manifest.ts:53-58`: `{ normative: string;
+supporting?: string }`).
+
+A manifest entry built from a directive rule keeps `source.normative`
+pointed at this document (`docs/rubric/sop-rule-taxonomy.md`) exactly as
+every other entry does — this appendix does not change what a rule's
+normative source is, only how a directive-derived rule cites its
+**supporting** provenance. `source.supporting` for such an entry is the
+resolvable GitHub blob URL to the specific directive file, pinned at the
+commit SHA it was read from, in the same construction FR-002-style schema
+citations already use elsewhere in this mission set:
+
+```
+https://github.com/Priivacy-ai/spec-kitty/blob/<SHA>/src/doctrine/directives/built-in/<code>-<slug>.directive.yaml
+```
+
+In prose (Activity Logs, review notes, this document itself), the shorthand
+`<code>-<slug>@<SHA>` (for example, `038-structured-prompt-boundary@a1b2c3d`)
+may be used to refer to the same pinned directive without spelling out the
+full URL — this is descriptive shorthand for "the directive pinned at that
+SHA," not a literal path segment to embed anywhere, the same convention this
+mission's own research notes already establish for `agent-profile.schema.yaml@<SHA>`-style
+shorthand. The field **value** itself is always the full URL form above,
+never the bare `@`-joined shorthand.
