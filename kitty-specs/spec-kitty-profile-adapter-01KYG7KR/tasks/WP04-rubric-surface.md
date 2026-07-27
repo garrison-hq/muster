@@ -8,6 +8,9 @@ requirement_refs:
 planning_base_branch: kitty/mission-spec-kitty-profile-adapter
 merge_target_branch: kitty/mission-spec-kitty-profile-adapter
 branch_strategy: Planning artifacts for this mission were generated on kitty/mission-spec-kitty-profile-adapter. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into kitty/mission-spec-kitty-profile-adapter unless the human explicitly redirects the landing branch.
+base_branch: kitty/mission-spec-kitty-profile-adapter-01KYG7KR
+base_commit: 728b1e2c0fbadcea3dad9aebd2b4a4be8b82ad73
+created_at: '2026-07-27T00:38:00.497727+00:00'
 subtasks:
 - T021
 - T022
