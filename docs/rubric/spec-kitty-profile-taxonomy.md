@@ -194,13 +194,20 @@ trees under `doctrineRoot`, not nested under the profiles directory):
 |---|---|---|
 | `directive-references[].code` (e.g. `"001"`) | `<doctrineRoot>/directives/**/*.directive.yaml` | filename **starts with** `"<code>-"` |
 | `tactic-references[].id` (e.g. `"development-bdd"`) | `<doctrineRoot>/tactics/**/*.tactic.yaml` (recursive) | filename stem **equals** `id` |
+| `toolguide-references[].id` | `<doctrineRoot>/toolguides/**/*.toolguide.yaml` (recursive) | filename stem **equals** `id` |
+| `styleguide-references[].id` | `<doctrineRoot>/styleguides/**/*.styleguide.yaml` (recursive) | filename stem **equals** `id` |
 
 This taxonomy only checks that a reference **resolves** to an existing file
 on disk — it never parses or validates the *content* of the referenced
 doctrine file; content validation is a different mission's domain.
+`toolguide-references`/`styleguide-references` get this on-disk resolution
+stage only — they are never activation-gated (§4.2 is directive/tactic-only
+per FR-004), so an unresolved toolguide/styleguide reference is always this
+finding kind, never `reference-not-activated`.
 
 **Finding kind**: `reference-unresolved` (error). `path` =
-`directive-references[<i>].code` or `tactic-references[<i>].id`.
+`directive-references[<i>].code`, `tactic-references[<i>].id`,
+`toolguide-references[<i>].id`, or `styleguide-references[<i>].id`.
 
 ### §4.2 Doctrine-Reference vs the Activation Set
 
@@ -436,8 +443,9 @@ repo-relative one. Both forms are therefore accepted inputs to this check,
 not just the one upstream's own writer currently produces.
 
 **Finding kind**: `projection-output-missing` (error). `path` =
-`"projectionManifestPath"` (manifest-level) or the profile's own identity
-when a matched-but-missing `output_path` is at fault.
+`"projectionManifestPath"` unconditionally — both the no-matching-entry case
+and the matched-but-missing-`output_path` case report the same literal
+manifest-level path, never the profile's own identity.
 
 ### §7.3 Hash Drift — Warning
 
@@ -457,8 +465,10 @@ This entire class is **skipped**, not merely vacuously passing, when the
 manifest omits `projectionManifestPath` — there is no projection artefact
 to independently re-verify in that configuration.
 
-**Finding kind**: `projection-hash-drift` (warning). `path` = the profile's
-own identity (the specific source or output file whose hash differed).
+**Finding kind**: `projection-hash-drift` (warning). `path` =
+`"projectionManifestPath"` unconditionally — the finding message (not
+`path`) names which hash(es) differed; `path` does not vary by which side
+drifted or by profile identity.
 
 ---
 
