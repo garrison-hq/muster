@@ -107,8 +107,8 @@ path is fully offline, deterministic, and never reads the clock (C-002).
 **Hard rules for the whole WP** (from spec + charter):
 
 1. Touch ONLY the files in `owned_files`. If you believe a shared surface
-   (`src/cli/index.ts`, `src/cli/output.ts`) needs a change, that is WP03's
-   job — do not touch it here, and do not touch `docs/rubric/` (WP04's job).
+   (`src/cli/index.ts`) needs a change, that is WP03's job — do not touch it
+   here, and do not touch `docs/rubric/` (WP04's job).
 2. No file under `src/core/` is read or modified. This adapter has **no**
    behavioral half at all (research.md R8) — no `ChatClient`, no endpoint.
 3. Never shell out to `spec-kitty` and never import from it — plain
@@ -118,9 +118,11 @@ path is fully offline, deterministic, and never reads the clock (C-002).
    that is the GitHub blob URL you build in T004; for every other kind it is
    a rubric §-clause (WP02/WP04's job) — `findings.ts` itself never
    hardcodes citation text, only the shape.
-5. `fixtures/skprofile/` does **not exist yet** — it is WP03's deliverable.
-   Your unit tests (T005) must construct their own minimal inline/tmp-dir
-   fixtures, never a forward reference to a path WP03 hasn't created.
+5. `fixtures/skprofile/` does **not exist yet** — it is WP05's deliverable
+   (split out of the original WP03 by the post-tasks adversarial-gate review;
+   WP05 depends on WP01+WP02, so it will not exist yet either). Your unit
+   tests (T005) must construct their own minimal inline/tmp-dir fixtures,
+   never a forward reference to a path WP05 hasn't created.
 
 ## Subtasks
 
@@ -407,7 +409,7 @@ and will silently fail to resolve `$defs`-based `$ref`s).
 
 **Purpose**: exercise every edge case in T002's `validateManifest` and T004's
 schema check, using **inline or `tmpdir`-based fixtures only** —
-`fixtures/skprofile/` does not exist until WP03.
+`fixtures/skprofile/` does not exist until WP05.
 
 **Steps**:
 
@@ -508,3 +510,7 @@ grep -c '".*-.*"' src/adapters/spec-kitty-profile/findings.ts  # sanity spot-che
 > last). Append new entries at the END.
 
 - 2026-07-26T23:43:00Z – system – Prompt generated via /spec-kitty.tasks.
+- 2026-07-27T00:00:00Z – planner-priti – Post-tasks adversarial-gate split:
+  fixture ownership cross-references updated from WP03 to the new WP05
+  (fixture/example authoring split out of WP03); no other change to this
+  WP's own scope, subtasks, or requirement mapping.

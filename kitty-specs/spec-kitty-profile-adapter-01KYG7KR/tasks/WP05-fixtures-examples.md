@@ -1,0 +1,305 @@
+---
+work_package_id: WP05
+title: Fixture and example authoring (spec-kitty-profile)
+dependencies:
+- WP01
+- WP02
+requirement_refs:
+- C-004
+planning_base_branch: kitty/mission-spec-kitty-profile-adapter
+merge_target_branch: kitty/mission-spec-kitty-profile-adapter
+branch_strategy: Planning artifacts for this mission were generated on kitty/mission-spec-kitty-profile-adapter. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into kitty/mission-spec-kitty-profile-adapter unless the human explicitly redirects the landing branch.
+subtasks:
+- T017
+- T018
+phase: Phase 3 - Fixtures & examples
+history:
+- timestamp: '2026-07-27T00:00:00Z'
+  agent: planner-priti
+  action: Split out of the original WP03 by the post-tasks adversarial-gate
+    review (Fix 3) — T017/T018 (fixture/example authoring) do not depend on
+    CLI wiring and were sitting in front of WP03's T020 real-CLI
+    verification gate for no dependency reason. This WP depends on WP01+WP02
+    only; WP03 depends on this WP in turn.
+agent_profile: node-norris
+authoritative_surface: fixtures/skprofile/
+create_intent:
+- fixtures/skprofile/clean/architect.agent.yaml
+- fixtures/skprofile/clean/planner.agent.yaml
+- fixtures/skprofile/broken/dangling-handoff.agent.yaml
+- fixtures/skprofile/broken/unresolvable-reference.agent.yaml
+- fixtures/skprofile/broken/id-filename-mismatch.agent.yaml
+- fixtures/skprofile/broken/schema-violation.agent.yaml
+- fixtures/skprofile/broken/context-source-missing.agent.yaml
+- fixtures/skprofile/doctrine/directives/001-architectural-integrity-standard.directive.yaml
+- fixtures/skprofile/doctrine/tactics/development-bdd.tactic.yaml
+- fixtures/skprofile/doctrine/toolguides/contextive.toolguide.yaml
+- fixtures/skprofile/doctrine/styleguides/prose.styleguide.yaml
+- fixtures/skprofile/agent-profile.schema.yaml
+- fixtures/skprofile/manifest.yaml
+- fixtures/skprofile/broken-manifest.yaml
+- fixtures/skprofile/activation-config.yaml
+- examples/skprofile/manifest.yaml
+execution_mode: code_change
+model: ''
+owned_files:
+- fixtures/skprofile/**
+- examples/skprofile/**
+role: implementer
+tags: []
+task_type: implement
+tracker_refs: []
+---
+
+# Work Package Prompt: WP05 — Fixture and example authoring
+
+## ⚡ Do This First: Load Agent Profile
+
+Use the `/ad-hoc-profile-load` skill to load the agent profile specified in
+the frontmatter, and behave according to its guidance before parsing the rest
+of this prompt.
+
+- **Profile**: `node-norris`
+- **Role**: `implementer`
+- **Agent/tool**: `claude`
+
+If no profile is specified, run `spec-kitty agent profile list` and select
+the best match for this work package's `task_type` (implement) and
+`authoritative_surface` (`fixtures/skprofile/`).
+
+---
+
+## Objective
+
+Author the entire muster-local fixture and example surface this mission's
+tests and real-CLI verification run against: a small legal profile set that
+passes every check, a rigged "broken" set with at least one violation per
+lint class (the discrimination-control set, SC-002/SC-003), the vendored
+upstream schema + doctrine tree those manifests point at, and the one
+guaranteed-clean runnable example (AC-1/Scenario 9).
+
+**This WP is a split of the original WP03** (post-tasks adversarial-gate
+review, Fix 3): `kitty-specs/spec-kitty-profile-adapter-01KYG7KR/tasks.md`
+already conceded the fixture work does not depend on CLI wiring, so it no
+longer sits in front of WP03's T020 real-CLI-verification gate. This WP owns
+exactly the original T017 and T018 — nothing else moved.
+
+This WP depends on **WP01 and WP02 only** (it needs the full finding-kind
+vocabulary and the four lint modules' exact rules to rig fixtures that
+exercise every check class correctly) — it does **not** depend on WP03.
+**WP03 depends on this WP** in turn: WP03's `tests/skprofile/fixtures.test.ts`
+and `tests/skprofile/cli.test.ts` (T019) and its real-CLI verification (T020)
+both read the fixtures/examples this WP creates. Do not start until WP01 and
+WP02 are available on your base branch.
+
+**You have no CLI to run.** `muster skprofile run` is WP03's deliverable
+(T016), and WP03 depends on this WP, not the other way around — the CLI does
+not exist yet in your dependency chain. Where the original T018 called for a
+manual `muster skprofile run examples/... --json` smoke check, that
+confirmation is deferred to WP03's T020 (see T018 below); construct your
+fixtures/example correctly by construction, against WP01/WP02's actual
+exported check functions if you want to self-verify (you can call
+`checkHandoffs`/`checkReferences`/`checkContextSources`/`checkIdentity`/
+WP01's schema check directly from a scratch script or from your own
+`pnpm exec vitest` run against ad-hoc test code — do not commit that
+scratch-verification code, it is not part of `owned_files`).
+
+## Context (read first)
+
+- Spec: `kitty-specs/spec-kitty-profile-adapter-01KYG7KR/spec.md` — C-004;
+  Scenarios 8, 9, 11; SC-001..003.
+- Plan: `kitty-specs/spec-kitty-profile-adapter-01KYG7KR/plan.md` — IC-03,
+  Project Structure (the fixture/example portion of the file tree).
+- Data model: `kitty-specs/spec-kitty-profile-adapter-01KYG7KR/data-model.md`
+  — the 13-kind `SkProfileFindingKind` union (you must rig at least the
+  lint-class kinds named in `quickstart.md` §4).
+- Research: `kitty-specs/spec-kitty-profile-adapter-01KYG7KR/research.md` —
+  R2 (doctrine-tree layout/filename-match rules — needed to author a fixture
+  doctrine tree that actually resolves), R3 (activation-config shape), R6
+  (the discrimination-control mapping table you must satisfy).
+- Quickstart: `kitty-specs/spec-kitty-profile-adapter-01KYG7KR/quickstart.md`
+  — §3-4 are close to a literal script for this WP's fixtures; §5 for the
+  example. §6 (real-CLI verification) is WP03's T020, not yours.
+- Already-shipped modules to author against (read them, do not modify them):
+  WP01's `manifest.ts`/`profile.ts`/`schema.ts`/`findings.ts`, WP02's
+  `handoff.ts`/`references.ts`/`context-sources.ts`/`identity.ts`/`rubric.ts`.
+
+**Hard rules for the whole WP** (from spec + charter):
+
+1. Touch ONLY the files in `owned_files` (`fixtures/skprofile/**`,
+   `examples/skprofile/**`). Do not touch any `src/` file, even to "help"
+   verify your fixtures — write ad-hoc scratch scripts outside the repo
+   (e.g. `/tmp`) if you want to self-check against WP01/WP02's exported
+   functions, and do not commit them.
+2. Do not parse or validate the *content* of doctrine files beyond what
+   filename-resolution requires — content stubs are fine (WP02's checks
+   never read doctrine-file content).
+3. C-004: fixtures must be muster-local (no dependency on the real SK repo
+   at runtime) — the vendored schema records its real upstream SHA, sourced
+   read-only from `/home/jeroennouws/dev/spec-kitty-conformance`.
+4. Never read the system clock or make a network call while authoring these
+   fixtures' *content* (the one-time `git rev-parse` to source the vendor SHA
+   is an authoring-time action, not part of the shipped adapter's runtime
+   path, and does not violate C-002/C-003 — those constrain the adapter code
+   WP01-03 ship, not how a fixture file was sourced).
+
+## Subtasks
+
+### T017 — Fixture authoring
+
+**Purpose**: C-004 — a miniature, muster-local profile set (so muster CI
+never needs the SK repo) exercising every pass path and, separately, every
+lint class's failure path.
+
+**Steps**:
+
+1. `fixtures/skprofile/clean/*.agent.yaml` — a small legal profile set (2-3
+   profiles is enough) with reciprocal handoffs, resolvable
+   directive/tactic/toolguide/styleguide references, resolvable
+   context-sources, legal and filename-matching profile-ids, and — if you
+   choose to exercise the activation-gating pass path here too — references
+   that resolve as activated against `activation-config.yaml` (step 6).
+2. `fixtures/skprofile/broken/*.agent.yaml` — rigged, **at least one file per
+   lint class** (SC-002/research.md R6's discrimination mapping), minimum
+   set:
+   - a dangling `collaboration.handoff-to` role → `handoff-unresolved`.
+   - an unresolvable `directive-references[].code` → `reference-unresolved`.
+   - a `profile-id` that does not equal its filename stem →
+     `profile-id-filename-mismatch`.
+   - a profile violating the vendored schema (e.g. missing a required field)
+     → `schema-conformance-violation`.
+   - a `context-sources` entry naming a file that does not exist →
+     `context-source-missing`.
+   These at minimum three (`handoff-unresolved`, `reference-unresolved`,
+   `profile-id-filename-mismatch`) are the ones `quickstart.md` §4 names
+   literally as required in the broken-manifest run's findings — do not omit
+   any of them.
+3. `fixtures/skprofile/doctrine/{directives,tactics,toolguides,styleguides}/`
+   — a muster-local vendored doctrine tree mirroring the real upstream shape
+   verified in research.md R2 (e.g.
+   `directives/001-architectural-integrity-standard.directive.yaml`,
+   `tactics/development-bdd.tactic.yaml`, `toolguides/contextive.toolguide.yaml`,
+   `styleguides/prose.styleguide.yaml`) — content can be minimal stub YAML,
+   since this mission never validates doctrine *content*, only filename
+   resolution.
+4. `fixtures/skprofile/agent-profile.schema.yaml` — a vendored copy of the
+   upstream schema. Record the upstream SHA it was vendored from (C-004) —
+   either as a header comment in the file itself or in a small sidecar note
+   — and use that same SHA as `schemaSha` in `manifest.yaml`/
+   `broken-manifest.yaml` below. To get a real SHA: read
+   `/home/jeroennouws/dev/spec-kitty-conformance`'s current HEAD commit
+   (read-only reference repo, do not modify it) via `git -C
+   /home/jeroennouws/dev/spec-kitty-conformance rev-parse HEAD`, and vendor
+   the real `agent-profile.schema.yaml` content from that checkout's
+   `src/doctrine/schemas/agent-profile.schema.yaml`.
+5. `fixtures/skprofile/manifest.yaml` — points at `clean/`, the vendored
+   schema + its real `schemaSha`, `fixtures/skprofile/doctrine/`, and one
+   case (`{ id: "all-profiles" }`, matching `quickstart.md`'s expected report
+   shape).
+6. `fixtures/skprofile/broken-manifest.yaml` — points at `broken/`, same
+   schema/doctrine tree, one case.
+7. `fixtures/skprofile/activation-config.yaml` — flat
+   `activated_directives: [...]`/`activated_tactics: [...]` YAML (research.md
+   R3's shape) exercising the FR-004 warning path (some resolvable-but-
+   inactive reference somewhere in `clean/` or a dedicated fixture profile).
+
+**Files**: everything under `fixtures/skprofile/**`
+
+**Validation**: no automated test lives in this WP (fixtures are data, not
+code) — covered downstream by WP03's `fixtures.test.ts` (SC-002/SC-003) and
+the manual runs in `quickstart.md` §3-4. Self-check before marking this WP
+`for_review`: read `clean/` and `broken/` back against WP02's actual
+`checkHandoffs`/`checkReferences`/`checkContextSources`/`checkIdentity`
+rules (not just this prompt's paraphrase of them) and confirm each rigged
+file trips exactly the lint class you intended.
+
+---
+
+### T018 — Runnable example
+
+**Purpose**: AC-1/Scenario 9 — `muster skprofile run examples/skprofile/manifest.yaml`
+must exit 0. This is the one **guaranteed fully-clean** run (the
+`fixtures/skprofile/clean/` manifest is not itself guaranteed to be
+perfectly clean of every non-error finding — see `quickstart.md` §3's own
+caveat).
+
+**Steps**:
+
+1. Create `examples/skprofile/manifest.yaml` + its own small clean
+   profile/doctrine copy (can be a subset of, or identical to,
+   `fixtures/skprofile/clean/` — but keep it in `examples/skprofile/`, not a
+   reference back into `fixtures/`, so the example is self-contained and
+   demonstrates real usage rather than test plumbing).
+2. **You cannot run `muster skprofile run` from this WP** — the CLI is
+   WP03's deliverable (T016), and WP03 depends on this WP, not the reverse.
+   Construct this manifest so it is clean **by construction**: apply exactly
+   the same reference-resolution/handoff/context-source/identity rules you
+   already used for `fixtures/skprofile/clean/` in T017, with zero
+   intentional violations of any kind (not even a warning-tier one — AC-1
+   requires *zero findings*, not just `ok: true`). Record in this WP's
+   Activity Log that the actual `exitCode: 0`/`ok: true`/zero-findings
+   confirmation is deferred to WP03's T020, which is the first point in the
+   dependency chain where the CLI exists to run it — this WP's own DoD bullet
+   below is "constructed to be clean," not "confirmed clean."
+
+**Files**: everything under `examples/skprofile/**`
+
+**Validation**: none from this WP directly (no CLI available yet) — WP03's
+T020 real-CLI verification is the actual proof this manifest exits 0; record
+the deferral explicitly in the Activity Log per step 2.
+
+## Definition of Done
+
+- [ ] `fixtures/skprofile/clean/` is a legal profile set with zero rigged
+      violations; `fixtures/skprofile/broken/` rigs at least one fixture per
+      lint class, including all three `quickstart.md` §4 names literally
+      (`handoff-unresolved`, `reference-unresolved`,
+      `profile-id-filename-mismatch`).
+- [ ] `fixtures/skprofile/agent-profile.schema.yaml` records a real,
+      resolvable upstream SHA (40 or a valid short hex, not a placeholder),
+      sourced from `/home/jeroennouws/dev/spec-kitty-conformance`'s actual
+      HEAD; `manifest.yaml`/`broken-manifest.yaml`'s `schemaSha` matches it
+      exactly.
+- [ ] `fixtures/skprofile/doctrine/` mirrors the real upstream
+      directives/tactics/toolguides/styleguides directory shape closely
+      enough for WP02's filename-resolution rules to exercise both the
+      resolve and not-resolve paths.
+- [ ] `fixtures/skprofile/activation-config.yaml` exercises the
+      `reference-not-activated` warning path against at least one reference
+      in `clean/`.
+- [ ] `examples/skprofile/manifest.yaml` is constructed to be genuinely
+      clean (zero findings) by the same construction discipline as
+      `fixtures/skprofile/clean/`; the Activity Log records that live
+      exit-0 confirmation is deferred to WP03's T020.
+- [ ] No file outside `owned_files` (`fixtures/skprofile/**`,
+      `examples/skprofile/**`) touched — in particular, no `src/` file.
+
+## Reviewer guidance
+
+- Spot-check that `fixtures/skprofile/agent-profile.schema.yaml` records a
+  real, resolvable upstream SHA (40 or a valid short hex, not a placeholder)
+  and that `manifest.yaml`/`broken-manifest.yaml`'s `schemaSha` matches it.
+- **Reject if** `fixtures/skprofile/broken/` is missing a rigged case for
+  any of the three `quickstart.md` §4-named kinds
+  (`handoff-unresolved`/`reference-unresolved`/`profile-id-filename-mismatch`),
+  or if `clean/` contains an unintentional violation of its own.
+- **Reject if** `examples/skprofile/manifest.yaml` references anything
+  outside `examples/skprofile/**` (e.g. a path back into `fixtures/`) — it
+  must be self-contained.
+- Confirm the Activity Log honestly records that this WP could not run the
+  CLI itself and defers exit-0 confirmation to WP03's T020 — a claim of
+  "confirmed exit 0" from this WP (which has no CLI to run) is a defect, not
+  a convenience.
+- This WP has no code to `pnpm build`/`pnpm test` against on its own; do not
+  reject for a missing build/test run — that gate belongs to WP03's T019/T020,
+  which consume these fixtures.
+
+## Activity Log
+
+> **CRITICAL**: entries MUST be in chronological order (oldest first, newest
+> last). Append new entries at the END.
+
+- 2026-07-27T00:00:00Z – planner-priti – WP created by splitting T017/T018
+  out of the original WP03, per the post-tasks adversarial-gate review
+  (Fix 3, binding operator decision). See WP03's own Activity Log/history for
+  the corresponding removal.

@@ -1,14 +1,14 @@
 ---
 work_package_id: WP03
-title: Projection drift, CLI wiring, fixtures/examples, real-CLI verification
+title: Projection drift, CLI wiring, real-CLI verification
 dependencies:
 - WP01
 - WP02
+- WP05
 requirement_refs:
 - C-001
 - C-002
 - C-003
-- C-004
 - FR-007
 - FR-008
 - FR-009
@@ -21,36 +21,24 @@ subtasks:
 - T014
 - T015
 - T016
-- T017
-- T018
 - T019
 - T020
-phase: Phase 3 - Projection, CLI, fixtures
+phase: Phase 4 - Projection, CLI, verification
 history:
 - timestamp: '2026-07-26T23:43:00Z'
   agent: system
   action: Prompt generated via /spec-kitty.tasks
+- timestamp: '2026-07-27T00:00:00Z'
+  agent: planner-priti
+  action: Post-tasks adversarial-gate split — T017/T018 (fixture/example
+    authoring) extracted to new WP05; this WP now also depends on WP05 and
+    no longer owns fixtures/skprofile/**, examples/skprofile/**, or
+    src/cli/output.ts.
 agent_profile: node-norris
 authoritative_surface: src/adapters/spec-kitty-profile/
 create_intent:
 - src/adapters/spec-kitty-profile/projection.ts
 - src/adapters/spec-kitty-profile/index.ts
-- fixtures/skprofile/clean/architect.agent.yaml
-- fixtures/skprofile/clean/planner.agent.yaml
-- fixtures/skprofile/broken/dangling-handoff.agent.yaml
-- fixtures/skprofile/broken/unresolvable-reference.agent.yaml
-- fixtures/skprofile/broken/id-filename-mismatch.agent.yaml
-- fixtures/skprofile/broken/schema-violation.agent.yaml
-- fixtures/skprofile/broken/context-source-missing.agent.yaml
-- fixtures/skprofile/doctrine/directives/001-architectural-integrity-standard.directive.yaml
-- fixtures/skprofile/doctrine/tactics/development-bdd.tactic.yaml
-- fixtures/skprofile/doctrine/toolguides/contextive.toolguide.yaml
-- fixtures/skprofile/doctrine/styleguides/prose.styleguide.yaml
-- fixtures/skprofile/agent-profile.schema.yaml
-- fixtures/skprofile/manifest.yaml
-- fixtures/skprofile/broken-manifest.yaml
-- fixtures/skprofile/activation-config.yaml
-- examples/skprofile/manifest.yaml
 - tests/skprofile/projection.test.ts
 - tests/skprofile/fixtures.test.ts
 - tests/skprofile/cli.test.ts
@@ -60,9 +48,6 @@ owned_files:
 - src/adapters/spec-kitty-profile/projection.ts
 - src/adapters/spec-kitty-profile/index.ts
 - src/cli/index.ts
-- src/cli/output.ts
-- fixtures/skprofile/**
-- examples/skprofile/**
 - tests/skprofile/projection.test.ts
 - tests/skprofile/fixtures.test.ts
 - tests/skprofile/cli.test.ts
@@ -72,7 +57,7 @@ task_type: implement
 tracker_refs: []
 ---
 
-# Work Package Prompt: WP03 — Projection drift, CLI, fixtures/examples
+# Work Package Prompt: WP03 — Projection drift, CLI, real-CLI verification
 
 ## ⚡ Do This First: Load Agent Profile
 
@@ -95,29 +80,44 @@ the best match for this work package's `task_type` (implement) and
 Close out the code side of this mission: FR-007's projection-drift
 re-verification, the `SpecKittyProfileAdapter` factory + `run()` that
 orchestrates all six check modules, the `muster skprofile run` CLI command
-with its 0/1/2 exit-code contract, the entire fixture/example surface
-(including the rigged discrimination-control set), and — **non-optional** —
-the real-CLI verification against the actual 18 shipped Spec Kitty profiles.
+with its 0/1/2 exit-code contract, and — **non-optional** — the real-CLI
+verification against the actual 18 shipped Spec Kitty profiles, consuming
+WP05's fixture/example surface (including its rigged discrimination-control
+set) to do so.
 
-This WP depends on **WP01 and WP02** (every module they ship must exist and
-compile). Do not start until both are available on your base branch — this
-WP's `index.ts` imports from all four of WP02's lint modules plus WP01's
-`manifest.ts`/`profile.ts`/`schema.ts`/`findings.ts`.
+This WP depends on **WP01, WP02, and WP05** (every module WP01/WP02 ship
+must exist and compile, and WP05's fixtures/examples must exist for T019's
+test suite and T020's real-CLI verification to run against). Do not start
+until all three are available on your base branch — this WP's `index.ts`
+imports from all four of WP02's lint modules plus WP01's
+`manifest.ts`/`profile.ts`/`schema.ts`/`findings.ts`, and T019/T020 read
+files WP05 authors under `fixtures/skprofile/**`/`examples/skprofile/**`.
+(Fixture/example authoring itself — the original T017/T018 — was split out
+into WP05 by the post-tasks adversarial-gate review: `tasks.md` had already
+conceded the fixture work does not depend on CLI wiring, so it no longer sits
+in front of T020's verification gate.)
 
-**`src/cli/index.ts` and `src/cli/output.ts` are shared-surface files.** This
-WP owns them for this mission's purposes — make **additive** changes only
-(new subcommand, new formatter function) and do not touch any unrelated
-existing code path. (Spec.md's own Dependencies & Assumptions note flags
-that `src/cli/index.ts` is also touched by mission M5 in the same repo — this
-is an expected, normal cross-mission file collision resolved by the ordinary
-mission-merge flow, not something to work around here.)
+**`src/cli/index.ts` is a shared-surface file.** This WP owns it for this
+mission's purposes — make **additive** changes only (new subcommand, new
+formatter function — see T016 for exactly which file the new formatter goes
+in) and do not touch any unrelated existing code path, and do not touch
+`src/cli/output.ts` at all (per the post-tasks adversarial-gate review, the
+new human formatter goes in `index.ts`, alongside the majority of existing
+hand-wired-adapter formatters, not in `output.ts`). (Spec.md's own
+Dependencies & Assumptions note flags that `src/cli/index.ts` is also touched
+by mission M5 in the same repo — this is an expected, normal cross-mission
+file collision resolved by the ordinary mission-merge flow, not something to
+work around here.)
 
 ## Context (read first)
 
 - Spec: `kitty-specs/spec-kitty-profile-adapter-01KYG7KR/spec.md` — FR-007,
-  FR-008, FR-009, C-004; Scenarios 8, 9, 10, 11, 14; SC-001..006.
+  FR-008, FR-009; Scenarios 8, 9, 10, 11, 14; SC-001..006. (C-004 — the
+  muster-local fixtures/vendored-schema requirement — is WP05's, since WP05
+  now authors the fixture surface.)
 - Plan: `kitty-specs/spec-kitty-profile-adapter-01KYG7KR/plan.md` — IC-03,
-  Project Structure (the full file tree this WP realizes).
+  Project Structure (the full file tree this mission realizes, split across
+  this WP and WP05).
 - Data model: `kitty-specs/spec-kitty-profile-adapter-01KYG7KR/data-model.md`
   — `ProjectionEntry`, `AdapterResult`/`SkProfileReport`, the **exit-code
   contract table**, and the Flow section.
@@ -127,8 +127,9 @@ mission-merge flow, not something to work around here.)
   R9 (CLI `--mode`/`--json` inheritance), R6 (the discrimination-control
   mapping table you must satisfy with fixtures).
 - Quickstart: `kitty-specs/spec-kitty-profile-adapter-01KYG7KR/quickstart.md`
-  — this is close to a literal script for T017-T020; follow its exact
-  commands and expected outputs.
+  — this is close to a literal script for this WP's T014-T016/T019-T020 (and,
+  upstream of it, WP05's T017-T018); follow its exact commands and expected
+  outputs.
 - House precedent (read these actual files, not just the excerpts below):
   - `src/adapters/memory-utilization/index.ts` — factory + `run(manifest,
     options)` → `AdapterResult` shape (D1's template).
@@ -298,18 +299,6 @@ Flow section.
    - `summary`: a short human string, e.g. `` `spec-kitty-profile adapter:
      ${errorCount} error finding(s) across ${profiles.length} profile(s)` ``
      (match `quickstart.md`'s worked example shape).
-5. This module imports `RUBRIC_CITATION`/`RUBRIC_DOC_PATH` from WP02's
-   `rubric.ts` for the `profile-parse-error` fallback citation decision
-   above — actually, per the note in this file, `profile-parse-error` is
-   **not** in WP02's `RUBRIC_CITATION` map (that map is typed to exclude
-   only `schema-conformance-violation`, so it currently *requires* a
-   `profile-parse-error` entry too — coordinate: either WP02 already
-   included `profile-parse-error` in its map with a structural citation
-   string, in which case use it, or extend the type's `Exclude<...>` if you
-   find `profile-parse-error` genuinely does not belong in a rubric-clause
-   map. Re-read WP02's actual shipped `rubric.ts` before writing this bullet
-   of code — do not guess its exact exported shape from this prompt alone.
-
 **Files**: `src/adapters/spec-kitty-profile/index.ts`
 
 **Validation**: covered by T019's suite plus the fixture-driven
@@ -401,17 +390,22 @@ Flow section.
    is accepted but unused by this adapter's checks, identical to how
    `memory-utilization` accepts-but-ignores it. Do not define a new
    `--mode`-like flag specific to this subcommand.
-5. In `src/cli/output.ts`, add `formatSkProfileResultHuman(report:
+5. In `src/cli/index.ts`, add `formatSkProfileResultHuman(report:
    SkProfileReport): string` (additive) — one line per finding
    (`[<severity>] <profileId> <path>: <message>`), grouped by case, mirroring
    `formatMemoryUtilizationResultHuman`'s general shape (`src/cli/index.ts:
-   832-845` — note that function currently lives in `index.ts`, not
-   `output.ts`; if `output.ts` already hosts formatters for other adapters
-   [check the Soul/CTS/A2A precedent named in this mission's own plan.md],
-   follow whichever file the majority of existing hand-wired-adapter human
-   formatters actually live in, and place this one alongside them for
-   consistency — record which file you chose and why in this WP's Activity
-   Log if it differs from this prompt's assumption).
+   832-845`). **Verified precedent count** (do not re-derive this, it has
+   already been counted): **8** hand-wired-adapter human formatters live in
+   `src/cli/index.ts` (`formatMemoryResultHuman`,
+   `formatMemoryUtilizationResultHuman`, `formatCrossLayerResultHuman`,
+   `formatHeartbeatSummaryHuman`, `formatA2aSummaryHuman`,
+   `formatSkillsResultHuman`, `formatSopResultHuman`,
+   `formatToolsResultHuman`) versus **4** in `src/cli/output.ts`
+   (`formatReportHuman`, `formatCtsHuman`, `formatBehaveHuman`,
+   `formatA2aBehavioralHuman`). The majority precedent is `src/cli/index.ts`
+   — put `formatSkProfileResultHuman` there, alongside the other eight, not
+   in `output.ts`. This WP does not touch `src/cli/output.ts` at all. If you
+   deviate from this placement, record why in this WP's Activity Log.
 6. Exit-code contract (data-model.md, verify exactly):
    - `0` — `report.ok === true`.
    - `1` — `report.ok === false` (at least one error-severity finding).
@@ -423,103 +417,19 @@ Flow section.
      add new top-level exit-code plumbing, only throw `ExecutionError` in the
      right places.
 
-**Files**: `src/cli/index.ts` (additive), `src/cli/output.ts` (additive)
+**Files**: `src/cli/index.ts` (additive only)
 
 **Validation**: covered by T019's `cli.test.ts`.
 
 ---
 
-### T017 — Fixture authoring
-
-**Purpose**: C-004 — a miniature, muster-local profile set (so muster CI
-never needs the SK repo) exercising every pass path and, separately, every
-lint class's failure path.
-
-**Steps**:
-
-1. `fixtures/skprofile/clean/*.agent.yaml` — a small legal profile set (2-3
-   profiles is enough) with reciprocal handoffs, resolvable
-   directive/tactic/toolguide/styleguide references, resolvable
-   context-sources, legal and filename-matching profile-ids, and — if you
-   choose to exercise the activation-gating pass path here too — references
-   that resolve as activated against `activation-config.yaml` (step 6).
-2. `fixtures/skprofile/broken/*.agent.yaml` — rigged, **at least one file per
-   lint class** (SC-002/research.md R6's discrimination mapping), minimum
-   set:
-   - a dangling `collaboration.handoff-to` role → `handoff-unresolved`.
-   - an unresolvable `directive-references[].code` → `reference-unresolved`.
-   - a `profile-id` that does not equal its filename stem →
-     `profile-id-filename-mismatch`.
-   - a profile violating the vendored schema (e.g. missing a required field)
-     → `schema-conformance-violation`.
-   - a `context-sources` entry naming a file that does not exist →
-     `context-source-missing`.
-   These at minimum three (`handoff-unresolved`, `reference-unresolved`,
-   `profile-id-filename-mismatch`) are the ones `quickstart.md` §4 names
-   literally as required in the broken-manifest run's findings — do not omit
-   any of them.
-3. `fixtures/skprofile/doctrine/{directives,tactics,toolguides,styleguides}/`
-   — a muster-local vendored doctrine tree mirroring the real upstream shape
-   verified in research.md R2 (e.g.
-   `directives/001-architectural-integrity-standard.directive.yaml`,
-   `tactics/development-bdd.tactic.yaml`, `toolguides/contextive.toolguide.yaml`,
-   `styleguides/prose.styleguide.yaml`) — content can be minimal stub YAML,
-   since this mission never validates doctrine *content*, only filename
-   resolution.
-4. `fixtures/skprofile/agent-profile.schema.yaml` — a vendored copy of the
-   upstream schema. Record the upstream SHA it was vendored from (C-004) —
-   either as a header comment in the file itself or in a small sidecar note
-   — and use that same SHA as `schemaSha` in `manifest.yaml`/
-   `broken-manifest.yaml` below. To get a real SHA: read
-   `/home/jeroennouws/dev/spec-kitty-conformance`'s current HEAD commit
-   (read-only reference repo, do not modify it) via `git -C
-   /home/jeroennouws/dev/spec-kitty-conformance rev-parse HEAD`, and vendor
-   the real `agent-profile.schema.yaml` content from that checkout's
-   `src/doctrine/schemas/agent-profile.schema.yaml`.
-5. `fixtures/skprofile/manifest.yaml` — points at `clean/`, the vendored
-   schema + its real `schemaSha`, `fixtures/skprofile/doctrine/`, and one
-   case (`{ id: "all-profiles" }`, matching `quickstart.md`'s expected report
-   shape).
-6. `fixtures/skprofile/broken-manifest.yaml` — points at `broken/`, same
-   schema/doctrine tree, one case.
-7. `fixtures/skprofile/activation-config.yaml` — flat
-   `activated_directives: [...]`/`activated_tactics: [...]` YAML (research.md
-   R3's shape) exercising the FR-004 warning path (some resolvable-but-
-   inactive reference somewhere in `clean/` or a dedicated fixture profile).
-
-**Files**: everything under `fixtures/skprofile/**`
-
-**Validation**: covered by T019's `fixtures.test.ts` (SC-002/SC-003) and the
-manual runs in `quickstart.md` §3-4.
-
----
-
-### T018 — Runnable example
-
-**Purpose**: AC-1/Scenario 9 — `muster skprofile run examples/skprofile/manifest.yaml`
-must exit 0. This is the one **guaranteed fully-clean** run (the
-`fixtures/skprofile/clean/` manifest is not itself guaranteed to be
-perfectly clean of every non-error finding — see `quickstart.md` §3's own
-caveat).
-
-**Steps**:
-
-1. Create `examples/skprofile/manifest.yaml` + its own small clean
-   profile/doctrine copy (can be a subset of, or identical to,
-   `fixtures/skprofile/clean/` — but keep it in `examples/skprofile/`, not a
-   reference back into `fixtures/`, so the example is self-contained and
-   demonstrates real usage rather than test plumbing).
-2. Confirm (manually, before writing T019/T020's automated assertions) that
-   `muster skprofile run examples/skprofile/manifest.yaml --json` produces
-   `exitCode: 0` and `ok: true` with zero findings — this is the literal
-   claim AC-1 makes.
-
-**Files**: everything under `examples/skprofile/**`
-
-**Validation**: T020's real-CLI verification step exercises this manifest
-directly; `quickstart.md` §5 documents the expected output.
-
----
+> **T017 (fixture authoring) and T018 (runnable example) moved to WP05.**
+> The post-tasks adversarial-gate review split fixture/example authoring out
+> of this WP into a dedicated `tasks/WP05-fixtures-examples.md`, since it does
+> not depend on CLI wiring and was sitting in front of T020's verification
+> gate for no dependency reason. This WP now depends on WP05 for
+> `fixtures/skprofile/**` and `examples/skprofile/**`; T019/T020 below read
+> those files but do not author them.
 
 ### T019 — Test suite
 
@@ -533,12 +443,13 @@ directly; `quickstart.md` §5 documents the expected output.
    hash → `projection-hash-drift` (warning); clean match → no finding;
    `projectionManifestPath` omitted → empty findings, check never runs.
 2. `tests/skprofile/fixtures.test.ts` — the discrimination-control suite
-   (SC-002/SC-003): load `fixtures/skprofile/manifest.yaml` and assert
-   `ok === true`; load `fixtures/skprofile/broken-manifest.yaml` and assert
-   `ok === false` **and** that `findings[]` contains at least one finding of
-   each of the required kinds from T017 step 2 (`handoff-unresolved`,
-   `reference-unresolved`, `profile-id-filename-mismatch`, and whichever
-   others you rigged). This test is itself part of the adapter's contract
+   (SC-002/SC-003): load `fixtures/skprofile/manifest.yaml` (WP05's
+   deliverable) and assert `ok === true`; load
+   `fixtures/skprofile/broken-manifest.yaml` and assert `ok === false` **and**
+   that `findings[]` contains at least one finding of each of the required
+   kinds from WP05's T017 step 2 (`handoff-unresolved`, `reference-unresolved`,
+   `profile-id-filename-mismatch`, and whichever others WP05 rigged). This
+   test is itself part of the adapter's contract
    (spec.md Scenario 11) — a version of this test that only asserts `ok ===
    false` without checking the specific finding kinds would pass even if the
    wrong check failed, which defeats the point.
@@ -576,7 +487,8 @@ non-fixture artifacts, and that exit codes 0, 1, **and** 2 have each been
 
 1. `pnpm build`.
 2. `node dist/cli/index.js skprofile run fixtures/skprofile/manifest.yaml --json`
-   — record the exit code (expect 0).
+   (this and step 3's manifest are WP05's fixture deliverables) — record the
+   exit code (expect 0).
 3. `node dist/cli/index.js skprofile run fixtures/skprofile/broken-manifest.yaml --json`
    — record the exit code (expect 1) and confirm the required finding kinds
    are present in the printed JSON.
@@ -609,11 +521,13 @@ non-fixture artifacts, and that exit codes 0, 1, **and** 2 have each been
 7. Run `pnpm test` once more (full suite, including
    `tests/unit/invariants.test.ts`'s NI-002 assertion) and confirm it is
    green.
-8. Record every observed exit code (step 2, 3, 4, 6) and the real-profile
-   run's actual verdict in this WP's Activity Log, in prose, before moving
-   this WP to `for_review`. A reviewer must be able to read the Activity Log
-   and know, without re-running anything, that exit codes 0, 1, and 2 were
-   each genuinely observed.
+8. Capture the **literal stdout** (not paraphrased) of steps 2, 3, 4, and 6 —
+   including the exact `--json` payload's `exitCode` field and, for step 4,
+   the exact `findings[]` array content (profile IDs and message text) from
+   the real 18-profile run — and paste it verbatim into this WP's Activity
+   Log inside a fenced code block, before moving this WP to `for_review`.
+   Prose summaries alone ("exit code was 1, one finding") do not satisfy
+   this step.
 
 **Files**: none (verification only — do not create scratch files inside the
 repo for this step; use `/tmp` for the one-off real-profile manifest).
@@ -631,20 +545,28 @@ validation artifact for this subtask.
       `memory-utilization` template; `--mode`/`--json` inherited, not
       redefined.
 - [ ] Exit-code contract (0/1/2) matches data-model.md exactly.
-- [ ] `fixtures/skprofile/broken/` rigs at least one fixture per lint class,
-      including all three `quickstart.md` §4 names literally.
-- [ ] `examples/skprofile/manifest.yaml` is genuinely, guaranteed-clean
-      (exit 0, zero findings).
+- [ ] `fixtures.test.ts` proves every fixture WP05 rigged under
+      `fixtures/skprofile/broken/` produces its expected specific finding
+      kind, including all three `quickstart.md` §4 names literally
+      (authoring the fixtures themselves is WP05's deliverable; this WP
+      consumes them).
+- [ ] `examples/skprofile/manifest.yaml` (WP05's deliverable) is confirmed
+      genuinely clean via this WP's CLI: exit 0, zero findings.
 - [ ] `pnpm build` + `pnpm test` green, including the byte-stability
       assertion and `tests/unit/invariants.test.ts` (NI-002).
-- [ ] **Real-CLI verification (T020) has actually been run**, not merely
-      described — exit codes 0, 1, and 2 each recorded as observed in the
-      Activity Log, including the real-profile-set verdict and rationale.
-- [ ] No unrelated change to `src/cli/index.ts`/`src/cli/output.ts` beyond
-      the additive `skprofile` wiring.
+- [ ] **Real-CLI verification (T020) has actually been run** — the Activity
+      Log contains a verbatim, fenced transcript of steps 2, 3, 4, and 6's
+      stdout (literal `exitCode` and, for step 4, literal `findings[]`
+      content from the real 18-profile run), not a prose paraphrase.
+- [ ] No unrelated change to `src/cli/index.ts` beyond the additive
+      `skprofile` wiring; `src/cli/output.ts` is not touched at all.
 
 ## Reviewer guidance
 
+- **Independently re-run T020's steps 2, 3, 4, and 6 yourself** (you have
+  Bash access) before approving. **Reject if** your own observed exit
+  codes/findings diverge from the logged transcript, or the transcript is a
+  paraphrase you cannot byte-check against your own run.
 - **Reject if** T020's real-CLI verification is missing, or if the Activity
   Log only says "ran real CLI, worked" without the actual recorded exit
   codes and the real-profile-set verdict — "record the real exit code," not
@@ -653,18 +575,18 @@ validation artifact for this subtask.
   manifest — that test must target `fixtures/skprofile/manifest.yaml` only.
 - **Reject if** `projection.ts` matches entries by `source_path` instead of
   `profile_urn`.
-- **Reject if** `src/cli/index.ts`/`src/cli/output.ts` contain any change
-  unrelated to the `skprofile` subcommand — diff those two files carefully,
-  this is the mission's one genuinely shared-surface risk.
+- **Reject if** `src/cli/index.ts` contains any change unrelated to the
+  `skprofile` subcommand (including the new `formatSkProfileResultHuman`
+  formatter, which belongs here per the 8-vs-4 precedent count, not
+  `output.ts`) — diff it carefully, this is the mission's one genuinely
+  shared-surface risk. **Reject if** `src/cli/output.ts` is touched at all —
+  this WP no longer owns it and has no reason to change it.
 - Confirm the broken-fixture test (`fixtures.test.ts`) asserts on **specific
   finding kinds**, not just `ok === false` — spec.md Scenario 11 is explicit
   that a checker reporting `ok: true` here would be indistinguishable from
   one that never runs its lints; the inverse failure mode (asserting only
   `ok === false`) is the same discrimination gap one level up the test
   itself.
-- Spot-check that `fixtures/skprofile/agent-profile.schema.yaml` records a
-  real, resolvable upstream SHA (40 or a valid short hex, not a placeholder)
-  and that `manifest.yaml`/`broken-manifest.yaml`'s `schemaSha` matches it.
 
 ## Activity Log
 
@@ -672,3 +594,14 @@ validation artifact for this subtask.
 > last). Append new entries at the END.
 
 - 2026-07-26T23:43:00Z – system – Prompt generated via /spec-kitty.tasks.
+- 2026-07-27T00:00:00Z – planner-priti – Post-tasks adversarial-gate fixes
+  applied: T017/T018 (fixture/example authoring) split out to new WP05, this
+  WP's `dependencies` now includes WP05, `owned_files`/`create_intent` no
+  longer include `fixtures/skprofile/**`, `examples/skprofile/**`, or
+  `src/cli/output.ts`. T020's verification step 8/DoD/reviewer-guidance
+  tightened to require a verbatim stdout transcript instead of a prose
+  paraphrase. T015's duplicate, contradictory second "5." coordination note
+  about `profile-parse-error` citation removed (WP02's `RUBRIC_CITATION` map
+  now explicitly excludes that kind; the fixed non-rubric literal in T015's
+  first "5." is the sole path). T016's formatter placement corrected to
+  `src/cli/index.ts` (8 existing formatters there vs. 4 in `output.ts`).

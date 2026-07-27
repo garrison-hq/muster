@@ -125,8 +125,9 @@ start until WP01 is available on your base branch.
 
 **Hard rules for the whole WP** (from spec + charter):
 
-1. Touch ONLY the files in `owned_files`. `docs/rubric/**` is WP04's; the CLI
-   and fixtures are WP03's.
+1. Touch ONLY the files in `owned_files`. `docs/rubric/**` is WP04's; CLI
+   wiring is WP03's; fixture/example authoring is WP05's (split out of the
+   original WP03 by the post-tasks adversarial-gate review).
 2. Every finding you emit must carry a non-empty `source.normative` pointing
    at a `docs/rubric/spec-kitty-profile-taxonomy.md` §-clause string (never a
    schema URL — that is WP01's `schema.ts` only).
@@ -164,15 +165,18 @@ inline a citation string in a check module directly.
    ```ts
    export const RUBRIC_DOC_PATH = "docs/rubric/spec-kitty-profile-taxonomy.md";
    ```
-3. Export one named citation-string constant per non-schema finding kind
-   (everything in `SkProfileFindingKind` except `schema-conformance-
-   violation`, which cites the schema URL, not this file):
+3. Export one named citation-string constant per non-schema, non-structural
+   finding kind (everything in `SkProfileFindingKind` except
+   `schema-conformance-violation`, which cites the schema URL, not this
+   file, and `profile-parse-error`, which is structural — WP03's `index.ts`
+   emits it with a fixed, non-rubric literal string instead, per its own
+   T015; do **not** add a `profile-parse-error` entry here, and do not widen
+   the `Exclude<...>` back down to reintroduce it):
    ```ts
    export const RUBRIC_CITATION: Record<
-     Exclude<SkProfileFindingKind, "schema-conformance-violation">,
+     Exclude<SkProfileFindingKind, "schema-conformance-violation" | "profile-parse-error">,
      string
    > = {
-     "profile-parse-error": `${RUBRIC_DOC_PATH}#profile-parse-error`,
      "handoff-unresolved": `${RUBRIC_DOC_PATH}#handoff-resolution`,
      "handoff-asymmetric": `${RUBRIC_DOC_PATH}#handoff-symmetry`,
      "reference-unresolved": `${RUBRIC_DOC_PATH}#doctrine-reference-resolution`,
@@ -192,14 +196,15 @@ inline a citation string in a check module directly.
    ordering note above). Keep the `Record<...>` type so a future missing
    entry is a compile error, not a silent `undefined`.
 4. Export a small helper `citationFor(kind): string` that indexes the map
-   (schema kind is not representable — calling it with
-   `"schema-conformance-violation"` should be a type error at the call site,
-   which the `Exclude<...>` type already guarantees).
+   (neither the schema kind nor `profile-parse-error` is representable —
+   calling it with `"schema-conformance-violation"` or `"profile-parse-
+   error"` should be a type error at the call site, which the
+   `Exclude<...>` type already guarantees).
 
 **Files**: `src/adapters/spec-kitty-profile/rubric.ts`
 
-**Validation**: `pnpm build` compiles; T012 asserts every non-schema finding
-kind has a resolvable, non-empty citation.
+**Validation**: `pnpm build` compiles; T012 asserts every non-schema,
+non-structural finding kind has a resolvable, non-empty citation.
 
 ---
 
@@ -323,7 +328,15 @@ an activation config missing both `activated_directives` and
 `activation-config-unrecognized-shape` finding regardless of how many
 references the profile set has (test with ≥2 profiles each holding
 references, and assert the finding count is exactly one, not one per
-profile/reference).
+profile/reference). Regardless of which module ends up owning
+`toolguideRefs`/`styleguideRefs` resolution per step 5's either-placement
+rule: a resolvable `toolguideRefs`/`styleguideRefs` entry must pass stage-1
+resolution, and an unresolvable one must produce `reference-unresolved` —
+assert this explicitly in whichever test file exercises the module that
+actually owns the check (`references.test.ts` if it stayed here,
+`context-sources.test.ts` if you routed it there per T010). A check that
+compiles but is silently never invoked (checked zero times instead of
+exactly once) must fail this test.
 
 ---
 
@@ -410,7 +423,7 @@ excluded from collision grouping.
 
 **Purpose**: exercise every rule above with in-memory `AgentProfile[]`
 fixtures constructed directly in the test files — `fixtures/skprofile/` does
-not exist until WP03, and these are pure-function checks over already-loaded
+not exist until WP05, and these are pure-function checks over already-loaded
 `AgentProfile` objects, so no filesystem fixture is even needed for most
 cases (only T009/T010's on-disk resolution needs a `tmpdir`-based doctrine
 tree).
@@ -435,11 +448,14 @@ tree).
 4. Create `tests/skprofile/identity.test.ts` — plain `AgentProfile[]`
    literals. Cover every case in T011's Validation note.
 5. In one of the above (or a small dedicated block), assert every key in
-   `SkProfileFindingKind` except `"schema-conformance-violation"` has a
-   non-empty, string-typed entry in `rubric.ts`'s `RUBRIC_CITATION` map —
-   this is a compile-time guarantee already (the `Record<...>` type), but a
-   runtime test doubles as living documentation and catches an accidental
-   empty-string value.
+   `SkProfileFindingKind` except `"schema-conformance-violation"` and
+   `"profile-parse-error"` has a non-empty, string-typed entry in
+   `rubric.ts`'s `RUBRIC_CITATION` map — this is a compile-time guarantee
+   already (the `Record<...>` type), but a runtime test doubles as living
+   documentation and catches an accidental empty-string value.
+   `"profile-parse-error"` is deliberately absent from this map (it is
+   structural, not rubric-cited — see WP03's `index.ts` T015) and must not
+   be asserted against it.
 6. Use Vitest. Clean up any `tmpdir` directories in `afterEach`/`afterAll`.
 
 **Files**: `tests/skprofile/handoff.test.ts`,
@@ -466,8 +482,8 @@ git diff --stat src/core/   # must show no changes
 ## Definition of Done
 
 - [ ] `rubric.ts` exports `RUBRIC_DOC_PATH` and a `RUBRIC_CITATION` map
-      covering every non-schema finding kind, typed so a missing entry is a
-      compile error.
+      covering every non-schema, non-structural finding kind, typed so a
+      missing entry is a compile error.
 - [ ] `handoff.ts` implements role-based resolution (not profile-id-based)
       and one-directional-symmetry-as-warning exactly per data-model.md.
 - [ ] `references.ts` implements the two-stage (on-disk, then activation)
@@ -515,3 +531,11 @@ git diff --stat src/core/   # must show no changes
 > last). Append new entries at the END.
 
 - 2026-07-26T23:43:00Z – system – Prompt generated via /spec-kitty.tasks.
+- 2026-07-27T00:00:00Z – planner-priti – Post-tasks adversarial-gate fix
+  applied: `RUBRIC_CITATION`'s type now excludes `"profile-parse-error"`
+  alongside `"schema-conformance-violation"` (that kind is structural, not
+  rubric-cited — WP03's `index.ts` emits it with a fixed literal string
+  instead); T012's runtime-assertion step and the DoD bullet updated to
+  match. T009's Validation note now explicitly requires a test proving
+  `toolguideRefs`/`styleguideRefs` resolution actually runs, regardless of
+  which module owns it.

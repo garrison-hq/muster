@@ -191,8 +191,11 @@ brief cross-reference to the upstream schema URL construction.
    kind maps to the schema-conformance section; `profile-parse-error` is
    structural and may get a brief note stating explicitly that it has no
    rubric §-clause — it is a parse-level robustness signal, not a doctrine
-   judgment call, consistent with WP01's T001 comment that this kind is
-   "n/a — never cited, structural").
+   judgment call. This is consistent with the actual code, not a WP01
+   comment: WP02's `rubric.ts` types `RUBRIC_CITATION` to explicitly exclude
+   `"profile-parse-error"` alongside `"schema-conformance-violation"`, and
+   WP03's `index.ts` emits `profile-parse-error` findings with a fixed,
+   non-rubric literal string instead of a `RUBRIC_CITATION` lookup).
 
 **Files**: `docs/rubric/spec-kitty-profile-taxonomy.md`
 
@@ -368,3 +371,8 @@ artifact.
 > last). Append new entries at the END.
 
 - 2026-07-26T23:43:00Z – system – Prompt generated via /spec-kitty.tasks.
+- 2026-07-27T00:00:00Z – planner-priti – Post-tasks adversarial-gate fix
+  applied: T021 step 3's false attribution to "WP01's T001 comment" removed
+  (that phrase never appeared there); replaced with the actual code-level
+  facts — WP02's `RUBRIC_CITATION` type excludes `profile-parse-error`, and
+  WP03's `index.ts` emits it via a fixed non-rubric literal.

@@ -4,14 +4,15 @@
 **Input**: `spec.md` (FR-001..010, NFR-001..002, C-001..004), `plan.md` (IC-01..IC-04, Project Structure, Charter Check), `data-model.md` (entities, exit-code contract, module→entity table), `research.md` (R1..R9), `quickstart.md` (build/test/run/verify walkthrough), `contracts/spec-kitty-profile-manifest.schema.json`, `contracts/spec-kitty-profile-report.schema.json`.
 **Branch contract**: planned on `kitty/mission-spec-kitty-profile-adapter` (current branch matches target — `branch_matches_target: true`); WPs execute in lanes; completed changes merge back into `kitty/mission-spec-kitty-profile-adapter`. This mission's coordination branch (`kitty/mission-spec-kitty-profile-adapter-01KYG7KR`) is a separate, ULID-suffixed branch used only by mission tooling in `.worktrees/spec-kitty-profile-adapter-01KYG7KR-coord/` — implementation WPs never check it out.
 
-**Ownership note**: this mission ships exactly the four WPs `garrison-hq/muster#58` §6 already names, mapped 1:1 to plan.md's Implementation Concern Map (IC-01..IC-04). `owned_files` are sliced by module so no two WPs write the same file:
+**Ownership note**: this mission originally shipped exactly the four WPs `garrison-hq/muster#58` §6 already names, mapped 1:1 to plan.md's Implementation Concern Map (IC-01..IC-04). The post-tasks adversarial-gate review (Fix 3, binding operator decision) split the original WP03 into **WP03** (code/CLI/verification) and a new **WP05** (fixture/example authoring, still IC-03) — five WPs ship, WP03's and WP05's scope together still equal IC-03's original boundary; nothing was added to or removed from the mission's IC-01..IC-04 map. `owned_files` are sliced by module so no two WPs write the same file:
 
 - **WP01** — the data layer every other check depends on: `manifest.ts`, `profile.ts`, `schema.ts`, `findings.ts` (IC-01).
 - **WP02** — the four cross-profile lints plus the rubric-citation module: `handoff.ts`, `references.ts`, `context-sources.ts`, `identity.ts`, `rubric.ts` (IC-02).
-- **WP03** — projection drift, adapter assembly, CLI wiring, and the entire fixture/example/cross-cutting-test surface: `projection.ts`, `index.ts`, `src/cli/index.ts` (additive), `src/cli/output.ts` (additive), `fixtures/skprofile/**`, `examples/skprofile/**`, plus `tests/skprofile/projection.test.ts`, `fixtures.test.ts`, `cli.test.ts` (IC-03).
+- **WP03** — projection drift, adapter assembly, CLI wiring, and the test suite that consumes WP05's fixtures: `projection.ts`, `index.ts`, `src/cli/index.ts` (additive only — the human formatter lives here, not `src/cli/output.ts`, which this WP does not touch), plus `tests/skprofile/projection.test.ts`, `fixtures.test.ts`, `cli.test.ts` (IC-03). Depends on WP01, WP02, and **WP05**.
 - **WP04** — the published rubric surface: `docs/rubric/spec-kitty-profile-taxonomy.md`, `docs/rubric/spec-kitty-behavioral-axes.md`, `docs/rubric/sop-rule-taxonomy.md` (amended) (IC-04).
+- **WP05** — fixture and example authoring, split out of the original WP03 by the post-tasks adversarial-gate review (this document already conceded the fixture work does not depend on CLI wiring, so it no longer sits in front of WP03's T020 verification gate): `fixtures/skprofile/**`, `examples/skprofile/**` (IC-03, C-004). Depends on WP01, WP02; WP03 depends on it.
 
-**Lane split**: lane-a (code: WP01→WP02→WP03, sequential dependency chain) and lane-b (docs: WP04, no code dependency — `docs/rubric/**` never collides with lane-a's `write_scope`). Lane assignment and `parallel_group` are computed automatically by `spec-kitty agent mission finalize-tasks` from the dependency graph + `owned_files`; this document states the intended shape so that computation is a confirmation, not a surprise.
+**Lane split**: five lanes are computed from the dependency graph + `owned_files` by `spec-kitty agent mission finalize-tasks` — WP01 (foundation, no dependency), WP02 (after WP01), WP04 (docs, no code dependency, parallel to the whole code lane), WP05 (fixtures/examples, after WP01+WP02, parallel to WP03's code), and WP03 (after WP01+WP02+WP05, the last code WP to merge). `docs/rubric/**` (WP04) and `fixtures/skprofile/**`+`examples/skprofile/**` (WP05) never collide with any other WP's `write_scope`. This document states the intended shape so `lanes.json`'s computation is a confirmation, not a surprise — see `lanes.json` for the actual computed lane ids and `depends_on_lanes`.
 
 **Same-mission ordering note (not a lane dependency — spec.md Dependencies & Assumptions, plan.md IC-02)**: WP02's lint finding text (in `rubric.ts`) quotes `docs/rubric/spec-kitty-profile-taxonomy.md` §-clauses that WP04 authors. WP04 must exist in enough draft form for WP02 to cite real §-clause ids before WP02's citation strings are finalized. This is deliberately **not** encoded as `WP02 depends on WP04` in frontmatter or `lanes.json`'s `depends_on_lanes` — WP04 has no code dependency and lane-b can build in parallel with lane-a; it is purely an authoring-order concern inside WP02's own subtasks (see WP02 T007) and is closed out by WP04's T024 reconciliation pass. If WP02 lands first, it uses research.md R6's draft §-area table as a placeholder and WP04 reconciles wording afterward — the plan.md precedent for exactly this situation.
 
@@ -34,7 +35,7 @@
 | C-001 | `src/core/` untouched; NI-002 stays green | WP01, WP02, WP03 |
 | C-002 | Offline, byte-stable, no clock reads | WP01, WP02, WP03 |
 | C-003 | No SK dependency; never shells out; plain file reads only | WP01, WP02, WP03 |
-| C-004 | Muster-local fixtures; vendored schema records its upstream SHA | WP03 |
+| C-004 | Muster-local fixtures; vendored schema records its upstream SHA | WP05 |
 
 Every FR-001..010, NFR-001..002, and C-001..004 maps to at least one WP. None are unmapped.
 
@@ -57,9 +58,9 @@ Every FR-001..010, NFR-001..002, and C-001..004 maps to at least one WP. None ar
 | T013 | WP02 verification gate | WP02 | |
 | T014 | `projection.ts` — `ProjectionEntry` matching by `profile_urn` + SHA-256 recompute of `source_hash`/`file_hash` (`projection-output-missing` error / `projection-hash-drift` warning); skipped when `projectionManifestPath` omitted | WP03 | [P] |
 | T015 | `index.ts` — `SpecKittyProfileAdapter` factory + `run(manifest, options?)` orchestrating all six check modules → whole-graph `findings[]` → `cases[]` filter view → `AdapterResult` | WP03 | |
-| T016 | CLI wiring: `skprofile run <manifest>` hand-wired in `buildProgram()` (D1/FR-008 template: `src/cli/index.ts:1717-1755`); `SkProfileReport` wrapping + exit 0/1/2; `src/cli/output.ts` human formatter | WP03 | |
-| T017 | Fixture authoring: `fixtures/skprofile/clean/`, `fixtures/skprofile/broken/` (≥1 rigged violation per lint class, SC-002/R6), `fixtures/skprofile/doctrine/{directives,tactics,toolguides,styleguides}/`, vendored `agent-profile.schema.yaml` (+ its `schemaSha`), `manifest.yaml`, `broken-manifest.yaml`, `activation-config.yaml` | WP03 | [P] |
-| T018 | `examples/skprofile/manifest.yaml` + its own small clean profile/doctrine copy (AC-1, Scenario 9 — the guaranteed fully-clean run) | WP03 | [P] |
+| T016 | CLI wiring: `skprofile run <manifest>` hand-wired in `buildProgram()` (D1/FR-008 template: `src/cli/index.ts:1717-1755`); `SkProfileReport` wrapping + exit 0/1/2; `formatSkProfileResultHuman` human formatter in `src/cli/index.ts` (8 existing hand-wired-adapter formatters live there vs. 4 in `output.ts` — majority precedent) | WP03 | |
+| T017 | Fixture authoring: `fixtures/skprofile/clean/`, `fixtures/skprofile/broken/` (≥1 rigged violation per lint class, SC-002/R6), `fixtures/skprofile/doctrine/{directives,tactics,toolguides,styleguides}/`, vendored `agent-profile.schema.yaml` (+ its `schemaSha`), `manifest.yaml`, `broken-manifest.yaml`, `activation-config.yaml` | WP05 | [P] |
+| T018 | `examples/skprofile/manifest.yaml` + its own small clean profile/doctrine copy (AC-1, Scenario 9 — the guaranteed fully-clean run) | WP05 | [P] |
 | T019 | Test suite: `projection.test.ts`, `fixtures.test.ts` (discrimination-control suite, SC-002/SC-003), `cli.test.ts` (exit 0/1/2 + byte-stability, AC-4/NFR-001/SC-004) | WP03 | |
 | T020 | Real-CLI verification (binding operator directive, non-optional DoD gate): `pnpm build`; run against muster-local fixtures (clean → 0, broken → 1); run against the actual 18 SK profiles at `/home/jeroennouws/dev/spec-kitty-conformance/src/doctrine/agent_profiles/built-in/` (read-only) recording the observed exit code; exercise the malformed-`projectionManifestPath` path (exit 2); confirm NI-002 stays green | WP03 | |
 | T021 | Author `docs/rubric/spec-kitty-profile-taxonomy.md` — normative source for every M2 check class, `[NORMATIVE]`/`[CONVENTION]`/`[MUSTER-OWN]` tagged per `memory-utilization-taxonomy.md` house style, `status: normative` front matter, stable §-clause ids | WP04 | [P] |
@@ -106,25 +107,38 @@ Every FR-001..010, NFR-001..002, and C-001..004 maps to at least one WP. None ar
 **Parallel**: T008/T009/T010/T011 touch disjoint new files and can be drafted in parallel once T007's citation-constant shape is agreed; T012 depends on all four check modules.
 **Risks**: the role-vs-profile-id handoff typing is muster's own interpretive reading (`[MUSTER-OWN]` in the rubric) — mitigated by treating asymmetry as warning, not error; the activation-config shape-validation loud-failure path (`activation-config-unrecognized-shape`) must fire exactly once per run, never once per reference — a naive per-reference emission is a common mistake to guard against in review.
 
-## Phase 3 — Projection, CLI, fixtures (WP03, after WP01+WP02) / Rubric surface (WP04, parallel)
+## Phase 3 — Fixtures & examples (WP05, after WP01+WP02) / Rubric surface (WP04, parallel)
 
-### WP03 — Projection drift, CLI, fixtures/examples — prompt: `tasks/WP03-cli-projection-fixtures.md`
+### WP05 — Fixture and example authoring — prompt: `tasks/WP05-fixtures-examples.md`
 
-**Goal**: FR-007's independent projection-drift re-verification, the `muster skprofile run` command with its 0/1/2 exit-code contract, the full fixture/example surface (including the rigged discrimination-control set), and the mandatory real-CLI verification against the actual 18 SK profiles.
-**Priority**: P1 (merges last of the code WPs) · **Estimated prompt size**: ~550 lines
-**Independent test**: `pnpm build` passes; `tests/skprofile/{projection,fixtures,cli}.test.ts` green; `muster skprofile run fixtures/skprofile/manifest.yaml --json` exits 0; `muster skprofile run fixtures/skprofile/broken-manifest.yaml --json` exits 1 with the expected finding kinds; the real-CLI verification against the actual SK profile set has been run and its observed exit code recorded in the Activity Log; two consecutive runs of the muster-local fixture manifest are byte-identical.
+**Goal**: the muster-local fixture/example surface — a legal `clean/` profile set, a rigged `broken/` set (≥1 violation per lint class, the discrimination-control set), the vendored upstream schema + doctrine tree, and the one guaranteed-clean runnable example (AC-1/Scenario 9). Split out of the original WP03 by the post-tasks adversarial-gate review: this document already conceded the fixture work does not depend on CLI wiring, so it no longer sits in front of WP03's T020 verification gate.
+**Priority**: P1 (no CLI dependency; unblocks WP03's test suite and verification gate) · **Estimated prompt size**: ~250 lines
+**Independent test**: no automated gate of its own (fixtures are data, not code) — every rigged `broken/` fixture trips exactly its intended lint class and every `clean/`/example fixture trips none, verified by hand against WP01/WP02's actual exported check functions before moving to `for_review`; downstream, WP03's `fixtures.test.ts`/`cli.test.ts`/T020 are the real proof.
+
+- T017 Fixture authoring (WP05)
+- T018 Example (WP05)
+
+**Dependencies**: WP01, WP02 (needs the full finding set and the four lint modules' exact rules to author fixtures that exercise every kind correctly). Does **not** depend on WP03 — WP03 depends on this WP instead.
+**Parallel**: T017 (fixtures) and T018 (example) can proceed largely in parallel — both are pure authoring against WP01/WP02's already-shipped rules, with no CLI or `index.ts` orchestration dependency.
+**Risks**: T018's example must be constructed clean *by construction*, since this WP has no CLI to confirm it with (`muster skprofile run` is WP03's deliverable, and WP03 depends on this WP, not the reverse) — live exit-0 confirmation is explicitly deferred to WP03's T020; a reviewer must not accept an unverified "confirmed clean" claim from this WP.
+
+## Phase 4 — Projection, CLI, verification (WP03, after WP01+WP02+WP05)
+
+### WP03 — Projection drift, CLI, real-CLI verification — prompt: `tasks/WP03-cli-projection-fixtures.md`
+
+**Goal**: FR-007's independent projection-drift re-verification, the `muster skprofile run` command with its 0/1/2 exit-code contract, and the mandatory real-CLI verification against the actual 18 SK profiles — consuming WP05's fixture/example surface (including the rigged discrimination-control set) to do so.
+**Priority**: P1 (merges last of the code WPs) · **Estimated prompt size**: ~480 lines
+**Independent test**: `pnpm build` passes; `tests/skprofile/{projection,fixtures,cli}.test.ts` green; `muster skprofile run fixtures/skprofile/manifest.yaml --json` exits 0; `muster skprofile run fixtures/skprofile/broken-manifest.yaml --json` exits 1 with the expected finding kinds; the real-CLI verification against the actual SK profile set has been run and a verbatim stdout transcript recorded in the Activity Log; two consecutive runs of the muster-local fixture manifest are byte-identical.
 
 - T014 `projection.ts` (WP03)
 - T015 `index.ts` (WP03)
 - T016 CLI wiring (WP03)
-- T017 Fixture authoring (WP03)
-- T018 Example (WP03)
 - T019 Test suite (WP03)
 - T020 Real-CLI verification (WP03)
 
-**Dependencies**: WP01, WP02 (needs the full finding set to wire exit codes and to author fixtures that exercise every kind).
-**Parallel**: T014 (projection.ts) and T017/T018 (fixture/example authoring) can proceed in parallel once T015's `AdapterResult` shape is settled; T016 (CLI wiring) depends on T015; T019/T020 depend on everything else in this WP.
-**Risks**: the real `.kittify/agent_profiles_manifest.json`-shaped projection manifest bakes in absolute, machine-specific paths (research.md R5) — the byte-stability test (T019) must target the muster-local fixture manifest only, never the real one, or it will be flaky by construction; the real-CLI verification (T020) must record whichever exit code is actually observed against the real SK profile set rather than assuming 0.
+**Dependencies**: WP01, WP02, WP05 (needs the full finding set to wire exit codes, and WP05's fixtures/examples for T019's test suite and T020's real-CLI verification).
+**Parallel**: T014 (projection.ts) can proceed once WP01/WP02 land, independent of T016; T016 (CLI wiring) depends on T015; T019/T020 depend on everything else in this WP plus WP05's fixtures.
+**Risks**: the real `.kittify/agent_profiles_manifest.json`-shaped projection manifest bakes in absolute, machine-specific paths (research.md R5) — the byte-stability test (T019) must target the muster-local fixture manifest only, never the real one, or it will be flaky by construction; the real-CLI verification (T020) must record whichever exit code is actually observed against the real SK profile set rather than assuming 0, and — per the post-tasks adversarial-gate review — must capture a verbatim stdout transcript, not a prose paraphrase, so a reviewer can independently re-run it and byte-check the result.
 
 ### WP04 — Published rubric surface — prompt: `tasks/WP04-rubric-surface.md`
 
@@ -144,21 +158,26 @@ Every FR-001..010, NFR-001..002, and C-001..004 maps to at least one WP. None ar
 ## Dependency summary
 
 ```
-WP01 ──▶ WP02 ──▶ WP03   (lane-a, sequential — one worktree per WP, computed by finalize-tasks)
-WP04                     (lane-b, independent — no code dependency; same-mission ordering note only, see above)
+WP01 ──▶ WP02 ──▶ WP05 ──▶ WP03   (code, one worktree per WP, computed by finalize-tasks)
+WP04                              (independent — no code dependency; same-mission ordering note only, see above)
 ```
+
+WP05 (fixture/example authoring) was split out of the original WP03 by the
+post-tasks adversarial-gate review (Fix 3): it depends on WP01+WP02 only,
+and WP03 now depends on WP01, WP02, **and** WP05 rather than just WP01+WP02.
 
 ## Acceptance traceability
 
 | Acceptance / Constraint | WP delivering it |
 |---|---|
-| AC-1 (FR-008, Scenario 9 — clean example exits 0) | WP03 |
-| AC-2 (FR-002..007, Scenarios 3–8 + 11 — per-check-class findings + discrimination control) | WP01 (schema), WP02 (handoff/reference/context-sources/identity), WP03 (projection + fixtures proving it) |
+| AC-1 (FR-008, Scenario 9 — clean example exits 0) | WP05 (authors the example, clean by construction), WP03 (T020 supplies the actual live exit-0 confirmation) |
+| AC-2 (FR-002..007, Scenarios 3–8 + 11 — per-check-class findings + discrimination control) | WP01 (schema), WP02 (handoff/reference/context-sources/identity), WP03 (projection check + its own test suite), WP05 (fixtures exercising every check class) |
 | AC-3 (C-001, Scenario 13 — NI-002 stays green) | WP01, WP02, WP03 (each WP's own verification gate) |
 | AC-4 (C-002, Scenario 10 — byte-stable `--json` across repeated runs) | WP03 (`cli.test.ts`) |
 | AC-5 (FR-010, Scenario 12 — rubric docs land with `status: normative`) | WP04 |
 | Scenario 14 (exit code 2 — malformed `projectionManifestPath`) | WP03 |
-| SC-002/SC-003 (every lint class has a passing + a broken fixture; the broken set fails as designed) | WP03 (fixture authoring + `fixtures.test.ts`) |
+| SC-002/SC-003 (every lint class has a passing + a broken fixture; the broken set fails as designed) | WP05 (fixture authoring), WP03 (`fixtures.test.ts` proves it) |
 | SC-005 (rubric `rubricText` blocks usable verbatim by M4) | WP04 |
 | SC-006 / C-001 (`src/core/` remains unmodified) | WP01, WP02, WP03 |
+| C-004 (muster-local fixtures; vendored schema records its upstream SHA) | WP05 |
 | Real-CLI verification against the real 18 SK profiles (binding operator directive) | WP03 (T020) |
