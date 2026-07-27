@@ -660,6 +660,18 @@ reference-not-activated: 27 — total 43 findings, 7 error-severity
 (the handoff-unresolved ones) + 36 warning-severity. This matches the
 externally-reported expectation (7/9/27, 43 total) exactly.
 
+**Post-acceptance pre-merge review correction (2026-07-27)**: this exact
+configuration is now checked in at
+`kitty-specs/spec-kitty-profile-adapter-01KYG7KR/verification/real-profile-run-manifest.yaml`
+(schemaSha re-pinned to the fork's current HEAD, `c425bc188…`, at time of
+checking-in; the 18 profiles' own content — and therefore this 43/7/9/27
+figure — is unchanged since `91eeced1d`, 2026-06-22). Re-derived
+independently against the checked-in manifest: still exactly 43 findings
+(7/9/27), `report.ok === false`, exit `1`. Without `activationConfigPath`
+supplied, the same profile set yields 16 (7 + 9 only) — the 27 is a
+function of the activation config, which is why it is now pinned in a
+checked-in file rather than restated from memory.
+
 Literal findings[] content (profileId, kind, path, message — extracted
 directly from the JSON, not paraphrased):
   WARNING handoff-asymmetric      curator-carla              collaboration.handoff-to[0]
