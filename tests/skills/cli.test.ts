@@ -316,7 +316,15 @@ describe("muster skills run (CLI wiring, FR-013)", () => {
         expect(behavioral).toHaveLength(2);
         for (const r of behavioral) {
           // AC-1a: executed for real, never the hardcoded skip shape.
-          expect(r.skipped).not.toBe(true);
+          // MEDIUM-1: `.not.toBe(true)` alone passes when the key is
+          // *absent* (undefined), not just when it is literally `false` —
+          // that let a real regression (`skipped: false,` deleted from
+          // index.ts) go unnoticed with all 28 tests green. Assert the
+          // exact value AND that the key is actually present in the raw
+          // parsed JSON (WP04's own acceptance `jq 'has("skipped")'` gate
+          // depends on this exact shape).
+          expect(r.skipped).toBe(false);
+          expect(Object.hasOwn(r, "skipped")).toBe(true);
         }
         const weather = behavioral.find((r) => r.id === "behavioral-weather-skill");
         const control = behavioral.find((r) => r.id === "behavioral-rigged-control");
