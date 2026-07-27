@@ -39,7 +39,8 @@
       "predicted_surfaces": [
         "api",
         "app-shell",
-        "artifact-rendering"
+        "artifact-rendering",
+        "legacy-cleanup"
       ],
       "depends_on_lanes": [],
       "parallel_group": 0
@@ -70,17 +71,34 @@
       "parallel_group": 1
     },
     {
+      "lane_id": "lane-e",
+      "wp_ids": [
+        "WP05"
+      ],
+      "write_scope": [
+        "examples/skprofile/**",
+        "fixtures/skprofile/**"
+      ],
+      "predicted_surfaces": [
+        "api",
+        "app-shell",
+        "legacy-cleanup"
+      ],
+      "depends_on_lanes": [
+        "lane-a",
+        "lane-b"
+      ],
+      "parallel_group": 2
+    },
+    {
       "lane_id": "lane-c",
       "wp_ids": [
         "WP03"
       ],
       "write_scope": [
-        "examples/skprofile/**",
-        "fixtures/skprofile/**",
         "src/adapters/spec-kitty-profile/index.ts",
         "src/adapters/spec-kitty-profile/projection.ts",
         "src/cli/index.ts",
-        "src/cli/output.ts",
         "tests/skprofile/cli.test.ts",
         "tests/skprofile/fixtures.test.ts",
         "tests/skprofile/projection.test.ts"
@@ -88,17 +106,19 @@
       "predicted_surfaces": [
         "api",
         "artifact-rendering",
+        "legacy-cleanup",
         "tests",
         "tracker-integration"
       ],
       "depends_on_lanes": [
         "lane-a",
-        "lane-b"
+        "lane-b",
+        "lane-e"
       ],
-      "parallel_group": 2
+      "parallel_group": 3
     }
   ],
-  "computed_at": "2026-07-26T23:54:53.077283+00:00",
+  "computed_at": "2026-07-27T00:31:30.767136+00:00",
   "computed_from": "dependency_graph+ownership",
   "planning_artifact_wps": []
 }
