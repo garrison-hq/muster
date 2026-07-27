@@ -29,6 +29,7 @@ import type { EndpointConfig } from "../../src/core/behavioral/types.js";
 
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 const skillsManifest = resolvePath(repoRoot, "fixtures/skills/skills-manifest.yaml");
+const exampleSkillsManifest = resolvePath(repoRoot, "examples/skills/manifest.yaml");
 
 /** In-process invocation capturing stdout/stderr bytes exactly. */
 async function run(
@@ -110,6 +111,45 @@ function createSmartMockTriggerClient(): TriggerChatClient {
         return null;
       }
       return weatherShouldTrigger.has(userMessage) ? tool.function.name : null;
+    },
+  };
+}
+
+/**
+ * The example manifest's own weather query set's shouldTrigger queries
+ * (T018/T019, FR-006) — loaded once, mirroring the fixtures-suite pattern
+ * above but pointed at `examples/skills/trigger-queries/` so this WP's new
+ * example cases have their own offline, deterministic mock classifier
+ * rather than reusing the fixtures suite's query set by coincidence.
+ */
+const exampleWeatherShouldTrigger = new Set(
+  (
+    parseYaml(
+      readFileSync(
+        resolvePath(repoRoot, "examples/skills/trigger-queries/weather-skill-queries.yaml"),
+        "utf8"
+      )
+    ) as { shouldTrigger: string[] }
+  ).shouldTrigger
+);
+
+/**
+ * A deterministic, offline mock `TriggerChatClient` for the example
+ * manifest's new behavioral cases (T020): never selects the
+ * rigged-impossible-control tool (by description, matching the new
+ * `example-behavioral-control` case regardless of manifest), and otherwise
+ * selects the target tool only for queries known to be in the example
+ * weather query set's own shouldTrigger set.
+ */
+function createExampleSmartMockTriggerClient(): TriggerChatClient {
+  return {
+    async chatWithTools(userMessage, tools) {
+      const tool = tools[0];
+      if (tool === undefined) return null;
+      if (tool.function.description === RIGGED_IMPOSSIBLE_DESCRIPTION) {
+        return null;
+      }
+      return exampleWeatherShouldTrigger.has(userMessage) ? tool.function.name : null;
     },
   };
 }
@@ -723,6 +763,45 @@ describe("muster skills run (CLI wiring, FR-013)", () => {
       } finally {
         rmSync(workDir, { recursive: true, force: true });
       }
+    });
+  });
+
+  describe("FR-006: examples/skills/manifest.yaml behavioral + control cases (T018/T019/T020)", () => {
+    it("should-trigger case passes and the rigged control fails via mock client", async () => {
+      await withSkillsEndpointEnv(
+        { MUSTER_ENDPOINT: "http://mock-endpoint.invalid/v1" },
+        async () => {
+          const { code, stdout } = await run(
+            ["skills", "run", exampleSkillsManifest, "--json"],
+            { skillsTriggerClientFactory: () => createExampleSmartMockTriggerClient() }
+          );
+          expect([0, 1]).toContain(code);
+          const parsed = JSON.parse(stdout) as {
+            results: {
+              id: string;
+              type: string;
+              passed: boolean;
+              isControl?: boolean;
+            }[];
+          };
+          const weather = parsed.results.find(
+            (r) => r.id === "example-behavioral-weather"
+          );
+          const control = parsed.results.find(
+            (r) => r.id === "example-behavioral-control"
+          );
+          expect(weather).toBeDefined();
+          expect(control).toBeDefined();
+          // T020 step 3: the should-trigger case must actually assert
+          // passed:true by id — this is the assertion that would catch an
+          // undersized query file (T019's MIN_QUERIES_PER_AXIS=8 hard gate).
+          expect(weather?.passed).toBe(true);
+          // T020 step 2: the isControl:true case reports passed:false when
+          // the mock client never selects the rigged tool (SC-004 cap-of-zero).
+          expect(control?.passed).toBe(false);
+          expect(control?.isControl).toBe(true);
+        }
+      );
     });
   });
 });
