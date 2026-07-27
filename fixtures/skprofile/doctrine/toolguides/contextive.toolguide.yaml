@@ -1,0 +1,11 @@
+# Muster-local fixture stub (C-004) — mirrors the real upstream filename
+# shape at spec-kitty commit ebfbaddd653789417f89b040320ccfe452f15424
+# (src/doctrine/toolguides/built-in/contextive.toolguide.yaml).
+# Toolguides resolve by exact filename-stem match (research.md R2) —
+# content is never validated by this mission's checks.
+schema_version: "1.0"
+id: contextive
+tool: contextive
+title: Contextive (fixture stub)
+summary: >
+  Fixture stub only — content is never validated by this mission's checks.

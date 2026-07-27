@@ -1,0 +1,34 @@
+{
+  "accept_commit": "ef2ed67e59eb734c8951f1d75bc937fb784c03ef",
+  "acceptance_history": [
+    {
+      "accept_commit": "ef2ed67e59eb734c8951f1d75bc937fb784c03ef",
+      "acceptance_mode": "pr",
+      "accepted_at": "2026-07-27T17:15:24.814396+00:00",
+      "accepted_by": "jeroennouws",
+      "accepted_from_commit": "22676f73e7ecf892ac159e2f083052b80090eb9e"
+    }
+  ],
+  "acceptance_mode": "pr",
+  "accepted_at": "2026-07-27T17:15:24.814396+00:00",
+  "accepted_by": "jeroennouws",
+  "accepted_from_commit": "22676f73e7ecf892ac159e2f083052b80090eb9e",
+  "baseline_merge_commit": "fbe23aa0357a199b985a4eadb6294d6a65d7f337",
+  "coordination_branch": "kitty/mission-spec-kitty-profile-adapter-01KYG7KR",
+  "created_at": "2026-07-26T22:09:30.273352+00:00",
+  "flattened": false,
+  "friendly_name": "Spec-Kitty Agent-Profile Static Conformance Adapter",
+  "mission_id": "01KYG7KRMZ5WZ030A9ZND5E6N9",
+  "mission_number": null,
+  "mission_slug": "spec-kitty-profile-adapter-01KYG7KR",
+  "mission_type": "software-dev",
+  "pr_bound": true,
+  "purpose_context": "This mission adds a manifest-runner-shaped muster adapter (src/adapters/spec-kitty-profile/) that statically validates Spec Kitty agent-profile YAML files against the upstream schema and muster-authored cross-profile lints (handoff-graph, doctrine-reference resolution, context-sources integrity, profile-id filename legality, projection-drift vs the agent_profiles_manifest), and ships three rubric documents under docs/rubric/ that this mission and the downstream M4 behavioral-axes mission both cite. It is deliberately not SpecAdapter-implementing (D1), following the memory-utilization adapter's manifest-runner shape.",
+  "purpose_tldr": "Static conformance adapter for Spec Kitty agent-profile YAML (*.agent.yaml) plus the rubric surface M4 depends on.",
+  "slug": "spec-kitty-profile-adapter-01KYG7KR",
+  "source_description": "GitHub issue garrison-hq/muster#58 ([M2] spec-kitty-profile-adapter): static agent-profile adapter (src/adapters/spec-kitty-profile/) validating *.agent.yaml against the upstream schema plus muster-authored cross-profile lints (handoff-graph, doctrine-reference resolution, context-sources integrity, profile-id filename legality, projection drift vs .kittify/agent_profiles_manifest.json), and three docs/rubric/ documents (profile taxonomy, behavioral axes for M4, sop-rule-taxonomy v1.1 appendix). Manifest-runner shaped per D1 -- deliberately does not implement SpecAdapter.",
+  "status_phase": "1",
+  "target_branch": "kitty/mission-spec-kitty-profile-adapter",
+  "topology": "coord",
+  "vcs": "git"
+}

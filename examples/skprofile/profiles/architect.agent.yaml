@@ -1,0 +1,62 @@
+# Muster-local runnable example profile (WP05 T018, AC-1/Scenario 9,
+# C-004) — self-contained within examples/skprofile/ (no reference back
+# into fixtures/skprofile/). Constructed clean by construction, applying
+# the identical discipline as fixtures/skprofile/clean/architect.agent.yaml:
+# reciprocal handoffs with planner.agent.yaml, resolvable
+# directive/tactic/toolguide/styleguide references and context-sources
+# against ../doctrine/, a legal profile-id matching this file's name stem,
+# and the array `roles` form (matches real upstream usage — verified
+# against spec-kitty-conformance's shipped profiles). No activation-config
+# is used anywhere in examples/skprofile/, so this run has zero findings
+# of any severity (AC-1 requires zero findings, not just `ok: true`).
+profile-id: architect
+name: Architect (example)
+description: >
+  Muster-local runnable example profile (C-004) — the guaranteed-clean
+  Scenario 9 demonstration, self-contained under examples/skprofile/.
+purpose: >
+  Design system architecture and validate technical decisions for the
+  muster-local fixture profile set.
+roles:
+  - architect
+
+specialization:
+  primary-focus: System architecture and component boundaries.
+  secondary-awareness: Implementation feasibility.
+  avoidance-boundary: Direct code implementation.
+  success-definition: Clear, actionable architectural decisions.
+
+collaboration:
+  handoff-to:
+    - planner
+  handoff-from:
+    - planner
+  works-with:
+    - planner
+
+context-sources:
+  directives:
+    - "001"
+  tactics:
+    - development-bdd
+  toolguides:
+    - contextive
+  styleguides:
+    - prose
+
+directive-references:
+  - code: "001"
+    name: Architectural Integrity Standard
+    rationale: Ensures designs maintain clear component boundaries.
+
+tactic-references:
+  - id: development-bdd
+    rationale: Express behavioral contracts before implementation begins.
+
+toolguide-references:
+  - id: contextive
+    rationale: Manage ubiquitous language terms for this fixture set.
+
+styleguide-references:
+  - id: prose
+    rationale: Keep fixture prose consistent with muster's writing style.

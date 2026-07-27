@@ -1,0 +1,13 @@
+{
+  "wp_id": "WP02",
+  "captured_at": "2026-07-27T07:37:17Z",
+  "base_branch": "kitty/mission-spec-kitty-profile-adapter",
+  "base_commit": "793fdb761736ee4fee28538855d27d2bb85a3d9f",
+  "test_runner": "pytest",
+  "total": 0,
+  "passed": 0,
+  "failed": 0,
+  "skipped": 0,
+  "failures": [],
+  "source_identity": "GateCoverageScopeSource/junit_xml"
+}

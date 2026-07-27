@@ -1,0 +1,211 @@
+{
+  "mission_slug": "spec-kitty-profile-adapter-01KYG7KR",
+  "mission_number": "",
+  "mission_type": "software-dev",
+  "overall_verdict": "pass",
+  "criteria": [
+    {
+      "criterion_id": "FR-001",
+      "description": "New adapter src/adapters/spec-kitty-profile/ with manifest type {version, profilesDir, schemaPath, schemaSha, doctrineRoot, activationConfigPath?, projectionManifestPath?, cases[]}; paths relative to the manifest file.",
+      "proof_type": "code_review",
+      "evidence": "lane-c@3526abe src/adapters/spec-kitty-profile/manifest.ts:26-27 declares `readonly schemaSha: string` and `readonly doctrineRoot: string` on the manifest type; manifest.ts:95 resolves doctrineRoot against manifestDir. Independently reproduced: `pnpm build` exit 0, `pnpm typecheck` exit 0 in lane-c worktree.",
+      "pass_fail": "pass",
+      "verified_by": "curator-carla (accept-gate session)",
+      "verified_at": "2026-07-27T17:11:45Z",
+      "notes": "Code lives on the approved lane-c worktree (contains lane-a/b/e merged in), not yet in the coord/primary tree \u2014 lands at `spec-kitty merge` (out of scope for this accept run)."
+    },
+    {
+      "criterion_id": "FR-002",
+      "description": "Schema conformance via Ajv; findings carry source.normative built from schemaPath+schemaSha into a resolvable upstream reference, never a literal @<SHA> path segment.",
+      "proof_type": "automated_test",
+      "evidence": "lane-c@3526abe src/adapters/spec-kitty-profile/schema.ts:19 imports `ajv/dist/2020.js` (Ajv already a dependency \u2014 also used by src/adapters/openclaw-sop/{graders,manifest}.ts and src/adapters/skills/schema.ts, so no new dependency); schema.ts:47 builds `https://github.com/Priivacy-ai/spec-kitty/blob/${schemaSha}/${SCHEMA_UPSTREAM_PATH}`. Independently reproduced live: `node dist/cli/index.js skprofile run fixtures/skprofile/broken-manifest.yaml --json` (exit 1) emits a `schema-conformance-violation` finding with `source.normative: \"https://github.com/Priivacy-ai/spec-kitty/blob/ebfbaddd653789417f89b040320ccfe452f15424/src/doctrine/schemas/agent-profile.schema.yaml\"` \u2014 a resolvable URL, never a literal `@<SHA>` segment.",
+      "pass_fail": "pass",
+      "verified_by": "curator-carla (accept-gate session)",
+      "verified_at": "2026-07-27T17:11:45Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "FR-003",
+      "description": "Handoff lint: handoff-to/handoff-from/works-with entries resolve to \u22651 profile whose role/roles contains it (role names, not profile-ids); unresolvable \u2192 error, asymmetry (A\u2192B without B\u2190A) \u2192 warning.",
+      "proof_type": "automated_test",
+      "evidence": "lane-c@3526abe src/adapters/spec-kitty-profile/handoff.ts:4-7 (role-based, not profile-id, verified against architect-alphonso\u2192planner/implementer); handoff.ts:57 `if (field !== \"handoffTo\") return [];` \u2014 symmetry/asymmetry check fires only for handoffTo, excluding works-with. Independently reproduced live against the real 18 built-in Spec Kitty profiles (/home/jeroennouws/dev/spec-kitty-conformance/src/doctrine/agent_profiles/built-in, read-only): 7 handoff-unresolved + 9 handoff-asymmetric findings, exit 1, byte-identical across two consecutive runs.",
+      "pass_fail": "pass",
+      "verified_by": "curator-carla (accept-gate session)",
+      "verified_at": "2026-07-27T17:11:45Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "FR-004",
+      "description": "Reference lint: directive-references[].code and tactic-references[].id resolve to existing doctrine files; when activationConfigPath is given, references to non-activated doctrine \u2192 warning (muster's own project activates 19/26 directives \u2014 real-world case).",
+      "proof_type": "automated_test",
+      "evidence": "lane-c@3526abe src/adapters/spec-kitty-profile/references.ts:283-298 (activation-config-unrecognized-shape fires exactly once per run \u2014 pushed once outside the per-profile loop, never once per reference). Independently reproduced live: manifest with `activationConfigPath: /home/jeroennouws/dev/garrison-hq/muster/.kittify/config.yaml` against the real 18 profiles yields 27 `reference-not-activated` findings (part of the 43-finding total, exit 1), matching the muster project's own activation set.",
+      "pass_fail": "pass",
+      "verified_by": "curator-carla (accept-gate session)",
+      "verified_at": "2026-07-27T17:11:45Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "FR-005",
+      "description": "context-sources integrity: listed directives/tactics/toolguides/styleguides exist on disk; missing \u2192 error.",
+      "proof_type": "automated_test",
+      "evidence": "lane-c@3526abe src/adapters/spec-kitty-profile/context-sources.ts:15-33 checks all four context-source kinds (directives/tactics/toolguides/styleguides) via resolveDoctrineFile. Independently reproduced live: `node dist/cli/index.js skprofile run fixtures/skprofile/broken-manifest.yaml --json` (exit 1) includes a `context-source-missing` finding for fixtures/skprofile/broken/context-source-missing.agent.yaml.",
+      "pass_fail": "pass",
+      "verified_by": "curator-carla (accept-gate session)",
+      "verified_at": "2026-07-27T17:11:45Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "FR-006",
+      "description": "Profile-id legality: ^[a-z0-9-]+$, \u226464 chars, equals the YAML filename stem.",
+      "proof_type": "automated_test",
+      "evidence": "lane-c@3526abe src/adapters/spec-kitty-profile/identity.ts:38,49 dispatches profileIdIllegalCitation(\"charset\"|\"length\") per sub-rule. Independently reproduced live: broken-manifest.yaml run (exit 1, 13 findings) includes charset (profile-id-illegal, Illegal_ID), length-ceiling (profile-id-length-ceiling-fixture-...), filename-mismatch (id-filename-mismatched/collision-a), and collision (collision-a shared by 2 profiles) findings \u2014 all four sub-classes fired.",
+      "pass_fail": "pass",
+      "verified_by": "curator-carla (accept-gate session)",
+      "verified_at": "2026-07-27T17:11:45Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "FR-007",
+      "description": "Projection drift: when projectionManifestPath is given, recompute source_hash/file_hash and compare to the manifest entries (9-field schema_version-1 shape); missing output \u2192 error, hash drift \u2192 warning.",
+      "proof_type": "automated_test",
+      "evidence": "lane-c@3526abe src/adapters/spec-kitty-profile/projection.ts:40-49 declares the 9-field ProjectionEntry (profile_urn, source_layer, tool_key, output_path, format, file_hash, source_path, source_hash, projection_version); matching is by profile_urn never source_path (projection.ts:8-10); hash is SHA-256 hex over raw UTF-8 (projection.ts:13-14); output_path for a relative path resolves against the projection manifest file's parent's parent, documented at projection.ts:17-25 as the load-bearing subtlety (\u00a77.2) \u2014 the naive base (manifest's own directory) would collapse the 1-error/1-warning vector to 2 errors, per the passing regression test in the 170-file/3599-test suite. Independently reproduced live: `broken-projection-manifest.yaml` run yields exactly 1 error (projection-output-missing) + 1 warning (projection-hash-drift), exit 1.",
+      "pass_fail": "pass",
+      "verified_by": "curator-carla (accept-gate session)",
+      "verified_at": "2026-07-27T17:11:45Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "FR-008",
+      "description": "CLI: muster skprofile run <manifest> with global --mode/--json; exit 0/1/2 per house contract.",
+      "proof_type": "automated_test",
+      "evidence": "Independently reproduced all three exit codes live in lane-c@3526abe (after `pnpm build`): (1) `node dist/cli/index.js skprofile run fixtures/skprofile/manifest.yaml` \u2192 exit 0, 2 warnings/0 errors; (2) `node dist/cli/index.js skprofile run fixtures/skprofile/broken-manifest.yaml` \u2192 exit 1, exactly 13 findings (12 error, 1 warning); (3a) manifest path pointing at a nonexistent file \u2192 exit 2, stderr 'cannot read spec-kitty-profile manifest'; (3b) a manifest whose projectionManifestPath points at invalid JSON \u2192 exit 2, stderr 'spec-kitty-profile adapter run failed'. Both (3a)/(3b) reproduced manually via a constructed temp manifest, independent of tests/skprofile/cli.test.ts:86-121 which assert the same.",
+      "pass_fail": "pass",
+      "verified_by": "curator-carla (accept-gate session)",
+      "verified_at": "2026-07-27T17:11:45Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "FR-009",
+      "description": "Every finding carries source.normative = the taxonomy rubric \u00a7clause, or the schema@SHA for FR-002.",
+      "proof_type": "code_review",
+      "evidence": "lane-c@3526abe src/adapters/spec-kitty-profile/rubric.ts:108-118 defines an 11-entry RUBRIC_CITATION map (handoff-unresolved, handoff-asymmetric, reference-unresolved, reference-not-activated, activation-config-unrecognized-shape, context-source-missing, profile-id-illegal, profile-id-filename-mismatch, profile-id-collision, projection-output-missing, projection-hash-drift). rubric.ts:88-90 `citationFor()`'s parameter type explicitly excludes \"schema-conformance-violation\", \"profile-parse-error\", AND \"profile-id-illegal\" \u2014 a compile-time guard forcing profile-id-illegal call sites through profileIdIllegalCitation(\"charset\"|\"length\") instead (identity.ts:17,38,49 confirms this call site). Independently reproduced live: every finding in both the real-18-profile run and the broken-fixture run carries a non-null `source.normative` string.",
+      "pass_fail": "pass",
+      "verified_by": "curator-carla (accept-gate session)",
+      "verified_at": "2026-07-27T17:11:45Z",
+      "notes": "KNOWN LIMITATION, not a defect: a single report mixes Ajv JSON Pointer path notation (e.g. `/profile-id`, from schema-conformance-violation findings \u2014 verified live: finding.path === \"/profile-id\") with dotted/raw path notation (e.g. `profile-id`, from the lints \u2014 verified live: profile-id-illegal finding.path === \"profile-id\", no leading slash). No spec artifact requires path-notation uniformity across finding kinds, and WP01's instruction mandates the raw form for non-Ajv findings. Recorded here as an accepted, documented limitation \u2014 not claimed as satisfied uniformity."
+    },
+    {
+      "criterion_id": "FR-010",
+      "description": "Rubric docs land: docs/rubric/spec-kitty-profile-taxonomy.md, docs/rubric/spec-kitty-behavioral-axes.md, sop-rule-taxonomy v1.1 appendix.",
+      "proof_type": "code_review",
+      "evidence": "All three documents exist, fully authored, on the approved WP04/lane-d worktree (.worktrees/spec-kitty-profile-adapter-01KYG7KR-lane-d@71d371b, clean tree): docs/rubric/spec-kitty-profile-taxonomy.md (29788 bytes), docs/rubric/spec-kitty-behavioral-axes.md (22261 bytes), docs/rubric/sop-rule-taxonomy.md (21660 bytes, v1.1 \u2014 up from the pre-mission 9075-byte v1.0.0 still present on primary/coord). lane-d's write_scope in lanes.json is exactly these 3 paths, disjoint from every code lane's write_scope; WP04 shows in the 'approved' lane per `spec-kitty accept`'s WP table (5/5 approved, 0 elsewhere). git history on lane-d shows a full implement\u2192reject\u2192remediate\u2192re-fix cycle (f89d52a remediate B1-B10 + advisory, c09ced2/ad8f583 citation-line fixes) culminating in a clean, approved worktree.",
+      "pass_fail": "pass",
+      "verified_by": "curator-carla (accept-gate session)",
+      "verified_at": "2026-07-27T17:11:45Z",
+      "notes": "IMPORTANT CAVEAT, verified directly: as of this accept run, docs/rubric/spec-kitty-profile-taxonomy.md and docs/rubric/spec-kitty-behavioral-axes.md do NOT exist in the coordination worktree (.worktrees/spec-kitty-profile-adapter-01KYG7KR-coord@3727df2), the primary checkout, or any other lane (a/b/c/e) \u2014 confirmed via `git merge-base --is-ancestor` (lane-d is NOT an ancestor of coord, nor of any other lane) and direct `ls` of each worktree's docs/rubric/. This matches spec-kitty's own documented accept-time model (specify_cli/acceptance/matrix.py: 'the gate runs ... again at accept (from the pre-merge primary root, where they do not [exist] \u2014 they land only via spec-kitty merge)') \u2014 identical to every code criterion above, whose implementation likewise lives only on lane-c pre-merge. The rubricDocPath citation strings the adapter emits (rubric.ts) are therefore accurate promises against the post-merge tree, not the current pre-merge tree. Do not ship/merge without confirming lane-d actually lands in the same merge as lane-c; this task's scope explicitly excludes running `spec-kitty merge`."
+    },
+    {
+      "criterion_id": "NFR-001",
+      "description": "The static check path runs fully offline with byte-stable deterministic output: identical bytes across repeated runs on the same machine in all cases, and additionally across machines for muster-local fixtures.",
+      "proof_type": "automated_test",
+      "evidence": "Independently reproduced in lane-c@3526abe: `fixtures/skprofile/manifest.yaml --json` run twice, `diff` reports no difference. Also reproduced against the real, non-fixture 18-profile set (see FR-003/FR-004): run twice with the same manifest (profilesDir/schemaPath/doctrineRoot/activationConfigPath all pointed at /home/jeroennouws/dev/spec-kitty-conformance, read-only), `diff` reports no difference. No network calls observed in any run (no fetch/http import in the module tree).",
+      "pass_fail": "pass",
+      "verified_by": "curator-carla (accept-gate session)",
+      "verified_at": "2026-07-27T17:11:45Z",
+      "notes": "Cross-machine byte-stability (the stronger NFR-001 clause) was not separately verified \u2014 only reproduced on this one machine, which is what the spec's own qualifier requires for muster-local fixtures; the real, non-fixture SK profile set was explicitly carved out by research.md R5 as machine-variant (absolute output_path values) and is not held to the cross-machine bar."
+    },
+    {
+      "criterion_id": "NFR-002",
+      "description": "Type-check and test gates: tsc strict passes; full Vitest suite green including tests/skprofile/**; SonarCloud quality gate passes.",
+      "proof_type": "automated_test",
+      "evidence": "Independently reproduced in lane-c@3526abe: `pnpm build` exit 0, `pnpm typecheck` (tsc --noEmit) exit 0, `pnpm test` (vitest run) exit 0 \u2014 170 test files, 3599 passed, 3 pre-existing skips, 0 failures, 0 type errors.",
+      "pass_fail": "pass",
+      "verified_by": "curator-carla (accept-gate session)",
+      "verified_at": "2026-07-27T17:11:45Z",
+      "notes": "SonarCloud quality gate was NOT independently verified in this session \u2014 no CI run exists for a pre-merge lane branch, and this session has no access to the SonarCloud dashboard/API. Recorded as pass on the local build/typecheck/test evidence only; the SonarCloud portion is unverified, not confirmed."
+    },
+    {
+      "criterion_id": "C-001",
+      "description": "src/core/ untouched; no imports from core internals beyond sanctioned surfaces; NI-002 stays green.",
+      "proof_type": "code_review",
+      "evidence": "See negative invariant NI-C001-core-import below: zero `src/core/` imports across all 11 files in src/adapters/spec-kitty-profile/ (lane-c@3526abe).",
+      "pass_fail": "pass",
+      "verified_by": "curator-carla (accept-gate session)",
+      "verified_at": "2026-07-27T17:11:45Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "C-002",
+      "description": "Fully offline, byte-stable deterministic output (BRIEF constraint 2); no clock reads.",
+      "proof_type": "automated_test",
+      "evidence": "Same evidence as NFR-001: byte-identical two-run diffs on both the fixture manifest and the real 18-profile manifest. `grep -n \"Date.now\\|new Date(\" src/adapters/spec-kitty-profile/*.ts` (hand-run in lane-c@3526abe) returned zero matches.",
+      "pass_fail": "pass",
+      "verified_by": "curator-carla (accept-gate session)",
+      "verified_at": "2026-07-27T17:11:45Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "C-003",
+      "description": "No SK dependency: plain YAML/JSON file reading; the adapter never shells out to spec-kitty.",
+      "proof_type": "code_review",
+      "evidence": "See negative invariant NI-C003-spec-kitty-import below: zero child_process/execSync/spawn( occurrences and zero spec-kitty import specifiers across src/adapters/spec-kitty-profile/ (lane-c@3526abe).",
+      "pass_fail": "pass",
+      "verified_by": "curator-carla (accept-gate session)",
+      "verified_at": "2026-07-27T17:11:45Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "C-004",
+      "description": "Fixtures are muster-local (a miniature profile set under fixtures/skprofile/), so muster CI never needs the SK repo.",
+      "proof_type": "code_review",
+      "evidence": "fixtures/skprofile/** and examples/skprofile/** are self-contained (schema copy, doctrine tree, profiles) in lane-c@3526abe; see negative invariant NI-C004-ci-external-repo below for the CI-independence check.",
+      "pass_fail": "pass",
+      "verified_by": "curator-carla (accept-gate session)",
+      "verified_at": "2026-07-27T17:11:45Z",
+      "notes": null
+    }
+  ],
+  "negative_invariants": [
+    {
+      "invariant_id": "NI-C001-core-import",
+      "description": "C-001: the spec-kitty-profile adapter never imports from src/core/.",
+      "verification_method": "grep_absence",
+      "verification_command": "from .*src/core",
+      "result": "confirmed_absent",
+      "evidence": "Hand-verified against lane-c@3526abe, path src/adapters/spec-kitty-profile/ (that path does not exist on the pre-merge coord/primary surface this matrix lives on \u2014 see FR-010's note on the same pre-merge/lane distinction, which applies to every code-lane criterion in this matrix). Zero matches across all 11 files in the module."
+    },
+    {
+      "invariant_id": "NI-C003-spec-kitty-import",
+      "description": "C-003: the adapter never imports from `spec-kitty` or shells out to it (no child_process/execSync/spawn).",
+      "verification_method": "grep_absence",
+      "verification_command": "child_process\\|execSync\\|spawn(",
+      "result": "confirmed_absent",
+      "evidence": "Hand-verified against lane-c@3526abe, path src/adapters/spec-kitty-profile/: zero import statements reference spec-kitty or src/core; zero occurrences of child_process/execSync/spawn(. String occurrences of the literal word \"spec-kitty\" are confined to error-message text and doc comments, never an import specifier."
+    },
+    {
+      "invariant_id": "NI-C004-ci-external-repo",
+      "description": "C-004: muster CI/tests never reference the external spec-kitty-conformance checkout; fixtures are muster-local.",
+      "verification_method": "grep_absence",
+      "verification_command": "spec-kitty-conformance",
+      "result": "confirmed_absent",
+      "evidence": "Hand-verified against lane-c@3526abe (.github/workflows/ and tests/skprofile/*.test.ts): zero matches. The real-18-profile verification against spec-kitty-conformance is a manual quickstart.md step (\u00a76), not part of the automated test suite or CI.",
+      "scope": ".github/workflows tests/skprofile"
+    },
+    {
+      "invariant_id": "NI-fixture-vector-pinned",
+      "description": "Each of the 11 broken fixtures produces its documented finding vector (one kind per fixture, except two documented multi-kind cases); the vector is pinned via exact-multiset assertion, not a lower-bound check.",
+      "verification_method": "custom_command",
+      "verification_command": "pnpm test -- tests/skprofile/fixtures.test.ts",
+      "result": "confirmed_absent",
+      "evidence": "tests/skprofile/fixtures.test.ts:36-49 pins the *.agent.yaml file count in fixtures/skprofile/broken/ at exactly 11 and the finding vector at exactly 13 (12 error/1 warning); line 82 asserts findingSignatures(result.findings) via toEqual (exact multiset, not toContain). All 170 test files / 3599 tests passed (3 pre-existing skips) in the full `pnpm test` run. Did NOT personally re-perturb the fixtures to force a failure (would dirty the approved lane-c worktree); relying on the test's toEqual construction plus the passing suite as evidence the pin is real, not a lower bound."
+    },
+    {
+      "invariant_id": "NI-projection-naive-base-regression",
+      "description": "Resolving output_path against the manifest's own directory (the naive/wrong base) rather than its parent's parent degrades the projection-hash-drift vector to projection-output-missing; the correct resolution (\u00a77.2) is load-bearing, not cosmetic.",
+      "verification_method": "custom_command",
+      "verification_command": "pnpm test -- tests/skprofile/projection.test.ts",
+      "result": "confirmed_absent",
+      "evidence": "projection.ts:17-25 documents the \u00a77.2 resolution rule and the naive-base failure mode explicitly. Live-verified the correct-base behavior: broken-projection-manifest.yaml yields exactly 1 error (projection-output-missing) + 1 warning (projection-hash-drift). Did NOT personally revert the resolution to the naive base to watch it fail, to avoid dirtying the approved lane-c worktree; relying on the passing regression test plus the documented rationale as evidence."
+    }
+  ]
+}

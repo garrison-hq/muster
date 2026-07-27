@@ -1,0 +1,54 @@
+# Muster-local discrimination-control fixture (WP05 remediation, F-1 §7.3,
+# rubric §7.3 "Hash Drift — Warning" [NORMATIVE]). Deliberately clean
+# otherwise (no references/context-sources/collaboration violations of its
+# own) so this profile's ONLY finding comes from the projection-drift
+# re-verification WP03's `projection.ts` performs.
+#
+# `../../projection-manifest.json` records a matching `profile_urn` entry
+# ("agent_profile:projection-hash-drift") whose `output_path`
+# ("./skprofile/broken/projection/outputs/hash-drift.md", resolved relative
+# to the projection manifest's own parent directory's parent per rubric
+# §7.2's resolution rule — i.e. relative to fixtures/, giving
+# fixtures/skprofile/broken/projection/outputs/hash-drift.md) DOES exist on
+# disk — but the entry's recorded `source_hash` and `file_hash` are both
+# deliberately wrong 64-hex-digit placeholders that do not match the real
+# sha256 of this file's own bytes or of outputs/hash-drift.md's bytes.
+# Deliberately NO real digest is quoted here for either file — not this
+# source .agent.yaml's own bytes, and not outputs/hash-drift.md's bytes
+# (a prior revision of this header did quote a value for the latter; it was
+# removed by a follow-up operator decision, for the reason given next).
+# This file's own digest is unquotable by construction: a file cannot state
+# its own sha256 without the act of writing it changing its bytes and
+# invalidating the claim — a fixed point no edit can reach.
+# outputs/hash-drift.md's digest is omitted for a related but distinct
+# reason: that file carries its own
+# self-describing comment header (see its `<!-- ... -->` block), which has
+# already been edited once before (its relative path back to
+# projection-manifest.json), staling a previously-recorded digest for it —
+# so any digest pinned here for that file goes stale again at that file's
+# next edit, with nothing in this repo checking it. The manifest's
+# deadbeef-repeating placeholders are self-evidently deliberate wrong
+# values on their own; a real-digest cross-reference adds little for a
+# reader distinguishing "intentionally wrong" from "accidentally drifted",
+# and a claim that must be re-verified on every unrelated edit, with
+# nothing verifying it, is a trap regardless of whether it is correct
+# today. To check the current real value, recompute it directly —
+# `sha256sum fixtures/skprofile/broken/projection/outputs/hash-drift.md` —
+# rather than trusting a quoted copy here. Per rubric §7.3 this is a
+# WARNING (the artefact exists, it is merely stale), never an error.
+#
+# Expected vector (this profile alone, against
+# broken-projection-manifest.yaml): projection-hash-drift(warning), and
+# nothing else.
+profile-id: projection-hash-drift
+name: Projection Hash Drift (fixture)
+description: >
+  Discrimination-control fixture: rigs a projection-manifest entry whose
+  output_path exists on disk but whose recorded source_hash/file_hash are
+  deliberately wrong, and nothing else.
+purpose: Exist solely to trip projection-hash-drift and no other lint class.
+roles:
+  - projection-hash-drift-role
+
+specialization:
+  primary-focus: Discrimination-control fixture authoring.

@@ -1,0 +1,21 @@
+# Muster-local discrimination-control fixture (WP05 remediation, F-1 §3.2).
+# Paired with asymmetric-a.agent.yaml — see that file's header for the full
+# documented one-finding pair vector. This file declares roles:
+# [role-asymmetric-b] (so asymmetric-a's handoff-to role resolves) but
+# deliberately omits "role-asymmetric-a" from its own handoff-from, and
+# declares no handoff-to of its own — so it contributes zero findings on
+# its own account; the pair's sole finding (handoff-asymmetric, warning)
+# is reported against asymmetric-a.agent.yaml.
+profile-id: asymmetric-b
+name: Asymmetric Handoff B (fixture)
+description: >
+  Discrimination-control fixture: the reciprocating half of the
+  asymmetric-a.agent.yaml pair. Declares roles: [role-asymmetric-b] so
+  asymmetric-a's handoff-to resolves, but does not reciprocate via
+  handoff-from and declares no handoff-to of its own.
+purpose: Exist solely (with asymmetric-a.agent.yaml) to trip handoff-asymmetric.
+roles:
+  - role-asymmetric-b
+
+specialization:
+  primary-focus: Discrimination-control fixture authoring.

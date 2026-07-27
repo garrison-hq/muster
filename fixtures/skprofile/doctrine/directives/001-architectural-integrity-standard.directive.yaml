@@ -1,0 +1,13 @@
+# Muster-local fixture stub (C-004) — mirrors the real upstream filename
+# shape at spec-kitty commit ebfbaddd653789417f89b040320ccfe452f15424
+# (src/doctrine/directives/built-in/001-architectural-integrity-standard.directive.yaml).
+# WP02's reference/context-sources checks only resolve doctrine files by
+# filename (directives match by "<code>-" prefix, research.md R2) — they
+# never parse doctrine YAML content — so this stub carries the real `id`
+# for readability only; its body is intentionally minimal.
+schema_version: "1.0"
+id: DIRECTIVE_001
+title: Architectural Integrity Standard (fixture stub)
+intent: >
+  Fixture stub only — content is never validated by this mission's checks.
+enforcement: required

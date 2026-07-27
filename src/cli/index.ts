@@ -118,6 +118,20 @@ import {
   RUBRIC_DOC_PATH as MEMORY_UTILIZATION_RUBRIC_DOC_PATH,
 } from "../adapters/memory-utilization/rubric.js";
 import { evaluateLiftVerdict as evaluateMemoryUtilizationLiftVerdict } from "../core/behavioral/stats/power.js";
+// Spec-kitty-profile adapter imports (C-001: only the adapter boundary +
+// its manifest/rubric-path helpers are imported here).
+import {
+  createSpecKittyProfileAdapter,
+  type AdapterResult as SkProfileAdapterResult,
+  type SkProfileCaseResult,
+  type SkProfileFinding,
+} from "../adapters/spec-kitty-profile/index.js";
+import {
+  loadSkProfileManifest,
+  resolveSkProfileManifestPaths,
+  type SkProfileManifest,
+} from "../adapters/spec-kitty-profile/manifest.js";
+import { RUBRIC_DOC_PATH as SK_PROFILE_RUBRIC_DOC_PATH } from "../adapters/spec-kitty-profile/rubric.js";
 
 /** Version straight from package.json (works from src/ via tsx and dist/). */
 const VERSION = (
@@ -1579,6 +1593,88 @@ function formatToolsResultHuman(results: readonly ToolsManifestResult[]): string
   return lines.join("\n");
 }
 
+// ─── muster skprofile run ───────────────────────────────────────────────────
+
+/** The machine-readable spec-kitty-profile run report (data-model.md `SkProfileReport`). */
+interface SkProfileReport {
+  readonly ok: boolean;
+  readonly summary: string;
+  readonly rubricDocPath: string;
+  readonly exitCode: 0 | 1 | 2;
+  readonly findings: readonly SkProfileFinding[];
+  readonly cases: readonly SkProfileCaseResult[];
+}
+
+/** Build the emitted JSON report (data-model.md `Report`) from one adapter run. */
+function buildSkProfileReport(result: SkProfileAdapterResult): SkProfileReport {
+  return {
+    ok: result.ok,
+    summary: result.summary,
+    rubricDocPath: SK_PROFILE_RUBRIC_DOC_PATH,
+    exitCode: result.ok ? 0 : 1,
+    findings: result.findings,
+    cases: result.cases,
+  };
+}
+
+/**
+ * Run the spec-kitty-profile static conformance manifest (FR-001..FR-010).
+ * Fully static and offline — no endpoint, no ChatClient (research.md R8).
+ *
+ * Exit-code contract (data-model.md):
+ *   0 — `adapterResult.ok === true` (no error-severity finding anywhere).
+ *   1 — `adapterResult.ok === false` (at least one error-severity finding).
+ *   2 — the manifest (or `projectionManifestPath`, when supplied) could not
+ *       be read/parsed, or a required manifest path is declared but
+ *       structurally missing (`ExecutionError`, mapped by the top-level
+ *       dispatcher, same as every other hand-wired `run` subcommand).
+ */
+async function doSkProfileRun(manifestPath: string, opts: GlobalOpts, io: Io): Promise<number> {
+  const absManifestPath = toAbsolute(manifestPath);
+  let raw: unknown;
+  try {
+    raw = await loadSkProfileManifest(absManifestPath);
+  } catch (error) {
+    throw new ExecutionError(`cannot read spec-kitty-profile manifest: ${errorMessage(error)}`);
+  }
+  const manifest = resolveSkProfileManifestPaths(raw as SkProfileManifest, dirname(absManifestPath));
+
+  const adapter = createSpecKittyProfileAdapter();
+  let result: SkProfileAdapterResult;
+  try {
+    result = await adapter.run(manifest);
+  } catch (error) {
+    throw new ExecutionError(`spec-kitty-profile adapter run failed: ${errorMessage(error)}`);
+  }
+
+  const report = buildSkProfileReport(result);
+  io.outLine(opts.json === true ? JSON.stringify(report, null, 2) : formatSkProfileResultHuman(report));
+  return report.exitCode;
+}
+
+/** One case's findings, human-readable (empty cases print no finding lines). */
+function skProfileCaseLines(c: SkProfileCaseResult): string[] {
+  const header =
+    c.profileId === undefined ? `  case ${c.caseId}:` : `  case ${c.caseId} (profileId=${c.profileId}):`;
+  const findingLines = c.findings.map((f) => `    [${f.severity}] ${f.profileId} ${f.path}: ${f.message}`);
+  return [header, ...findingLines];
+}
+
+/**
+ * Human-readable formatting for the spec-kitty-profile report: one line per
+ * finding, grouped by case (data-model.md `Report`).
+ *
+ * Normative citation: `docs/rubric/spec-kitty-profile-taxonomy.md` (FR-009).
+ */
+function formatSkProfileResultHuman(report: SkProfileReport): string {
+  const statusWord = report.ok ? "PASS" : "FAIL";
+  const lines: string[] = [`spec-kitty-profile: ${statusWord} — ${report.summary}`];
+  for (const c of report.cases) {
+    lines.push(...skProfileCaseLines(c));
+  }
+  return lines.join("\n");
+}
+
 // ─── program assembly ───────────────────────────────────────────────────────
 
 function buildProgram(
@@ -1936,6 +2032,38 @@ function buildProgram(
     )
     .action(async (manifest: string, _local, cmd: Command) => {
       setExit(await doToolsRun(manifest, cmd.optsWithGlobals(), io));
+    });
+
+  // ─── muster skprofile ─────────────────────────────────────────────────────
+  const skProfile = program
+    .command("skprofile")
+    .description(
+      "Spec-Kitty agent-profile static conformance adapter: schema " +
+      "conformance, handoff-graph resolution, doctrine-reference " +
+      "resolution, context-sources integrity, profile-id legality, and " +
+      "projection-drift re-verification (FR-001..FR-010)."
+    );
+  skProfile
+    .command("run")
+    .description(
+      "Run a spec-kitty-profile manifest against a *.agent.yaml profile " +
+      "set. Fully static and offline — no endpoint, no ChatClient."
+    )
+    .argument("<manifest>", "path to a spec-kitty-profile manifest (YAML)")
+    .addHelpText(
+      "after",
+      "\nThis capability is entirely static and offline — no endpoint, no ChatClient, no credentials.\n" +
+        "\nEvery non-schema finding cites muster's published rubric " +
+        "(docs/rubric/spec-kitty-profile-taxonomy.md, FR-009); schema findings cite the pinned upstream " +
+        "agent-profile.schema.yaml + commit SHA.\n" +
+        "\nExit-code contract:\n" +
+        "  0  no error-severity finding anywhere in the graph\n" +
+        "  1  at least one error-severity finding\n" +
+        "  2  manifest (or projectionManifestPath) could not be read/parsed, or a required manifest path " +
+        "is declared but structurally missing"
+    )
+    .action(async (manifest: string, _local, cmd: Command) => {
+      setExit(await doSkProfileRun(manifest, cmd.optsWithGlobals(), io));
     });
 
   return program;

@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://garrison-hq.github.io/muster/contracts/spec-kitty-profile-report.schema.json",
+  "title": "muster skprofile run report",
+  "description": "Machine-readable report emitted by `muster skprofile run <manifest> --json` (data-model.md SkProfileReport). Every finding cites source.normative: the pinned upstream schema URL for schema findings (FR-002), or a docs/rubric/spec-kitty-profile-taxonomy.md §clause for every other check class (FR-009).",
+  "type": "object",
+  "required": ["ok", "summary", "rubricDocPath", "exitCode", "findings", "cases"],
+  "properties": {
+    "ok": {
+      "type": "boolean",
+      "description": "true iff findings[] contains zero severity:\"error\" entries, across the whole profile graph (independent of case coverage)."
+    },
+    "summary": { "type": "string" },
+    "rubricDocPath": { "type": "string", "const": "docs/rubric/spec-kitty-profile-taxonomy.md" },
+    "exitCode": {
+      "type": "integer",
+      "enum": [0, 1, 2],
+      "description": "0 = ok; 1 = at least one error finding; 2 = the manifest (or projectionManifestPath) could not be read/parsed, or a required manifest path (profilesDir/schemaPath/doctrineRoot/activationConfigPath) was declared but missing."
+    },
+    "findings": {
+      "type": "array",
+      "description": "Authoritative, ungrouped, whole-graph finding set (data-model.md SkProfileFinding).",
+      "items": { "$ref": "#/definitions/finding" }
+    },
+    "cases": {
+      "type": "array",
+      "description": "Report-organization view only (research.md R1) — a filtered projection of findings[] by case.profileId, never an independent pass/fail gate.",
+      "items": {
+        "type": "object",
+        "required": ["caseId", "findings"],
+        "properties": {
+          "caseId": { "type": "string" },
+          "profileId": { "type": "string" },
+          "findings": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/finding" }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "finding": {
+      "type": "object",
+      "required": ["kind", "profileId", "path", "message", "severity", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "schema-conformance-violation",
+            "profile-parse-error",
+            "handoff-unresolved",
+            "handoff-asymmetric",
+            "reference-unresolved",
+            "reference-not-activated",
+            "activation-config-unrecognized-shape",
+            "context-source-missing",
+            "profile-id-illegal",
+            "profile-id-filename-mismatch",
+            "profile-id-collision",
+            "projection-output-missing",
+            "projection-hash-drift"
+          ],
+          "description": "Draft vocabulary (plan.md research.md R6); docs/rubric/spec-kitty-profile-taxonomy.md (WP04) is the authoritative source for final naming/§-clause mapping."
+        },
+        "profileId": {
+          "type": "string",
+          "description": "The profile-id this finding concerns, or \"(manifest)\" for a manifest/schema-load-level finding not tied to one profile."
+        },
+        "path": {
+          "type": "string",
+          "description": "e.g. \"collaboration.handoff-to[0]\", \"profile-id\", \"directive-references[2].code\"."
+        },
+        "message": { "type": "string", "minLength": 1 },
+        "severity": { "type": "string", "enum": ["error", "warning"] },
+        "source": {
+          "type": "object",
+          "required": ["normative"],
+          "additionalProperties": false,
+          "properties": {
+            "normative": {
+              "type": "string",
+              "minLength": 1,
+              "description": "For schema-conformance-violation: https://github.com/Priivacy-ai/spec-kitty/blob/<schemaSha>/src/doctrine/schemas/agent-profile.schema.yaml (FR-002). For every other kind: a docs/rubric/spec-kitty-profile-taxonomy.md §clause (FR-009)."
+            }
+          }
+        }
+      }
+    }
+  }
+}

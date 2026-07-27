@@ -1,0 +1,27 @@
+{
+  "entries": [
+    {
+      "profile_urn": "agent_profile:projection-output-missing",
+      "source_layer": "fixture",
+      "tool_key": "claude",
+      "output_path": "./skprofile/broken/projection/outputs/output-missing-does-not-exist.md",
+      "format": "claude-agent",
+      "file_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "source_path": "fixtures/skprofile/broken/projection/projection-output-missing.agent.yaml",
+      "source_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "projection_version": 1
+    },
+    {
+      "profile_urn": "agent_profile:projection-hash-drift",
+      "source_layer": "fixture",
+      "tool_key": "claude",
+      "output_path": "./skprofile/broken/projection/outputs/hash-drift.md",
+      "format": "claude-agent",
+      "file_hash": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+      "source_path": "fixtures/skprofile/broken/projection/projection-hash-drift.agent.yaml",
+      "source_hash": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+      "projection_version": 1
+    }
+  ],
+  "schema_version": 1
+}

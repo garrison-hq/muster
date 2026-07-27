@@ -1,0 +1,39 @@
+# Muster-local discrimination-control fixture (WP05 remediation, F-1 §6.4,
+# rubric §6.4 "Cross-Profile Collision" [NORMATIVE]). Paired with
+# collision-b.agent.yaml — both declare the SAME profile-id
+# ("collision-a"), which two files cannot legitimately share.
+#
+# DOCUMENTED MULTI-KIND VECTOR, across BOTH files in this pair (identical
+# to WP02's identity.ts `checkCollisions`, which emits one
+# profile-id-collision finding per profile IN the colliding group, plus
+# checkFilenameMatch running independently per profile):
+#
+#   - This file (collision-a.agent.yaml, profile-id "collision-a"): its
+#     own filename stem ("collision-a") equals its declared profile-id, so
+#     it does NOT also trip profile-id-filename-mismatch. It DOES trip
+#     profile-id-collision (1 finding).
+#   - collision-b.agent.yaml (profile-id "collision-a", filename stem
+#     "collision-b"): its declared id does NOT equal its own filename
+#     stem, so it ALSO trips profile-id-filename-mismatch (1 finding), in
+#     addition to its own profile-id-collision finding (1 finding) — two
+#     files cannot both keep a filename-matching id while colliding, so
+#     this second finding on collision-b is unavoidable, exactly as this
+#     WP's remediation brief anticipated.
+#
+# Expected vector for the PAIR (verified by driving WP02's real
+# checkIdentity against both files together): 3 findings total —
+# profile-id-collision(error) x2 (one per file) + profile-id-filename-
+# mismatch(error) x1 (collision-b only).
+profile-id: collision-a
+name: Collision A (fixture)
+description: >
+  Discrimination-control fixture: rigs a profile-id collision with
+  collision-b.agent.yaml. See the documented three-finding pair vector
+  above (this file contributes one profile-id-collision finding; its own
+  filename stem already matches its declared id).
+purpose: Exist solely (together with collision-b.agent.yaml) to trip profile-id-collision.
+roles:
+  - collision-a-role
+
+specialization:
+  primary-focus: Discrimination-control fixture authoring.
