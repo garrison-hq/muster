@@ -234,7 +234,7 @@ Issue #62 describes **two** instances of the same defect family. This mission fi
 - would require a distinct fix shape (a2a's bug is in the *inversion* step applied after grading, not in a *catch block that derives `passed` from an expectation* — the skills bug's shape); a single mission trying to fix both dilutes the "single lane, import-coupled" write_scope rationale issue #59 itself gives for keeping M5 to one lane;
 - is not named by issue #59, M5's own mission brief, at all — issue #62 surfaces the a2a instance as new information discovered by this specify pass's own verification step (and by issue #62's own author), not as part of M5's original charter. The skills-adapter instance, by contrast, is squarely "a discrimination-control defect in the skills runner" — the exact phrase this mission's own directive used to describe what is believed in scope.
 
-**Decision**: fix the skills-adapter instance in this mission (FR-007). File a separate, explicitly-scoped follow-up mission/issue for the a2a `applyControlInversion` defect, referencing `#62`'s blast-radius section directly, so the finding is not lost. (Tracking issue: see report.)
+**Decision**: fix the skills-adapter instance in this mission (FR-007). The a2a `applyControlInversion` defect is tracked separately as `garrison-hq/muster#69`, filed during this specify pass, referencing `#62`'s blast-radius section directly, so the finding is not lost.
 
 ## Success Criteria
 
