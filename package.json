@@ -1,7 +1,7 @@
 {
   "name": "@garrison-hq/muster",
   "version": "0.0.0",
-  "description": "Conformance harness for the agent-file stack — static validation and behavioral grading across Soul.md personas (RFC-1/CTS-1), Agent Skills, OpenClaw SOPs (AGENTS.md), tool manifests (TOOLS.md), agent memory, heartbeat checklists, cross-layer composition, and A2A Agent Cards.",
+  "description": "Conformance harness for the agent-file stack — static validation and behavioral grading across Soul.md personas (RFC-1/CTS-1), Agent Skills, OpenClaw SOPs (AGENTS.md), tool manifests (TOOLS.md), agent memory, heartbeat checklists, A2A Agent Cards, Spec Kitty agent profiles, and cross-layer composition.",
   "type": "module",
   "license": "Apache-2.0",
   "author": "Jeroen Nouws",
@@ -36,6 +36,8 @@
     "a2a",
     "agent-card",
     "agent2agent",
+    "spec-kitty",
+    "agent-profile",
     "json-schema",
     "canonical-json",
     "rfc8785",
