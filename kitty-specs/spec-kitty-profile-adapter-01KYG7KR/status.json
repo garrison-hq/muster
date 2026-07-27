@@ -1,7 +1,7 @@
 {
-  "event_count": 17,
-  "last_event_id": "01KYH7KAJZZ4R3T3G5H51D3J0D",
-  "materialized_at": "2026-07-27T07:28:30.303230+00:00",
+  "event_count": 18,
+  "last_event_id": "01KYH7YBKWG4676P5YMK5Q61NB",
+  "materialized_at": "2026-07-27T07:34:31.804555+00:00",
   "mission_number": "",
   "mission_slug": "spec-kitty-profile-adapter-01KYG7KR",
   "mission_type": "software-dev",
@@ -11,9 +11,9 @@
     "canceled": 0,
     "claimed": 0,
     "done": 0,
-    "for_review": 1,
+    "for_review": 0,
     "in_progress": 0,
-    "in_review": 0,
+    "in_review": 1,
     "planned": 3
   },
   "work_packages": {
@@ -58,14 +58,14 @@
       "last_transition_at": "2026-07-26T23:54:50.823371+00:00"
     },
     "WP04": {
-      "actor": "curator-carla",
+      "actor": "user",
       "agent": "claude",
       "agent_profile": "__resolved_profile_absent__",
       "agent_profile_version": "__resolved_profile_version_absent__",
       "force_count": 2,
-      "lane": "for_review",
-      "last_event_id": "01KYH7KAJZZ4R3T3G5H51D3J0D",
-      "last_transition_at": "2026-07-27T07:28:30.303230+00:00",
+      "lane": "in_review",
+      "last_event_id": "01KYH7YBKWG4676P5YMK5Q61NB",
+      "last_transition_at": "2026-07-27T07:34:31.804555+00:00",
       "model": "__resolved_model_absent__",
       "notes": [
         "Rubric surface complete: spec-kitty-profile-taxonomy.md and spec-kitty-behavioral-axes.md created, sop-rule-taxonomy.md v1.1 appendix added. T024 cross-check: WP02 has not landed yet, follow-up recorded in Activity Log.",
@@ -73,7 +73,7 @@
         "Re-review pass 2 (reviewer-renata): all 10 blockers B1-B10 + advisory VERIFIED CLOSED at their stated locations; both rewritten RUBRIC instruments judged sound and materially better; sop-rule-taxonomy v1.0.0 confirmed byte-identical below front matter by independent git diff. APPROVED ON THE MERITS. Cannot record 'approved': commit a5b5d4e placed the WP04 Activity Log entry (kitty-specs/) on the LANE branch, which the mission git gate forbids - move-task --to approved is hard-blocked and --force is not appropriate. Required to close (all mechanical, none touch anything WP02 depends on): (1) move the a5b5d4e Activity Log entry from the lane branch to kitty/mission-spec-kitty-profile-adapter; (2) append the missing T024 entry - DoD box 4 is unticked, no Activity Log entry records the reconciliation outcome; verified independently that src/adapters/spec-kitty-profile/rubric.ts exists on NO branch, so 'WP02 not landed, follow-up at merge' is the correct and only content; (3) spec-kitty-profile-taxonomy.md:315 cites repository.py:489 for 'self._profiles[profile.profile_id] = profile' - actual line is 486 (a second occurrence is at 877); (4) spec-kitty-profile-taxonomy.md:279-280 gives 6.1 TWO provenance tags, contradicting the same document's Introduction line 32 'exactly one provenance tag' - either split 6.1 or soften the Introduction. Re-review is a read of these four edits only; the three rubric documents' substance is accepted as-is."
       ],
       "provider": "__resolved_provider_absent__",
-      "role": "implementer",
+      "role": "reviewer",
       "shell_pid": 723071,
       "shell_pid_created_at": "1785112673.87",
       "subtasks": {
