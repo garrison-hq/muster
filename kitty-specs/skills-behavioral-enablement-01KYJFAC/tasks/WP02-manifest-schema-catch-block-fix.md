@@ -204,17 +204,23 @@ EOF
 muster skills run "$TMPDIR_BAD/bad-skills-manifest.yaml"; echo "exit=$?"   # expect 2, message names the missing field(s)
 
 # also: type outside the static|behavioral enum, and expectations.ok as a string — both exit 2
-# Verified with a MATCH COUNT, not a bare exit code (same vitest quirk as WP01's C-001 check:
-# "-t" matching nothing still exits 0).
+# Verified with the JSON reporter's overall success flag, not a bare exit code (same vitest
+# quirk as WP01's C-001 check: "-t" matching nothing still exits 0).
+# NOTE: `numPassedTests >= 1` was tried first and is INSUFFICIENT — vitest.config.ts sets
+# `typecheck.enabled: true`, which runs a parallel type-check pseudo-suite per file whose entries
+# report passed independently of the real runtime assertions, so numPassedTests can be >= 1 on a
+# fully red run (proven live against a real implementer's RED artifact for this exact case:
+# numPassedTests=3, numFailedTests=3, success=false — the old guard would have said PASS).
+# `.success` (equivalently `.numFailedTests == 0`) is not fooled by the duplicates.
 pnpm vitest run tests/skills/cli.test.ts -t "manifest schema" --reporter=json > /tmp/fr003.json
 echo "exit=$?"   # expect 0
-test "$(jq '.numPassedTests' /tmp/fr003.json)" -ge 1; echo "match_exit=$?"   # MUST be 0
+test "$(jq '.success' /tmp/fr003.json)" = "true"; echo "match_exit=$?"   # MUST be 0
 
 # FR-007 — delete-direction test, against a temp copy (grounding correction #4). Same
-# match-count fix applied.
+# success-flag fix applied.
 pnpm vitest run tests/skills/cli.test.ts -t "delete-direction" --reporter=json > /tmp/fr007.json
 echo "exit=$?"   # expect 0
-test "$(jq '.numPassedTests' /tmp/fr007.json)" -ge 1; echo "match_exit=$?"
+test "$(jq '.success' /tmp/fr007.json)" = "true"; echo "match_exit=$?"
 # MUST be 0; assertion inside the passing test: passed must NOT be true after the copy's
 # fixture dir is removed; a dedicated errored:true (or passed:false) outcome is required, exit
 # contribution is 1
@@ -222,7 +228,7 @@ test "$(jq '.numPassedTests' /tmp/fr007.json)" -ge 1; echo "match_exit=$?"
 # Regression: WP01's tests still pass after this WP's edits to the same interface/file
 pnpm vitest run tests/skills/cli.test.ts -t "errored trigger run" --reporter=json > /tmp/c001-regress.json
 echo "exit=$?"
-test "$(jq '.numPassedTests' /tmp/c001-regress.json)" -ge 1; echo "match_exit=$?"   # MUST be 0
+test "$(jq '.success' /tmp/c001-regress.json)" = "true"; echo "match_exit=$?"   # MUST be 0
 
 pnpm vitest run tests/unit/invariants.test.ts
 echo "invariants_exit=$?"   # see WP01's caveat: may be 1 for the pre-existing, unrelated
@@ -273,3 +279,48 @@ coordination branch.
   this WP edits the same file WP01 added that test to.
 
 **Implementation command**: `spec-kitty agent action implement WP02 --agent claude`
+
+## Activity Log
+
+- 2026-07-27T22:54:02Z – claude (coordinator) – Test-first reconstruction note
+  (directive 034-test-first-development, `.kittify/config.yaml:30`,
+  enforcement: required). This WP's five commits —
+  `53cf25e` (T008, schema), `ea20e91` (T009, wiring), `ac746b8` (T011, FR-003
+  tests), `5d9170d` (T010, catch-block fix), `5eb1712` (T012, FR-007 test) —
+  were staged retroactively from a single working-tree implementation pass,
+  all landing within a 3-minute span (00:18:54–00:21:57 local, 2026-07-28).
+  The commit order reads implementation-first (schema → wiring → test), and
+  only `5d9170d`'s own message records a red→green claim. **This entry states
+  plainly that the commit sequence is reconstruction of what happened in the
+  working tree, not a claim that the git history's commit order demonstrates
+  red-then-green compliance — it does not, by itself.** WP01 was already
+  remediated for a recording gap of exactly this shape (see WP01's own
+  Activity Log entry).
+
+  What the working-tree cycle actually showed, reconstructed from ephemeral
+  `--reporter=json` artifacts captured during implementation (a session
+  scratchpad, itself never committed and subject to evaporate):
+  - `red-fr003.json` (2026-07-28T00:11:59+02:00, ~6m55s before the first
+    commit; run against the lane worktree,
+    `.worktrees/skills-behavioral-enablement-01KYJFAC-lane-a`, pre-fix):
+    `numPassedTests=3, numFailedTests=3, success=false`. Failing for the
+    right reasons — the missing-required-field case failed because the
+    CLI's pre-existing unexpected-error path doesn't name `skillDir`; the
+    enum/type-mismatch cases failed because, pre-validator, the malformed
+    manifest was still accepted and produced a 0/0 or 1-case PASS/FAIL
+    summary instead of exiting 2 with empty stdout.
+  - `red-fr007.json` (2026-07-28T00:12:34+02:00, ~6m20s before the first
+    commit; same worktree, pre-fix): `numPassedTests=1, numFailedTests=1,
+    success=false`. Failing for the right reason — the delete-direction
+    case reported `passed:true` (expected `false`), the exact muster#62
+    catch-block bug T010 fixes.
+  - `green-fr003.json`, `green-fr007.json`, `c001-regress.json`
+    (00:13:15–00:13:53, after the fix was applied in the working tree but
+    before any of the five commits existed): all `success=true`, confirming
+    the fix flips the result.
+  - This same second-pass audit is also why the acceptance-evidence checks
+    above were changed from `numPassedTests >= 1` to `.success == true` —
+    `numPassedTests` alone does not distinguish a red run from a green one
+    when `vitest.config.ts`'s `typecheck.enabled: true` pseudo-suite is
+    counted (see `red-fr003.json` above: `numPassedTests=3` on a run that
+    was, in fact, fully red).
