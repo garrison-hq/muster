@@ -1,0 +1,42 @@
+# Pinned configuration behind this mission's headline real-world figure:
+# "43 findings: 7 handoff-unresolved + 9 handoff-asymmetric +
+#  27 reference-not-activated" (quickstart.md §6, tasks/WP03-cli-projection-
+#  fixtures.md T020, acceptance-matrix.json).
+#
+# Checked in per the pre-merge review's HIGH-1/record-correction finding:
+# no checked-in manifest previously pinned the exact configuration behind
+# this number, which is why two independently-competent runs could
+# disagree (16 / 25 / 43) depending on whether activationConfigPath was
+# supplied at all. This file removes that ambiguity for any future rerun.
+#
+# Profile-set commit this was measured against (external, read-only
+# reference — NOT vendored into this repo; `profilesDir`/`doctrineRoot`
+# below only resolve on a machine that also has this checkout present):
+#   repo:   https://github.com/MOES-Media/spec-kitty (fork)
+#   path:   src/doctrine/agent_profiles/built-in (18 *.agent.yaml profiles)
+#   commit: c425bc188995b5b9a04bece05b511ba81896ce7f
+#   (the 18 profiles' own content is unchanged since 91eeced1d, 2026-06-22 —
+#   verified by the pre-merge review round; the 43/7/9/27 figure is
+#   insensitive to every commit between that SHA and the one pinned above)
+#
+# Activation config this was measured against: this repository's own
+# .kittify/config.yaml, 19/26 directives + 97/~200 tactics activated
+# (byte-identical across all 11 copies of that file in this repo and its
+# worktrees, verified by the pre-merge review round). Re-derived directly
+# against this exact manifest on 2026-07-27: 43 findings total (7
+# handoff-unresolved, 9 handoff-asymmetric, 27 reference-not-activated),
+# report.ok === false, exit code 1, stable across two consecutive runs.
+#
+# Reproduce with (adjust the two absolute paths for your machine):
+#   node dist/cli/index.js skprofile run \
+#     kitty-specs/spec-kitty-profile-adapter-01KYG7KR/verification/real-profile-run-manifest.yaml \
+#     --json
+
+version: "1.0.0"
+profilesDir: /home/jeroennouws/dev/spec-kitty-conformance/src/doctrine/agent_profiles/built-in
+schemaPath: /home/jeroennouws/dev/spec-kitty-conformance/src/doctrine/schemas/agent-profile.schema.yaml
+schemaSha: c425bc188995b5b9a04bece05b511ba81896ce7f
+doctrineRoot: /home/jeroennouws/dev/spec-kitty-conformance/src/doctrine
+activationConfigPath: /home/jeroennouws/dev/garrison-hq/muster/.kittify/config.yaml
+cases:
+  - id: real-profiles

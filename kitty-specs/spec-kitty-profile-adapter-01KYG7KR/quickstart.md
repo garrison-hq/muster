@@ -116,38 +116,40 @@ Expected: exit code `0`. This is the manifest AC-1 names literally.
 
 Binding operator directive: this mission cannot be called done on unit tests
 alone. After `pnpm build`, run the built CLI against the real, unmodified
-upstream profile set (read-only reference; never write there):
+upstream profile set (read-only reference; never write there), using the
+**checked-in** manifest that pins this exact configuration —
+`kitty-specs/spec-kitty-profile-adapter-01KYG7KR/verification/real-profile-run-manifest.yaml`
+(see that file's own header comment for the pinned profile-set commit and
+activation config; adjust its two absolute paths for your machine before
+running):
 
 ```bash
 node dist/cli/index.js skprofile run \
-  /tmp/skprofile-real-run-manifest.yaml --json
+  kitty-specs/spec-kitty-profile-adapter-01KYG7KR/verification/real-profile-run-manifest.yaml \
+  --json
 ```
 
-where `/tmp/skprofile-real-run-manifest.yaml` declares:
-```yaml
-version: "1.0.0"
-profilesDir: /home/jeroennouws/dev/spec-kitty-conformance/src/doctrine/agent_profiles/built-in
-schemaPath: /home/jeroennouws/dev/spec-kitty-conformance/src/doctrine/schemas/agent-profile.schema.yaml
-schemaSha: <the actual HEAD commit SHA of that checkout>
-doctrineRoot: /home/jeroennouws/dev/spec-kitty-conformance/src/doctrine
-cases:
-  - id: real-profiles
-```
-
-Expected: this proves the adapter runs end-to-end on real, non-fixture
-artifacts — 18 profiles, real handoff graph (architect → planner/implementer,
-etc.), real directive codes (19/26 activated in muster's own
-`.kittify/config.yaml`, if `activationConfigPath` is additionally pointed at
-it). The exact exit code depends on whether the real profile set is
-perfectly clean against every lint class as currently authored — **record
-whichever exit code is observed and why**, rather than assuming `0`; this
-step's purpose is proving the harness discriminates on real data, not
-asserting a specific verdict. Separately, run this same command a second
-time and diff the two `--json` payloads: they are **not** required to be
-byte-identical across machines (research.md R5 — the real projection
-manifest at `.kittify/agent_profiles_manifest.json` bakes in absolute,
-machine-specific `output_path` values), but they **are** required to be
-byte-identical across the two consecutive runs on **this** machine.
+Expected, against that pinned configuration (18 real profiles, real
+handoff graph — architect → planner/implementer, etc. — real directive
+codes, `activationConfigPath` pointed at this repo's own
+`.kittify/config.yaml`, 19/26 directives activated): **exactly 43
+findings** — 7 `handoff-unresolved` (error) + 9 `handoff-asymmetric`
+(warning) + 27 `reference-not-activated` (warning) — `report.ok ===
+false`, exit code `1`. None of the 27 `reference-not-activated` findings
+are authoring defects in the upstream profiles: that finding kind is
+`[MUSTER-OWN]` by design (rubric §4.2) — a reference that resolves on
+disk but isn't in this project's activated set is expected, real-world
+under-activation, not a profile bug. Without `activationConfigPath`
+supplied at all, the same profile set instead yields 16 findings (the 7 +
+9 only) — the 27 is entirely a function of which activation config, if
+any, is supplied, which is exactly why this configuration is now pinned
+in a checked-in manifest rather than restated from memory each time.
+Re-running this exact manifest twice must produce byte-identical
+`--json` payloads on **this** machine (they are **not** required to be
+byte-identical across machines — research.md R5 — since the real
+projection manifest at `.kittify/agent_profiles_manifest.json` bakes in
+absolute, machine-specific `output_path` values, which this manifest does
+not exercise via `projectionManifestPath` in the first place).
 
 Also separately exercise the parse-error exit path (Scenario 14, exit `2`):
 point `projectionManifestPath` at a file containing invalid JSON and confirm
