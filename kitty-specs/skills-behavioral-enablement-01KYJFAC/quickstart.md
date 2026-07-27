@@ -68,16 +68,16 @@ MUSTER_ENDPOINT=http://localhost:11434/v1 MUSTER_MODEL=<local-model> \
 
 | Field | Value |
 |---|---|
-| Date/time run | _pending — filled at pre-accept gate_ |
-| Attempt # (1 or 2, per failure policy) | _pending_ |
-| `behavioral-weather-skill` — `passed` | _pending_ |
-| `behavioral-weather-skill` — observed trigger rate | _pending_ |
-| `behavioral-rigged-control` — `passed` (must be `false`) | _pending_ |
-| `behavioral-rigged-control` — observed trigger rate | _pending_ |
-| Overall exit code | _pending_ |
-| Portability check endpoint used | _pending_ |
-| Portability check result | _pending_ |
-| Blocking findings (if any) | _pending_ |
+| Date/time run | 2026-07-27T23:17:28Z (two independent live runs within the same session, WP04 T021, lane-a pre-merge tree; model `gpt-4o-mini`, endpoint `https://api.openai.com/v1`) |
+| Attempt # (1 or 2, per failure policy) | 1 (both should-trigger and control passed the required condition on the first attempt — no retry needed) |
+| `behavioral-weather-skill` — `passed` | `true` |
+| `behavioral-weather-skill` — observed trigger rate | should-trigger axis: `0.9667` (29/30 runs); near-miss axis: `0.2` (6/30 runs) |
+| `behavioral-rigged-control` — `passed` (must be `false`) | `false` (confirmed on two independent live runs; `errored` field is `null`, i.e. not `true` — the control genuinely failed the discrimination check, it did not merely error out) |
+| `behavioral-rigged-control` — observed trigger rate | should-trigger axis: `0` (0/24 runs); near-miss axis: `1` (24/24 runs) |
+| Overall exit code | `1` (full manifest: 17 cases, 16 passed, 1 failed — the 1 failure is the discrimination control correctly failing as designed; C-004 correctly makes this contribute to a non-zero exit code) |
+| Portability check endpoint used | `http://localhost:11434/v1` (local Ollama, `MUSTER_MODEL=llama3`) |
+| Portability check result | No local Ollama instance was reachable in this environment (`curl` to `/v1/models` returned connection-refused). The `skills run` command itself still exited `1` (never a bare skip) and both behavioral cases reported `passed:false` with `errored` still `null` — every run's `chatWithTools` call threw (connection refused), and each was individually counted as `runsErrored` inside its axis (FR-011: errored run = failed run, non-retried), which is the correct fail-closed behavior for an unreachable endpoint. This confirms the env-var-only endpoint switch (SC-005) is mechanically wired to a second endpoint, but does not constitute a full "passing" portability run against a live local model — no live local endpoint was available to complete that half of the check in this environment. |
+| Blocking findings (if any) | None against the four mission-required gates: `control_gate_exit=0`, `control_not_errored_gate_exit=0`, `weather_gate_exit=0`, `pending_gate_exit=0` (this table, once filled). Non-blocking note: this task file's own literal `ps_leak_gate_exit` check (`ps aux \| grep -c "MUSTER_API_KEY=\|OPENAI_API_KEY=\|sk-"`) returned a non-zero count (investigated, not a real leak) — the sandboxed execution tool used to run these commands wraps every invocation in its own `bash -c 'eval "<literal command text>"'` process, so a command that assigns `OPENAI_API_KEY=$(...)` inline surfaces that *variable-name* substring (never the resolved value, which was only ever obtained via command substitution and never written into any command's literal source text) transiently in `ps aux` as part of the wrapper's own argv; the pattern `sk-` additionally self-matches ordinary system process names unrelated to credentials (e.g. `disk-utility`). No node process argv, no output file, and no committed file ever contained the literal secret value — confirmed by a live empirical check (`env SECRET=... sh -c 'sleep' &`) showing the invoked child process's own argv never carries the parent's env-assignment prefix, and by `output_leak_gate_exit=0` against the recorded JSON. |
 
 **This table must be filled with real observed values before this mission is accepted or
 merged** — an unfilled or partially-filled table at accept time means the gate was skipped, not
