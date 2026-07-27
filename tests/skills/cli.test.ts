@@ -598,4 +598,64 @@ describe("muster skills run (CLI wiring, FR-013)", () => {
       }
     );
   });
+
+  describe("manifest schema validation (FR-003)", () => {
+    async function runMalformedManifest(manifestYaml: string): Promise<{
+      code: number;
+      stderr: string;
+    }> {
+      const { mkdtempSync, writeFileSync, rmSync } = await import("node:fs");
+      const { tmpdir } = await import("node:os");
+      const { join } = await import("node:path");
+      const dir = mkdtempSync(join(tmpdir(), "muster-skills-manifest-"));
+      const manifestPath = join(dir, "bad-skills-manifest.yaml");
+      writeFileSync(manifestPath, manifestYaml);
+      try {
+        const { code, stdout, stderr } = await run(["skills", "run", manifestPath]);
+        expect(stdout).toBe("");
+        return { code, stderr };
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    }
+
+    it("manifest schema: a case missing a required field exits 2, naming the field", async () => {
+      const manifestYaml = ["cases:", "  - id: broken", "    type: static"].join("\n");
+      const { code, stderr } = await runMalformedManifest(manifestYaml);
+      expect(code).toBe(2);
+      expect(stderr).toContain("skillDir");
+    });
+
+    it("manifest schema: a case type outside the static|behavioral enum exits 2", async () => {
+      const manifestYaml = [
+        "cases:",
+        "  - id: broken",
+        "    type: bogus",
+        "    skillDir: valid/minimal",
+        "    profile: base",
+        "    expectations:",
+        "      ok: true",
+        "      violations: []",
+      ].join("\n");
+      const { code, stderr } = await runMalformedManifest(manifestYaml);
+      expect(code).toBe(2);
+      expect(stderr.length).toBeGreaterThan(0);
+    });
+
+    it("manifest schema: expectations.ok as a string exits 2", async () => {
+      const manifestYaml = [
+        "cases:",
+        "  - id: broken",
+        "    type: static",
+        "    skillDir: valid/minimal",
+        "    profile: base",
+        "    expectations:",
+        '      ok: "yes"',
+        "      violations: []",
+      ].join("\n");
+      const { code, stderr } = await runMalformedManifest(manifestYaml);
+      expect(code).toBe(2);
+      expect(stderr.length).toBeGreaterThan(0);
+    });
+  });
 });
