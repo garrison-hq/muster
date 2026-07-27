@@ -88,6 +88,45 @@ describe("resolveDoctrineFile", () => {
   });
 });
 
+describe("doctrine file listing cache — per-call scoping, not process-global", () => {
+  it("a listing computed before a file is added does not mask that file once a new run begins", async () => {
+    const root = await makeTmpDir();
+    await mkdir(join(root, "directives", "built-in"), { recursive: true });
+
+    // "Run 1": nothing on disk yet for this code — resolves false, and (with
+    // the old module-global cache) would have poisoned every future lookup
+    // for this doctrineRoot/kind pair with an empty listing forever.
+    const p = profile({ profileId: "architect-alphonso", directiveRefs: ["002"] });
+    const firstRun = await checkReferences([p], root);
+    expect(firstRun.map((f) => f.kind)).toEqual(["reference-unresolved"]);
+
+    // The file now appears on disk (e.g. a later fixture setup step, or a
+    // concurrent test against the same tmp root).
+    await writeFile(
+      join(root, "directives", "built-in", "002-second-directive.directive.yaml"),
+      "id: 002-second-directive\n"
+    );
+
+    // "Run 2": a fresh call must not reuse run 1's (now-stale) listing.
+    const secondRun = await checkReferences([p], root);
+    expect(secondRun).toEqual([]);
+  });
+
+  it("resolveDoctrineFile's default per-call cache does not leak across independent calls", async () => {
+    const root = await makeTmpDir();
+    await mkdir(join(root, "directives", "built-in"), { recursive: true });
+
+    expect(resolveDoctrineFile(root, "directive", "003")).toBe(false);
+
+    await writeFile(
+      join(root, "directives", "built-in", "003-third-directive.directive.yaml"),
+      "id: 003-third-directive\n"
+    );
+
+    expect(resolveDoctrineFile(root, "directive", "003")).toBe(true);
+  });
+});
+
 describe("checkReferences — stage 1: on-disk existence", () => {
   it("a resolvable directive code passes stage 1 with no finding", async () => {
     const root = await makeTmpDir();

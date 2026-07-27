@@ -13,7 +13,12 @@
 
 import { err, type SkProfileFinding } from "./findings.js";
 import type { AgentProfile } from "./profile.js";
-import { resolveDoctrineFile, type DoctrineFileKind } from "./references.js";
+import {
+  createDoctrineFileCache,
+  resolveDoctrineFile,
+  type DoctrineFileCache,
+  type DoctrineFileKind,
+} from "./references.js";
 import { RUBRIC_CITATION } from "./rubric.js";
 
 // context-sources field name -> doctrine-file kind it resolves against.
@@ -31,11 +36,12 @@ function checkContextSourceField(
   profile: AgentProfile,
   doctrineRoot: string,
   field: keyof AgentProfile["contextSources"],
-  kind: DoctrineFileKind
+  kind: DoctrineFileKind,
+  cache: DoctrineFileCache
 ): SkProfileFinding[] {
   const findings: SkProfileFinding[] = [];
   profile.contextSources[field].forEach((id, index) => {
-    if (!resolveDoctrineFile(doctrineRoot, kind, id)) {
+    if (!resolveDoctrineFile(doctrineRoot, kind, id, cache)) {
       findings.push(
         err(
           "context-source-missing",
@@ -53,15 +59,22 @@ function checkContextSourceField(
 /**
  * Check every `context-sources` entry across the whole profile set for
  * on-disk existence against `doctrineRoot`. Never activation-gated.
+ *
+ * `cache` defaults to a fresh, call-scoped `DoctrineFileCache` so repeated
+ * calls (even against the same `doctrineRoot`) never share state and never
+ * see a stale on-disk listing. Pass the same cache instance used for a
+ * `checkReferences` call in the same run to share one on-disk walk across
+ * both checks.
  */
 export function checkContextSources(
   profiles: readonly AgentProfile[],
-  doctrineRoot: string
+  doctrineRoot: string,
+  cache: DoctrineFileCache = createDoctrineFileCache()
 ): SkProfileFinding[] {
   const findings: SkProfileFinding[] = [];
   for (const profile of profiles) {
     for (const { field, kind } of CONTEXT_SOURCE_KINDS) {
-      findings.push(...checkContextSourceField(profile, doctrineRoot, field, kind));
+      findings.push(...checkContextSourceField(profile, doctrineRoot, field, kind, cache));
     }
   }
   return findings;

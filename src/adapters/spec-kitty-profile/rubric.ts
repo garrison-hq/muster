@@ -73,11 +73,20 @@ export const RUBRIC_CITATION: Record<
 
 /**
  * Index `RUBRIC_CITATION` by kind. Calling this with `"schema-conformance-
- * violation"` or `"profile-parse-error"` is a type error at the call site —
- * the `Exclude<...>` type on `RUBRIC_CITATION` already guarantees this.
+ * violation"` or `"profile-parse-error"` is a type error at the call
+ * site — neither is representable in `RUBRIC_CITATION`.
+ *
+ * `"profile-id-illegal"` is also excluded here even though it *does* have a
+ * `RUBRIC_CITATION` entry (the §6.1/charset form, used only as the generic
+ * default value in the map above): routing a real `profile-id-illegal`
+ * finding through this flat lookup would silently mis-cite §6.1 for a §6.2
+ * (length) violation. `profileIdIllegalCitation("charset" | "length")` is
+ * the only sanctioned path for that kind — narrowing this parameter type
+ * turns "a future caller routes a length violation through `citationFor`"
+ * into a compile error instead of a silent wrong citation.
  */
 export function citationFor(
-  kind: Exclude<SkProfileFindingKind, "schema-conformance-violation" | "profile-parse-error">
+  kind: Exclude<SkProfileFindingKind, "schema-conformance-violation" | "profile-parse-error" | "profile-id-illegal">
 ): string {
   return RUBRIC_CITATION[kind];
 }
