@@ -1279,6 +1279,14 @@ interface SkillsCaseResult {
   shouldTriggerAxis?: AxisVerdict;
   nearMissAxis?: AxisVerdict;
   isControl?: boolean;
+  // FR-007 (muster#62): set when this case's own execution threw (a missing
+  // or unreadable fixture, a parse/layout-check crash, ...) rather than
+  // completing and being scored against its declared expectation. Kept
+  // appended after WP01's own group above, never interleaved with it.
+  // Distinguishes "execution error" (never derived from
+  // `c.expectations.ok`) from "correctly detected non-conformance" — the
+  // two were conflated by the pre-fix bug this field closes.
+  errored?: boolean;
 }
 
 /** Structured result for the full skills manifest run. */
@@ -1320,12 +1328,22 @@ function runStaticSkillCase(
       violations: allViolations,
     };
   } catch (error) {
-    // Parse failure = not ok; if expectation was ok: false it still passes expectation.
-    const expectOk = c.expectations.ok;
+    // FR-007 (muster#62) fail-closed fix: an execution error (missing or
+    // unreadable fixture, malformed frontmatter that crashes the parser,
+    // ...) is never derived from the case's own declared expectation —
+    // `c.expectations.ok` describes what a *completed* lint run should
+    // find, not what should happen when the run never completes at all.
+    // The pre-fix `passed: !expectOk` scored a missing fixture as a
+    // correctly-detected non-conformance whenever the case happened to
+    // expect `ok: false` — matching the fail-closed pattern already correct
+    // elsewhere (crosslayer/manifest-runner.ts, core/cts/runner.ts,
+    // core/behavioral/runner.ts, heartbeat's gradeStaticLintCase, tools'
+    // uncaught-propagation path): errored = failed, always.
     return {
       id: c.id,
       type: "static",
-      passed: !expectOk,
+      passed: false,
+      errored: true,
       violations: [
         { path: "(document)", message: errorMessage(error), severity: "error" },
       ],
@@ -1475,10 +1493,16 @@ async function runBehavioralSkillCaseSafe(
   try {
     return await runBehavioralSkillCase(c, baseDir, endpoint, triggerClientFactory);
   } catch (error) {
+    // FR-007 follow-through: this is the same class of failure the static
+    // path's `errored` field now names (a case-level dependency read never
+    // reaching a graded verdict at all) — set it here too so `errored` is a
+    // uniform discriminator across both case types, not a static-only
+    // artifact a JSON consumer would have to special-case.
     return {
       id: c.id,
       type: "behavioral",
       passed: false,
+      errored: true,
       skipped: false,
       violations: [
         { path: "(execution)", message: errorMessage(error), severity: "error" },

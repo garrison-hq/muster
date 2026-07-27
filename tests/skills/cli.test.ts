@@ -516,6 +516,7 @@ describe("muster skills run (CLI wiring, FR-013)", () => {
               type: string;
               passed: boolean;
               skipped?: boolean;
+              errored?: boolean;
             }[];
           };
           const staticCase = parsed.results.find((r) => r.id === "static-still-runs");
@@ -528,6 +529,10 @@ describe("muster skills run (CLI wiring, FR-013)", () => {
           // reinterpreted as a skip.
           expect(brokenCase?.passed).toBe(false);
           expect(brokenCase?.skipped).toBe(false);
+          // FR-007: the execution-error discriminator is uniform across
+          // case types — this is the same class of failure as the static
+          // path's `errored` field.
+          expect(brokenCase?.errored).toBe(true);
         } finally {
           unlinkSync(tmpPath);
         }
@@ -583,6 +588,7 @@ describe("muster skills run (CLI wiring, FR-013)", () => {
               type: string;
               passed: boolean;
               skipped?: boolean;
+              errored?: boolean;
             }[];
           };
           const staticCase = parsed.results.find((r) => r.id === "static-still-runs");
@@ -592,6 +598,7 @@ describe("muster skills run (CLI wiring, FR-013)", () => {
           expect(staticCase?.passed).toBe(true);
           expect(brokenCase?.passed).toBe(false);
           expect(brokenCase?.skipped).toBe(false);
+          expect(brokenCase?.errored).toBe(true);
         } finally {
           unlinkSync(tmpPath);
         }
