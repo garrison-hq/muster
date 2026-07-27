@@ -19,7 +19,7 @@ import { readFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { runCli, type RunCliOptions } from "../../src/cli/index.js";
 import {
   RIGGED_IMPOSSIBLE_DESCRIPTION,
@@ -118,6 +118,25 @@ function createSmartMockTriggerClient(): TriggerChatClient {
 const throwingTriggerClient: TriggerChatClient = {
   async chatWithTools(): Promise<string | null> {
     throw new Error("simulated transport failure — every call errors");
+  },
+};
+
+/**
+ * A mock `TriggerChatClient` simulating a model-quality bug: it genuinely
+ * invokes whatever tool it is offered whenever the target tool's name is
+ * `rigged-impossible-control` — but only for the discrimination control's
+ * plausible "shouldTrigger" queries, correctly ignoring the "ZZZCONTROL"
+ * near-miss placeholders. This produces a genuine control PASS (HIGH-1
+ * regression): the CLI wiring must report `isControl:true` for this case
+ * (derived from the same tool-name check `trigger.ts` itself uses), not
+ * `false`, and `trigger.ts`'s own model-quality warning must fire.
+ */
+const misbehavingRiggedMockTriggerClient: TriggerChatClient = {
+  async chatWithTools(userMessage, tools) {
+    const tool = tools[0];
+    if (tool === undefined) return null;
+    if (tool.function.name !== "rigged-impossible-control") return null;
+    return userMessage.includes("ZZZCONTROL") ? null : tool.function.name;
   },
 };
 
@@ -402,6 +421,42 @@ describe("muster skills run (CLI wiring, FR-013)", () => {
         // C-004: this contributes to a non-zero overall exit code.
         expect(parsed.ok).toBe(false);
         expect(code).toBe(1);
+      }
+    );
+  });
+
+  it("HIGH-1 regression: a genuinely-invoked rigged tool is reported as isControl:true with the model-quality warning", async () => {
+    await withSkillsEndpointEnv(
+      { MUSTER_ENDPOINT: "http://mock-endpoint.invalid/v1" },
+      async () => {
+        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+        try {
+          const { stdout } = await run(
+            ["skills", "run", skillsManifest, "--json"],
+            { skillsTriggerClientFactory: () => misbehavingRiggedMockTriggerClient }
+          );
+          const parsed = JSON.parse(stdout) as {
+            results: { id: string; type: string; isControl?: boolean; passed: boolean }[];
+          };
+          const control = parsed.results.find((r) => r.id === "behavioral-rigged-control");
+          expect(control).toBeDefined();
+          // The rigged tool was genuinely invoked for the control's
+          // shouldTrigger queries: the verdict itself must show a pass...
+          expect(control?.passed).toBe(true);
+          // ...and the CLI-reported isControl must match trigger.ts's own
+          // tool-name-derived verdict — true, not the manifest-name mismatch
+          // that previously forced this to false unconditionally.
+          expect(control?.isControl).toBe(true);
+          // trigger.ts's discrimination-control warning (isControl && passed)
+          // must actually fire — proving it is not dead code.
+          expect(warnSpy).toHaveBeenCalled();
+          const warnedAboutControl = warnSpy.mock.calls.some((args) =>
+            String(args[0]).includes("discrimination control")
+          );
+          expect(warnedAboutControl).toBe(true);
+        } finally {
+          warnSpy.mockRestore();
+        }
       }
     );
   });

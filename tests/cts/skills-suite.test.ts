@@ -350,6 +350,13 @@ describe("Skills CTS — behavioral suite (require MUSTER_BASE_URL)", () => {
         const toolDescription = c.isControl
           ? RIGGED_IMPOSSIBLE_DESCRIPTION
           : String(fm["description"] ?? "");
+        // HIGH-1 fix (same latent gap as src/cli/index.ts): trigger.ts derives
+        // its own isControl verdict from the tool name being exactly
+        // "rigged-impossible-control" — using the skill's own frontmatter
+        // name here would make that derivation never match, same bug.
+        const toolName = c.isControl
+          ? "rigged-impossible-control"
+          : String(fm["name"] ?? "skill");
 
         const endpoint = {
           // FR-002: canonical MUSTER_ENDPOINT wins; MUSTER_BASE_URL is the
@@ -376,7 +383,7 @@ describe("Skills CTS — behavioral suite (require MUSTER_BASE_URL)", () => {
             {
               type: "function" as const,
               function: {
-                name: String(fm["name"] ?? "skill"),
+                name: toolName,
                 description: toolDescription,
               },
             },

@@ -1400,6 +1400,18 @@ async function runBehavioralSkillCase(
   const description = c.isControl
     ? RIGGED_IMPOSSIBLE_DESCRIPTION
     : String(fm["description"] ?? "");
+  // HIGH-1 fix: the tool name fed to `runTriggerConformance` must be
+  // "rigged-impossible-control" for `isControl` cases — `trigger.ts` itself
+  // derives its own `isControl` verdict from this exact tool name
+  // (trigger.ts:420/467). Reporting `isControl: c.isControl` directly here
+  // instead would paper over that: trigger.ts's own model-quality warning
+  // (`if (isControl && passed)`) is keyed off its *internally* derived
+  // isControl, so it would still never fire even if the CLI's reported
+  // field looked correct. Setting the name here keeps trigger.ts's own
+  // logic honest instead of masking its blind spot.
+  const toolName = c.isControl
+    ? "rigged-impossible-control"
+    : String(fm["name"] ?? "skill");
 
   const triggerCase: TriggerCase = {
     id: c.id,
@@ -1416,7 +1428,7 @@ async function runBehavioralSkillCase(
     tools: [
       {
         type: "function",
-        function: { name: String(fm["name"] ?? "skill"), description },
+        function: { name: toolName, description },
       },
     ],
     endpoint,
