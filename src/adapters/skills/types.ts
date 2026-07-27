@@ -93,8 +93,9 @@ export interface TriggerQuerySet {
   /** Identifier matching the manifest entry. */
   id: string;
   /**
-   * Normative source citation: agentskills.io trigger-testing methodology
-   * (agentskills.io/specification#trigger-testing, pinned commit SHA).
+   * Normative source citation: agentskills.io trigger-testing methodology.
+   * See docs/rubric/skills-trigger-taxonomy.md (muster-published rubric,
+   * citing github.com/agentskills/agentskills@b8d2613ac050aa4aa8bfb2cf28380d81cdfcd1ca).
    */
   source: string;
   /**
