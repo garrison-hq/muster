@@ -110,8 +110,7 @@ function checkCollisions(profiles: readonly AgentProfile[]): SkProfileFinding[] 
 export function checkIdentity(profiles: readonly AgentProfile[]): SkProfileFinding[] {
   const findings: SkProfileFinding[] = [];
   for (const profile of profiles) {
-    findings.push(...checkLegality(profile));
-    findings.push(...checkFilenameMatch(profile));
+    findings.push(...checkLegality(profile), ...checkFilenameMatch(profile));
   }
   findings.push(...checkCollisions(profiles));
   return findings;

@@ -328,9 +328,9 @@ export async function checkReferences(
   }
 
   for (const profile of profiles) {
-    findings.push(...checkDirectiveRefs(profile, doctrineRoot, activation, cache));
-    findings.push(...checkTacticRefs(profile, doctrineRoot, activation, cache));
     findings.push(
+      ...checkDirectiveRefs(profile, doctrineRoot, activation, cache),
+      ...checkTacticRefs(profile, doctrineRoot, activation, cache),
       ...checkUnactivatedKindRefs(
         profile,
         doctrineRoot,
@@ -338,9 +338,7 @@ export async function checkReferences(
         profile.toolguideRefs,
         "toolguide-references",
         cache
-      )
-    );
-    findings.push(
+      ),
       ...checkUnactivatedKindRefs(
         profile,
         doctrineRoot,
