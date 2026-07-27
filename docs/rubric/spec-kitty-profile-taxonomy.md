@@ -314,7 +314,7 @@ Kitty itself builds a profile's projected output path from the **declared**
 `src/specify_cli/tool_surface/providers/agent_profiles.py:64`), and its own
 profile loader keys the in-memory profile registry by declared id as well
 (`self._profiles[profile.profile_id] = profile`,
-`src/doctrine/agent_profiles/repository.py:489`) — never by the source
+`src/doctrine/agent_profiles/repository.py:486`) — never by the source
 file's basename. A stem mismatch therefore produces **no** filesystem
 conflict anywhere in Spec Kitty's own pipeline: two files can disagree with
 their own declared ids and still each project cleanly. This clause exists
