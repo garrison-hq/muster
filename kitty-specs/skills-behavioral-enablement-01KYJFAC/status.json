@@ -1,19 +1,19 @@
 {
-  "event_count": 11,
-  "last_event_id": "01KYJSTAYCMQC14WVSG7CK3WTV",
-  "materialized_at": "2026-07-27T22:06:08.844455+00:00",
+  "event_count": 12,
+  "last_event_id": "01KYJSTCGF9ZN4DVDHFRX87ACS",
+  "materialized_at": "2026-07-27T22:06:10.447522+00:00",
   "mission_number": "",
   "mission_slug": "skills-behavioral-enablement-01KYJFAC",
   "mission_type": "software-dev",
   "summary": {
-    "approved": 0,
+    "approved": 1,
     "blocked": 0,
     "canceled": 0,
     "claimed": 0,
     "done": 0,
     "for_review": 1,
     "in_progress": 0,
-    "in_review": 1,
+    "in_review": 0,
     "planned": 2
   },
   "work_packages": {
@@ -23,9 +23,9 @@
       "agent_profile": "__resolved_profile_absent__",
       "agent_profile_version": "__resolved_profile_version_absent__",
       "force_count": 0,
-      "lane": "in_review",
-      "last_event_id": "01KYJSTAYCMQC14WVSG7CK3WTV",
-      "last_transition_at": "2026-07-27T22:06:08.844455+00:00",
+      "lane": "approved",
+      "last_event_id": "01KYJSTCGF9ZN4DVDHFRX87ACS",
+      "last_transition_at": "2026-07-27T22:06:10.447522+00:00",
       "model": "__resolved_model_absent__",
       "notes": [
         "Ready for review"
