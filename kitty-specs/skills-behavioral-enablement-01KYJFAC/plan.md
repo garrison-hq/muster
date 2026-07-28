@@ -460,75 +460,22 @@ pnpm build; echo "build_exit=$?"
 pnpm test; echo "test_exit=$?"
 ```
 
-**Live-model gate — literal, checkable acceptance evidence (HIGH-1 remediation).** This is the
+**Live-model gate — authoritative copy lives in WP04's task file, not here.** This is the
 mission's actual acceptance precondition, not a prose claim living only in the "Live-Model
-Verification" section below: **WP04 must not be marked `done`/`approved` until every check in
-this block passes**, run against the mission coordination branch after WP01, WP02, and WP03 have
-all merged (WP04's own code depends only on WP01+WP02; running this block also after WP03 merges
-is what makes SC-006 fully closed at the point this gate is checked, not a functional dependency
-of the live run itself). This closes the gap the post-plan review found: `spec-kitty accept
---diagnose`/`--mode checklist` check structure only (artifact presence, WP completion) and never
-grep `quickstart.md` for `_pending_` or inspect any recorded verdict — so this WP's own
-acceptance evidence is now the one place the live-model requirement is mechanically checked.
-
-```bash
-# 1. Offline baseline first (must be green, zero network calls, before the live run touches
-#    anything).
-pnpm test; echo "test_exit=$?"   # expect 0
-
-# 2. The live run itself. Credentials injected inline as an environment variable, sourced from a
-#    credential store OUTSIDE this working tree via command substitution — never a `.env` file
-#    inside the repo (HIGH-2 remediation: NI-001's secret scan walks the whole working tree and
-#    does NOT exempt gitignored files, so a `.env` containing a real key trips it red instead of
-#    being safely tolerated by it — see the corrected Credentials bullet in the Live-Model
-#    Verification Plan below, and WP04's own task file for the full gate). Never argv-literal,
-#    never logged. Pinned, not negotiable: gpt-4o-mini, https://api.openai.com/v1, runsPerQuery:
-#    3, threshold: 0.5 (already checked into fixtures/skills/skills-manifest.yaml's two behavioral
-#    cases — this command changes no fixture content).
-OPENAI_API_KEY=$(your-credential-lookup-command-here) \
-MUSTER_ENDPOINT=https://api.openai.com/v1 MUSTER_MODEL=gpt-4o-mini \
-  node dist/cli/index.js skills run fixtures/skills/skills-manifest.yaml --json \
-  > /tmp/skills-live-run.json
-echo "exit=$?"   # expect 0 or 1, never bare-skip (never skipped:true — that would itself be a
-                 # mission-blocking finding, since MUSTER_ENDPOINT/credentials are set for this run)
-
-# 3. Assert the EXACT LITERAL boolean values — not "truthy", not "the run didn't crash".
-CONTROL_PASSED=$(jq -r '.results[] | select(.id=="behavioral-rigged-control") | .passed' /tmp/skills-live-run.json)
-WEATHER_PASSED=$(jq -r '.results[] | select(.id=="behavioral-weather-skill") | .passed' /tmp/skills-live-run.json)
-echo "control=$CONTROL_PASSED weather=$WEATHER_PASSED"
-
-test "$CONTROL_PASSED" = "false"; echo "control_gate_exit=$?"
-# MUST be 0. The control reporting passed:true even ONCE is immediately mission-blocking and
-# NON-RETRYABLE, no exceptions — do not retry, do not swap models, investigate instead.
-
-test "$WEATHER_PASSED" = "true"; echo "weather_gate_exit=$?"
-# If this is nonzero on the FIRST attempt: retry the step-2 command exactly once, unmodified
-# (same model/manifest/env vars). A second consecutive failure BLOCKS this WP from done/approved;
-# record the failure in quickstart.md as an open defect. Never retry the control check above.
-
-# 4. quickstart.md's results table must contain NO "_pending_" string once this gate has run for
-#    real — an absence check as a COUNT, never a bare grep exit status (this programme's own
-#    standing lesson, applied here too).
-command grep -c "_pending_" kitty-specs/skills-behavioral-enablement-01KYJFAC/quickstart.md
-# expect the printed count to be the literal string 0 (all nine table rows filled with real
-# observed values: date/time, attempt #, both passed booleans, both observed trigger rates,
-# overall exit code, portability endpoint, portability result, blocking findings)
-
-# 5. Credential hygiene: the key VALUE must never appear in argv (ps) or in the recorded output.
-ps aux | command grep -c "MUSTER_API_KEY=\|OPENAI_API_KEY=\|sk-"; # expect 0
-command grep -c "MUSTER_API_KEY\|OPENAI_API_KEY" /tmp/skills-live-run.json   # expect 0
-
-# 6. Portability check (step 4 of the Live-Model Verification Plan) — same fixtures, only env
-#    vars differ. Not a second acceptance gate; still recorded in quickstart.md.
-MUSTER_ENDPOINT=<second-endpoint> MUSTER_MODEL=<local-model> \
-  node dist/cli/index.js skills run fixtures/skills/skills-manifest.yaml --json
-echo "exit=$?"
-```
-
-This WP's `done`/`approved` state requires: `control_gate_exit=0` AND `weather_gate_exit=0` (after
-at most one retry) AND the `_pending_` count above is `0`. Any other outcome is an open defect,
-recorded in `quickstart.md`, and this WP stays not-done until resolved — no exceptions, no
-model-swapping to force a pass.
+Verification" section below. This plan previously carried its own runnable copy of the gate at
+this point; that copy went stale after a remediation pass fixed a credential-hygiene defect and
+added conditions to the task file's copy, while this one was never updated — the exact defect
+class this mission has been closing elsewhere, so it is not repeated here by re-syncing a second
+copy. **This file therefore carries no runnable copy of the gate.** The single, mechanically
+checked, authoritative copy is
+`kitty-specs/skills-behavioral-enablement-01KYJFAC/tasks/WP04-examples-tests-live-model-gate.md`,
+section "Live-model gate — literal, checkable acceptance evidence". **WP04 must not be marked
+`done`/`approved` until every check in that section passes**, run against the mission coordination
+branch after WP01, WP02, and WP03 have all merged (WP04's own code depends only on WP01+WP02;
+running the gate also after WP03 merges is what makes SC-006 fully closed at the point it is
+checked, not a functional dependency of the live run itself). That section's own closing
+paragraph states the full, current set of required exit conditions — do not restate or copy them
+here; read them from that file at the time the gate is run.
 
 ---
 
