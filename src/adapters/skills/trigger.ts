@@ -30,8 +30,13 @@
  *   - pass^k (not here): safety-critical graders in future layers require ALL
  *     runs to pass (k=n). Trigger axes are NOT safety-critical per the charter.
  *
- * Methodology citation (C-003):
- *   agentskills.io/specification#trigger-testing@d8a3f2e1b9c74051e6f8d2a7c3b5f0e9d1a4c8b2
+ * Methodology citation (C-003, FR-004): muster's own hard-gate enforcement of
+ * the 8-minimum-per-axis/3-run-default/0.5-threshold rule is documented at
+ * docs/rubric/skills-trigger-taxonomy.md; the upstream prior-art numbers that
+ * rubric cites trace to
+ * github.com/agentskills/agentskills@b8d2613ac050aa4aa8bfb2cf28380d81cdfcd1ca,
+ * path docs/skill-creation/optimizing-descriptions.mdx (see FR-004's resolved
+ * OQ-1 discussion in spec.md for why the previous anchor was fabricated).
  */
 
 import { makeClientWithTools } from "../../core/behavioral/client.js";
@@ -59,6 +64,41 @@ export const RIGGED_IMPOSSIBLE_DESCRIPTION =
 
 /** Minimum queries per axis enforced before grading begins (RQ-02, data-model.md). */
 const MIN_QUERIES_PER_AXIS = 8;
+
+// ─── Env-alias resolution (FR-002) ─────────────────────────────────────────
+
+/** Result of resolving the canonical/deprecated-alias endpoint base URL. */
+export interface ResolvedEndpointBaseUrl {
+  /** The resolved base URL, or `undefined` when neither env var is set. */
+  baseUrl: string | undefined;
+  /**
+   * `true` only when `MUSTER_BASE_URL` is the var that actually supplied the
+   * value (i.e. `MUSTER_ENDPOINT` was unset). `MUSTER_ENDPOINT` always wins
+   * silently when both are set.
+   */
+  usedDeprecatedAlias: boolean;
+}
+
+/**
+ * Resolve the behavioral-endpoint base URL from `MUSTER_ENDPOINT` (canonical)
+ * vs `MUSTER_BASE_URL` (deprecated alias, FR-002). This is the single
+ * precedence rule shared by both live sites the spec's Overview names as
+ * previously inconsistent: the CLI (`src/cli/index.ts`, which owns the
+ * stderr deprecation-warning side effect since only it has an `Io` sink) and
+ * this adapter's own `createDiscriminationControl` endpoint default below —
+ * both call this same function so the two sites can no longer drift apart.
+ */
+export function resolveEndpointBaseUrl(): ResolvedEndpointBaseUrl {
+  const canonical = process.env["MUSTER_ENDPOINT"];
+  if (canonical !== undefined && canonical !== "") {
+    return { baseUrl: canonical, usedDeprecatedAlias: false };
+  }
+  const alias = process.env["MUSTER_BASE_URL"];
+  if (alias !== undefined && alias !== "") {
+    return { baseUrl: alias, usedDeprecatedAlias: true };
+  }
+  return { baseUrl: undefined, usedDeprecatedAlias: false };
+}
 
 // ─── TriggerChatClient interface (adapter-private) ─────────────────────────
 
@@ -185,8 +225,10 @@ export function assertRunErredInvariant(result: QueryRunResult): void {
  *   runsTriggered — so the aggregate naturally penalizes errors (FR-011).
  * - This is k-of-n (stylistic), NOT pass^k (safety-critical).
  *
- * Normative source: agentskills.io/specification#trigger-testing
- * @d8a3f2e1b9c74051e6f8d2a7c3b5f0e9d1a4c8b2 (C-003).
+ * Normative source: docs/rubric/skills-trigger-taxonomy.md (muster's own
+ * hard-gate enforcement of the k-of-n aggregation rule, C-003); see the
+ * module doc comment above for the upstream prior-art citation this rubric
+ * itself traces to.
  *
  * @param results Pre-computed QueryRunResult array for this axis.
  * @param axis Which axis is being graded.
@@ -286,8 +328,7 @@ export function createDiscriminationControl(queries: string[]): TriggerCase {
 
   const querySet: TriggerQuerySet = {
     id: "discrimination-control",
-    source:
-      "agentskills.io/specification#trigger-testing@d8a3f2e1b9c74051e6f8d2a7c3b5f0e9d1a4c8b2",
+    source: "docs/rubric/skills-trigger-taxonomy.md",
     shouldTrigger: queries,
     nearMiss: nearMissQueries,
     threshold: 0.5,
@@ -311,7 +352,9 @@ export function createDiscriminationControl(queries: string[]): TriggerCase {
     runsPerQuery: 1,
     tools,
     endpoint: {
-      baseUrl: process.env["MUSTER_BASE_URL"] ?? "http://localhost:11434/v1",
+      // FR-002: canonical MUSTER_ENDPOINT / deprecated MUSTER_BASE_URL alias,
+      // resolved with the same precedence the CLI uses (resolveEndpointBaseUrl).
+      baseUrl: resolveEndpointBaseUrl().baseUrl ?? "http://localhost:11434/v1",
       model: process.env["MUSTER_MODEL"] ?? "llama3",
       apiKeyEnv:
         process.env["MUSTER_API_KEY"] === undefined
@@ -343,8 +386,8 @@ export function createDiscriminationControl(queries: string[]): TriggerCase {
  * warning is logged (unexpected model behavior — model quality issue, not a
  * grader bug). The verdict accurately reflects what happened.
  *
- * Methodology: agentskills.io/specification#trigger-testing
- * @d8a3f2e1b9c74051e6f8d2a7c3b5f0e9d1a4c8b2 (C-003).
+ * Methodology: docs/rubric/skills-trigger-taxonomy.md (C-003) — see the
+ * module doc comment above for the upstream prior-art citation.
  *
  * @param triggerCase The trigger case configuration.
  * @param client The TriggerChatClient (injected; live or mocked for tests).

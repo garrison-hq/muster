@@ -195,10 +195,12 @@ cases:
         - path: description
           severity: error
 
-  # ── Behavioral cases (require MUSTER_BASE_URL; skipped in offline CI) ──────
-  # SC-005: behavioral suite is endpoint-agnostic — only MUSTER_BASE_URL /
-  # MUSTER_API_KEY / MUSTER_MODEL env vars change between runs against different
-  # endpoints. The suite itself is unchanged.
+  # ── Behavioral cases (require MUSTER_ENDPOINT; MUSTER_BASE_URL is a ────────
+  # deprecated alias, FR-002; skipped in offline CI) ─────────────────────────
+  # SC-005: behavioral suite is endpoint-agnostic — only MUSTER_ENDPOINT (or
+  # the deprecated MUSTER_BASE_URL alias) / MUSTER_API_KEY / MUSTER_MODEL env
+  # vars change between runs against different endpoints. The suite itself is
+  # unchanged.
 
   - id: behavioral-weather-skill
     type: behavioral

@@ -317,14 +317,15 @@ describe("Skills CTS — behavioral suite (require MUSTER_BASE_URL)", () => {
    *   MUSTER_API_KEY / MUSTER_MODEL. The suite itself is never modified.
    *
    * These tests are skipped in offline CI (MUSTER_BASE_URL not set).
-   * Set MUSTER_BASE_URL to an OpenAI-compatible endpoint to run them.
+   * Set MUSTER_ENDPOINT (canonical; MUSTER_BASE_URL is a deprecated alias,
+   * FR-002) to an OpenAI-compatible endpoint to run them.
    */
 
   for (const c of behavioralCases) {
-    it.skipIf(!process.env["MUSTER_BASE_URL"])(
+    it.skipIf(!process.env["MUSTER_ENDPOINT"] && !process.env["MUSTER_BASE_URL"])(
       `skills-behavioral: ${c.id}`,
       async () => {
-        const { makeToolClient } = await import(
+        const { makeToolClient, resolveEndpointBaseUrl } = await import(
           "../../src/adapters/skills/trigger.js"
         );
         const { default: yamlPkg } = await import("yaml");
@@ -349,9 +350,18 @@ describe("Skills CTS — behavioral suite (require MUSTER_BASE_URL)", () => {
         const toolDescription = c.isControl
           ? RIGGED_IMPOSSIBLE_DESCRIPTION
           : String(fm["description"] ?? "");
+        // HIGH-1 fix (same latent gap as src/cli/index.ts): trigger.ts derives
+        // its own isControl verdict from the tool name being exactly
+        // "rigged-impossible-control" — using the skill's own frontmatter
+        // name here would make that derivation never match, same bug.
+        const toolName = c.isControl
+          ? "rigged-impossible-control"
+          : String(fm["name"] ?? "skill");
 
         const endpoint = {
-          baseUrl: process.env["MUSTER_BASE_URL"]!,
+          // FR-002: canonical MUSTER_ENDPOINT wins; MUSTER_BASE_URL is the
+          // deprecated alias — same precedence the CLI uses.
+          baseUrl: resolveEndpointBaseUrl().baseUrl!,
           model: process.env["MUSTER_MODEL"] ?? "gpt-4o",
           apiKeyEnv: "MUSTER_API_KEY",
         };
@@ -373,7 +383,7 @@ describe("Skills CTS — behavioral suite (require MUSTER_BASE_URL)", () => {
             {
               type: "function" as const,
               function: {
-                name: String(fm["name"] ?? "skill"),
+                name: toolName,
                 description: toolDescription,
               },
             },
