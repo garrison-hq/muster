@@ -17,12 +17,24 @@ shouldTrigger:
   - "What year did the Berlin Wall fall?"
   - "Summarize the plot of Romeo and Juliet"
   - "Explain the difference between TCP and UDP"
+# Near-miss queries: realistic, topically-adjacent variants of the
+# shouldTrigger queries above (same pattern as weather-skill-queries.yaml's
+# own nearMiss axis) — plausible follow-on questions a model might see right
+# after the shouldTrigger query, still nothing a well-functioning model would
+# route to the rigged-impossible tool. Deliberately NOT the literal string
+# "ZZZCONTROL": that string appears in the rigged tool's own description
+# (RIGGED_IMPOSSIBLE_DESCRIPTION), so reusing it here would let the near-miss
+# queries self-match the tool description by literal text overlap rather than
+# by the model actually reasoning about tool fit — a fixture defect this file
+# previously carried (HIGH-1 remediation; the pre-existing, out-of-scope
+# instance of the same defect lives in fixtures/skills/trigger-queries/
+# rigged-impossible-queries.yaml, tracked separately, not owned by this WP).
 nearMiss:
-  - "ZZZCONTROL placeholder near-miss 1"
-  - "ZZZCONTROL placeholder near-miss 2"
-  - "ZZZCONTROL placeholder near-miss 3"
-  - "ZZZCONTROL placeholder near-miss 4"
-  - "ZZZCONTROL placeholder near-miss 5"
-  - "ZZZCONTROL placeholder near-miss 6"
-  - "ZZZCONTROL placeholder near-miss 7"
-  - "ZZZCONTROL placeholder near-miss 8"
+  - "What's a good subject line for a reschedule email?"
+  - "Why does water boil at a lower temperature at high altitude?"
+  - "What's the formula for converting miles to kilometers?"
+  - "What's another word similar to 'joyful'?"
+  - "What makes a haiku different from a limerick?"
+  - "What caused the fall of the Berlin Wall?"
+  - "Who wrote Romeo and Juliet?"
+  - "Why is TCP considered more reliable than UDP?"
