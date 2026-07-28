@@ -1418,7 +1418,9 @@ async function runBehavioralSkillCase(
   const fm = doc.frontmatter as Record<string, unknown>;
   const description = c.isControl
     ? RIGGED_IMPOSSIBLE_DESCRIPTION
-    : String(fm["description"] ?? "");
+    : typeof fm["description"] === "string"
+      ? fm["description"]
+      : "";
   // HIGH-1 fix: the tool name fed to `runTriggerConformance` must be
   // "rigged-impossible-control" for `isControl` cases — `trigger.ts` itself
   // derives its own `isControl` verdict from this exact tool name
@@ -1430,7 +1432,9 @@ async function runBehavioralSkillCase(
   // logic honest instead of masking its blind spot.
   const toolName = c.isControl
     ? "rigged-impossible-control"
-    : String(fm["name"] ?? "skill");
+    : typeof fm["name"] === "string"
+      ? fm["name"]
+      : "skill";
 
   const triggerCase: TriggerCase = {
     id: c.id,
