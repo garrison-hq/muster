@@ -257,7 +257,11 @@ pnpm test; echo "test_exit=$?"   # expect 0
 #    not negotiable: gpt-4o-mini, https://api.openai.com/v1, runsPerQuery: 3, threshold: 0.5
 #    (already checked into fixtures/skills/skills-manifest.yaml's two behavioral cases — this
 #    command changes no fixture content).
-OPENAI_API_KEY=$(your-credential-lookup-command-here) \
+export OPENAI_API_KEY=$(your-credential-lookup-command-here)   # exported (not a per-command
+# prefix) so it persists into this same shell for step 5's leak check below — a per-command
+# assignment (`OPENAI_API_KEY=$(...) node ...`) only sets the var for that one child process and
+# is gone immediately after, which would make step 5's `RESOLVED_KEY="$OPENAI_API_KEY"` read empty
+# (LOW-1 remediation).
 MUSTER_ENDPOINT=https://api.openai.com/v1 MUSTER_MODEL=gpt-4o-mini \
   node dist/cli/index.js skills run fixtures/skills/skills-manifest.yaml --json \
   > /tmp/skills-live-run.json
@@ -274,6 +278,16 @@ echo "control=$CONTROL_PASSED control_should_trigger_rate=$CONTROL_SHOULD_RATE c
 test "$CONTROL_PASSED" = "false"; echo "control_gate_exit=$?"
 # MUST be 0. The control reporting passed:true even ONCE is immediately mission-blocking and
 # NON-RETRYABLE, no exceptions — do not retry, do not swap models, investigate instead.
+
+test -n "$CONTROL_SHOULD_RATE"; echo "control_should_trigger_rate_present_exit=$?"
+# MUST be 0 (LOW-3 remediation). `awk -v r="" 'BEGIN{exit !(r<0.5)}'` exits 0 vacuously, because
+# an empty `r` is compared to 0.5 as a string, and "" < "0.5" is true lexically — this guard closes
+# that specific hole by requiring a non-empty value before the awk gate below is trusted. Confirmed
+# empirically (all three, run directly): `r=""` exits 0 (the vacuous-pass bug this guard targets);
+# `r="null"` and `r="0.5"` each already exit 1 on the awk gate itself with no guard present — a
+# literal "null" string and the exact boundary value 0.5 are both already correctly treated as
+# failing the discrimination check (0.5 is not strictly less than 0.5), so this guard does not need
+# to special-case them, only the true empty-string case.
 
 awk -v r="$CONTROL_SHOULD_RATE" 'BEGIN{exit !(r<0.5)}'; echo "control_should_trigger_axis_gate_exit=$?"
 # MUST be 0 (HIGH-1 remediation). `.passed` alone is NOT a discrimination check on these
@@ -330,10 +344,22 @@ test "$PENDING_COUNT" -eq 0; echo "pending_gate_exit=$?"
 # a snapshot of existing PIDs before any of this check's own grep subprocesses start, so those
 # subprocesses' own (later, different) PIDs are never among the files being scanned — no
 # self-match is possible.
+test -n "$OPENAI_API_KEY"; echo "resolved_key_present_exit=$?"
+# MUST be 0 (LOW-1 remediation). Step 2 above now `export`s OPENAI_API_KEY so it persists into
+# this same shell; without the export (a per-command `VAR=val cmd` prefix only sets the var for
+# that one child process), `RESOLVED_KEY="$OPENAI_API_KEY"` below would silently read empty, and
+# `grep -zqF ""` matches every readable cmdline (confirmed live: with the var unset this measured
+# PS_LEAK_COUNT=200, a fail-loud but misleading result masking the real bug — an empty needle, not
+# an actual leak).
 RESOLVED_KEY="$OPENAI_API_KEY"   # the exact value injected into the live run above (step 2)
 PS_LEAK_COUNT=0
 for f in /proc/[0-9]*/cmdline; do
-  if [ -r "$f" ] && command grep -zqF "$RESOLVED_KEY" "$f" 2>/dev/null; then
+  # LOW-2 remediation: the pattern is passed via `-f <(...)` (a file/fd), never as a `grep`
+  # argument — `grep -zqF "$RESOLVED_KEY" "$f"` (the prior form) put the credential on that grep
+  # invocation's own argv, on every one of the ~490 processes scanned, defeating the very
+  # property this gate exists to prove. Confirmed live: this form's pattern does not appear
+  # anywhere in `ps aux` output while the loop runs, unlike the prior `-F "$RESOLVED_KEY"` form.
+  if [ -r "$f" ] && command grep -zqFf <(printf '%s' "$RESOLVED_KEY") "$f" 2>/dev/null; then
     PS_LEAK_COUNT=$((PS_LEAK_COUNT + 1))
   fi
 done
