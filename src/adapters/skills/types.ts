@@ -93,8 +93,9 @@ export interface TriggerQuerySet {
   /** Identifier matching the manifest entry. */
   id: string;
   /**
-   * Normative source citation: agentskills.io trigger-testing methodology
-   * (agentskills.io/specification#trigger-testing, pinned commit SHA).
+   * Normative source citation: agentskills.io trigger-testing methodology.
+   * See docs/rubric/skills-trigger-taxonomy.md (muster-published rubric,
+   * citing github.com/agentskills/agentskills@b8d2613ac050aa4aa8bfb2cf28380d81cdfcd1ca).
    */
   source: string;
   /**
@@ -113,7 +114,8 @@ export interface TriggerQuerySet {
    * agentskills.io methodology as prior art (C-003, RQ-02 [as-opt-desc]).
    * shouldTrigger axis: trigger rate MUST be >= threshold to pass.
    * nearMiss axis: trigger rate MUST be < threshold to pass.
-   * Default: 0.5 (per spec site's documented guidance).
+   * Default: 0.5 (see docs/rubric/skills-trigger-taxonomy.md, "The 0.5
+   * Default Threshold").
    */
   threshold: number;
 }
@@ -142,7 +144,9 @@ export interface TriggerCase {
   querySet: TriggerQuerySet;
   /**
    * n in k-of-n: how many times each query is run against the endpoint.
-   * Charter minimum is 3 (per agentskills.io methodology); manifest default.
+   * Fixture-level convention is 3 (see docs/rubric/skills-trigger-taxonomy.md,
+   * "runsPerQuery — the 3-Run Default"); not a charter minimum and not an
+   * enforced gate — manifest default.
    */
   runsPerQuery: number;
   /**
