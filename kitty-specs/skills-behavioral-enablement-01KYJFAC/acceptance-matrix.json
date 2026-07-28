@@ -6,74 +6,227 @@
   "criteria": [
     {
       "criterion_id": "FR-001",
-      "description": "Verify FR-001 is satisfied",
+      "description": "doSkillsRun executes type:behavioral cases via runTriggerConformance when MUSTER_ENDPOINT is configured; skipped:true,passed:true when unset.",
       "proof_type": "automated_test",
-      "evidence": null,
-      "pass_fail": "pending",
-      "verified_by": null,
-      "verified_at": null,
-      "notes": "TODO: replace with a real acceptance criterion"
+      "evidence": "tests/skills/cli.test.ts \"AC-1a: behavioral cases execute (skipped:false) via a mock trigger client when MUSTER_ENDPOINT is configured\" \u2014 pass, exit 0 (verified 2026-07-28 in lane-a worktree and in an isolated local merge of lane-a+lane-b at /home/jeroennouws/scratch-m5-verify, commit 8ff33600c). Full-suite corroboration: `pnpm vitest run` = 170 files / 3637 passed / 3 skipped, exit 0, reproduced independently on the merged tree.",
+      "pass_fail": "pass",
+      "verified_by": "claude (accept-gate session)",
+      "verified_at": "2026-07-28T01:10:27Z",
+      "notes": null
     },
     {
       "criterion_id": "FR-002",
-      "description": "Verify FR-002 is satisfied",
+      "description": "MUSTER_ENDPOINT is canonical; MUSTER_BASE_URL is a deprecated alias emitting one stderr warning; MUSTER_ENDPOINT wins silently when both are set.",
       "proof_type": "automated_test",
-      "evidence": null,
-      "pass_fail": "pending",
-      "verified_by": null,
-      "verified_at": null,
-      "notes": "TODO: replace with a real acceptance criterion"
+      "evidence": "tests/skills/cli.test.ts -t \"AC-2a|AC-2b|AC-2c\" \u2014 3 tests pass (plus AC-1a in the same filtered run, 4 total), exit 0, verified 2026-07-28 in lane-a worktree. src/adapters/skills/trigger.ts's `resolveEndpointBaseUrl()` (added by WP01) is the single precedence function shared by both call sites, confirmed present at HEAD of the merged scratch clone.",
+      "pass_fail": "pass",
+      "verified_by": "claude (accept-gate session)",
+      "verified_at": "2026-07-28T01:10:27Z",
+      "notes": null
     },
     {
       "criterion_id": "FR-003",
-      "description": "Verify FR-003 is satisfied",
+      "description": "Ajv JSON Schema (Draft 2020-12) validates the skills manifest case-shape union; a structural violation exits 2 naming the offending field(s), before any case executes.",
       "proof_type": "automated_test",
-      "evidence": null,
-      "pass_fail": "pending",
-      "verified_by": null,
-      "verified_at": null,
-      "notes": "TODO: replace with a real acceptance criterion"
+      "evidence": "tests/skills/cli.test.ts -t \"manifest schema\" \u2014 3/3 pass, exit 0 (missing required field / bad type enum / expectations.ok as string), verified 2026-07-28. Manually reproduced against the built CLI on the merged scratch clone (/home/jeroennouws/scratch-m5-verify): a manifest missing `expectations`/`skillDir`/`profile` produced `muster: skills manifest read/parse error: skills manifest schema validation failed: cases/0 must have required property 'expectations'; ...` and exit code 2.",
+      "pass_fail": "pass",
+      "verified_by": "claude (accept-gate session)",
+      "verified_at": "2026-07-28T01:10:27Z",
+      "notes": null
     },
     {
       "criterion_id": "FR-004",
-      "description": "Verify FR-004 is satisfied",
+      "description": "docs/rubric/skills-trigger-taxonomy.md is published, citing the real upstream source; the fabricated agentskills.io/specification#trigger-testing anchor is repointed everywhere.",
       "proof_type": "automated_test",
-      "evidence": null,
-      "pass_fail": "pending",
-      "verified_by": null,
-      "verified_at": null,
-      "notes": "TODO: replace with a real acceptance criterion"
+      "evidence": "Verified only on the properly MERGED tree (lane-a alone lacks WP03's doc/citation work; lane-b alone lacks WP01's trigger.ts citation fix \u2014 the two WPs split this FR by file ownership, documented in analysis-report.md's coverage table). In an isolated local merge of both lanes (/home/jeroennouws/scratch-m5-verify, `git merge` of lane-a + lane-b, commit 8ff33600c, zero conflicts): `test -f docs/rubric/skills-trigger-taxonomy.md` -> exists; `grep -rln \"agentskills.io/specification#trigger-testing\" src/ fixtures/ examples/ docs/ tests/` -> count 0 (was 3 in lane-a alone, 1 in lane-b alone). Whole-repo scan excluding node_modules/.git/dist/coverage/kitty-specs also returned 0 hits.",
+      "pass_fail": "pass",
+      "verified_by": "claude (accept-gate session)",
+      "verified_at": "2026-07-28T01:10:27Z",
+      "notes": "Confirming this required constructing a local merge of lane-a+lane-b myself (neither lane branch nor the mission/coordination branch currently carries the merged code \u2014 merge is a separate, not-yet-executed mission step). The merge was file-disjoint (comm -12 of both lanes' changed-file lists vs their common ancestor = empty), so this is a faithful preview of the real merge's effect on this FR, not a fabricated shortcut."
     },
     {
       "criterion_id": "FR-005",
-      "description": "Verify FR-005 is satisfied",
-      "proof_type": "automated_test",
-      "evidence": null,
-      "pass_fail": "pending",
-      "verified_by": null,
-      "verified_at": null,
-      "notes": "TODO: replace with a real acceptance criterion"
+      "description": "The isControl:true discrimination-control case is reachable end-to-end from the CLI and reports passed:false against a real model, unmodified from the existing grading semantics.",
+      "proof_type": "manual_qa",
+      "evidence": "Live-model run against gpt-4o-mini (https://api.openai.com/v1, runsPerQuery:3, threshold:0.5), recorded in kitty-specs/skills-behavioral-enablement-01KYJFAC/quickstart.md's Results table: `behavioral-rigged-control` `passed:false` on all three independently recorded live runs (two original WP04 T021 runs + one HIGH-1/MEDIUM-1 remediation re-run), should-trigger axis rate 0 (0/24), runsErrored 0 both axes.",
+      "pass_fail": "pass",
+      "verified_by": "claude (accept-gate session, citing recorded evidence)",
+      "verified_at": "2026-07-28T01:10:27Z",
+      "notes": "I did not re-execute the live OpenAI call myself in this session (no credential available here) \u2014 this verdict rests on quickstart.md's checked-in, filled Results table plus WP04's own approval note, both of which this session read and cross-checked for internal consistency (three independently-timestamped runs, all agreeing). Reported as reproduced independently by two agents across four runs total per the operator's own account; that count is not independently re-derivable by me from repo artifacts alone. quickstart.md itself also discloses that these live runs were executed on the lane-a pre-merge tree; see FR-004's note above for this session's own confirmation that lane-a and lane-b are file-disjoint, so the lane-a live result is representative of the merged tree for every file the live gate depends on (examples/**, fixtures/skills/skills-manifest.yaml, src/adapters/skills/trigger.ts, src/adapters/skills/schema.ts, src/cli/index.ts \u2014 none touched by lane-b)."
     },
     {
       "criterion_id": "FR-006",
-      "description": "Verify FR-006 is satisfied",
+      "description": "examples/skills/manifest.yaml gains one behavioral case and one isControl:true case, each exercised against a mock TriggerChatClient in tests/skills/cli.test.ts (offline, deterministic).",
       "proof_type": "automated_test",
-      "evidence": null,
-      "pass_fail": "pending",
-      "verified_by": null,
-      "verified_at": null,
-      "notes": "TODO: replace with a real acceptance criterion"
+      "evidence": "tests/skills/cli.test.ts -t \"FR-006\" \u2014 \"should-trigger case passes and the rigged control fails via mock client\" \u2014 pass, exit 0, verified 2026-07-28 in lane-a worktree and on the merged scratch clone.",
+      "pass_fail": "pass",
+      "verified_by": "claude (accept-gate session)",
+      "verified_at": "2026-07-28T01:10:27Z",
+      "notes": "quickstart.md discloses that examples/skills/manifest.yaml's weather case's near-miss axis is not a semantic tool-fit signal (both should-trigger and near-miss queries target the generically-described valid/minimal skill, so both measure generic tool-calling propensity, not query-to-tool fit) \u2014 an observed 0.63->0.03 drift across two live runs bracketing an unrelated MEDIUM-3 commit is cited as corroboration. This does not affect the mock-client test's pass/fail (deterministic, no live model), only the live-run near-miss numbers' interpretability. Recorded as a limitation, not a defect fixed by this FR."
     },
     {
       "criterion_id": "FR-007",
-      "description": "Verify FR-007 is satisfied",
+      "description": "runStaticSkillCase's catch block no longer derives passed from c.expectations.ok on an execution error (missing fixture, unparseable frontmatter); an execution error is a distinguishable, fail-closed outcome. Closes garrison-hq/muster#62's primary finding.",
       "proof_type": "automated_test",
-      "evidence": null,
+      "evidence": "tests/skills/cli.test.ts -t \"delete-direction\" \u2014 pass, exit 0, verified 2026-07-28. Independently reproduced by hand against the built CLI on the merged scratch clone: a manifest case (expectations.ok:false) against a temp-copied fixtures/skills/broken/name-dir-mismatch reported `passed:true`, exit 0 before deletion (correctly-detected non-conformance); after `rm -rf` of the copy, the SAME manifest reported `{\"passed\":false,\"errored\":true,...\"message\":\"ENOENT: no such file or directory, open '.../name-dir-mismatch/SKILL.md'\"}`, exit 1 \u2014 the exact delete-direction fix FR-007/SC-008/#62 require.",
+      "pass_fail": "pass",
+      "verified_by": "claude (accept-gate session)",
+      "verified_at": "2026-07-28T01:10:27Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "C-001",
+      "description": "An errored trigger run counts as a failed run at the CLI-wiring layer \u2014 never retried, never silently skipped.",
+      "proof_type": "automated_test",
+      "evidence": "tests/skills/cli.test.ts -t \"errored trigger run\" \u2014 pass, exit 0, verified 2026-07-28 in lane-a worktree.",
+      "pass_fail": "pass",
+      "verified_by": "claude (accept-gate session)",
+      "verified_at": "2026-07-28T01:10:27Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "C-002",
+      "description": "k-of-n aggregation for trigger axes (gradeAxis) is unchanged by this mission.",
+      "proof_type": "code_review",
+      "evidence": "`git diff 65490f6b8561899394f5f046a5d93c53ef51d12c HEAD -- src/adapters/skills/trigger.ts | grep gradeAxis` returns no hits in the merged scratch clone; direct extraction and diff of the `export function gradeAxis(...) {...}` body (base @65490f6 vs merged HEAD, 23 lines each) is byte-identical.",
+      "pass_fail": "pass",
+      "verified_by": "claude (accept-gate session)",
+      "verified_at": "2026-07-28T01:10:27Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "C-003",
+      "description": "No credential appears in argv; endpoint/model/key are resolved from environment variables only; NI-003 fetch-isolation invariant stays green with no new literal fetch call site.",
+      "proof_type": "automated_test",
+      "evidence": "`pnpm vitest run tests/unit/invariants.test.ts` \u2014 12/12 pass, exit 0, run on a freshly-cloned, dependency-installed merge of lane-a+lane-b (/home/jeroennouws/scratch-m5-verify) with NO .env file present anywhere in the tree (confirmed via `find . -name .env`, zero results) \u2014 NI-001/NI-002/NI-003/NFR-002 all green.",
+      "pass_fail": "pass",
+      "verified_by": "claude (accept-gate session)",
+      "verified_at": "2026-07-28T01:10:27Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "C-004",
+      "description": "Exit-code contract unchanged: 0 all non-skipped cases passed; 1 at least one non-skipped case failed; 2 manifest could not be read or was structurally invalid (including FR-003 schema failures).",
+      "proof_type": "manual_qa",
+      "evidence": "Manually run against the built CLI on the merged scratch clone, 2026-07-28: passing static manifest -> exit 0; nonexistent manifest path -> exit 2; schema-invalid manifest (missing required fields) -> exit 2, message names the fields; FR-007's delete-direction manifest -> exit 0 before delete, exit 1 after delete (case fails). All four observed exit codes match the contract.",
+      "pass_fail": "pass",
+      "verified_by": "claude (accept-gate session)",
+      "verified_at": "2026-07-28T01:10:27Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "SC-001",
+      "description": "A type:behavioral case with MUSTER_ENDPOINT configured produces a real TriggerVerdict through muster skills run, not a hardcoded skipped:true.",
+      "proof_type": "automated_test",
+      "evidence": "Same evidence as FR-001: tests/skills/cli.test.ts AC-1a, pass, exit 0.",
+      "pass_fail": "pass",
+      "verified_by": "claude (accept-gate session)",
+      "verified_at": "2026-07-28T01:10:27Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "SC-002",
+      "description": "The same manifest with no endpoint configured still skips behavioral cases gracefully and still runs static cases (no regression).",
+      "proof_type": "automated_test",
+      "evidence": "tests/skills/cli.test.ts \"static-only: exit 0 with human summary for a passing manifest\" and related static-only tests pass as part of the 170-file/3637-test full-suite green run (exit 0), verified 2026-07-28 on both lane-a and the merged scratch clone.",
+      "pass_fail": "pass",
+      "verified_by": "claude (accept-gate session)",
+      "verified_at": "2026-07-28T01:10:27Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "SC-003",
+      "description": "MUSTER_ENDPOINT and the deprecated MUSTER_BASE_URL alias both work; only the alias path emits a stderr deprecation notice.",
+      "proof_type": "automated_test",
+      "evidence": "Same evidence as FR-002: tests/skills/cli.test.ts AC-2a/AC-2b/AC-2c, 3/3 pass, exit 0.",
+      "pass_fail": "pass",
+      "verified_by": "claude (accept-gate session)",
+      "verified_at": "2026-07-28T01:10:27Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "SC-004",
+      "description": "A structurally invalid manifest fails at exit 2 with a message naming the offending field, before any case executes.",
+      "proof_type": "automated_test",
+      "evidence": "Same evidence as FR-003: 3/3 vitest pass plus manual CLI reproduction, exit 2, offending fields named in the error message.",
+      "pass_fail": "pass",
+      "verified_by": "claude (accept-gate session)",
+      "verified_at": "2026-07-28T01:10:27Z",
+      "notes": null
+    },
+    {
+      "criterion_id": "SC-005",
+      "description": "The rigged-impossible discrimination control is reachable from muster skills run and observed failing (passed:false) both offline (mock client, FR-006) and, as a hard acceptance precondition, in a real recorded live run against gpt-4o-mini.",
+      "proof_type": "manual_qa",
+      "evidence": "Offline half: FR-006's mock-client test (pass, exit 0, this session). Live half: quickstart.md's filled Results table \u2014 three independent live runs against gpt-4o-mini, control passed:false every time, should-trigger axis 0, runsErrored 0 both axes, control_gate_exit/control_should_trigger_axis_gate_exit/control_runs_errored_gate_exit all 0 per WP04's own gate script.",
+      "pass_fail": "pass",
+      "verified_by": "claude (accept-gate session, citing recorded evidence)",
+      "verified_at": "2026-07-28T01:10:27Z",
+      "notes": "Same caveat as FR-005: the live-model portion is cited from quickstart.md/WP04's approval note, not re-executed by me today (no live credential in this session). This session independently confirmed lane-a and lane-b share zero touched files, so the lane-a-only live run is representative of the properly merged tree for this gate's inputs."
+    },
+    {
+      "criterion_id": "SC-006",
+      "description": "Every trigger-methodology number traces to a real, commit-pinned source; the fabricated agentskills.io/specification#trigger-testing anchor no longer appears anywhere in the repo (spec/plan/tasks prose in kitty-specs/ necessarily still quotes it as the defect under discussion \u2014 see spec.md's own analysis-report.md finding I1 on this literal-unsatisfiability).",
+      "proof_type": "automated_test",
+      "evidence": "Same evidence as FR-004: 0 hits in src/ fixtures/ examples/ docs/ tests/ on the properly merged lane-a+lane-b tree (this session's scratch clone); real upstream citation (agentskills/agentskills@b8d2613a...) present in docs/rubric/skills-trigger-taxonomy.md and trigger.ts's module doc comment.",
+      "pass_fail": "pass",
+      "verified_by": "claude (accept-gate session)",
+      "verified_at": "2026-07-28T01:10:27Z",
+      "notes": "SC-006's own prose (\"no longer appear anywhere in the repo\") is broader than what is actually checkable/intended, per spec.md's own recorded self-critique (analysis-report.md finding I1): kitty-specs/** mission-planning artifacts necessarily quote the fabricated anchor as the defect under discussion. Verdict here follows FR-004's own correctly-scoped verification command (src/ fixtures/ examples/ docs/ tests/), not a literal whole-repo reading."
+    },
+    {
+      "criterion_id": "SC-007",
+      "description": "pnpm test and the SonarCloud quality gate stay green; tests/unit/invariants.test.ts (NI-002, NI-003) stays green with no new fetch call sites.",
+      "proof_type": "automated_test",
+      "evidence": "pnpm test / pnpm vitest run: 170 files / 3637 passed / 3 skipped, exit 0, verified independently on both lane-a and a freshly-installed merge of lane-a+lane-b. tests/unit/invariants.test.ts: 12/12 pass, exit 0, including NI-002 (core never imports adapters) and NI-003 (fetch isolation, no new call-shaped fetch outside sanctioned surfaces).",
       "pass_fail": "pending",
-      "verified_by": null,
-      "verified_at": null,
-      "notes": "TODO: replace with a real acceptance criterion"
+      "verified_by": "claude (accept-gate session)",
+      "verified_at": "2026-07-28T01:10:27Z",
+      "notes": "SonarCloud half of this criterion is NOT verified: this mission's branch has not been pushed/opened as a PR (merge is explicitly out of scope for this session), so no SonarCloud analysis has run against it yet, and I have no CI/SonarCloud access from this local session to check retroactively. Recording pending rather than pass for the compound criterion; the pnpm-test/invariants half is independently confirmed green."
+    },
+    {
+      "criterion_id": "SC-008",
+      "description": "garrison-hq/muster#62's primary, headline finding is closed for the skills adapter: a negative-expectation static case whose fixture directory is deleted no longer reports passed:true/exit 0 \u2014 verified by the delete-direction test.",
+      "proof_type": "automated_test",
+      "evidence": "Same evidence as FR-007: tests/skills/cli.test.ts delete-direction test pass/exit 0, plus this session's manual reproduction against the built CLI showing passed:true/exit 0 before deletion and passed:false,errored:true/exit 1 after deletion.",
+      "pass_fail": "pass",
+      "verified_by": "claude (accept-gate session)",
+      "verified_at": "2026-07-28T01:10:27Z",
+      "notes": null
     }
   ],
-  "negative_invariants": []
+  "negative_invariants": [
+    {
+      "invariant_id": "NI-M5-1-probe-b-rigged-should-trigger-caught",
+      "description": "A should-trigger axis rigged to self-match (triggerRate 1.0, shouldTriggerAxis.passed reported true) must not let the CLI-reachability gate report the control satisfied via `.passed` alone (the pinned near-miss axis previously masked this).",
+      "verification_method": "custom_command",
+      "verification_command": "kitty-specs/skills-behavioral-enablement-01KYJFAC/tasks/WP04-examples-tests-live-model-gate.md:292-308 (HIGH-1 remediation, \"Probe B\"): `awk -v r=\"$CONTROL_SHOULD_RATE\" 'BEGIN{exit !(r<0.5)}'` asserted independently of `.passed`/`nearMissAxis.passed`.",
+      "result": "confirmed_absent",
+      "evidence": "Per WP04's own re-review record (cited in this mission's WP04 approval note): the OLD gate (`.passed` alone) read exit 0 even with the should-trigger axis fully rigged; the NEW gate (raw triggerRate assertion) reads exit 1 in that same rigged scenario, while both gates read 0 on a healthy real run. I did not re-run this adversarial rigged-fixture probe myself in this session (it requires deliberately mutating the fixture and a live model call); citing WP04's own task-file documentation and the approval note as the evidentiary source, not an independent re-execution."
+    },
+    {
+      "invariant_id": "NI-M5-2-dead-endpoint-caught-by-runserrored",
+      "description": "A dead/unreachable endpoint (every API call fails) must not be mistaken for a genuinely-failing discrimination control by a check that only inspects the `errored` field.",
+      "verification_method": "custom_command",
+      "verification_command": "kitty-specs/skills-behavioral-enablement-01KYJFAC/tasks/WP04-examples-tests-live-model-gate.md:310-321 (MEDIUM-1 remediation): sums `runsErrored` across both axes' queryBreakdown and asserts it equals 0, replacing the old `errored != \"true\"` check.",
+      "result": "confirmed_absent",
+      "evidence": "Documented live reproduction (WP04 task file, cited in the mission's own approval note): against `MUSTER_ENDPOINT=http://127.0.0.1:1/v1`, `errored` was `null` (absent) and `runsErrored` was 24/24 on both axes (48/48 total) \u2014 the OLD check vacuously reported success in this failure mode; the NEW `runsErrored`-sum check reads 0 only on a genuine discrimination-control failure. Not independently re-run by me this session (requires a live/dead endpoint call); cited from the WP04 task file and approval record."
+    },
+    {
+      "invariant_id": "NI-M5-3-conjunction-guard-empty-filter-caught",
+      "description": "A `-t` filter that matches zero tests (e.g. a renamed test or a typo'd filter) must not be read as a passing gate \u2014 `.success`/`numFailedTests==0` alone is true whenever nothing matched.",
+      "verification_method": "custom_command",
+      "verification_command": "kitty-specs/skills-behavioral-enablement-01KYJFAC/tasks/WP04-examples-tests-live-model-gate.md:199-209 (MEDIUM-2 remediation): requires `numPassedTests >= 1 AND numFailedTests == 0` jointly.",
+      "result": "confirmed_absent",
+      "evidence": "Independently reproduced this session: `pnpm vitest run tests/skills/cli.test.ts -t \"zzz-this-test-name-does-not-exist\" --reporter=json` in the lane-a worktree (commit c35721957) returns `{\"success\":true,...,\"numTotalTests\":44,\"numPassedTests\":0,\"numFailedTests\":0}` \u2014 `.success` alone is true; the conjunction guard (`numPassedTests>=1` also required) correctly fails this case."
+    },
+    {
+      "invariant_id": "NI-M5-4-typecheck-pseudo-suite-caught",
+      "description": "A fully-red test run must not be read as passing because vitest's typecheck pseudo-suite entries report passed independently of the real assertions (numPassedTests can be >=1 on a fully red run).",
+      "verification_method": "custom_command",
+      "verification_command": "kitty-specs/skills-behavioral-enablement-01KYJFAC/tasks/WP04-examples-tests-live-model-gate.md:199-209 (MEDIUM-2 remediation, same conjunction guard as NI-M5-3): `numFailedTests == 0` is also required, which a run with real assertion failures does not satisfy regardless of the typecheck pseudo-suite's own passed count.",
+      "result": "confirmed_absent",
+      "evidence": "Documented in WP04's task file as a MEDIUM-2 remediation rationale (cited above); not independently re-triggered by deliberately breaking a test in this session (would require a throwaway code mutation on a tree I am not authorized to leave modified). Cited from the task file and the mission's own approval note rather than re-derived."
+    }
+  ]
 }
