@@ -1400,6 +1400,17 @@ function resolveSkillsBehavioralEndpoint(
  * cases, loads the query set referenced by `querySetPath`, and reports the
  * real `TriggerVerdict` — never a hardcoded skip — through the CLI.
  */
+/**
+ * Read a skill frontmatter field as a string, or fall back. Guards against
+ * SonarCloud typescript:S6551 (`String(x ?? fallback)` stringifies a
+ * non-string object to "[object Object]" instead of using `fallback`) by
+ * narrowing with `typeof` first, matching the existing idiom in
+ * `src/adapters/skills/validate.ts`.
+ */
+function frontmatterStringField(value: unknown, fallback: string): string {
+  return typeof value === "string" ? value : fallback;
+}
+
 async function runBehavioralSkillCase(
   c: SkillsManifestBehavioralCase,
   baseDir: string,
@@ -1418,9 +1429,7 @@ async function runBehavioralSkillCase(
   const fm = doc.frontmatter as Record<string, unknown>;
   const description = c.isControl
     ? RIGGED_IMPOSSIBLE_DESCRIPTION
-    : typeof fm["description"] === "string"
-      ? fm["description"]
-      : "";
+    : frontmatterStringField(fm["description"], "");
   // HIGH-1 fix: the tool name fed to `runTriggerConformance` must be
   // "rigged-impossible-control" for `isControl` cases — `trigger.ts` itself
   // derives its own `isControl` verdict from this exact tool name
@@ -1432,9 +1441,7 @@ async function runBehavioralSkillCase(
   // logic honest instead of masking its blind spot.
   const toolName = c.isControl
     ? "rigged-impossible-control"
-    : typeof fm["name"] === "string"
-      ? fm["name"]
-      : "skill";
+    : frontmatterStringField(fm["name"], "skill");
 
   const triggerCase: TriggerCase = {
     id: c.id,
