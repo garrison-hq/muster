@@ -205,6 +205,25 @@ evidence, **and** again after merge to the mission coordination branch.
   `tests/unit/skills-trigger.test.ts` addition (grounding correction #1),
   drop T017 and narrow the acceptance evidence's second `command grep` block
   to the FR-004-only scope (`src/ fixtures/ examples/ docs/`, no `tests/`).
+- **Follow-up recorded against this WP (HIGH-1 remediation on WP04, not this
+  WP's own subtasks)**: `fixtures/skills/trigger-queries/rigged-impossible-queries.yaml`'s
+  near-miss axis (this WP's own `owned_files` entry, even though T015's task
+  only touches its citation line) still uses the literal placeholder strings
+  `"ZZZCONTROL placeholder near-miss 1".."8"`. Those strings self-match the
+  rigged tool's own `RIGGED_IMPOSSIBLE_DESCRIPTION` text ("ZZZCONTROL-IMPOSSIBLE")
+  by literal overlap, driving `nearMissAxis.triggerRate` to ~1.0 in every live
+  run regardless of model behavior — the same defect WP04 fixed in its own,
+  separate `examples/skills/trigger-queries/rigged-impossible-queries.yaml`
+  copy (which predates neither this mission nor this file; this fixtures-side
+  instance predates this mission entirely and was explicitly out of WP04's
+  `owned_files`). WP04's live-model gate now independently asserts
+  `shouldTriggerAxis.triggerRate < 0.5` on the raw rate rather than relying on
+  `.passed`/`nearMissAxis.passed`, so this gate is not blocked on this fixture
+  being fixed — but the placeholder content itself remains a latent quality
+  defect in a file this WP owns. **Not fixed by this WP's own subtasks**
+  (T015 only repoints the citation line); recorded here as a follow-up for
+  whoever next touches this file, with the same realistic-near-miss-phrasing
+  fix WP04 applied to its own copy as the reference pattern.
 
 ## Reviewer Guidance
 

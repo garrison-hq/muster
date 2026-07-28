@@ -151,9 +151,10 @@ dependency for this fixture's own test coverage.
    `passed: false` (step 2) never exercises the passing path at all. Name
    this test to include the literal substring `"should-trigger case"` — WP04's
    Acceptance Evidence below filters on that literal string. Do not rely on
-   the whole-file `.success == true` check elsewhere in this WP's DoD to
-   stand in for this — that check is satisfied by pre-existing tests
-   regardless of whether this specific assertion exists.
+   the whole-file `numPassedTests >= 1` AND `numFailedTests == 0` check
+   elsewhere in this WP's DoD to stand in for this — that check is satisfied
+   by pre-existing tests regardless of whether this specific assertion
+   exists.
 
 **Files**: `tests/skills/cli.test.ts` (~60-100 lines added)
 **Validation**: see WP04 Acceptance Evidence's FR-006 block below.
@@ -191,23 +192,35 @@ recorded here, not a lane-ownership claim.
 ```bash
 pnpm vitest run tests/skills/cli.test.ts --reporter=json > /tmp/fr006.json
 echo "exit=$?"   # expect 0 (vitest process exit; FR-006's own stated verification command)
-test "$(jq '.success' /tmp/fr006.json)" = "true"; echo "match_exit=$?"   # MUST be 0 — this
+FR006_PASSED=$(jq '.numPassedTests' /tmp/fr006.json)
+FR006_FAILED=$(jq '.numFailedTests' /tmp/fr006.json)
+test "$FR006_PASSED" -ge 1 && test "$FR006_FAILED" -eq 0; echo "match_exit=$?"   # MUST be 0 — this
 # WP is the one authoring the new mock-client tests this file gains, so a real-pass assertion is
-# included here rather than trusting the bare exit code alone. NOT `numPassedTests >= 1` —
-# insufficient: vitest.config.ts sets `typecheck.enabled: true`, whose per-file pseudo-suite
-# entries report passed independently of the real assertions, so numPassedTests can be >= 1 on a
-# fully red run. `.success` (equivalently `.numFailedTests == 0`) is not fooled by the duplicates.
+# included here rather than trusting the bare exit code alone. NEITHER guard alone is sufficient:
+# `numPassedTests >= 1` alone is insufficient because vitest.config.ts sets
+# `typecheck.enabled: true`, whose per-file pseudo-suite entries report passed independently of
+# the real assertions, so numPassedTests can be >= 1 on a fully red run. `.success` alone
+# (equivalently `.numFailedTests == 0`) is ALSO insufficient on its own (MEDIUM-2 remediation):
+# `.success` is `true` whenever zero tests match a `-t` filter too (proven live: `-t
+# "zzz-this-test-name-does-not-exist"` on this exact file returns
+# `{"success":true,"numTotalTests":44,"numPassedTests":0,"numFailedTests":0}`) — a renamed test or
+# a typo'd filter would satisfy `.success == true` while asserting nothing. Both conditions
+# together (`numPassedTests >= 1` AND `numFailedTests == 0`) are required and jointly sufficient:
+# the first guards against an empty/no-match run, the second against a run with real failures.
 
 # T020's specific weather/should-trigger passing assertion, isolated by name — the whole-file
 # check above is satisfied by pre-existing tests regardless of whether this one exists, so it
 # cannot stand in for it.
 pnpm vitest run tests/skills/cli.test.ts -t "should-trigger case" --reporter=json > /tmp/fr006-weather.json
 echo "exit=$?"   # expect 0
-test "$(jq '.success' /tmp/fr006-weather.json)" = "true"; echo "weather_case_match_exit=$?"
+FR006_WEATHER_PASSED=$(jq '.numPassedTests' /tmp/fr006-weather.json)
+FR006_WEATHER_FAILED=$(jq '.numFailedTests' /tmp/fr006-weather.json)
+test "$FR006_WEATHER_PASSED" -ge 1 && test "$FR006_WEATHER_FAILED" -eq 0
+echo "weather_case_match_exit=$?"
 # MUST be 0 — proves the new should-trigger case actually asserts passed:true by id, closing the
 # loop with T019's MIN_QUERIES_PER_AXIS=8 hard gate (an undersized query file only gets caught if
-# something asserts the weather case PASSES, not only that the control case fails). NOT
-# `numPassedTests >= 1` — same typecheck-pseudo-suite hazard as above.
+# something asserts the weather case PASSES, not only that the control case fails). Same
+# both-guards requirement as above — neither `numPassedTests >= 1` nor `.success` alone suffices.
 
 # Mission-level regression, now finally satisfiable: FR-001's own literal AC-1a command,
 # against examples/skills/manifest.yaml (deferred here because this is the first point in the
@@ -234,33 +247,64 @@ itself).
 #    anything).
 pnpm test; echo "test_exit=$?"   # expect 0
 
-# 2. The live run itself. Credentials via environment variable only (.env, gitignored) — never
-#    argv, never logged. Pinned, not negotiable: gpt-4o-mini, https://api.openai.com/v1,
-#    runsPerQuery: 3, threshold: 0.5 (already checked into fixtures/skills/skills-manifest.yaml's
-#    two behavioral cases — this command changes no fixture content).
-node --env-file=.env dist/cli/index.js skills run fixtures/skills/skills-manifest.yaml --json \
+# 2. The live run itself. Credentials injected inline as an environment variable, sourced from a
+#    credential store OUTSIDE this working tree via command substitution — never a `.env` file
+#    inside the repo (HIGH-2 remediation: `tests/unit/invariants.test.ts`'s NI-001 secret scan
+#    walks the whole working tree, excluding only node_modules/.git/dist/.worktrees/.kittify/
+#    kitty-specs, and does NOT exempt gitignored files, so a `.env` containing a real key trips
+#    NI-001 red instead of being safely tolerated by it — this test is what a `.env`-based flow
+#    breaks, not what "enforces" the `.env` pattern). Never argv-literal, never logged. Pinned,
+#    not negotiable: gpt-4o-mini, https://api.openai.com/v1, runsPerQuery: 3, threshold: 0.5
+#    (already checked into fixtures/skills/skills-manifest.yaml's two behavioral cases — this
+#    command changes no fixture content).
+OPENAI_API_KEY=$(your-credential-lookup-command-here) \
+MUSTER_ENDPOINT=https://api.openai.com/v1 MUSTER_MODEL=gpt-4o-mini \
+  node dist/cli/index.js skills run fixtures/skills/skills-manifest.yaml --json \
   > /tmp/skills-live-run.json
 echo "exit=$?"   # expect 0 or 1, never bare-skip (never skipped:true — that would itself be a
                  # mission-blocking finding, since MUSTER_ENDPOINT/credentials are set for this run)
 
 # 3. Assert the EXACT LITERAL boolean values — not "truthy", not "the run didn't crash".
 CONTROL_PASSED=$(jq -r '.results[] | select(.id=="behavioral-rigged-control") | .passed' /tmp/skills-live-run.json)
-CONTROL_ERRORED=$(jq -r '.results[] | select(.id=="behavioral-rigged-control") | .errored' /tmp/skills-live-run.json)
+CONTROL_SHOULD_RATE=$(jq -r '.results[] | select(.id=="behavioral-rigged-control") | .shouldTriggerAxis.triggerRate' /tmp/skills-live-run.json)
+CONTROL_RUNS_ERRORED=$(jq -r '[.results[] | select(.id=="behavioral-rigged-control") | (.shouldTriggerAxis.queryBreakdown + .nearMissAxis.queryBreakdown)[].runsErrored] | add' /tmp/skills-live-run.json)
 WEATHER_PASSED=$(jq -r '.results[] | select(.id=="behavioral-weather-skill") | .passed' /tmp/skills-live-run.json)
-echo "control=$CONTROL_PASSED control_errored=$CONTROL_ERRORED weather=$WEATHER_PASSED"
+echo "control=$CONTROL_PASSED control_should_trigger_rate=$CONTROL_SHOULD_RATE control_runs_errored=$CONTROL_RUNS_ERRORED weather=$WEATHER_PASSED"
 
 test "$CONTROL_PASSED" = "false"; echo "control_gate_exit=$?"
 # MUST be 0. The control reporting passed:true even ONCE is immediately mission-blocking and
 # NON-RETRYABLE, no exceptions — do not retry, do not swap models, investigate instead.
 
-test "$CONTROL_ERRORED" != "true"; echo "control_not_errored_gate_exit=$?"
-# MUST be 0. WP02 added the `errored?: boolean` field to `SkillsCaseResult` (see
-# `src/cli/index.ts`'s `runStaticSkillCase` catch-block edit) precisely because, since WP02
-# landed, a case-level EXECUTION error (crash/timeout in the trigger run, not a discrimination
-# failure) also yields `passed: false` — indistinguishable from `control_gate_exit=0` above on
-# `.passed` alone. A live run that simply broke would otherwise look identical to a control
-# correctly failing. This assertion is what tells them apart: `control_gate_exit=0` proves the
-# control did not pass; this proves it did not merely error out while doing so.
+awk -v r="$CONTROL_SHOULD_RATE" 'BEGIN{exit !(r<0.5)}'; echo "control_should_trigger_axis_gate_exit=$?"
+# MUST be 0 (HIGH-1 remediation). `.passed` alone is NOT a discrimination check on these
+# fixtures: fixtures/skills/trigger-queries/rigged-impossible-queries.yaml's near-miss axis uses
+# the literal placeholder strings "ZZZCONTROL placeholder near-miss N", which self-match the
+# rigged tool's own RIGGED_IMPOSSIBLE_DESCRIPTION text ("ZZZCONTROL-IMPOSSIBLE") by literal
+# overlap, so nearMissAxis.triggerRate measures ~1.0 and nearMissAxis.passed is pinned false in
+# every live run regardless of model behavior — which pins the overall `.passed` to false
+# regardless of what the should-trigger axis actually measured. Proven live (HIGH-1 Probe B): a
+# should-trigger axis rigged to self-match the same way (triggerRate 1.0, shouldTriggerAxis.passed
+# reported true — `>= threshold` is "passed" under this axis's generic formula) still yielded
+# `.passed: false` overall (masked by the pinned near-miss axis), so the OLD
+# `control_gate_exit=0` check alone would have reported this gate satisfied even with the
+# should-trigger axis completely rigged. This assertion reads the raw `triggerRate` directly and
+# is independent of `nearMissAxis.passed`, so it still catches a should-trigger-axis-only rig.
+# (The fixtures-side near-miss placeholder defect itself predates this mission and is out of this
+# WP's owned_files — tracked as a follow-up against whichever WP owns
+# fixtures/skills/trigger-queries/ — but this gate must not depend on that file being fixed.)
+
+CONTROL_RUNS_ERRORED_OK=$([ "$CONTROL_RUNS_ERRORED" = "0" ] && echo yes || echo no)
+test "$CONTROL_RUNS_ERRORED_OK" = "yes"; echo "control_runs_errored_gate_exit=$?"
+# MUST be 0 (MEDIUM-1 remediation, replaces the old `errored != "true"` check). The `errored`
+# field on `SkillsCaseResult` is set ONLY by `runBehavioralSkillCaseSafe`'s catch block
+# (fixture/setup failures that never reach a graded verdict at all) — it is ABSENT (jq renders
+# `null`) on every case that reaches a graded verdict, including one where every single per-run
+# API call failed. Proven live against a dead endpoint (`MUSTER_ENDPOINT=http://127.0.0.1:1/v1`):
+# `errored` was `null` and `runsErrored` was 24/24 on BOTH axes (48/48 total) — the old
+# `test "$CONTROL_ERRORED" != "true"` check reported `control_not_errored_gate_exit=0` (vacuously
+# "fine") in that exact scenario. Summing `runsErrored` across both axes' `queryBreakdown` and
+# asserting the total is exactly 0 is what actually distinguishes "the control correctly failed
+# the discrimination check" from "the control's calls all errored out and never really ran".
 
 test "$WEATHER_PASSED" = "true"; echo "weather_gate_exit=$?"
 # If this is nonzero on the FIRST attempt: retry the step-2 command exactly once, unmodified
@@ -277,12 +321,25 @@ test "$PENDING_COUNT" -eq 0; echo "pending_gate_exit=$?"
 # passed booleans, both observed trigger rates, overall exit code, portability endpoint,
 # portability result, blocking findings)
 
-# 5. Credential hygiene: the key VALUE must never appear in argv (ps) or in the recorded output.
-# Same grep -c inversion applies — assert the count, not grep's own $?.
-PS_LEAK_COUNT=$(ps aux | command grep -c "MUSTER_API_KEY=\|OPENAI_API_KEY=\|sk-")
+# 5. Credential hygiene: the key VALUE must never appear in any process's argv, or in the
+# recorded output. `ps aux | command grep -c "sk-"` can NEVER return 0 — the grep process
+# spawned by the pipeline is itself listed in `ps aux`, and its own argv contains the literal
+# search pattern "sk-", so it always matches itself (an always-firing hygiene gate is one people
+# learn to ignore; ps_leak_gate rewrite). Rewritten to scan each process's /proc/<pid>/cmdline
+# file for the RESOLVED key value directly, instead of `ps aux`: the initial glob below captures
+# a snapshot of existing PIDs before any of this check's own grep subprocesses start, so those
+# subprocesses' own (later, different) PIDs are never among the files being scanned — no
+# self-match is possible.
+RESOLVED_KEY="$OPENAI_API_KEY"   # the exact value injected into the live run above (step 2)
+PS_LEAK_COUNT=0
+for f in /proc/[0-9]*/cmdline; do
+  if [ -r "$f" ] && command grep -zqF "$RESOLVED_KEY" "$f" 2>/dev/null; then
+    PS_LEAK_COUNT=$((PS_LEAK_COUNT + 1))
+  fi
+done
 test "$PS_LEAK_COUNT" -eq 0; echo "ps_leak_gate_exit=$?"
 # MUST be 0 — this is the only mechanical enforcement of the charter constraint that keys never
-# appear in argv.
+# appear in argv, and unlike the old `ps aux` form, it is actually satisfiable.
 
 OUTPUT_LEAK_COUNT=$(command grep -c "MUSTER_API_KEY\|OPENAI_API_KEY" /tmp/skills-live-run.json)
 test "$OUTPUT_LEAK_COUNT" -eq 0; echo "output_leak_gate_exit=$?"
@@ -297,11 +354,11 @@ echo "exit=$?"
 ```
 
 This WP's `done`/`approved` state requires: `control_gate_exit=0` AND
-`control_not_errored_gate_exit=0` AND `weather_gate_exit=0` (after at most one
-retry) AND `pending_gate_exit=0` AND `ps_leak_gate_exit=0` AND
-`output_leak_gate_exit=0`. Any other outcome is an open defect, recorded in
-`quickstart.md`, and this WP stays not-done until resolved — **no exceptions,
-no model-swapping to force a pass.**
+`control_should_trigger_axis_gate_exit=0` AND `control_runs_errored_gate_exit=0`
+AND `weather_gate_exit=0` (after at most one retry) AND `pending_gate_exit=0`
+AND `ps_leak_gate_exit=0` AND `output_leak_gate_exit=0`. Any other outcome is
+an open defect, recorded in `quickstart.md`, and this WP stays not-done until
+resolved — **no exceptions, no model-swapping to force a pass.**
 
 ## Risks
 
@@ -333,31 +390,45 @@ no model-swapping to force a pass.**
   exactly once, on a first-attempt failure. The control case's `passed:true`
   is immediately mission-blocking and non-retryable — do not let "just try
   again" apply there.
-- **Credential leakage**: confirm step 5's `ps aux`/output-grep checks are
-  actually run, not skipped as "obviously fine."
+- **Credential leakage**: confirm step 5's `/proc/<pid>/cmdline`/output-grep
+  checks are actually run, not skipped as "obviously fine."
 
 ## Reviewer Guidance
 
 - Do not approve this WP on the offline mock-client tests alone — the
-  live-model gate's five literal conditions (`control_gate_exit=0`,
-  `weather_gate_exit=0`, `pending_gate_exit=0`, `ps_leak_gate_exit=0`,
-  `output_leak_gate_exit=0`) must all be independently verified, with
-  `quickstart.md`'s results table shown filled with real values, not
-  placeholders.
+  live-model gate's seven literal conditions (`control_gate_exit=0`,
+  `control_should_trigger_axis_gate_exit=0`,
+  `control_runs_errored_gate_exit=0`, `weather_gate_exit=0`,
+  `pending_gate_exit=0`, `ps_leak_gate_exit=0`, `output_leak_gate_exit=0`)
+  must all be independently verified, with `quickstart.md`'s results table
+  shown filled with real values, not placeholders.
 - Confirm the control case's `passed:false` and the should-trigger case's
   `passed:true` are the **exact literal values recorded**, not summarized as
   "looks good."
-- Confirm the control case's `errored` field was also recorded and is not
-  `true` — a control that merely errored out (execution failure, not a
-  discrimination failure) is not the same thing as a control that correctly
-  failed, and `passed:false` alone does not distinguish the two since WP02.
+- Confirm `control_should_trigger_axis_gate_exit=0` was computed from the
+  raw `shouldTriggerAxis.triggerRate`, not inferred from `.passed` — the
+  fixtures near-miss axis self-matches its own rigged tool's description
+  text, which pins the overall `.passed` to `false` regardless of what the
+  should-trigger axis measured (HIGH-1); `.passed` alone would not have
+  caught a should-trigger-axis-only rig (proven live, see this WP's
+  remediation record).
+- Confirm the control case's aggregate `runsErrored` across both axes'
+  `queryBreakdown` was also recorded and is exactly `0` — the `errored`
+  field is absent (never `true`) on every case that reaches a graded
+  verdict, including one where every per-run API call failed (proven live
+  against a dead endpoint), so `errored:null`/absent proves nothing on its
+  own (MEDIUM-1).
 - Confirm no credential value appears in `/tmp/skills-live-run.json` or in
-  any pasted `ps aux` output attached as evidence — verify `ps_leak_gate_exit`
-  and `output_leak_gate_exit` were actually computed from a real count, not
-  assumed.
+  any `/proc/<pid>/cmdline` scan attached as evidence — verify
+  `ps_leak_gate_exit` and `output_leak_gate_exit` were actually computed
+  from a real count, not assumed. `ps aux | grep -c "sk-"` is no longer
+  used (it could never return 0 — the grep process matches its own argv).
 - Confirm the T020 `"should-trigger case"` test exists and its
-  `weather_case_match_exit=0` was actually observed — the whole-file
-  `.success == true` check alone does not prove this specific assertion
-  exists.
+  `weather_case_match_exit=0` was actually observed via BOTH
+  `numPassedTests >= 1` AND `numFailedTests == 0` — `.success == true` alone
+  is also satisfied by a `-t` filter that matches zero tests (proven live:
+  `-t "zzz-this-test-name-does-not-exist"` returns
+  `{"success":true,"numPassedTests":0,"numFailedTests":0}`), so `.success`
+  alone does not prove this specific assertion exists either (MEDIUM-2).
 
 **Implementation command**: `spec-kitty agent action implement WP04 --agent claude`

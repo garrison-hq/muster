@@ -299,11 +299,19 @@ test "$DEPRECATION_COUNT_BOTH_SET" -eq 0; echo "ac2c_gate_exit=$?"
 # report passed independently of the real runtime assertions, so numPassedTests can be >= 1 on a
 # fully red run (proven live: deliberately breaking this exact test's assertion and re-running
 # produced numPassedTests=1, numFailedTests=1, success=false — the old guard would have said
-# PASS). `.success` (equivalently `.numFailedTests == 0`) is not fooled by the duplicates.
+# PASS). NOTE (MEDIUM-2 remediation, post-review): `.success` alone (equivalently
+# `.numFailedTests == 0` alone) is ALSO insufficient on its own — it is `true` whenever a `-t`
+# filter matches zero tests too (proven live: `-t "zzz-this-test-name-does-not-exist"` on
+# tests/skills/cli.test.ts returns `{"success":true,"numPassedTests":0,"numFailedTests":0}`), so a
+# renamed test or typo'd filter would satisfy `.success == true` while asserting nothing. Both
+# `numPassedTests >= 1` AND `numFailedTests == 0` are required together.
 pnpm vitest run tests/skills/cli.test.ts -t "errored trigger run" --reporter=json > /tmp/c001.json
 echo "exit=$?"   # expect 0
-test "$(jq '.success' /tmp/c001.json)" = "true"; echo "match_exit=$?"
-# MUST be 0 (.success == true) — this is the actual pass/fail signal, not the bare exit code above
+C001_PASSED=$(jq '.numPassedTests' /tmp/c001.json)
+C001_FAILED=$(jq '.numFailedTests' /tmp/c001.json)
+test "$C001_PASSED" -ge 1 && test "$C001_FAILED" -eq 0; echo "match_exit=$?"
+# MUST be 0 — this is the actual pass/fail signal, not the bare exit code above, and not
+# `.success` alone (see note above)
 
 # C-003 / hazard-1 proof
 pnpm vitest run tests/unit/invariants.test.ts

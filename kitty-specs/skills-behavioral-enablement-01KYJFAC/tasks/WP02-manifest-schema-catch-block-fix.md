@@ -211,16 +211,24 @@ muster skills run "$TMPDIR_BAD/bad-skills-manifest.yaml"; echo "exit=$?"   # exp
 # report passed independently of the real runtime assertions, so numPassedTests can be >= 1 on a
 # fully red run (proven live against a real implementer's RED artifact for this exact case:
 # numPassedTests=3, numFailedTests=3, success=false — the old guard would have said PASS).
-# `.success` (equivalently `.numFailedTests == 0`) is not fooled by the duplicates.
+# NOTE (MEDIUM-2 remediation, post-review): `.success` alone (equivalently `.numFailedTests == 0`
+# alone) is ALSO insufficient on its own — it is `true` whenever a `-t` filter matches zero tests
+# too (proven live: a non-matching `-t` filter on tests/skills/cli.test.ts returns
+# `{"success":true,"numPassedTests":0,"numFailedTests":0}`). Both `numPassedTests >= 1` AND
+# `numFailedTests == 0` are required together.
 pnpm vitest run tests/skills/cli.test.ts -t "manifest schema" --reporter=json > /tmp/fr003.json
 echo "exit=$?"   # expect 0
-test "$(jq '.success' /tmp/fr003.json)" = "true"; echo "match_exit=$?"   # MUST be 0
+FR003_PASSED=$(jq '.numPassedTests' /tmp/fr003.json)
+FR003_FAILED=$(jq '.numFailedTests' /tmp/fr003.json)
+test "$FR003_PASSED" -ge 1 && test "$FR003_FAILED" -eq 0; echo "match_exit=$?"   # MUST be 0
 
 # FR-007 — delete-direction test, against a temp copy (grounding correction #4). Same
-# success-flag fix applied.
+# both-guards fix applied.
 pnpm vitest run tests/skills/cli.test.ts -t "delete-direction" --reporter=json > /tmp/fr007.json
 echo "exit=$?"   # expect 0
-test "$(jq '.success' /tmp/fr007.json)" = "true"; echo "match_exit=$?"
+FR007_PASSED=$(jq '.numPassedTests' /tmp/fr007.json)
+FR007_FAILED=$(jq '.numFailedTests' /tmp/fr007.json)
+test "$FR007_PASSED" -ge 1 && test "$FR007_FAILED" -eq 0; echo "match_exit=$?"
 # MUST be 0; assertion inside the passing test: passed must NOT be true after the copy's
 # fixture dir is removed; a dedicated errored:true (or passed:false) outcome is required, exit
 # contribution is 1
@@ -228,7 +236,9 @@ test "$(jq '.success' /tmp/fr007.json)" = "true"; echo "match_exit=$?"
 # Regression: WP01's tests still pass after this WP's edits to the same interface/file
 pnpm vitest run tests/skills/cli.test.ts -t "errored trigger run" --reporter=json > /tmp/c001-regress.json
 echo "exit=$?"
-test "$(jq '.success' /tmp/c001-regress.json)" = "true"; echo "match_exit=$?"   # MUST be 0
+C001R_PASSED=$(jq '.numPassedTests' /tmp/c001-regress.json)
+C001R_FAILED=$(jq '.numFailedTests' /tmp/c001-regress.json)
+test "$C001R_PASSED" -ge 1 && test "$C001R_FAILED" -eq 0; echo "match_exit=$?"   # MUST be 0
 
 pnpm vitest run tests/unit/invariants.test.ts
 echo "invariants_exit=$?"   # see WP01's caveat: may be 1 for the pre-existing, unrelated
@@ -323,4 +333,11 @@ coordination branch.
     `numPassedTests` alone does not distinguish a red run from a green one
     when `vitest.config.ts`'s `typecheck.enabled: true` pseudo-suite is
     counted (see `red-fr003.json` above: `numPassedTests=3` on a run that
-    was, in fact, fully red).
+    was, in fact, fully red). **Follow-up (MEDIUM-2, a later remediation
+    pass on WP04)**: `.success == true` alone was subsequently found to be
+    ALSO insufficient — it is `true` whenever a `-t` filter matches zero
+    tests, which this historical audit did not test for. The
+    acceptance-evidence checks above have since been corrected to assert
+    both `numPassedTests >= 1` AND `numFailedTests == 0` together; this
+    audit log entry is left as-is as a historical record of what was
+    verified at the time.
