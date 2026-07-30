@@ -45,11 +45,21 @@ function assertAllFindingsCiteRubric(findings: readonly DriftFinding[]): void {
 }
 
 describe("loadEnvironmentDescriptor", () => {
-  it("loads OpenAI top-level array format correctly", async () => {
-    const desc = await loadEnvironmentDescriptor(
-      path.join(envDescDir, "openai-array-format.json")
-    );
-    expect(desc.format).toBe("openai-tool-registry");
+  it.each([
+    [
+      "loads OpenAI top-level array format correctly",
+      "openai-array-format.json",
+      "openai-tool-registry",
+    ],
+    ["loads MCP manifest format correctly", "matching-mcp.json", "mcp-manifest"],
+    [
+      "loads OpenAI tool registry format correctly",
+      "matching-openai.json",
+      "openai-tool-registry",
+    ],
+  ])("%s", async (_name, fixtureName, expectedFormat) => {
+    const desc = await loadEnvironmentDescriptor(path.join(envDescDir, fixtureName));
+    expect(desc.format).toBe(expectedFormat);
     expect(desc.tools.has("send_email")).toBe(true);
     expect(desc.tools.has("list_files")).toBe(true);
   });
@@ -62,24 +72,6 @@ describe("loadEnvironmentDescriptor", () => {
     const sendEmail = desc.tools.get("send_email")!;
     expect(sendEmail).toBeDefined();
     expect(sendEmail.parameters.size).toBe(0);
-  });
-
-  it("loads MCP manifest format correctly", async () => {
-    const desc = await loadEnvironmentDescriptor(
-      path.join(envDescDir, "matching-mcp.json")
-    );
-    expect(desc.format).toBe("mcp-manifest");
-    expect(desc.tools.has("send_email")).toBe(true);
-    expect(desc.tools.has("list_files")).toBe(true);
-  });
-
-  it("loads OpenAI tool registry format correctly", async () => {
-    const desc = await loadEnvironmentDescriptor(
-      path.join(envDescDir, "matching-openai.json")
-    );
-    expect(desc.format).toBe("openai-tool-registry");
-    expect(desc.tools.has("send_email")).toBe(true);
-    expect(desc.tools.has("list_files")).toBe(true);
   });
 
   it("extracts parameters from MCP manifest inputSchema", async () => {
@@ -306,7 +298,7 @@ describe("runDriftCheck", () => {
       const report = runDriftCheck(toolsFile, envDesc);
 
       expect(report.clean).toBe(true);
-      expect(report.findings.length).toBe(0);
+      expect(report.findings).toHaveLength(0);
     });
 
     it("byte-stable: two runs produce JSON.stringify-identical output (SC-002)", async () => {
@@ -342,7 +334,7 @@ describe("runDriftCheck", () => {
       const report = runDriftCheck(toolsFile, envDesc);
 
       expect(report.clean).toBe(true);
-      expect(report.findings.length).toBe(0);
+      expect(report.findings).toHaveLength(0);
     });
 
     it("envDescriptorFormat is openai-tool-registry", async () => {
@@ -396,7 +388,7 @@ describe("runDriftCheck", () => {
       const report = runDriftCheck(toolsFile, envDesc);
 
       // send_email is documented-but-missing; list_files is present and matches
-      expect(report.findings.length).toBe(1);
+      expect(report.findings).toHaveLength(1);
       expect(report.findings[0]!.kind).toBe("documented-but-missing");
       expect(report.findings[0]!.toolName).toBe("send_email");
     });
@@ -557,7 +549,7 @@ describe("runDriftCheck", () => {
         (f) => f.kind === "documented-but-missing"
       );
       // Both tools are documented-but-missing — 2 same-kind findings
-      expect(missingFindings.length).toBe(2);
+      expect(missingFindings).toHaveLength(2);
       // Verify toolName ordering is ascending (UTF-16: "list_files" < "send_email")
       expect(missingFindings[0]!.toolName).toBe("list_files");
       expect(missingFindings[1]!.toolName).toBe("send_email");

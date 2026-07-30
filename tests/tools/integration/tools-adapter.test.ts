@@ -72,7 +72,7 @@ describe("Tools Adapter Integration — static + drift fixture suite (offline)",
       const report = lintTOOLSFile(parsed);
 
       expect(report.ok).toBe(true);
-      expect(report.findings.length).toBe(0);
+      expect(report.findings).toHaveLength(0);
     });
 
     it("toCanonicalJson produces a valid JSON string", async () => {
@@ -253,7 +253,7 @@ describe("Tools Adapter Integration — static + drift fixture suite (offline)",
       const report = runDriftCheck(toolsFile, envDesc);
 
       expect(report.clean).toBe(true);
-      expect(report.findings.length).toBe(0);
+      expect(report.findings).toHaveLength(0);
     });
 
     it(
@@ -297,7 +297,7 @@ describe("Tools Adapter Integration — static + drift fixture suite (offline)",
       const report = runDriftCheck(toolsFile, envDesc);
 
       expect(report.clean).toBe(true);
-      expect(report.findings.length).toBe(0);
+      expect(report.findings).toHaveLength(0);
     });
 
     it("envDescriptorFormat is 'openai-tool-registry' for matching-openai.json", async () => {

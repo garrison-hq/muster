@@ -290,45 +290,30 @@ describe("(c) Controls manifest: every control fires (graderRawPassed:false, pas
     expect(result?.detail?.["graderRawPassed"]).toBe(false);
   });
 
-  it("skill-behavior-control fires: drift response ≠ input → grader fails → control passes", async () => {
+  it.each([
+    [
+      "skill-behavior-control fires: drift response ≠ input → grader fails → control passes",
+      "skill-behavior-control",
+    ],
+    [
+      "auth-control fires: server does not enforce auth → grader fails → control passes",
+      "auth-control",
+    ],
+    [
+      // The drift server serves an unsigned card; verifyCardJws returns verified:false.
+      // The nested-skip only applies when the JWKS endpoint is DOWN. The drift server
+      // does serve JWKS (loadJwks()) so there is no nested skip.
+      "signed-card-live-control fires: unsigned (drift) card → grader fails → control passes",
+      "signed-card-live-control",
+    ],
+  ])("%s", async (_name, controlId) => {
     server = await startTestServer({ drift: true });
     process.env["MUSTER_A2A_ENDPOINT"] = server.url;
 
     const summary = await runManifest(CONTROLS_MANIFEST_PATH, PROJECT_ROOT);
-    const result = summary.results.find((r) => r.id === "skill-behavior-control");
+    const result = summary.results.find((r) => r.id === controlId);
 
     expect(result).toBeDefined();
-    expect(result?.skipped).toBe(false);
-    expect(result?.passed).toBe(true);
-    expect(result?.detail?.["controlInverted"]).toBe(true);
-    expect(result?.detail?.["graderRawPassed"]).toBe(false);
-  });
-
-  it("auth-control fires: server does not enforce auth → grader fails → control passes", async () => {
-    server = await startTestServer({ drift: true });
-    process.env["MUSTER_A2A_ENDPOINT"] = server.url;
-
-    const summary = await runManifest(CONTROLS_MANIFEST_PATH, PROJECT_ROOT);
-    const result = summary.results.find((r) => r.id === "auth-control");
-
-    expect(result).toBeDefined();
-    expect(result?.skipped).toBe(false);
-    expect(result?.passed).toBe(true);
-    expect(result?.detail?.["controlInverted"]).toBe(true);
-    expect(result?.detail?.["graderRawPassed"]).toBe(false);
-  });
-
-  it("signed-card-live-control fires: unsigned (drift) card → grader fails → control passes", async () => {
-    server = await startTestServer({ drift: true });
-    process.env["MUSTER_A2A_ENDPOINT"] = server.url;
-
-    const summary = await runManifest(CONTROLS_MANIFEST_PATH, PROJECT_ROOT);
-    const result = summary.results.find((r) => r.id === "signed-card-live-control");
-
-    expect(result).toBeDefined();
-    // The drift server serves an unsigned card; verifyCardJws returns verified:false.
-    // The nested-skip only applies when the JWKS endpoint is DOWN. The drift server
-    // does serve JWKS (loadJwks()) so there is no nested skip.
     expect(result?.skipped).toBe(false);
     expect(result?.passed).toBe(true);
     expect(result?.detail?.["controlInverted"]).toBe(true);
@@ -351,7 +336,7 @@ describe("(c) Controls manifest: every control fires (graderRawPassed:false, pas
     const nonSkippedControls = summary.results.filter(
       (r) => r.detail?.["controlInverted"] === true && !r.skipped
     );
-    expect(nonSkippedControls.length).toBe(5);
+    expect(nonSkippedControls).toHaveLength(5);
 
     for (const r of controlResults) {
       if (!r.skipped) {

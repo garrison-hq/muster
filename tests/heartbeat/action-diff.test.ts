@@ -143,18 +143,6 @@ describe("extractObservedActions", () => {
     expect(actions).toContain("check-error-log");
   });
 
-  it("trims label whitespace", () => {
-    const response = "ACTION:   check-error-log  ";
-    const actions = extractObservedActions(response);
-    expect(actions).toEqual(["check-error-log"]);
-  });
-
-  it("collapses internal whitespace in label", () => {
-    const response = "ACTION: check  error  log";
-    const actions = extractObservedActions(response);
-    expect(actions).toEqual(["check error log"]);
-  });
-
   it("deduplicates by normalized key (case-insensitive)", () => {
     const response = "ACTION: check-error-log\nACTION: CHECK-ERROR-LOG\nACTION: summarise-prs";
     const actions = extractObservedActions(response);
@@ -163,10 +151,17 @@ describe("extractObservedActions", () => {
     expect(actions).toHaveLength(2);
   });
 
-  it("deduplicates while preserving first-occurrence order", () => {
-    const response = "ACTION: summarise-prs\nACTION: check-error-log\nACTION: summarise-prs";
+  it.each([
+    ["trims label whitespace", "ACTION:   check-error-log  ", ["check-error-log"]],
+    ["collapses internal whitespace in label", "ACTION: check  error  log", ["check error log"]],
+    [
+      "deduplicates while preserving first-occurrence order",
+      "ACTION: summarise-prs\nACTION: check-error-log\nACTION: summarise-prs",
+      ["summarise-prs", "check-error-log"],
+    ],
+  ])("%s", (_name, response, expected) => {
     const actions = extractObservedActions(response);
-    expect(actions).toEqual(["summarise-prs", "check-error-log"]);
+    expect(actions).toEqual(expected);
   });
 
   it("empty response → empty array", () => {

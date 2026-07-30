@@ -344,7 +344,7 @@ describe("muster cts run (RFC-1 Appendix F; FR-014/FR-015)", () => {
     ]);
     expect(code).toBe(0);
     const results = JSON.parse(stdout) as CtsCaseResult[];
-    expect(results.length).toBe(5);
+    expect(results).toHaveLength(5);
     for (const result of results) {
       expect(result.id.startsWith("merge_")).toBe(true);
     }
@@ -398,11 +398,11 @@ describe("muster behave run (RFC-1 §20/§21 behavioral surface; FR-016..FR-023)
     });
     expect(code).toBe(0);
     const verdicts = JSON.parse(stdout) as CaseVerdict[];
-    expect(verdicts.length).toBe(1);
+    expect(verdicts).toHaveLength(1);
     const verdict = verdicts[0];
-    expect(verdict.runs.length).toBe(2);
+    expect(verdict.runs).toHaveLength(2);
     for (const runVerdict of verdict.runs) {
-      expect(runVerdict.transcript.entries.length).toBe(2); // user + assistant
+      expect(runVerdict.transcript.entries).toHaveLength(2); // user + assistant
       expect(runVerdict.transcript.model).toBe("mock-model");
       expect(runVerdict.transcript.temperature).toBe("default"); // C-009
     }
@@ -426,11 +426,11 @@ describe("muster behave run (RFC-1 §20/§21 behavioral surface; FR-016..FR-023)
       { clientFactory: mockFactory(SHORT_REPLY, seen) }
     );
     expect(code).toBe(0);
-    expect(seen.length).toBe(1);
+    expect(seen).toHaveLength(1);
     expect(seen[0].baseUrl).toBe("https://override.local/v1");
     expect(seen[0].model).toBe("other-model");
     const verdicts = JSON.parse(stdout) as CaseVerdict[];
-    expect(verdicts[0].runs.length).toBe(1);
+    expect(verdicts[0].runs).toHaveLength(1);
   });
 
   it("§25.1: a non-conforming soul aborts before grading → exit 2 with the static report on stderr", async () => {

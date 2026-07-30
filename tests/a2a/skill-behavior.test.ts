@@ -496,7 +496,7 @@ describe("drifted-skill fixture + skip path", () => {
     // The skip path: when endpoint is null, callers should skip (not fail).
     // This is the FR-009/D-04 contract: null → skip, not fail.
     // Confirm type is strictly null (not undefined, not empty string).
-    expect(endpoint).toStrictEqual(null);
+    expect(endpoint).toBeNull();
 
     // Restore
     if (original !== undefined) {

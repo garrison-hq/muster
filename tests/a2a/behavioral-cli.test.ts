@@ -419,24 +419,22 @@ describe("peekManifestKind", () => {
     expect(kind).toBeNull();
   });
 
-  it("returns null when the file content is neither valid JSON nor YAML object", async () => {
-    const path = resolvePath(TMP_DIR, "peek-garbage.txt");
-    // A bare string is valid YAML but not an object, so kind extraction returns null.
-    await writeFile(path, "- item1\n- item2\n", "utf8");
-    const kind = await peekManifestKind(path);
-    expect(kind).toBeNull();
-  });
-
-  it("returns null when the parsed object has no kind field", async () => {
-    const path = resolvePath(TMP_DIR, "peek-no-kind.yaml");
-    await writeFile(path, "adapter: a2a\nother: value\n", "utf8");
-    const kind = await peekManifestKind(path);
-    expect(kind).toBeNull();
-  });
-
-  it("returns null when kind field is not a string", async () => {
-    const path = resolvePath(TMP_DIR, "peek-numeric-kind.yaml");
-    await writeFile(path, "kind: 42\n", "utf8");
+  it.each([
+    [
+      "returns null when the file content is neither valid JSON nor YAML object",
+      "peek-garbage.txt",
+      // A bare string is valid YAML but not an object, so kind extraction returns null.
+      "- item1\n- item2\n",
+    ],
+    [
+      "returns null when the parsed object has no kind field",
+      "peek-no-kind.yaml",
+      "adapter: a2a\nother: value\n",
+    ],
+    ["returns null when kind field is not a string", "peek-numeric-kind.yaml", "kind: 42\n"],
+  ])("%s", async (_name, fileName, content) => {
+    const path = resolvePath(TMP_DIR, fileName);
+    await writeFile(path, content, "utf8");
     const kind = await peekManifestKind(path);
     expect(kind).toBeNull();
   });

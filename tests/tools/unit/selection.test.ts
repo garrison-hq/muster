@@ -637,6 +637,78 @@ describe("runSelectionCase — apiKey is sent as Bearer token", () => {
 });
 
 // ---------------------------------------------------------------------------
+// S8786 ReDoS remediation characterization: `opts.endpoint.replace(/\/+$/, "")`
+// (an unanchored trailing-slash-stripping regex — quadratic on adversarial
+// input) was replaced with a manual trailing-slash scan. These cases pin the
+// exact URL the endpoint construction produces across trailing-slash counts.
+// ---------------------------------------------------------------------------
+describe("runSelectionCase — endpoint trailing-slash stripping", () => {
+  let toolsFile: Awaited<ReturnType<typeof parseTOOLSFile>>;
+
+  beforeEach(async () => {
+    toolsFile = await parseTOOLSFile(wellFormedToolsPath);
+  });
+
+  it.each([
+    ["http://localhost:11434/v1", "http://localhost:11434/v1/chat/completions"],
+    ["http://localhost:11434/v1/", "http://localhost:11434/v1/chat/completions"],
+    ["http://localhost:11434/v1//", "http://localhost:11434/v1/chat/completions"],
+    ["http://localhost:11434/v1///", "http://localhost:11434/v1/chat/completions"],
+  ])("normalises endpoint %s to %s", async (endpoint, expectedUrl) => {
+    let capturedUrl: string | undefined;
+    const capturingFetcher: FetchFn = vi.fn(async (url) => {
+      capturedUrl = String(url);
+      return makeToolCallResponse("send_email");
+    });
+
+    const testCase: ToolSelectionCase = {
+      id: "trailing-slash-001",
+      scenario: "Send an email.",
+      expectedAxis: "correct-selection",
+      expectedTool: "send_email",
+      runs: 1,
+      pass_threshold: 1,
+    };
+
+    await runSelectionCase(toolsFile, testCase, {
+      endpoint,
+      model: "test-model",
+      fetcher: capturingFetcher,
+    });
+
+    expect(capturedUrl).toBe(expectedUrl);
+  });
+
+  it("stays fast on an adversarial endpoint (long slash run with no trailing slash)", async () => {
+    // Regression guard for the O(n^2) unanchored-regex behavior
+    // `stripTrailingSlashes()` replaced: `.replace(/\/+$/, "")` on a long
+    // run of '/' not ending in '/' is the classic quadratic-blowup shape
+    // for this pattern. The linear scan should complete in well under a
+    // second even on a slow CI runner.
+    const adversarialEndpoint = `http://localhost${"/".repeat(200_000)}a`;
+    const capturingFetcher: FetchFn = vi.fn(async () => makeToolCallResponse("send_email"));
+
+    const testCase: ToolSelectionCase = {
+      id: "trailing-slash-perf-001",
+      scenario: "Send an email.",
+      expectedAxis: "correct-selection",
+      expectedTool: "send_email",
+      runs: 1,
+      pass_threshold: 1,
+    };
+
+    const start = performance.now();
+    await runSelectionCase(toolsFile, testCase, {
+      endpoint: adversarialEndpoint,
+      model: "test-model",
+      fetcher: capturingFetcher,
+    });
+    const elapsedMs = performance.now() - start;
+    expect(elapsedMs).toBeLessThan(1000);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // gradeByAxis — defensive unknown-axis fallthrough (via runSelectionCase)
 // ---------------------------------------------------------------------------
 describe("runSelectionCase — unknown expectedAxis returns passed=false (defensive)", () => {

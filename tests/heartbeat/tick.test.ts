@@ -22,16 +22,17 @@ import type { SimulatedTick, IntervalConfig } from "../../src/adapters/heartbeat
 // ---------------------------------------------------------------------------
 
 describe("T003 buildIntervalConfig", () => {
-  it("with supplied intervalMinutes=30 → assumed: false", () => {
-    const config = buildIntervalConfig({ intervalMinutes: 30 });
-    expect(config.intervalMinutes).toBe(30);
-    expect(config.assumed).toBe(false);
-  });
-
-  it("with supplied intervalMinutes=60 (Anthropic OAuth) → assumed: false", () => {
-    // C-002: Anthropic OAuth default of 60m MUST be supplied by caller, not defaulted.
-    const config = buildIntervalConfig({ intervalMinutes: 60 });
-    expect(config.intervalMinutes).toBe(60);
+  it.each([
+    ["with supplied intervalMinutes=30 → assumed: false", 30],
+    [
+      // C-002: Anthropic OAuth default of 60m MUST be supplied by caller, not defaulted.
+      "with supplied intervalMinutes=60 (Anthropic OAuth) → assumed: false",
+      60,
+    ],
+    ["supplied arbitrary value → assumed: false, value preserved", 15],
+  ])("%s", (_name, intervalMinutes) => {
+    const config = buildIntervalConfig({ intervalMinutes });
+    expect(config.intervalMinutes).toBe(intervalMinutes);
     expect(config.assumed).toBe(false);
   });
 
@@ -54,11 +55,6 @@ describe("T003 buildIntervalConfig", () => {
     expect(config.intervalMinutes).toBe(30);
   });
 
-  it("supplied arbitrary value → assumed: false, value preserved", () => {
-    const config = buildIntervalConfig({ intervalMinutes: 15 });
-    expect(config.intervalMinutes).toBe(15);
-    expect(config.assumed).toBe(false);
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -117,39 +113,61 @@ describe("T003 buildScenarioFraming", () => {
     expect(framing).toContain("Check metrics");
   });
 
-  it("framing for repeat tick includes priorActionSummary", () => {
-    const checklist = parseHeartbeat("/tmp/HEARTBEAT.md", "- Send daily report");
-    const tick = makeRepeatTick();
+  it.each([
+    [
+      "framing for repeat tick includes priorActionSummary",
+      "- Send daily report",
+      makeRepeatTick,
+      "Sent the daily report to #reports channel.",
+    ],
+    ["framing for empty checklist indicates skip", "", makeDueTick, "empty"],
+    ["framing includes tick state", "- Send report", makeDueTick, "due"],
+  ])("%s", (_name, checklistContent, makeTick, expectedSubstring) => {
+    const checklist = parseHeartbeat("/tmp/HEARTBEAT.md", checklistContent);
+    const tick = makeTick();
     const framing = buildScenarioFraming(checklist, tick);
-    expect(framing).toContain("Sent the daily report to #reports channel.");
+    expect(framing).toContain(expectedSubstring);
   });
 
-  it("framing for due tick does NOT include prior action summary section", () => {
-    const checklist = parseHeartbeat("/tmp/HEARTBEAT.md", "- Send daily report");
-    const tick = makeDueTick();
+  it.each([
+    [
+      "framing for due tick does NOT include prior action summary section",
+      "- Send daily report",
+      makeDueTick,
+      "Prior action summary",
+    ],
+    [
+      "framing for nothing-due tick does NOT include prior action summary",
+      "- Send daily report",
+      makeNothingDueTick,
+      "Prior action summary",
+    ],
+    [
+      // Leak-guard: the due-tick explanation must NOT dictate the answer by
+      // naming which/how many items to act on. These phrases would trivialize
+      // the action-diff probe by echoing the intended actions.
+      "due tick framing does NOT contain leaking phrase 'every item'",
+      "- Send report\n- Check metrics",
+      makeDueTick,
+      "every item",
+    ],
+    [
+      "due tick framing does NOT contain leaking phrase 'all items'",
+      "- Send report\n- Check metrics",
+      makeDueTick,
+      "all items",
+    ],
+    [
+      "due tick framing does NOT contain leaking phrase 'all checklist'",
+      "- Send report\n- Check metrics",
+      makeDueTick,
+      "all checklist",
+    ],
+  ])("%s", (_name, checklistContent, makeTick, forbiddenSubstring) => {
+    const checklist = parseHeartbeat("/tmp/HEARTBEAT.md", checklistContent);
+    const tick = makeTick();
     const framing = buildScenarioFraming(checklist, tick);
-    expect(framing).not.toContain("Prior action summary");
-  });
-
-  it("framing for nothing-due tick does NOT include prior action summary", () => {
-    const checklist = parseHeartbeat("/tmp/HEARTBEAT.md", "- Send daily report");
-    const tick = makeNothingDueTick();
-    const framing = buildScenarioFraming(checklist, tick);
-    expect(framing).not.toContain("Prior action summary");
-  });
-
-  it("framing for empty checklist indicates skip", () => {
-    const checklist = parseHeartbeat("/tmp/HEARTBEAT.md", "");
-    const tick = makeDueTick();
-    const framing = buildScenarioFraming(checklist, tick);
-    expect(framing).toContain("empty");
-  });
-
-  it("framing includes tick state", () => {
-    const checklist = parseHeartbeat("/tmp/HEARTBEAT.md", "- Send report");
-    const tick = makeDueTick();
-    const framing = buildScenarioFraming(checklist, tick);
-    expect(framing).toContain("due");
+    expect(framing).not.toContain(forbiddenSubstring);
   });
 
   it("due tick framing conveys the interval-elapsed scenario condition", () => {
@@ -175,30 +193,6 @@ describe("T003 buildScenarioFraming", () => {
     expect(framing).toContain("Tick state: repeat");
     expect(framing).toContain("once-only items");
     expect(framing).toContain("must not be repeated");
-  });
-
-  // Leak-guard: the due-tick explanation must NOT dictate the answer by
-  // naming which/how many items to act on. These phrases would trivialize
-  // the action-diff probe by echoing the intended actions.
-  it("due tick framing does NOT contain leaking phrase 'every item'", () => {
-    const checklist = parseHeartbeat("/tmp/HEARTBEAT.md", "- Send report\n- Check metrics");
-    const tick = makeDueTick();
-    const framing = buildScenarioFraming(checklist, tick);
-    expect(framing).not.toContain("every item");
-  });
-
-  it("due tick framing does NOT contain leaking phrase 'all items'", () => {
-    const checklist = parseHeartbeat("/tmp/HEARTBEAT.md", "- Send report\n- Check metrics");
-    const tick = makeDueTick();
-    const framing = buildScenarioFraming(checklist, tick);
-    expect(framing).not.toContain("all items");
-  });
-
-  it("due tick framing does NOT contain leaking phrase 'all checklist'", () => {
-    const checklist = parseHeartbeat("/tmp/HEARTBEAT.md", "- Send report\n- Check metrics");
-    const tick = makeDueTick();
-    const framing = buildScenarioFraming(checklist, tick);
-    expect(framing).not.toContain("all checklist");
   });
 
   it("due tick framing does NOT enumerate the literal checklist item labels", () => {

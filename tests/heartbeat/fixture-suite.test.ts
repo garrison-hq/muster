@@ -64,7 +64,7 @@ function intervalConfigPath(name: string): string {
 describe("T018 fixture files", () => {
   it("empty.md has 0 bytes", () => {
     const content = readFileSync(checklistPath("empty.md"));
-    expect(content.length).toBe(0);
+    expect(content).toHaveLength(0);
   });
 
   it("over-length.md has ≥51 checklist items", () => {
@@ -91,7 +91,7 @@ describe("T018 fixture files", () => {
     expect(content).toContain("recurring");
     // Has exactly 2 checklist items
     const items = content.split("\n").filter((line) => /^- \[/.test(line));
-    expect(items.length).toBe(2);
+    expect(items).toHaveLength(2);
   });
 
   it("repeat.json has non-null priorActionSummary", () => {
@@ -135,7 +135,7 @@ describe("T018 fixture files", () => {
 describe("T019 manifest.json", () => {
   it("is valid JSON and has 8 cases", () => {
     const manifest = loadManifestFile(MANIFEST_PATH);
-    expect(manifest.cases.length).toBe(8);
+    expect(manifest.cases).toHaveLength(8);
   });
 
   it("all case IDs are stable hb-* strings (not ordinals)", () => {
@@ -669,10 +669,10 @@ describe("T020 HeartbeatAdapter stub method coverage", () => {
     };
     const violations = adapter.validate(doc, "strict");
     expect(Array.isArray(violations)).toBe(true);
-    expect(violations.length).toBe(0);
+    expect(violations).toHaveLength(0);
     // Also test permissive mode
     const violations2 = adapter.validate(doc, "permissive");
-    expect(violations2.length).toBe(0);
+    expect(violations2).toHaveLength(0);
   });
 
   it("resolve returns empty object (stub)", async () => {

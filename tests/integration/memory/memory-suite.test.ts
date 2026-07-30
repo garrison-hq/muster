@@ -107,8 +107,8 @@ describe("memory adapter fixture suite (WP05 T021)", () => {
     const result = await adapter.run(consistentManifest, { behavioral: false });
 
     expect(result.ok).toBe(true);
-    expect(result.findings.length).toBe(0);
-    expect(result.lintReports.length).toBe(1);
+    expect(result.findings).toHaveLength(0);
+    expect(result.lintReports).toHaveLength(1);
     expect(result.lintReports[0]!.ok).toBe(true);
     expect(result.lintReports[0]!.stalenessFindings).toHaveLength(0);
     expect(result.lintReports[0]!.contradictionFindings).toHaveLength(0);
@@ -270,7 +270,7 @@ describe("memory adapter fixture suite (WP05 T021)", () => {
     const result = await adapter.run(multiCaseManifest, { behavioral: false });
     // First case passes, second fails — overall ok is false.
     expect(result.ok).toBe(false);
-    expect(result.lintReports.length).toBe(2);
+    expect(result.lintReports).toHaveLength(2);
     expect(result.lintReports[0]!.ok).toBe(true);
     expect(result.lintReports[1]!.ok).toBe(false);
   });
@@ -338,7 +338,7 @@ describe("memory adapter fixture suite (WP05 T021)", () => {
     const result = await adapter.run(noDateManifest, { behavioral: false });
     // No staleness findings because referenceDate is undefined → skip note.
     // ok may be false if stalenessSkip is set (depends on StalenessLinter.lint behaviour).
-    expect(result.lintReports.length).toBe(1);
+    expect(result.lintReports).toHaveLength(1);
     // stalenessSkip should be set.
     expect(result.lintReports[0]!.stalenessSkip).toBeDefined();
     expect(result.lintReports[0]!.stalenessSkip?.kind).toBe("staleness-skip");

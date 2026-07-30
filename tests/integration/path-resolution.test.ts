@@ -53,23 +53,25 @@ describe("manifest-relative path resolution (CLI, cwd-independent)", () => {
     }
   });
 
-  it("memory: example with bare relative paths resolves against the manifest dir", async () => {
-    const manifest = resolvePath(repoRoot, "examples/memory/manifest.json");
-    const { code, stdout } = await run(["memory", "run", manifest]);
-    expect(code).toBe(0);
-    expect(stdout).toContain("PASS");
-  });
-
-  it("heartbeat: example with bare relative paths resolves against the manifest dir", async () => {
-    const manifest = resolvePath(repoRoot, "examples/heartbeat/manifest.json");
-    const { code, stdout } = await run(["heartbeat", "run", manifest]);
-    expect(code).toBe(0);
-    expect(stdout).toContain("PASS");
-  });
-
-  it("skills: example with bare relative skillDir resolves against the manifest dir", async () => {
-    const manifest = resolvePath(repoRoot, "examples/skills/manifest.yaml");
-    const { code, stdout } = await run(["skills", "run", manifest]);
+  it.each([
+    [
+      "memory: example with bare relative paths resolves against the manifest dir",
+      "memory",
+      "examples/memory/manifest.json",
+    ],
+    [
+      "heartbeat: example with bare relative paths resolves against the manifest dir",
+      "heartbeat",
+      "examples/heartbeat/manifest.json",
+    ],
+    [
+      "skills: example with bare relative skillDir resolves against the manifest dir",
+      "skills",
+      "examples/skills/manifest.yaml",
+    ],
+  ])("%s", async (_name, command, manifestRelativePath) => {
+    const manifest = resolvePath(repoRoot, manifestRelativePath);
+    const { code, stdout } = await run([command, "run", manifest]);
     expect(code).toBe(0);
     expect(stdout).toContain("PASS");
   });

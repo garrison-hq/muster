@@ -195,7 +195,7 @@ describe("SC-002: passing + violating scenarios per binary rule class", () => {
 
     // Three verdicts should pass
     const passingVerdicts = report.verdicts.filter((v) => v.passed);
-    expect(passingVerdicts.length).toBe(3);
+    expect(passingVerdicts).toHaveLength(3);
   });
 
   it("all verdicts in failing suite have ruleId populated", async () => {
@@ -236,7 +236,7 @@ describe("SC-003: pass^k — single violation across k fails the case", () => {
     const report = await runManifestSuite(manifestPath, { client });
 
     expect(report.passed).toBe(false);
-    expect(report.verdicts.length).toBe(1);
+    expect(report.verdicts).toHaveLength(1);
 
     const verdict = report.verdicts[0];
     expect(verdict.ruleId).toBe("R-PASSK-BINARY");
@@ -309,7 +309,7 @@ describe("SC-004: adversarial suite catches eroded rule + aggregation is pass-k"
     const report = await runManifestSuite(manifestPath, { client });
 
     expect(report.passed).toBe(false);
-    expect(report.verdicts.length).toBe(1);
+    expect(report.verdicts).toHaveLength(1);
 
     const verdict = report.verdicts[0];
     expect(verdict.ruleId).toBe("R-ADVERSARIAL");
@@ -338,35 +338,22 @@ describe("SC-004: adversarial suite catches eroded rule + aggregation is pass-k"
 // ---------------------------------------------------------------------------
 
 describe("Citation drift check: all fixture source.normative values must match rubric doc path", () => {
-  it("rule-manifest-valid.yaml: all entries have source.normative = docs/rubric/sop-rule-taxonomy.md", async () => {
-    const manifestPath = join(fixturesDir, "rule-manifest-valid.yaml");
-    const raw = await readFile(manifestPath, "utf-8");
-    const parsed = parseYaml(raw) as { rules: Array<{ source: { normative: string } }> };
+  it.each([
+    "rule-manifest-valid.yaml",
+    "rule-manifest-drift.yaml",
+    "rule-manifest-runner-sc001.yaml",
+  ])(
+    "%s: all entries have source.normative = docs/rubric/sop-rule-taxonomy.md",
+    async (fixtureName) => {
+      const manifestPath = join(fixturesDir, fixtureName);
+      const raw = await readFile(manifestPath, "utf-8");
+      const parsed = parseYaml(raw) as { rules: Array<{ source: { normative: string } }> };
 
-    for (const entry of parsed.rules) {
-      expect(entry.source.normative).toBe(RUBRIC_DOC_PATH);
+      for (const entry of parsed.rules) {
+        expect(entry.source.normative).toBe(RUBRIC_DOC_PATH);
+      }
     }
-  });
-
-  it("rule-manifest-drift.yaml: all entries have source.normative = docs/rubric/sop-rule-taxonomy.md", async () => {
-    const manifestPath = join(fixturesDir, "rule-manifest-drift.yaml");
-    const raw = await readFile(manifestPath, "utf-8");
-    const parsed = parseYaml(raw) as { rules: Array<{ source: { normative: string } }> };
-
-    for (const entry of parsed.rules) {
-      expect(entry.source.normative).toBe(RUBRIC_DOC_PATH);
-    }
-  });
-
-  it("rule-manifest-runner-sc001.yaml: all entries have source.normative = docs/rubric/sop-rule-taxonomy.md", async () => {
-    const manifestPath = join(fixturesDir, "rule-manifest-runner-sc001.yaml");
-    const raw = await readFile(manifestPath, "utf-8");
-    const parsed = parseYaml(raw) as { rules: Array<{ source: { normative: string } }> };
-
-    for (const entry of parsed.rules) {
-      expect(entry.source.normative).toBe(RUBRIC_DOC_PATH);
-    }
-  });
+  );
 
   it("all runner test fixture manifests: no source.normative citation drift", async () => {
     const fixtureManifests = [
@@ -546,7 +533,7 @@ probes:
     const report = await runManifestSuite(manifestPath, { client });
 
     // Both probes must have a verdict (probe 1 errors, but probe 2 still runs)
-    expect(report.verdicts.length).toBe(2);
+    expect(report.verdicts).toHaveLength(2);
 
     // Probe 1 verdict: errored run = failed
     const probe1Verdict = report.verdicts.find((v) => v.ruleId === "R-ERROR-PROBE-1");
@@ -645,7 +632,7 @@ probes:
 
     const report = await runManifestSuite(manifestPath, { client });
 
-    expect(report.verdicts.length).toBe(1);
+    expect(report.verdicts).toHaveLength(1);
     const verdict = report.verdicts[0];
     expect(verdict.aggregation).toBe("k-of-n");
     // passCount=2, threshold=2 → passed
@@ -756,11 +743,11 @@ probes:
 
     const report = await runManifestSuite(manifestPath, { client });
 
-    expect(report.verdicts.length).toBe(1);
+    expect(report.verdicts).toHaveLength(1);
     const verdict = report.verdicts[0];
     expect(verdict.ruleId).toBe("R-JUDGE-COMPLIANCE");
     // Judge grading called; result should be based on PASS votes
-    expect(verdict.runs.length).toBe(1);
+    expect(verdict.runs).toHaveLength(1);
     expect(verdict.aggregation).toBe("k-of-n");
   });
 
@@ -799,7 +786,7 @@ probes:
 
     const report = await runManifestSuite(manifestPath, { client });
 
-    expect(report.verdicts.length).toBe(1);
+    expect(report.verdicts).toHaveLength(1);
     const verdict = report.verdicts[0];
     // No assertion = grader returns passed: false
     expect(verdict.passed).toBe(false);

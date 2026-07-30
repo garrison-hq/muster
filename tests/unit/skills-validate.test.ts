@@ -167,7 +167,7 @@ describe("validateStatic — description rules (FR-004)", () => {
   it("passes for description of exactly 1024 chars", () => {
     const doc = makeDoc({ name: "foo", description: "a".repeat(1024) });
     const violations = validateStatic(doc, "base");
-    expect(violations.filter((v) => v.path === "description").length).toBe(0);
+    expect(violations.filter((v) => v.path === "description")).toHaveLength(0);
     assertSections(violations);
   });
 
@@ -189,7 +189,7 @@ describe("validateStatic — optional fields (FR-005, WP02)", () => {
   it("passes with valid compatibility of exactly 500 chars", () => {
     const doc = makeValid({ compatibility: "a".repeat(500) });
     const violations = validateStatic(doc, "base");
-    expect(violations.filter((v) => v.path === "compatibility").length).toBe(0);
+    expect(violations.filter((v) => v.path === "compatibility")).toHaveLength(0);
     assertSections(violations);
   });
 
@@ -215,7 +215,7 @@ describe("validateStatic — optional fields (FR-005, WP02)", () => {
         v.severity === "warning" &&
         /experimental/i.test(v.message)
     );
-    expect(errors.length).toBe(0);
+    expect(errors).toHaveLength(0);
     expect(warnings.length).toBeGreaterThan(0);
     assertSections(violations);
   });
@@ -233,14 +233,14 @@ describe("validateStatic — optional fields (FR-005, WP02)", () => {
   it("emits no allowed-tools warning when field is absent", () => {
     const doc = makeValid();
     const violations = validateStatic(doc, "base");
-    expect(violations.filter((v) => v.path === "allowed-tools").length).toBe(0);
+    expect(violations.filter((v) => v.path === "allowed-tools")).toHaveLength(0);
     assertSections(violations);
   });
 
   it("passes with valid metadata (string values)", () => {
     const doc = makeValid({ metadata: { key: "value", version: "1.0" } });
     const violations = validateStatic(doc, "base");
-    expect(violations.filter((v) => v.path.startsWith("metadata")).length).toBe(0);
+    expect(violations.filter((v) => v.path.startsWith("metadata"))).toHaveLength(0);
     assertSections(violations);
   });
 
@@ -265,7 +265,7 @@ describe("validateStatic — optional fields (FR-005, WP02)", () => {
   it("passes with a non-empty license field", () => {
     const doc = makeValid({ license: "MIT" });
     const violations = validateStatic(doc, "base");
-    expect(violations.filter((v) => v.path === "license" && v.severity === "error").length).toBe(0);
+    expect(violations.filter((v) => v.path === "license" && v.severity === "error")).toHaveLength(0);
     assertSections(violations);
   });
 });
@@ -275,7 +275,7 @@ describe("validateStatic — Anthropic profile gate (FR-007, WP02 acceptance sce
     const doc = makeDoc({ name: "claude-tool", description: "A valid desc" }, "/skills/claude-tool");
     const violations = validateStatic(doc, "base");
     // Should have zero errors: base profile does not check reserved words.
-    expect(violations.filter((v) => v.severity === "error").length).toBe(0);
+    expect(violations.filter((v) => v.severity === "error")).toHaveLength(0);
     assertSections(violations);
   });
 
@@ -307,7 +307,7 @@ describe("validateStatic — Anthropic profile gate (FR-007, WP02 acceptance sce
   it("passes for description containing XML with profile='base'", () => {
     const doc = makeValid({ description: "Use <instructions> here" });
     const violations = validateStatic(doc, "base");
-    expect(violations.filter((v) => v.path === "description" && v.severity === "error").length).toBe(0);
+    expect(violations.filter((v) => v.path === "description" && v.severity === "error")).toHaveLength(0);
     assertSections(violations);
   });
 
@@ -322,13 +322,57 @@ describe("validateStatic — Anthropic profile gate (FR-007, WP02 acceptance sce
     assertSections(violations);
   });
 
+  // -------------------------------------------------------------------------
+  // S8786 ReDoS remediation characterization: `/<[^>]+>/.test(descStr)` was
+  // replaced with a linear-time `containsUnescapedXmlTag()` helper (an
+  // unanchored `<[^>]+>` costs O(n^2) on adversarial input such as a long
+  // run of unmatched '<' characters, since the engine retries the greedy
+  // `[^>]+` scan at every start position). These boundary cases pin the
+  // exact detection decision — including the "<>" (zero-length content)
+  // non-match and the "unmatched '<'" non-match — that the original regex
+  // produced.
+  // -------------------------------------------------------------------------
+  describe("XML-tag detection boundary cases (profile='anthropic')", () => {
+    function hasDescriptionError(description: string): boolean {
+      const doc = makeValid({ description });
+      const violations = validateStatic(doc, "anthropic");
+      return violations.some((v) => v.path === "description" && v.severity === "error");
+    }
+
+    it.each([
+      ["<a>", true],
+      ["<instructions>", true],
+      ["prefix <tag> suffix", true],
+      ["<>", false], // zero-length content between '<' and '>' — [^>]+ requires >= 1 char
+      ["< >", true], // single space between — satisfies [^>]+
+      ["no angle brackets at all", false],
+      ["<unterminated", false], // '<' with no following '>' anywhere
+      [">before<", false], // '>' precedes '<' — no '<...>' span in order
+      ["<<<<<<<<<<", false], // many '<' with no '>' anywhere (adversarial/perf case)
+    ])("description %j → flagged as XML tag: %s", (description, expected) => {
+      expect(hasDescriptionError(description)).toBe(expected);
+    });
+
+    it("stays fast on an adversarial description with many unmatched '<' characters", () => {
+      // Regression guard for the O(n^2) unanchored-regex behavior this
+      // helper replaced: a naive `/<[^>]+>/` re-scan would take seconds at
+      // this length; the linear implementation should complete in well
+      // under a second even on a slow CI runner.
+      const adversarial = "<".repeat(50_000);
+      const start = performance.now();
+      hasDescriptionError(adversarial);
+      const elapsedMs = performance.now() - start;
+      expect(elapsedMs).toBeLessThan(1000);
+    });
+  });
+
   it("zero errors for fully valid skill with profile='anthropic'", () => {
     const doc = makeDoc(
       { name: "my-skill", description: "A perfectly valid description without XML tags" },
       "/skills/my-skill"
     );
     const violations = validateStatic(doc, "anthropic");
-    expect(violations.filter((v) => v.severity === "error").length).toBe(0);
+    expect(violations.filter((v) => v.severity === "error")).toHaveLength(0);
     assertSections(violations);
   });
 
@@ -343,7 +387,7 @@ describe("validateStatic — Anthropic profile gate (FR-007, WP02 acceptance sce
       (v) => v.section?.includes("docs.anthropic.com") && v.severity === "error"
     );
     // Must be zero: base profile is silent on Anthropic constraints.
-    expect(anthropicErrors.length).toBe(0);
+    expect(anthropicErrors).toHaveLength(0);
   });
 });
 

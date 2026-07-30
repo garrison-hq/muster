@@ -37,7 +37,7 @@ describe("parseTOOLSFile + lintTOOLSFile", () => {
   describe("Scenario 1 — well-formed.md", () => {
     it("parses correctly: two tools, correct names and sections", async () => {
       const parsed = await parseTOOLSFile(wellFormedPath);
-      expect(parsed.tools.length).toBe(2);
+      expect(parsed.tools).toHaveLength(2);
       expect(parsed.tools[0]!.name).toBe("send_email");
       expect(parsed.tools[1]!.name).toBe("list_files");
     });
@@ -62,7 +62,7 @@ describe("parseTOOLSFile + lintTOOLSFile", () => {
       const parsed = await parseTOOLSFile(wellFormedPath);
       const report = lintTOOLSFile(parsed);
       expect(report.ok).toBe(true);
-      expect(report.findings.length).toBe(0);
+      expect(report.findings).toHaveLength(0);
     });
 
     it("section keys are lower-case (normalised, locale-independent)", async () => {
@@ -145,7 +145,7 @@ describe("parseTOOLSFile + lintTOOLSFile", () => {
     it("parser does NOT deduplicate: both send_email entries appear in tools array", async () => {
       const parsed = await parseTOOLSFile(duplicateToolPath);
       const sendEmailTools = parsed.tools.filter((t) => t.name === "send_email");
-      expect(sendEmailTools.length).toBe(2);
+      expect(sendEmailTools).toHaveLength(2);
     });
   });
 
@@ -233,7 +233,7 @@ describe("parseTOOLSFile + lintTOOLSFile", () => {
         tools: Array<{ name: string; description: string; parameters: Record<string, unknown> }>;
         sections: Record<string, string>;
       };
-      expect(plain.tools.length).toBe(2);
+      expect(plain.tools).toHaveLength(2);
       expect(plain.tools[0]!.name).toBe("send_email");
       expect(plain.sections["tools"]).toBeDefined();
       expect(plain.sections["overview"]).toBeDefined();
@@ -275,6 +275,48 @@ describe("parseTOOLSFile + lintTOOLSFile", () => {
       const noParamsPath = path.join(fixturesDir, "no-params-heading.md");
       const parsed = await parseTOOLSFile(noParamsPath);
       expect(parsed.tools.map((t) => t.name)).toEqual(["ping_tool", "describe_tool"]);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // S8786 ReDoS remediation characterization: the `## heading` regex
+  // (`\s+(.+)$` → `\s(.+)$`) and the parameter-table separator-row regex
+  // (`[\s|:-]+\|?\s*$` → `[\s|:-]+$`) were rewritten to remove overlapping
+  // unbounded-whitespace quantifiers. These boundary cases pin the exact
+  // behavior the old regexes produced so the rewrite cannot silently change
+  // section keys or parameter-table parsing.
+  // ---------------------------------------------------------------------------
+  describe("redos-boundary.md — heading and separator-row regex boundary cases", () => {
+    const redosBoundaryPath = path.join(fixturesDir, "redos-boundary.md");
+
+    it("treats a `##` line followed only by whitespace as a heading with an empty normalised key", async () => {
+      const parsed = await parseTOOLSFile(redosBoundaryPath);
+      expect(parsed.sections.get("overview")).toBe("Overview text.");
+      expect(parsed.sections.has("")).toBe(true);
+      expect(parsed.sections.get("")).toBe(
+        "Body under an all-whitespace-titled heading."
+      );
+    });
+
+    it("parses a parameter table whose separator row uses colon-aligned dashes", async () => {
+      const parsed = await parseTOOLSFile(redosBoundaryPath);
+      const tool = parsed.tools.find((t) => t.name === "probe_tool_colon");
+      expect(tool).toBeDefined();
+      expect(tool!.parameters.get("b")).toEqual({ type: "string", required: false });
+    });
+
+    it("parses a parameter table whose separator row has trailing pipe-and-spaces", async () => {
+      const parsed = await parseTOOLSFile(redosBoundaryPath);
+      const tool = parsed.tools.find((t) => t.name === "probe_tool_trailing_pipe");
+      expect(tool).toBeDefined();
+      expect(tool!.parameters.get("c")).toEqual({ type: "string", required: true });
+    });
+
+    it("parses the plain-dash separator row baseline correctly", async () => {
+      const parsed = await parseTOOLSFile(redosBoundaryPath);
+      const tool = parsed.tools.find((t) => t.name === "probe_tool");
+      expect(tool).toBeDefined();
+      expect(tool!.parameters.get("a")).toEqual({ type: "string", required: true });
     });
   });
 });
