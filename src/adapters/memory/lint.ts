@@ -190,7 +190,13 @@ export class FactParser {
     };
 
     for (const line of lines) {
-      const headingMatch = /^(#{1,6})\s+(.+)$/.exec(line);
+      // S8786: `\s+(.+)$` overlaps two unbounded quantifiers over
+      // whitespace, causing super-linear backtracking on failure. `\s(.+)$`
+      // (single mandatory separator char) matches the identical set of
+      // lines and — after the .trim() below — produces identical captured
+      // titles, because \s ⊆ `.` means the leading-whitespace/content
+      // boundary between the two forms is only ever visible pre-trim.
+      const headingMatch = /^(#{1,6})\s(.+)$/.exec(line);
       if (headingMatch) {
         // Flush any pending fact before starting a new section
         flushPending();

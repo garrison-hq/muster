@@ -154,8 +154,15 @@ function parseParametersTable(tableLines: string[]): Map<string, ParameterDescri
   let dataStart = 0;
   for (let i = 0; i < tableLines.length; i++) {
     const line = tableLines[i] ?? "";
-    // Separator row contains only |, -, and spaces
-    if (/^\|[\s|:-]+\|?\s*$/.test(line)) {
+    // Separator row contains only |, -, and spaces.
+    // S8786: the original `[\s|:-]+\|?\s*$` has two overlapping
+    // unbounded-whitespace quantifiers (the class already contains \s, and
+    // both '|' and ' ' are also class members), causing super-linear
+    // backtracking on failure. Since every character the trailing
+    // `\|?\s*$` can consume is already a member of `[\s|:-]`, that tail is
+    // redundant: the class run reaching `$` is exactly the same condition
+    // (>= 1 char, and every char in {whitespace, '|', ':', '-'}).
+    if (/^\|[\s|:-]+$/.test(line)) {
       dataStart = i + 1;
       break;
     }
@@ -314,7 +321,12 @@ export async function parseTOOLSFile(filePath: string): Promise<TOOLSFile> {
   const currentSectionLines: string[] = [];
 
   for (const line of lines) {
-    const h2Match = /^##\s+(.+)$/.exec(line);
+    // S8786: `\s+(.+)$` overlaps two unbounded quantifiers over whitespace;
+    // `\s(.+)$` (single mandatory separator char) matches the identical set
+    // of lines and — after the normaliseHeading() trim below — produces an
+    // identical normalised key, because \s ⊆ `.` means the leading-
+    // whitespace/content boundary is only visible pre-trim.
+    const h2Match = /^##\s(.+)$/.exec(line);
     if (h2Match) {
       // Save previous section if any
       if (currentSectionKey !== null) {
