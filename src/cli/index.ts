@@ -1390,17 +1390,6 @@ function resolveSkillsBehavioralEndpoint(
 }
 
 /**
- * Run one behavioral skills case through the real `runTriggerConformance`
- * grader (FR-001, FR-005). Extracted from `doSkillsRun` to keep its own
- * cognitive complexity low (S3776).
- *
- * Mirrors the sanctioned reference call site (`tests/cts/skills-suite.test.ts`)
- * exactly: parses the target skill for its name/description, overrides the
- * description with the rigged-impossible control string for `isControl`
- * cases, loads the query set referenced by `querySetPath`, and reports the
- * real `TriggerVerdict` — never a hardcoded skip — through the CLI.
- */
-/**
  * Read a skill frontmatter field as a string, or fall back. Guards against
  * SonarCloud typescript:S6551 (`String(x ?? fallback)` stringifies a
  * non-string object to "[object Object]" instead of using `fallback`) by
@@ -1411,6 +1400,17 @@ function frontmatterStringField(value: unknown, fallback: string): string {
   return typeof value === "string" ? value : fallback;
 }
 
+/**
+ * Run one behavioral skills case through the real `runTriggerConformance`
+ * grader (FR-001, FR-005). Extracted from `doSkillsRun` to keep its own
+ * cognitive complexity low (S3776).
+ *
+ * Mirrors the sanctioned reference call site (`tests/cts/skills-suite.test.ts`)
+ * exactly: parses the target skill for its name/description, overrides the
+ * description with the rigged-impossible control string for `isControl`
+ * cases, loads the query set referenced by `querySetPath`, and reports the
+ * real `TriggerVerdict` — never a hardcoded skip — through the CLI.
+ */
 async function runBehavioralSkillCase(
   c: SkillsManifestBehavioralCase,
   baseDir: string,
