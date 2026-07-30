@@ -23,7 +23,7 @@ skills) over real conversations, against any OpenAI-compatible endpoint.
 
 muster began as the reference **CTS-1** harness for
 [Soul.md RFC-1](https://github.com/rokoss21/soul.md) and grew a spec-agnostic
-core that now drives seven conformance layers plus cross-layer composition.
+core that now drives eight conformance layers plus cross-layer composition.
 
 Full documentation:
 [garrison-hq.github.io/muster](https://garrison-hq.github.io/muster).
@@ -43,6 +43,7 @@ only when an endpoint is configured, and is skipped otherwise.
 | Memory | `MEMORY.md` / `USER.md` | staleness and contradiction lint; behavioral recall and privacy/leak probes | `memory run` |
 | Heartbeat | `HEARTBEAT.md` | static lint and interval-config checks; behavioral action-diff, idempotency, and quiet-ack | `heartbeat run` |
 | A2A | Agent Card (JSON) | card schema and offline signature lint; live skill-behavior, auth-negative, and signed-card conformance | `a2a run` |
+| Agent Profiles | Spec Kitty `*.agent.yaml` | schema conformance against a SHA-pinned upstream schema; handoff-graph resolution and symmetry, doctrine-reference resolution, context-source integrity, profile-id filename legality, projection-drift verification (static-only) | `skprofile run` |
 | Cross-layer | composition of the above | precedence, contradiction, and rule survival across a full layer stack | `crosslayer run` |
 
 ## Install
@@ -108,6 +109,10 @@ muster heartbeat run examples/heartbeat/manifest.json
 
 # A2A: lint an Agent Card and verify its signature offline
 muster a2a run examples/a2a/manifest.json
+
+# Agent Profiles: lint Spec Kitty *.agent.yaml — schema, handoff graph,
+# doctrine references, context sources, and profile-id identity
+muster skprofile run examples/skprofile/manifest.yaml
 
 # Cross-layer: check composition, precedence, and rule survival across a stack
 muster crosslayer run examples/crosslayer/manifest.yaml
