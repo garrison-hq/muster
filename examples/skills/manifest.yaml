@@ -20,9 +20,12 @@ cases:
 
   - id: example-behavioral-weather
     type: behavioral
-    # Real should-trigger case: the labeled weather queries are graded
-    # against the minimal skill's own name/description as the tool.
-    skillDir: valid/minimal
+    # Real should-trigger case (MEDIUM-2 remediation): the labeled weather
+    # queries are graded against a genuinely weather-semantic skill — its
+    # name/description name forecasts, temperature, precipitation, wind, and
+    # storm alerts, matching the trigger/near-miss query set's own topic
+    # rather than a generic placeholder tool.
+    skillDir: valid/weather-lookup
     profile: base
     querySetPath: trigger-queries/weather-skill-queries.yaml
     runsPerQuery: 3
