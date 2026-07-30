@@ -1,0 +1,113 @@
+{
+  "event_count": 24,
+  "last_event_id": "01KYK39S9TZWEHYJNC4T8MT4Z6",
+  "materialized_at": "2026-07-28T00:51:52.250201+00:00",
+  "mission_number": "",
+  "mission_slug": "skills-behavioral-enablement-01KYJFAC",
+  "mission_type": "software-dev",
+  "summary": {
+    "approved": 4,
+    "blocked": 0,
+    "canceled": 0,
+    "claimed": 0,
+    "done": 0,
+    "for_review": 0,
+    "in_progress": 0,
+    "in_review": 0,
+    "planned": 0
+  },
+  "work_packages": {
+    "WP01": {
+      "actor": "user",
+      "agent": "claude",
+      "agent_profile": "__resolved_profile_absent__",
+      "agent_profile_version": "__resolved_profile_version_absent__",
+      "force_count": 0,
+      "lane": "approved",
+      "last_event_id": "01KYJSTCGF9ZN4DVDHFRX87ACS",
+      "last_transition_at": "2026-07-27T22:06:10.447522+00:00",
+      "model": "__resolved_model_absent__",
+      "notes": [
+        "Ready for review"
+      ],
+      "provider": "__resolved_provider_absent__",
+      "role": "reviewer",
+      "shell_pid": 415722,
+      "shell_pid_created_at": "1785185409.14",
+      "subtasks": {
+        "T001": "done",
+        "T002": "done",
+        "T003": "done",
+        "T004": "done",
+        "T005": "done",
+        "T006": "done",
+        "T007": "done"
+      }
+    },
+    "WP02": {
+      "actor": "user",
+      "agent": "claude",
+      "agent_profile": "__resolved_profile_absent__",
+      "agent_profile_version": "__resolved_profile_version_absent__",
+      "force_count": 0,
+      "lane": "approved",
+      "last_event_id": "01KYJWSVQHZ9ZKAN46ZH6TC6R8",
+      "last_transition_at": "2026-07-27T22:58:18.993752+00:00",
+      "model": "__resolved_model_absent__",
+      "provider": "__resolved_provider_absent__",
+      "role": "reviewer",
+      "shell_pid": 1730131,
+      "shell_pid_created_at": "1785191256.56",
+      "subtasks": {
+        "T008": "done",
+        "T009": "done",
+        "T010": "done",
+        "T011": "done",
+        "T012": "done"
+      }
+    },
+    "WP03": {
+      "actor": "user",
+      "agent": "claude",
+      "agent_profile": "__resolved_profile_absent__",
+      "agent_profile_version": "__resolved_profile_version_absent__",
+      "force_count": 0,
+      "lane": "approved",
+      "last_event_id": "01KYJSTTDC4H38RS85A5QNKKF2",
+      "last_transition_at": "2026-07-27T22:06:24.684883+00:00",
+      "model": "__resolved_model_absent__",
+      "provider": "__resolved_provider_absent__",
+      "role": "reviewer",
+      "shell_pid": 443562,
+      "shell_pid_created_at": "1785185514.45",
+      "subtasks": {
+        "T013": "done",
+        "T014": "done",
+        "T015": "done",
+        "T016": "done",
+        "T017": "done"
+      }
+    },
+    "WP04": {
+      "actor": "user",
+      "agent_profile": "__resolved_profile_absent__",
+      "agent_profile_version": "__resolved_profile_version_absent__",
+      "force_count": 0,
+      "lane": "approved",
+      "last_event_id": "01KYK39S9TZWEHYJNC4T8MT4Z6",
+      "last_transition_at": "2026-07-28T00:51:52.250201+00:00",
+      "model": "__resolved_model_absent__",
+      "notes": [
+        "Re-review clean after two remediation rounds: Probe B caught (old gate exit 0, new exit 1) while both gates read 0 on healthy run; examples near-miss axis measures 0 across two live runs vs shipped fixtures copy at 1.0; conjunction test guard proven both directions; runsErrored gate proven against dead endpoint; --env-file=.env instructions removed; spec.md NI-001 claim corrected; ps_leak_gate returns 0 and still catches planted leak. Clean clone: 170 files / 3637 passed / 3 skipped."
+      ],
+      "provider": "__resolved_provider_absent__",
+      "role": "reviewer",
+      "subtasks": {
+        "T018": "done",
+        "T019": "done",
+        "T020": "done",
+        "T021": "done"
+      }
+    }
+  }
+}

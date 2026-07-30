@@ -14,3 +14,33 @@ cases:
     expectations:
       ok: true
       violations: []
+
+  # ── Behavioral cases (require MUSTER_ENDPOINT; skipped gracefully when ────
+  # absent, FR-006). Reuses the valid/minimal skill above as the target tool.
+
+  - id: example-behavioral-weather
+    type: behavioral
+    # Real should-trigger case (MEDIUM-2 remediation): the labeled weather
+    # queries are graded against a genuinely weather-semantic skill — its
+    # name/description name forecasts, temperature, precipitation, wind, and
+    # storm alerts, matching the trigger/near-miss query set's own topic
+    # rather than a generic placeholder tool.
+    skillDir: valid/weather-lookup
+    profile: base
+    querySetPath: trigger-queries/weather-skill-queries.yaml
+    runsPerQuery: 3
+    threshold: 0.5
+    isControl: false
+
+  - id: example-behavioral-control
+    type: behavioral
+    # Discrimination control (SC-004): the runner overrides the tool
+    # description with RIGGED_IMPOSSIBLE_DESCRIPTION at runtime — skillDir is
+    # a placeholder; the runner replaces the description at runtime
+    # (matches fixtures/skills/skills-manifest.yaml:214-226's own precedent).
+    skillDir: valid/minimal
+    profile: base
+    querySetPath: trigger-queries/rigged-impossible-queries.yaml
+    runsPerQuery: 3
+    threshold: 0.5
+    isControl: true

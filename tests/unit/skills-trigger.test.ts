@@ -17,7 +17,7 @@
  * the TriggerChatClient interface; makeToolClient is not called in tests).
  *
  * Methodology citation (C-003):
- *   agentskills.io/specification#trigger-testing@d8a3f2e1b9c74051e6f8d2a7c3b5f0e9d1a4c8b2
+ *   docs/rubric/skills-trigger-taxonomy.md
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -56,7 +56,7 @@ function makeQuerySet(
 ): TriggerQuerySet {
   return {
     id: "test-qs",
-    source: "agentskills.io/specification#trigger-testing@d8a3f2e1b9c74051e6f8d2a7c3b5f0e9d1a4c8b2",
+    source: "docs/rubric/skills-trigger-taxonomy.md",
     shouldTrigger,
     nearMiss,
     threshold,

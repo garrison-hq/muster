@@ -1,5 +1,5 @@
 id: weather-skill-queries
-source: "agentskills.io/specification#trigger-testing@d8a3f2e1b9c74051e6f8d2a7c3b5f0e9d1a4c8b2"
+source: "docs/rubric/skills-trigger-taxonomy.md"
 threshold: 0.5
 shouldTrigger:
   - "What is the weather in Amsterdam today?"

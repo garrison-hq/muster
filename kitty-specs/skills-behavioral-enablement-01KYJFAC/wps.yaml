@@ -1,0 +1,88 @@
+work_packages:
+  - id: WP01
+    title: "CLI wiring + env alias"
+    dependencies: []
+    owned_files:
+      - "src/cli/index.ts"
+      - "src/adapters/skills/trigger.ts"
+      - ".env.example"
+      - "fixtures/skills/skills-manifest.yaml"
+      - "tests/skills/cli.test.ts"
+      - "tests/cts/skills-suite.test.ts"
+    requirement_refs:
+      - FR-001
+      - FR-002
+      - C-001
+      - C-003
+      - C-004
+    cross_cutting: true
+    subtasks:
+      - T001
+      - T002
+      - T003
+      - T004
+      - T005
+      - T006
+      - T007
+    prompt_file: "tasks/WP01-cli-wiring-env-alias.md"
+
+  - id: WP02
+    title: "Manifest schema + static catch-block fix"
+    dependencies:
+      - WP01
+    owned_files:
+      - "src/adapters/skills/schema.ts"
+      - "src/cli/index.ts"
+      - "tests/skills/cli.test.ts"
+    requirement_refs:
+      - FR-003
+      - FR-007
+    cross_cutting: true
+    subtasks:
+      - T008
+      - T009
+      - T010
+      - T011
+      - T012
+    prompt_file: "tasks/WP02-manifest-schema-catch-block-fix.md"
+
+  - id: WP03
+    title: "Rubric doc + citation repoint"
+    dependencies: []
+    owned_files:
+      - "docs/rubric/skills-trigger-taxonomy.md"
+      - "src/adapters/skills/types.ts"
+      - "fixtures/skills/trigger-queries/rigged-impossible-queries.yaml"
+      - "fixtures/skills/trigger-queries/weather-skill-queries.yaml"
+      - "tests/unit/skills-trigger.test.ts"
+    requirement_refs:
+      - FR-004
+    cross_cutting: true
+    subtasks:
+      - T013
+      - T014
+      - T015
+      - T016
+      - T017
+    prompt_file: "tasks/WP03-rubric-citation-repoint.md"
+
+  - id: WP04
+    title: "Examples + tests (behavioral wiring proof + live-model gate)"
+    dependencies:
+      - WP01
+      - WP02
+    owned_files:
+      - "examples/skills/manifest.yaml"
+      - "examples/skills/trigger-queries/weather-skill-queries.yaml"
+      - "examples/skills/trigger-queries/rigged-impossible-queries.yaml"
+      - "tests/skills/cli.test.ts"
+    requirement_refs:
+      - FR-005
+      - FR-006
+    cross_cutting: true
+    subtasks:
+      - T018
+      - T019
+      - T020
+      - T021
+    prompt_file: "tasks/WP04-examples-tests-live-model-gate.md"

@@ -94,6 +94,19 @@ const behavioralCases = manifest.cases.filter(
   (c): c is BehavioralManifestCase => c.type === "behavioral"
 );
 
+/**
+ * Read a skill frontmatter field as a string, or fall back. Mirrors
+ * `src/cli/index.ts`'s `frontmatterStringField` (LOW-5): guards against
+ * SonarCloud typescript:S6551 (`String(x ?? fallback)` stringifies a
+ * non-string object to "[object Object]" instead of using `fallback`) by
+ * narrowing with `typeof` first. This file is not Sonar-scanned (tests are
+ * excluded), but it is the sanctioned reference call site the CLI's own
+ * comment cites, so it is kept in sync with the same guarded idiom.
+ */
+function frontmatterStringField(value: unknown, fallback: string): string {
+  return typeof value === "string" ? value : fallback;
+}
+
 // ─── Static case runner ──────────────────────────────────────────────────────
 
 /**
@@ -307,24 +320,31 @@ describe("SC-004 discrimination control — mocked trigger runner asserts passed
   });
 });
 
-// ─── Behavioral cases (require MUSTER_BASE_URL) ───────────────────────────────
+// ─── Behavioral cases (require MUSTER_ENDPOINT) ────────────────────────────────
 
-describe("Skills CTS — behavioral suite (require MUSTER_BASE_URL)", () => {
+describe("Skills CTS — behavioral suite (require MUSTER_ENDPOINT)", () => {
   /**
    * SC-005 (behavioral, endpoint-agnostic):
    *   The behavioral test code and fixture data are identical regardless of endpoint.
    *   Switching between endpoints only requires changing MUSTER_BASE_URL /
    *   MUSTER_API_KEY / MUSTER_MODEL. The suite itself is never modified.
    *
-   * These tests are skipped in offline CI (MUSTER_BASE_URL not set).
-   * Set MUSTER_BASE_URL to an OpenAI-compatible endpoint to run them.
+   * These tests are skipped in offline CI (MUSTER_ENDPOINT not set).
+   * Set MUSTER_ENDPOINT (canonical; MUSTER_BASE_URL is a deprecated alias,
+   * FR-002) to an OpenAI-compatible endpoint to run them.
    */
 
+  // Each behavioral case drives 24-30 live chat-completion calls against the
+  // configured endpoint (~145s observed). vitest's 5000ms default test
+  // timeout is far too short for this path once MUSTER_ENDPOINT is set, so
+  // every case gets an explicit, generous per-test timeout.
+  const BEHAVIORAL_CASE_TIMEOUT_MS = 600_000;
+
   for (const c of behavioralCases) {
-    it.skipIf(!process.env["MUSTER_BASE_URL"])(
+    it.skipIf(!process.env["MUSTER_ENDPOINT"] && !process.env["MUSTER_BASE_URL"])(
       `skills-behavioral: ${c.id}`,
       async () => {
-        const { makeToolClient } = await import(
+        const { makeToolClient, resolveEndpointBaseUrl } = await import(
           "../../src/adapters/skills/trigger.js"
         );
         const { default: yamlPkg } = await import("yaml");
@@ -346,12 +366,26 @@ describe("Skills CTS — behavioral suite (require MUSTER_BASE_URL)", () => {
         const fm = doc.frontmatter as Record<string, unknown>;
 
         // Override description with RIGGED_IMPOSSIBLE_DESCRIPTION for control cases.
+        // LOW-5: mirrors src/cli/index.ts's frontmatterStringField guard —
+        // narrow with typeof before falling back, rather than
+        // String(x ?? fallback), which would stringify a non-string
+        // frontmatter value to "[object Object]" instead of using the
+        // fallback (the exact S6551 pattern removed from the CLI).
         const toolDescription = c.isControl
           ? RIGGED_IMPOSSIBLE_DESCRIPTION
-          : String(fm["description"] ?? "");
+          : frontmatterStringField(fm["description"], "");
+        // HIGH-1 fix (same latent gap as src/cli/index.ts): trigger.ts derives
+        // its own isControl verdict from the tool name being exactly
+        // "rigged-impossible-control" — using the skill's own frontmatter
+        // name here would make that derivation never match, same bug.
+        const toolName = c.isControl
+          ? "rigged-impossible-control"
+          : frontmatterStringField(fm["name"], "skill");
 
         const endpoint = {
-          baseUrl: process.env["MUSTER_BASE_URL"]!,
+          // FR-002: canonical MUSTER_ENDPOINT wins; MUSTER_BASE_URL is the
+          // deprecated alias — same precedence the CLI uses.
+          baseUrl: resolveEndpointBaseUrl().baseUrl!,
           model: process.env["MUSTER_MODEL"] ?? "gpt-4o",
           apiKeyEnv: "MUSTER_API_KEY",
         };
@@ -373,7 +407,7 @@ describe("Skills CTS — behavioral suite (require MUSTER_BASE_URL)", () => {
             {
               type: "function" as const,
               function: {
-                name: String(fm["name"] ?? "skill"),
+                name: toolName,
                 description: toolDescription,
               },
             },
@@ -397,7 +431,8 @@ describe("Skills CTS — behavioral suite (require MUSTER_BASE_URL)", () => {
         }
         // void to silence unused-var lint
         void yamlPkg;
-      }
+      },
+      BEHAVIORAL_CASE_TIMEOUT_MS
     );
   }
 });
