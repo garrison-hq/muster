@@ -8,10 +8,10 @@
       "criterion_id": "FR-001",
       "description": "Verify FR-001 is satisfied",
       "proof_type": "automated_test",
-      "evidence": null,
-      "pass_fail": "pending",
+      "evidence": "T001-T004 @ 6cf0ca2fa: docs/guides/spec-kitty-conformance.md authored (11 real CLI suites, env-var matrix incl. skills-only MUSTER_BASE_URL alias and a2a's separate MUSTER_A2A_ENDPOINT/TOKEN namespace, per-adapter exit-code table, PLANNED appendix). Every static-suite command run: check/resolve/cts/memory/heartbeat/a2a(static)/crosslayer/skills/sop/tools all exit=0 (matches guide). Contrast pair captured: MUSTER_ENDPOINT=http://127.0.0.1:9/v1 skills run -> exit=1; same address, behave run --base-url http://127.0.0.1:9/v1 -> exit=2. Rejection case: skills run against a nonexistent manifest path -> exit=2 (manifest read/parse error, universal). Starlight mirror + 1 sidebar entry landed; cd site && pnpm build -> exit=0 with guides/spec-kitty-conformance page present; phantom-sidebar-entry falsification run and reverted: build with an invented slug -> exit=1 (AstroUserError naming the missing slug), removed and rebuilt clean -> exit=0 again. Appendix re-verified read-only against spec-kitty-conformance's origin/main (c36b727cf): confirms conformance/skills/manifest.yaml (54 entries) AND ALSO conformance/doctrine/*.yaml (13 manifests, doctrine-rule-manifests-01KYH7AM) are now real/merged there -- a second row needing the distinct 'exists but not wired into examples/**' label beyond what spec.md/plan.md called out (only the skills-manifest row), flagged in the guide's own appendix text. Citations pinned to commit 16f0d34c3126fab5df2ee0b6e1e304a4d9bcb8e3 (src/cli/index.ts confirmed byte-identical between that commit and this WP's HEAD, so line numbers are stable).",
+      "pass_fail": "pass",
       "verified_by": null,
-      "verified_at": null,
+      "verified_at": "2026-07-31T12:45:12.356381+00:00",
       "notes": "TODO: replace with a real acceptance criterion"
     },
     {
