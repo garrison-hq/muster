@@ -48,10 +48,10 @@
       "criterion_id": "FR-005",
       "description": "Verify FR-005 is satisfied",
       "proof_type": "automated_test",
-      "evidence": null,
-      "pass_fail": "pending",
+      "evidence": "T005 @ 8c0c03701: node dist/cli/index.js skills run examples/skills/manifest.yaml (env unset) -> exit=0; MUSTER_ENDPOINT=http://127.0.0.1:9/v1 node dist/cli/index.js skills run examples/skills/manifest.yaml -> exit=1 (NOT 2, matches corrected doc); same unreachable endpoint against behave run examples/behave/manifest.yaml -> exit=2 (contrast pair captured together). command grep -n 'exit 2' examples/README.md -> exactly one hit (line 5), explicitly naming behave/a2a before the exit-2 clause and skills/sop before the exit-1 clause; command grep -c 'behave|a2a' examples/README.md -> 7 (scoping confirmed). Rejection case: a constructed line 'Every adapter exit 2 when the endpoint is unreachable, no exceptions.' is found by the same grep -n 'exit 2' (present) but fails a grep -c 'behave|a2a' scoping check (0 matches, exit=1) -- proving the sweep can actually detect an unscoped claim, not just the corrected one.",
+      "pass_fail": "pass",
       "verified_by": null,
-      "verified_at": null,
+      "verified_at": "2026-07-31T09:31:50.670689+00:00",
       "notes": "TODO: replace with a real acceptance criterion"
     },
     {
