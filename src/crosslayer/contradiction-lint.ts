@@ -50,7 +50,8 @@ export type CrossLayerFindingType =
   | "cross-layer-contradiction" // direct conflict between two layers (FR-003)
   | "undefined-precedence" // conflict where no precedence is declared (FR-004)
   | "resolved-by-precedence" // conflict where declared precedence names a winner (FR-004)
-  | "circular-precedence-error"; // A outranks B outranks A — static error (FR-004)
+  | "circular-precedence-error" // A outranks B outranks A — static error (FR-004)
+  | "unbalanced-html-comment-marker"; // a layer's <!-- count exceeds its --> count (PR #85 F1)
 
 /** A single lint finding produced by lintComposition. Every field is machine-readable (FR-010). */
 export interface CrossLayerFinding {
@@ -149,6 +150,104 @@ const SCOPE_QUALIFIERS = new Set([
   "situations",
   "requests",
 ]);
+
+/**
+ * Function words that carry no subject matter: articles, determiners,
+ * quantifiers, pronouns, auxiliaries, prepositions, conjunctions and the bare
+ * temporal/quantifying polarity words ("all", "every", "always", "never",
+ * "not"). They are excluded when deciding whether two clauses are ABOUT the
+ * same thing (garrison-hq/muster#84 cause 2).
+ *
+ * Content-bearing polarity operators ("refuse", "prohibited", "accommodate",
+ * "assist", ...) are deliberately NOT listed: "never refuse" vs "refuse X" is
+ * a genuine same-subject conflict whose only lexical anchor may be "refuse".
+ *
+ * Normative heuristic: muster cross-layer rubric (2026), distinguisher section.
+ */
+const TOPIC_STOPWORDS = new Set([
+  // articles, determiners, quantifiers
+  "a", "an", "the", "this", "that", "these", "those", "all", "any", "each", "every", "some",
+  "no", "none", "both", "either", "neither", "such", "same", "other", "another", "more", "most",
+  "less", "least", "much", "many", "few", "several",
+  // pronouns
+  "i", "me", "my", "mine", "myself", "you", "your", "yours", "yourself", "he", "him", "his",
+  "she", "her", "hers", "it", "its", "itself", "we", "us", "our", "ours", "they", "them",
+  "their", "theirs", "who", "whom", "whose", "which", "what", "whatever", "whoever",
+  // auxiliaries, modals, semantically empty verbs
+  "am", "is", "are", "was", "were", "be", "been", "being", "do", "does", "did", "done", "doing",
+  "have", "has", "had", "having", "can", "could", "shall", "should", "will", "would", "may",
+  "might", "must", "ought", "let", "get", "gets", "got", "make", "makes", "made",
+  // prepositions, conjunctions, adverbs
+  "and", "or", "but", "nor", "so", "yet", "if", "then", "else", "than", "as", "at", "by", "for",
+  "from", "in", "into", "of", "off", "on", "onto", "out", "over", "under", "to", "too", "up",
+  "upon", "with", "within", "without", "about", "above", "after", "again", "against", "before",
+  "below", "between", "during", "further", "here", "there", "how", "however", "just", "not",
+  "now", "only", "also", "once", "per", "since", "still", "through", "thus", "until", "very",
+  "when", "where", "while", "why", "always", "never", "ever", "regardless", "instead", "rather",
+  "even", "because", "via", "use", "using", "used", "way", "ways", "etc",
+]);
+
+/** Shortest token length that can carry subject matter. */
+const MIN_TOPIC_TERM_LENGTH = 3;
+
+/**
+ * Conservative, locale-independent singularisation: strips one trailing "s"
+ * from a token of at least four characters that does not already end in "ss".
+ * "requests" -> "request", "recipes" -> "recipe", "restrictions" ->
+ * "restriction"; "class" and "less" are untouched.
+ *
+ * Deliberately not a stemmer — a stemmer is locale/ICU-shaped and would break
+ * byte-stability (NFR-001). This rule is pure string arithmetic.
+ */
+function singularise(token: string): string {
+  if (token.length >= 4 && token.endsWith("s") && !token.endsWith("ss")) {
+    return token.slice(0, -1);
+  }
+  return token;
+}
+
+/** The set of subject-matter terms a clause is about. */
+function topicalTerms(clause: string): Set<string> {
+  const terms = new Set<string>();
+  for (const raw of tokenize(clause)) {
+    if (raw.length < MIN_TOPIC_TERM_LENGTH || TOPIC_STOPWORDS.has(raw)) {
+      continue;
+    }
+    const term = singularise(raw);
+    if (term.length >= MIN_TOPIC_TERM_LENGTH && !TOPIC_STOPWORDS.has(term)) {
+      terms.add(term);
+    }
+  }
+  return terms;
+}
+
+/**
+ * Returns true when two clauses share at least one subject-matter term.
+ *
+ * Necessary condition for contradiction (FR-003): two directives can only be
+ * mutually exclusive if they are about the same thing. Without this gate the
+ * lint reported a git-push policy ("**All changes to origin/main MUST go
+ * through pull requests. Direct pushes are prohibited.**") as contradicting a
+ * persona role description ("I do not write implementation code") purely
+ * because one contained "all" and the other "not" (garrison-hq/muster#84).
+ *
+ * The rubric's bias is still to over-report: a SINGLE shared term is enough,
+ * and content-bearing polarity verbs count as shared subject matter. The
+ * accepted cost is a paraphrase contradiction with zero shared word stems —
+ * see docs/rubric/crosslayer-contradiction-gate.md.
+ */
+function sharesSubjectMatter(clauseA: string, clauseB: string): boolean {
+  const termsB = topicalTerms(clauseB);
+  if (termsB.size === 0) {
+    return false;
+  }
+  for (const term of topicalTerms(clauseA)) {
+    if (termsB.has(term)) {
+      return true;
+    }
+  }
+  return false;
+}
 
 // ---------------------------------------------------------------------------
 // Refinement-vs-contradiction distinguisher (T009)
@@ -254,18 +353,98 @@ function isRefinement(clauseA: string, clauseB: string): boolean {
 // Clause extraction from layer text (T009)
 // ---------------------------------------------------------------------------
 
+const COMMENT_OPEN = "<!--";
+const COMMENT_CLOSE = "-->";
+
+/**
+ * Removes every HTML comment span from layer text, `<!--` through the matching
+ * `-->`, including multi-line comments and an unterminated trailing comment.
+ *
+ * A comment body is authoring commentary, never a normative instruction: it is
+ * not part of the layer's directive content and must not be paired against
+ * another layer's clauses (garrison-hq/muster#84 cause 1 — a fixture's own
+ * explanatory header describing an extraction loop was ingested as an SOP
+ * clause because it contained the word "every").
+ *
+ * Index-based scan, no regular expression — this is on the offline static path
+ * and must carry no catastrophic-backtracking surface. A comment that spanned
+ * lines is replaced by a single newline so the text before and after it cannot
+ * fuse into one synthetic clause.
+ */
+function stripHtmlComments(layerText: string): string {
+  const parts: string[] = [];
+  let cursor = 0;
+  let open = layerText.indexOf(COMMENT_OPEN);
+
+  while (open !== -1) {
+    parts.push(layerText.slice(cursor, open));
+    const close = layerText.indexOf(COMMENT_CLOSE, open + COMMENT_OPEN.length);
+    if (close === -1) {
+      // Unterminated comment — the remainder of the layer text is comment body.
+      return parts.join("");
+    }
+    if (layerText.slice(open, close).includes("\n")) {
+      parts.push("\n");
+    }
+    cursor = close + COMMENT_CLOSE.length;
+    open = layerText.indexOf(COMMENT_OPEN, cursor);
+  }
+
+  parts.push(layerText.slice(cursor));
+  return parts.join("");
+}
+
 /**
  * Extracts instructional clauses from a layer's resolved text.
  * Each non-empty line that contains an imperative instruction is a candidate clause.
- * Filters out markdown headings (lines starting with #) and empty lines.
+ * Strips HTML comment bodies, then filters out markdown headings (lines
+ * starting with #) and empty lines.
  *
  * C-003: Operates on resolved layerTexts, not raw fixture files.
  */
 function extractClauses(layerText: string): string[] {
-  return layerText
+  return stripHtmlComments(layerText)
     .split("\n")
     .map((line) => line.trim())
-    .filter((line) => line.length > 0 && !line.startsWith("#") && !line.startsWith("<!--"));
+    .filter((line) => line.length > 0 && !line.startsWith("#"));
+}
+
+/**
+ * Counts non-overlapping occurrences of `marker` in `text`. Index-based scan,
+ * no regular expression — mirrors stripHtmlComments's no-backtracking-surface
+ * discipline on the offline static path.
+ */
+function countOccurrences(text: string, marker: string): number {
+  let count = 0;
+  let index = text.indexOf(marker);
+  while (index !== -1) {
+    count += 1;
+    index = text.indexOf(marker, index + marker.length);
+  }
+  return count;
+}
+
+/**
+ * Returns true when a layer's `<!--` count exceeds its `-->` count.
+ *
+ * PR #85 review finding F1: `stripHtmlComments` treats an unterminated
+ * `<!--` as opening a comment that runs through end-of-text, deleting every
+ * clause after it — including a genuine contradiction. That narrowing is an
+ * accepted false negative (docs/rubric/crosslayer-contradiction-gate.md,
+ * accepted false-negative surface, item 5) rather than something this lint
+ * attempts to recover, because distinguishing a genuinely unterminated
+ * comment from a marker merely mentioned in prose or a fenced code block is
+ * out of scope. What must not happen is for the loss to stay silent: this
+ * predicate is the basis for the `unbalanced-html-comment-marker` warning
+ * finding, which flips `report.ok` to false whenever the count is unbalanced.
+ *
+ * Deliberately one-directional: a `-->` with no matching `<!--` (e.g. a
+ * mermaid flowchart arrow) never causes stripHtmlComments to drop anything,
+ * so it stays inert here too — this predicate only detects a layer that lost
+ * text, not any occurrence of the closing token in isolation.
+ */
+function hasUnbalancedCommentMarkers(layerText: string): boolean {
+  return countOccurrences(layerText, COMMENT_OPEN) > countOccurrences(layerText, COMMENT_CLOSE);
 }
 
 // ---------------------------------------------------------------------------
@@ -336,6 +515,23 @@ function buildContradictionFinding(
     clauseB,
     citedSource,
     severity: "error",
+  };
+}
+
+/**
+ * Builds the warning finding for a layer whose `<!--` count exceeds its
+ * `-->` count (PR #85 F1). Both tuple entries name the same layer — this is
+ * a single-layer observation, not a cross-layer pairing.
+ */
+function buildUnbalancedCommentFinding(layerType: LayerType): CrossLayerFinding {
+  return {
+    type: "unbalanced-html-comment-marker",
+    layers: [layerType, layerType],
+    clauseA: `Layer "${layerType}" has more "<!--" markers than "-->" markers — an unterminated ` +
+      "comment silently drops every clause after it (accepted false-negative surface, item 5).",
+    clauseB: "",
+    citedSource: MUSTER_RUBRIC_CITATION,
+    severity: "warning",
   };
 }
 
@@ -440,6 +636,13 @@ function analyseClausePair(
     return [];
   }
 
+  // Subject-matter gate (FR-003, #84): mutually exclusive directives must be
+  // about the same thing. Polarity inversion between clauses on unrelated
+  // subjects is not a contradiction.
+  if (!sharesSubjectMatter(clauseA, clauseB)) {
+    return [];
+  }
+
   // Apply refinement distinguisher (FR-003).
   if (isRefinement(clauseA, clauseB)) {
     return [];
@@ -529,6 +732,16 @@ export function lintComposition(composition: StackComposition): CrossLayerLintRe
 
   const { layerTexts } = composition.resolved;
   const findings: CrossLayerFinding[] = [];
+
+  // F1 (PR #85 review) — surface a layer whose <!-- count exceeds its -->
+  // count. stripHtmlComments silently drops everything after an unterminated
+  // <!-- (accepted false-negative surface, item 5); this warning stops that
+  // loss from producing a silent ok: true.
+  for (const [layerType, layerText] of layerTexts) {
+    if (hasUnbalancedCommentMarkers(layerText)) {
+      findings.push(buildUnbalancedCommentFinding(layerType));
+    }
+  }
 
   // T011 — Circular-precedence detection (before any finding analysis).
   // FR-004: a circular declaration is a static error; must be detected first.
