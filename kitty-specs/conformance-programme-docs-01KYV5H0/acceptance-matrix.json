@@ -28,10 +28,10 @@
       "criterion_id": "FR-003",
       "description": "Verify FR-003 is satisfied",
       "proof_type": "automated_test",
-      "evidence": "docs/rubric/recorded-gaps.md contains exactly 12 entries (RG-001-012, not 7 \u2014 resolves the SC-002-vs-carry-in-instruction contradiction WP01's plan.md already flagged, toward the fuller 12-entry reading). node scripts/check-register-schema.mjs docs/rubric/recorded-gaps.md exits 0 ('12 entries, all schema fields populated, all citations resolve'). Rejection case: node scripts/check-register-schema.mjs tests/fixtures/recorded-gaps-missing-field.md exits 1, naming 'RG-001 is missing required field \"closes-when\"' specifically. Script asserts entries.length >= 7 (verified by reading the script), never a hardcoded === 7 or === 12. All 7 Key-Entities schema fields enforced (id, title, evidence, what-was-tried, why-left, closes-when, status) \u2014 the WP02 task file's own T012 prose undercounts to 6 (omitting title); this script implements the full 7-field Key-Entities schema per spec.md, not the task file's abbreviated list. RG-007 rewritten per the mission brief's correction: the behave/a2a vs skills/sop exit-code divergence is framed as an open product question against contracts/cli.md's own uniform rule, not a pre-settled two-valid-designs framing.",
+      "evidence": "Review remediation (2026-07-31): fixed recorded-gaps.md's four bare 'what-was-tried: none.' entries (RG-003, RG-005, RG-010, RG-011) to carry a concrete one-clause rationale matching the other eight entries' convention, and corrected RG-006's out-of-enum 'status: accepted-tradeoff (for now)' to the spec.md-defined enum value 'accepted-tradeoff'. Mirrored the same corrections into site/src/content/docs/rubric/recorded-gaps.md. node scripts/check-register-schema.mjs docs/rubric/recorded-gaps.md still exits 0 (12 entries, all schema fields populated, all citations resolve) after the edits.",
       "pass_fail": "pass",
       "verified_by": null,
-      "verified_at": "2026-07-31T13:22:34.479576+00:00",
+      "verified_at": "2026-07-31T13:49:17.877150+00:00",
       "notes": "TODO: replace with a real acceptance criterion"
     },
     {
