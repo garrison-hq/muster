@@ -254,18 +254,60 @@ function isRefinement(clauseA: string, clauseB: string): boolean {
 // Clause extraction from layer text (T009)
 // ---------------------------------------------------------------------------
 
+const COMMENT_OPEN = "<!--";
+const COMMENT_CLOSE = "-->";
+
+/**
+ * Removes every HTML comment span from layer text, `<!--` through the matching
+ * `-->`, including multi-line comments and an unterminated trailing comment.
+ *
+ * A comment body is authoring commentary, never a normative instruction: it is
+ * not part of the layer's directive content and must not be paired against
+ * another layer's clauses (garrison-hq/muster#84 cause 1 — a fixture's own
+ * explanatory header describing an extraction loop was ingested as an SOP
+ * clause because it contained the word "every").
+ *
+ * Index-based scan, no regular expression — this is on the offline static path
+ * and must carry no catastrophic-backtracking surface. A comment that spanned
+ * lines is replaced by a single newline so the text before and after it cannot
+ * fuse into one synthetic clause.
+ */
+function stripHtmlComments(layerText: string): string {
+  const parts: string[] = [];
+  let cursor = 0;
+  let open = layerText.indexOf(COMMENT_OPEN);
+
+  while (open !== -1) {
+    parts.push(layerText.slice(cursor, open));
+    const close = layerText.indexOf(COMMENT_CLOSE, open + COMMENT_OPEN.length);
+    if (close === -1) {
+      // Unterminated comment — the remainder of the layer text is comment body.
+      return parts.join("");
+    }
+    if (layerText.slice(open, close).includes("\n")) {
+      parts.push("\n");
+    }
+    cursor = close + COMMENT_CLOSE.length;
+    open = layerText.indexOf(COMMENT_OPEN, cursor);
+  }
+
+  parts.push(layerText.slice(cursor));
+  return parts.join("");
+}
+
 /**
  * Extracts instructional clauses from a layer's resolved text.
  * Each non-empty line that contains an imperative instruction is a candidate clause.
- * Filters out markdown headings (lines starting with #) and empty lines.
+ * Strips HTML comment bodies, then filters out markdown headings (lines
+ * starting with #) and empty lines.
  *
  * C-003: Operates on resolved layerTexts, not raw fixture files.
  */
 function extractClauses(layerText: string): string[] {
-  return layerText
+  return stripHtmlComments(layerText)
     .split("\n")
     .map((line) => line.trim())
-    .filter((line) => line.length > 0 && !line.startsWith("#") && !line.startsWith("<!--"));
+    .filter((line) => line.length > 0 && !line.startsWith("#"));
 }
 
 // ---------------------------------------------------------------------------
