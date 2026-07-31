@@ -208,7 +208,7 @@ export function checkIndexCompleteness(root) {
 
 function formatCitationError(rootRelFile, citation, resolution) {
   return (
-    `STALE CITATION [${rootRelFile}:${citation.sourceLine}]: ${citation.raw} — ` +
+    `STALE CITATION (FR-002) [${rootRelFile}:${citation.sourceLine}]: ${citation.raw} — ` +
     `${resolution.reason}`
   );
 }
@@ -238,7 +238,7 @@ export function checkRubricCorpus(root, repoRoot) {
   const indexResult = checkIndexCompleteness(root);
   for (const missingFile of indexResult.missing) {
     const rootRelFile = path.join(path.relative(repoRoot, root), missingFile).split(path.sep).join("/");
-    errors.push(`UNINDEXED FILE: ${rootRelFile} has zero index entries pointing at it`);
+    errors.push(`UNINDEXED FILE (FR-002): ${rootRelFile} has zero index entries pointing at it`);
   }
 
   return { ok: errors.length === 0, errors };
