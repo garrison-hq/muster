@@ -189,10 +189,17 @@ describe("check-rubric-citations CLI", () => {
     expect(stdout).not.toContain("indexed.md has zero index entries");
   });
 
+  it("exits 0 against the real docs/rubric/ corpus (FR-002 merge-blocking gate)", () => {
+    const { stdout, status } = runCli([]);
+    expect(status).toBe(0);
+    expect(stdout).toContain("OK");
+  });
+
   it("produces byte-identical stdout across repeated runs and across working directories (C-004)", () => {
     const run1 = runCli([]);
     const run2 = runCli([]);
     const run3 = runCli([], "/");
+    expect(run1.status).toBe(0);
     expect(run2.stdout).toBe(run1.stdout);
     expect(run3.stdout).toBe(run1.stdout);
     expect(run3.status).toBe(run1.status);
