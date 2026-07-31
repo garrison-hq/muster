@@ -16,3 +16,12 @@
 {"actor": "user", "at": "2026-07-31T09:31:34.114976+00:00", "delta": {"subtasks": {"T005": "done"}}, "event_id": "01KYVR7HB2P8RQ6M07FFPP7Z1M", "kind": "annotation", "wp_id": "WP01"}
 {"actor": "user", "at": "2026-07-31T12:43:48.854002+00:00", "delta": {"subtasks": {"T001": "done", "T002": "done", "T003": "done", "T004": "done"}}, "event_id": "01KYW37HQPT2NR016WTWV316R9", "kind": "annotation", "wp_id": "WP01"}
 {"actor": "user", "at": "2026-07-31T12:45:46.314229+00:00", "delta": {"subtasks": {"T007": "done"}}, "event_id": "01KYW3B4EAS7HCZR61B9G4X32P", "kind": "annotation", "wp_id": "WP01"}
+{"actor": "user", "at": "2026-07-31T13:06:07.093231+00:00", "delta": {"subtasks": {"T008": "done"}}, "event_id": "01KYW4GCKN30MK42W1KY5KMH68", "kind": "annotation", "wp_id": "WP02"}
+{"actor": "user", "at": "2026-07-31T13:07:16.977028+00:00", "delta": {"subtasks": {"T009": "done"}}, "event_id": "01KYW4JGVHHX21M27T5XVFB1ZP", "kind": "annotation", "wp_id": "WP02"}
+{"actor": "user", "at": "2026-07-31T13:17:23.772180+00:00", "delta": {"subtasks": {"T010": "done"}}, "event_id": "01KYW551DW05KMXM4G0ZW1164M", "kind": "annotation", "wp_id": "WP02"}
+{"actor": "user", "at": "2026-07-31T13:17:25.288656+00:00", "delta": {"subtasks": {"T011": "done"}}, "event_id": "01KYW552X888BZ7D13H9M5M6Y2", "kind": "annotation", "wp_id": "WP02"}
+{"actor": "user", "at": "2026-07-31T13:17:26.803242+00:00", "delta": {"subtasks": {"T012": "done"}}, "event_id": "01KYW554CKNMT77SA3DYWJSNKZ", "kind": "annotation", "wp_id": "WP02"}
+{"actor": "user", "at": "2026-07-31T13:17:28.468506+00:00", "delta": {"subtasks": {"T013": "done"}}, "event_id": "01KYW5560MKCK0P72S7PRGSZY5", "kind": "annotation", "wp_id": "WP02"}
+{"actor": "user", "at": "2026-07-31T13:17:29.972298+00:00", "delta": {"subtasks": {"T014": "done"}}, "event_id": "01KYW557FMC0A3CXBP0C1BJJDM", "kind": "annotation", "wp_id": "WP02"}
+{"actor": "user", "at": "2026-07-31T13:18:23.638727+00:00", "delta": {"subtasks": {"T015": "done"}}, "event_id": "01KYW56VWP321VTYDCE9EG9F6M", "kind": "annotation", "wp_id": "WP02"}
+{"actor": "user", "at": "2026-07-31T13:22:51.191514+00:00", "delta": {"subtasks": {"T016": "done"}}, "event_id": "01KYW5F15QZDT24AH9BE51E1PJ", "kind": "annotation", "wp_id": "WP02"}
