@@ -91,6 +91,13 @@ export default defineConfig({
             { slug: 'reference/architecture' },
           ],
         },
+        {
+          label: 'Rubric',
+          items: [
+            { slug: 'rubric' },
+            { slug: 'rubric/recorded-gaps' },
+          ],
+        },
       ],
     }),
   ],

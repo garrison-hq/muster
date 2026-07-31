@@ -8,7 +8,7 @@
  * standing "no vacuous verification command" rule).
  */
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -198,10 +198,12 @@ describe("check-rubric-citations CLI", () => {
     expect(run3.status).toBe(run1.status);
   });
 
-  it("makes zero network calls — no literal fetch( anywhere in the script source", () => {
-    const source = execFileSync("node", ["-e", `process.stdout.write(require("node:fs").readFileSync(${JSON.stringify(scriptPath)}, "utf8"))`], {
-      encoding: "utf8",
-    });
-    expect(source.includes("fetch(")).toBe(false);
+  it("makes zero network calls — no call-shaped fetch token anywhere in the script source", () => {
+    // Needle built by concatenation (matching tests/unit/invariants.test.ts's
+    // own convention) so this test file's own source never contains the
+    // literal call-shaped token its NI-003 repo-wide guard scans for.
+    const callShapedFetch = "fetch" + "(";
+    const source = readFileSync(scriptPath, "utf8");
+    expect(source.includes(callShapedFetch)).toBe(false);
   });
 });
