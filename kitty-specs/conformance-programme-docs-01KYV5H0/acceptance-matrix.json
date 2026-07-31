@@ -57,11 +57,11 @@
     {
       "criterion_id": "FR-006",
       "description": "Verify FR-006 is satisfied",
-      "proof_type": "automated_test",
-      "evidence": null,
-      "pass_fail": "pending",
+      "proof_type": "manual_review",
+      "evidence": "T006 @ 7d8884f90: .env.example adds NI-001 caveat (BASE_EXCLUDES scan, no .gitignore consultation). 'command grep -c NI-001 .env.example' -> count=2, exit=0 (real target, pass); against a constructed rejection file with no caveat -> count=0, exit=1 (correctly rejects). Manual review confirms wording does NOT claim NI-001 'enforces' .env safety (muster#79 inversion risk avoided); --env-file example line retained per FR-006.",
+      "pass_fail": "pass",
       "verified_by": null,
-      "verified_at": null,
+      "verified_at": "2026-07-31T09:29:26.535105+00:00",
       "notes": "TODO: replace with a real acceptance criterion"
     }
   ],
