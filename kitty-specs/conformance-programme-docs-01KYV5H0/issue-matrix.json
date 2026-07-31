@@ -13,7 +13,7 @@
       "wp": "WP01"
     },
     "#67": {
-      "evidence_ref": "<link or commit>",
+      "evidence_ref": "Context-only citation inside spec.md Correction 5's discussion of muster#79 (which cross-references #67 while describing an unrelated prior M5 mission's spec.md:218). Not a finding this mission verifies or resolves \u2014 no WP owns it. Follow-up: rewrite spec.md's issue citations as full URLs (e.g. github.com/garrison-hq/muster/issues/67) so incidental context mentions like this are filtered by discover_issue_references instead of demanding a verdict.",
       "fr": null,
       "nfr": null,
       "repo": null,
@@ -21,7 +21,7 @@
       "scope": null,
       "source_file": "spec.md",
       "title": "<fill at WP-implementation time>",
-      "verdict": "unknown",
+      "verdict": "deferred-with-followup",
       "wp": null
     },
     "#78": {
