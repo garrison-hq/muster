@@ -86,7 +86,7 @@ pin `threshold: 0.5` — the numeric value matches upstream's own default.
 **[MUSTER-OWN] divergence: the denominator, not just the number.** Upstream's
 0.5 is applied *per query*: each query gets its own trigger rate (that
 query's triggers / that query's runs) and its own pass/fail verdict against
-0.5. Muster's `gradeAxis` (`trigger.ts:200-206`) pools every query's runs
+0.5. Muster's `gradeAxis` (`trigger.ts:237`) pools every query's runs
 into a single axis-level rate (`sum(runsTriggered) / sum(runsTotal)` across
 *all* queries in the axis) before comparing to 0.5 — there is no per-query
 verdict anywhere in this codebase (`QueryRunResult`, `types.ts:165-171`,
@@ -121,7 +121,7 @@ That is a **per-query** pass rule — every individual query gets its own
 trigger rate and its own verdict.
 
 **[MUSTER-OWN] divergence: axis-level pooling instead of per-query
-verdicts.** `gradeAxis` (`trigger.ts:200-206`) does not compute a verdict per
+verdicts.** `gradeAxis` (`trigger.ts:237`) does not compute a verdict per
 query. It sums `runsTriggered` and `runsTotal` across *every* query in the
 axis first, then compares one pooled rate to the threshold.
 `QueryRunResult` (`types.ts:165-171`) has no `passed` field to hold a
@@ -160,30 +160,38 @@ against a correctly functioning model and correctly functioning grader.
 
 **Where this is actually enforced**: `runTriggerConformance` itself
 (`trigger.ts`) does not block on an unexpectedly-passing control — it only
-emits a `console.warn` (`trigger.ts:430-435`) and still returns
+emits a `console.warn` (`trigger.ts:472-473`) and still returns
 `passed: true` on the resulting `TriggerVerdict` (the `passed` value is
-returned unmutated, `trigger.ts:438-440`). The mechanical enforcement lives
+returned unmutated — `return` (`trigger.ts:481-482`)). The mechanical enforcement lives
 one layer up, in `tests/cts/skills-suite.test.ts` — a file owned by WP01, not
 WP04, and whose discrimination-control assertions predate this mission
 entirely (`git log` on that file shows only two commits, `8ae5c0f` and
 `2135429`, both already merged to `main` before this mission existed).
 
 The assertion that actually runs unconditionally in CI is the **static-mode
-mocked analog** at `tests/cts/skills-suite.test.ts:231-307`: a
+mocked analog** (`describe` (`tests/cts/skills-suite.test.ts:244-321`)): a
 `TriggerChatClient` mock that always returns no tool call is injected into
 `runTriggerConformance` with the rigged-impossible query set, and the test
-asserts `verdict.passed` is `false` (line 297-300). This is the assertion
-that gives the discrimination control its actual enforcement in every
-ordinary run of the suite.
+asserts `verdict.passed` is `false` and `shouldTriggerAxis.passed` is
+`false` (`verdict.passed` (`tests/cts/skills-suite.test.ts:310-313`),
+`shouldTriggerAxis.passed` (`tests/cts/skills-suite.test.ts:319`)). This is
+the assertion that gives the discrimination control its actual enforcement
+in every ordinary run of the suite.
 
-A second, **live-model** block exists at `tests/cts/skills-suite.test.ts:312-403`,
+A second, **live-model** block exists (`describe` (`tests/cts/skills-suite.test.ts:325-438`)),
 gated `it.skipIf(!process.env["MUSTER_BASE_URL"])` — it does not run in
 ordinary CI and only executes when a real endpoint is configured. It repeats
-the same `passed:false` assertion (lines 386-391) against a live model as an
-addition on top of the static-mode analog, not as the primary enforcement.
+the same `passed:false` assertion (`verdict.passed` (`tests/cts/skills-suite.test.ts:422-425`))
+against a live model as an addition on top of the static-mode analog, not as
+the primary enforcement.
 
-Both assertions carry the label `SC-004` in the test file's own strings and
-`describe` block name (lines 231, 297, 390). That label is **legacy
+The literal string `SC-004` appears five times in the test file's own
+comments, `describe` block name, and assertion messages (`SC-004`
+(`tests/cts/skills-suite.test.ts:10`), `SC-004`
+(`tests/cts/skills-suite.test.ts:244`), `SC-004`
+(`tests/cts/skills-suite.test.ts:312`), `SC-004`
+(`tests/cts/skills-suite.test.ts:421`), `SC-004`
+(`tests/cts/skills-suite.test.ts:424`)). That label is **legacy
 numbering carried over from the earlier `skills-adapter-01KTYKNX` mission**,
 whose `spec.md` defines `SC-004` as "the trigger grader demonstrably fails
 its rigged-impossible control." In *this* mission's `spec.md`, `SC-004`
