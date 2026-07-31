@@ -1,7 +1,7 @@
 {
-  "event_count": 2,
-  "last_event_id": "01KYV8DTCJWNCMZCRD39HC5JKA",
-  "materialized_at": "2026-07-31T04:55:22.770961+00:00",
+  "event_count": 3,
+  "last_event_id": "01KYW5GGJ16EET6Z69W05WT940",
+  "materialized_at": "2026-07-31T13:23:39.713385+00:00",
   "mission_number": "",
   "mission_slug": "conformance-programme-docs-01KYV5H0",
   "mission_type": "documentation",
@@ -9,12 +9,12 @@
     "approved": 0,
     "blocked": 0,
     "canceled": 0,
-    "claimed": 0,
+    "claimed": 1,
     "done": 0,
     "for_review": 0,
     "in_progress": 0,
     "in_review": 0,
-    "planned": 2
+    "planned": 1
   },
   "work_packages": {
     "WP01": {
@@ -34,11 +34,16 @@
       }
     },
     "WP02": {
-      "actor": "finalize-tasks",
+      "actor": "user",
+      "agent_profile": "__resolved_profile_absent__",
+      "agent_profile_version": "__resolved_profile_version_absent__",
       "force_count": 0,
-      "lane": "planned",
-      "last_event_id": "01KYV8DTCJWNCMZCRD39HC5JKA",
-      "last_transition_at": "2026-07-31T04:55:22.770961+00:00",
+      "lane": "claimed",
+      "last_event_id": "01KYW5GGJ16EET6Z69W05WT940",
+      "last_transition_at": "2026-07-31T13:23:39.713385+00:00",
+      "model": "__resolved_model_absent__",
+      "provider": "__resolved_provider_absent__",
+      "role": "implementer",
       "subtasks": {
         "T008": "done",
         "T009": "done",
