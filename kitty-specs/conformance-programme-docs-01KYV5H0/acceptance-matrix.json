@@ -38,10 +38,10 @@
       "criterion_id": "FR-004",
       "description": "Verify FR-004 is satisfied",
       "proof_type": "automated_test",
-      "evidence": null,
+      "evidence": "WP01's one-third landed @ 6cf0ca2fa: site/src/content/docs/guides/spec-kitty-conformance.md authored (Starlight schema, title/description frontmatter matching static-conformance.md's precedent) and site/astro.config.mjs got exactly one new sidebar entry (guides/spec-kitty-conformance). cd site && pnpm build -> exit=0 with the new page present in the built nav; phantom-sidebar-entry falsification confirmed the build gate actually fails (exit=1, AstroUserError naming the missing slug) when a sidebar entry lacks a backing page, then reverted to a clean exit=0. Remaining two-thirds (rubric-index mirror, recorded-gaps mirror, their sidebar entries) are WP02's scope -- leaving this criterion at pending until WP02 lands, per this WP's own Definition of Done.",
       "pass_fail": "pending",
       "verified_by": null,
-      "verified_at": null,
+      "verified_at": "2026-07-31T12:45:37.412280+00:00",
       "notes": "TODO: replace with a real acceptance criterion"
     },
     {
