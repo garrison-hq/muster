@@ -15,3 +15,4 @@
 {"actor": "user", "at": "2026-07-31T09:28:59.554601+00:00", "delta": {"subtasks": {"T006": "done"}}, "event_id": "01KYVR2TD2SAH89RW342CJ32QQ", "kind": "annotation", "wp_id": "WP01"}
 {"actor": "user", "at": "2026-07-31T09:31:34.114976+00:00", "delta": {"subtasks": {"T005": "done"}}, "event_id": "01KYVR7HB2P8RQ6M07FFPP7Z1M", "kind": "annotation", "wp_id": "WP01"}
 {"actor": "user", "at": "2026-07-31T12:43:48.854002+00:00", "delta": {"subtasks": {"T001": "done", "T002": "done", "T003": "done", "T004": "done"}}, "event_id": "01KYW37HQPT2NR016WTWV316R9", "kind": "annotation", "wp_id": "WP01"}
+{"actor": "user", "at": "2026-07-31T12:45:46.314229+00:00", "delta": {"subtasks": {"T007": "done"}}, "event_id": "01KYW3B4EAS7HCZR61B9G4X32P", "kind": "annotation", "wp_id": "WP01"}
