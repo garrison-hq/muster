@@ -39,7 +39,7 @@ should be deleted).
 
 - **id**: RG-003
 - **evidence**: `gradeAxis` (`src/adapters/skills/trigger.ts:237`) — the aggregate-rate calculation that produces the same 1.0 rate for a placeholder-description skill (10/10) as for a purpose-built weather skill (30/30); garrison-hq/muster#82. Not literally identical raw scores — the shared quantity is the normalized rate, not the count.
-- **what-was-tried**: none.
+- **what-was-tried**: none — this is the grader's current, shipped aggregate-rate design; no alternative discriminative axis has been prototyped.
 - **why-left**: fixing requires a richer discriminative axis design sensitive to description quality, independent of tool-set cardinality.
 - **closes-when**: a should-trigger axis exists that discriminates by description quality rather than only by aggregate trigger rate.
 - **status**: tracked-defect
@@ -57,7 +57,7 @@ should be deleted).
 
 - **id**: RG-005
 - **evidence**: `runManifest` (`src/adapters/heartbeat/index.ts:489`) — with `MUSTER_ENDPOINT` set, 10 of 118 tests time out at vitest's default because behavioral cases run whenever an endpoint is configured, including fixtures that look static; garrison-hq/muster#75.
-- **what-was-tried**: none.
+- **what-was-tried**: none — the timeout is only observed once `MUSTER_ENDPOINT` is set, which ordinary CI does not do, so it has not yet forced a fix.
 - **why-left**: needs either a per-test timeout override or a static/behavioral split in the fixture suite.
 - **closes-when**: one of those two fixes ships.
 - **status**: tracked-defect
@@ -69,7 +69,7 @@ should be deleted).
 - **what-was-tried**: none — "every check cites a rubric" is currently aspirational for tools, memory, heartbeat, and crosslayer.
 - **why-left**: publishing a rubric for these layers is not this docs-only mission's job.
 - **closes-when**: each adapter publishes its own rubric document and the [rubric index](/muster/rubric/) is updated to list it.
-- **status**: accepted-tradeoff (for now)
+- **status**: accepted-tradeoff
 
 ### RG-007 — `behave`/`a2a` and `skills`/`sop` disagree on what a dead endpoint means for the exit code
 
@@ -102,7 +102,7 @@ should be deleted).
 
 - **id**: RG-010
 - **evidence**: `c.expectations.ok` (`src/cli/index.ts:1323`) — a static skills case's `passed` field is derived solely from `ok === c.expectations.ok`; any `expectations.violations` a manifest author writes is never compared against the actual lint findings.
-- **what-was-tried**: none.
+- **what-was-tried**: none — the static runner's `ok`-only comparison predates this mission; no comparison logic for `expectations.violations` has been attempted despite fixtures already declaring violation shapes.
 - **why-left**: adding a violations-shape comparison is a behavioral change to the static skills runner.
 - **closes-when**: `runStaticSkillCase` additionally compares `c.expectations.violations` (when present) and fails the case on a mismatch.
 - **status**: tracked-defect
@@ -111,7 +111,7 @@ should be deleted).
 
 - **id**: RG-011
 - **evidence**: `usedDeprecatedAlias` (`src/cli/index.ts:1376-1380`) — only the skills adapter's endpoint resolver emits the deprecation warning; every other adapter reading `MUSTER_BASE_URL` does so silently.
-- **what-was-tried**: none.
+- **what-was-tried**: none — the warning was added only at the one call site (`resolveSkillsBehavioralEndpoint`) when the alias was introduced; no attempt has been made to thread it through the other adapters' endpoint-resolution paths.
 - **why-left**: adding the same warning to every other adapter is a behavioral change.
 - **closes-when**: the deprecation warning is emitted from one shared helper every adapter's endpoint-resolution path calls.
 - **status**: tracked-defect
