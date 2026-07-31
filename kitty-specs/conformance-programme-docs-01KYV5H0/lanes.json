@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "mission_slug": "conformance-programme-docs-01KYV5H0",
+  "mission_id": "01KYV5H0CWYEPG8RR593D5GMTZ",
+  "mission_branch": "kitty/mission-conformance-programme-docs-01KYV5H0",
+  "target_branch": "kitty/mission-conformance-programme-docs",
+  "lanes": [
+    {
+      "lane_id": "lane-a",
+      "wp_ids": [
+        "WP01",
+        "WP02"
+      ],
+      "write_scope": [
+        ".env.example",
+        "docs/guides/spec-kitty-conformance.md",
+        "docs/rubric/index.md",
+        "docs/rubric/recorded-gaps.md",
+        "docs/rubric/skills-trigger-taxonomy.md",
+        "examples/README.md",
+        "scripts/check-register-schema.mjs",
+        "scripts/check-rubric-citations.mjs",
+        "site/astro.config.mjs",
+        "site/src/content/docs/guides/spec-kitty-conformance.md",
+        "site/src/content/docs/rubric/index.md",
+        "site/src/content/docs/rubric/recorded-gaps.md",
+        "tests/fixtures/recorded-gaps-missing-field.md",
+        "tests/fixtures/unindexed-rubric-dir/**",
+        "tests/scripts/check-register-schema.test.ts",
+        "tests/scripts/check-rubric-citations.test.ts"
+      ],
+      "predicted_surfaces": [
+        "api",
+        "app-shell",
+        "artifact-rendering",
+        "legacy-cleanup",
+        "tests",
+        "tracker-integration"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    }
+  ],
+  "computed_at": "2026-07-31T04:55:23.531517+00:00",
+  "computed_from": "dependency_graph+ownership",
+  "planning_artifact_wps": [],
+  "planning_commit_sha": "9b7e9f10e1dd7b8869892e7fc80348fca5bdd4e3",
+  "collapse_report": {
+    "events": [
+      {
+        "wp_a": "WP01",
+        "wp_b": "WP02",
+        "rule": "write_scope_overlap",
+        "evidence": "overlapping globs: 'site/astro.config.mjs' vs 'site/astro.config.mjs'; WP02 depends on WP01"
+      }
+    ],
+    "total_merges": 1,
+    "independent_wps_collapsed": 0,
+    "by_rule": {
+      "write_scope_overlap": 1
+    }
+  }
+}
