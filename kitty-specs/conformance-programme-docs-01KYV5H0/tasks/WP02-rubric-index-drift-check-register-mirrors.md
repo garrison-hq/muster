@@ -299,6 +299,19 @@ command grep -rn "from ['\"].*adapters" src/core/; echo "exit=$?"   # expect 1 (
 - C-001, C-003, C-004 all re-verified with their own rejection/contrast cases captured, not asserted.
 - Per-subtask completion recorded via `spec-kitty agent tasks mark-status <Txxx> --status done` as each subtask finishes.
 - `docs/rubric/spec-kitty-behavioral-axes.md` is **not** edited by this WP (its one incidental bare-style citation is a documented, known blind spot in the checker's header comment, not a licensed edit target).
+- **`acceptance-matrix.json` is updated as evidence lands, not left at its seeded `"TODO: replace with a real acceptance criterion"` placeholders until accept time.** This WP owns FR-002, FR-003 outright and finalizes FR-004 (the remaining two-thirds, once WP01's one-third is already recorded). Once T016's evidence blocks are captured and green, run:
+  ```bash
+  spec-kitty agent mission acceptance-verdict --mission conformance-programme-docs-01KYV5H0 \
+    --criterion FR-002 --result pass --verification-method automated_test \
+    --evidence "Commit A exit=1 (all 8 anchors named) + Commit B exit=0 + clean citation-only diff — T016"
+  spec-kitty agent mission acceptance-verdict --mission conformance-programme-docs-01KYV5H0 \
+    --criterion FR-003 --result pass --verification-method automated_test \
+    --evidence "check-register-schema.mjs exit=0 on real 12-entry register, exit=1 on missing-field fixture — T016"
+  spec-kitty agent mission acceptance-verdict --mission conformance-programme-docs-01KYV5H0 \
+    --criterion FR-004 --result pass --verification-method automated_test \
+    --evidence "pnpm build exit=0 with 3 pages in nav; phantom-entry falsification both states captured — T016"
+  ```
+  Do not mark any of these `pass` from a narrated claim — only from a captured, real command transcript. If any evidence is not yet green, record `pending`, not `pass`.
 
 ## Risks
 

@@ -227,6 +227,13 @@ git diff --name-only <base>...HEAD | command grep -Ev '^(docs/|site/)'; echo "ex
 - `.env.example` has the NI-001 caveat, does not claim NI-001 "enforces" `.env` safety, and no `.env` file was created during this WP (T006).
 - All acceptance evidence in T007 has been captured verbatim, including the `skills_exit=1` vs `behave_exit=2` contrast pair.
 - Per-subtask completion is recorded via `spec-kitty agent tasks mark-status <Txxx> --status done` as each subtask finishes — do not batch all seven at the end.
+- **`acceptance-matrix.json` is updated as evidence lands, not left at its seeded `"TODO: replace with a real acceptance criterion"` placeholders until accept time** (a sibling mission shipped 6 of 7 FR rows still at that placeholder at accept-gate time, and clearing it after the fact meant re-running every verification command anyway — do it once, at authorship time). For each FR this WP owns (FR-001, FR-005, FR-006; FR-004 is one-third-owned, record it as `pending` here and let WP02 finalize it once its own two-thirds land), run, e.g.:
+  ```bash
+  spec-kitty agent mission acceptance-verdict --mission conformance-programme-docs-01KYV5H0 \
+    --criterion FR-001 --result pass --verification-method automated_test \
+    --evidence "T007 doc-test block: docs/guides/spec-kitty-conformance.md, all fenced bash blocks executed verbatim, exit codes matched"
+  ```
+  Do this for FR-001, FR-005, FR-006 once their respective T007 evidence blocks are captured and green. Do not mark a criterion `pass` from a narrated claim — only from a captured, real command transcript.
 
 ## Risks
 
