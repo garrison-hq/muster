@@ -316,4 +316,48 @@ describe("FactParser — heading regex boundary cases", () => {
     expect(facts[0]?.id).toMatch(/^memory-real-heading-0$/);
     expect(facts[0]?.text).toBe("body text");
   });
+
+  // The `\s+(.+)$` → `\s(.+)$` rewrite is capture-equivalent after .trim()
+  // but NOT match-decision equivalent: `.` never matches a line terminator
+  // (U+000D CR, U+2028 LS, U+2029 PS), and the single mandatory `\s` — unlike
+  // the old greedy `\s+` — leaves nothing to backtrack into. A heading whose
+  // separator is one space followed directly by a bare CR/LS/PS therefore no
+  // longer matches at all; the line falls through and is swallowed into the
+  // previous section's body instead of starting a new section. This pins
+  // that deliberate narrowing so it cannot silently flip back.
+  it.each([
+    ["U+000D (CR)", "\r"],
+    ["U+2028 (LINE SEPARATOR)", " "],
+    ["U+2029 (PARAGRAPH SEPARATOR)", " "],
+  ])(
+    "swallows a heading whose only separator content is a bare %s into the previous section",
+    async (_label, terminator) => {
+      const content = [
+        "### Normal Section",
+        "",
+        "First fact under normal section.",
+        "",
+        `### ${terminator}Terminator Section`,
+        "",
+        "Body text after the terminator heading.",
+      ].join("\n");
+      const filePath = join(tempDir, "MEMORY.md");
+      await writeFile(filePath, content, "utf8");
+
+      const parser = new FactParser();
+      const manifest: FactManifest = { labels: {} };
+      const facts = parser.parse(filePath, manifest);
+
+      // The malformed heading is never recognised — all three paragraphs
+      // stay under "Normal Section" instead of a new "Terminator Section"
+      // being opened.
+      expect(facts).toHaveLength(3);
+      expect(facts[0]?.id).toBe("memory-normal-section-0");
+      expect(facts[0]?.text).toBe("First fact under normal section.");
+      expect(facts[1]?.id).toBe("memory-normal-section-1");
+      expect(facts[1]?.text).toBe(`### ${terminator}Terminator Section`);
+      expect(facts[2]?.id).toBe("memory-normal-section-2");
+      expect(facts[2]?.text).toBe("Body text after the terminator heading.");
+    }
+  );
 });

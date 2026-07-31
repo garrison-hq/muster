@@ -192,10 +192,19 @@ export class FactParser {
     for (const line of lines) {
       // S8786: `\s+(.+)$` overlaps two unbounded quantifiers over
       // whitespace, causing super-linear backtracking on failure. `\s(.+)$`
-      // (single mandatory separator char) matches the identical set of
-      // lines and — after the .trim() below — produces identical captured
-      // titles, because \s ⊆ `.` means the leading-whitespace/content
-      // boundary between the two forms is only ever visible pre-trim.
+      // (single mandatory separator char) is capture-equivalent for every
+      // line either regex matches — after the .trim() below the captured
+      // titles are identical, because \s ⊆ `.` means the leading-
+      // whitespace/content boundary between the two forms is only ever
+      // visible pre-trim. It is NOT match-decision equivalent: `.` never
+      // matches a line terminator (U+000D CR, U+2028 LS, U+2029 PS), and
+      // unlike `\s+` the single `\s` leaves nothing to backtrack into. So a
+      // heading whose separator is exactly one space followed by a bare
+      // CR/LS/PS no longer matches at all (the old greedy `\s+` absorbed
+      // the terminator too); that line now falls through into the current
+      // section's pending body instead of starting a new section. This
+      // narrowing is intentional and pinned by a regression test — see the
+      // heading-terminator cases in tests/unit/memory/lint.test.ts.
       const headingMatch = /^(#{1,6})\s(.+)$/.exec(line);
       if (headingMatch) {
         // Flush any pending fact before starting a new section

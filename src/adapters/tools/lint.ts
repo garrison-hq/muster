@@ -322,10 +322,19 @@ export async function parseTOOLSFile(filePath: string): Promise<TOOLSFile> {
 
   for (const line of lines) {
     // S8786: `\s+(.+)$` overlaps two unbounded quantifiers over whitespace;
-    // `\s(.+)$` (single mandatory separator char) matches the identical set
-    // of lines and — after the normaliseHeading() trim below — produces an
-    // identical normalised key, because \s ⊆ `.` means the leading-
-    // whitespace/content boundary is only visible pre-trim.
+    // `\s(.+)$` (single mandatory separator char) is capture-equivalent for
+    // every line either regex matches — after the normaliseHeading() trim
+    // below they produce an identical normalised key, because \s ⊆ `.`
+    // means the leading-whitespace/content boundary is only visible
+    // pre-trim. It is NOT match-decision equivalent: `.` never matches a
+    // line terminator (U+000D CR, U+2028 LS, U+2029 PS), and unlike `\s+`
+    // the single `\s` leaves nothing to backtrack into. So a heading whose
+    // separator is exactly one space followed by a bare CR/LS/PS no longer
+    // matches at all (the old greedy `\s+` absorbed the terminator too);
+    // that line now falls through into the current section's body instead
+    // of starting a new one. This narrowing is intentional and pinned by
+    // a regression test — see the "redos-boundary" heading-terminator
+    // cases in tests/tools/unit/lint.test.ts.
     const h2Match = /^##\s(.+)$/.exec(line);
     if (h2Match) {
       // Save previous section if any
