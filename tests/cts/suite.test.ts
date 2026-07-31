@@ -97,7 +97,7 @@ describe("CTS-1 suite — RFC-1 §25.2 / Appendix F (cts/manifest.yaml)", () => 
   });
 
   it("resolution is deterministic across runs — byte-identical canonical output (§4.4; NFR-001/SC-004)", () => {
-    expect(rerunResults.length).toBe(resolutionBearingIds.size);
+    expect(rerunResults).toHaveLength(resolutionBearingIds.size);
     for (const rerun of rerunResults) {
       const first = resultById.get(rerun.id);
       expect(first, `case "${rerun.id}" missing from the first run`).toBeDefined();

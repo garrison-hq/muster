@@ -154,8 +154,15 @@ function parseParametersTable(tableLines: string[]): Map<string, ParameterDescri
   let dataStart = 0;
   for (let i = 0; i < tableLines.length; i++) {
     const line = tableLines[i] ?? "";
-    // Separator row contains only |, -, and spaces
-    if (/^\|[\s|:-]+\|?\s*$/.test(line)) {
+    // Separator row contains only |, -, and spaces.
+    // S8786: the original `[\s|:-]+\|?\s*$` has two overlapping
+    // unbounded-whitespace quantifiers (the class already contains \s, and
+    // both '|' and ' ' are also class members), causing super-linear
+    // backtracking on failure. Since every character the trailing
+    // `\|?\s*$` can consume is already a member of `[\s|:-]`, that tail is
+    // redundant: the class run reaching `$` is exactly the same condition
+    // (>= 1 char, and every char in {whitespace, '|', ':', '-'}).
+    if (/^\|[\s|:-]+$/.test(line)) {
       dataStart = i + 1;
       break;
     }
@@ -314,7 +321,21 @@ export async function parseTOOLSFile(filePath: string): Promise<TOOLSFile> {
   const currentSectionLines: string[] = [];
 
   for (const line of lines) {
-    const h2Match = /^##\s+(.+)$/.exec(line);
+    // S8786: `\s+(.+)$` overlaps two unbounded quantifiers over whitespace;
+    // `\s(.+)$` (single mandatory separator char) is capture-equivalent for
+    // every line either regex matches — after the normaliseHeading() trim
+    // below they produce an identical normalised key, because \s ⊆ `.`
+    // means the leading-whitespace/content boundary is only visible
+    // pre-trim. It is NOT match-decision equivalent: `.` never matches a
+    // line terminator (U+000D CR, U+2028 LS, U+2029 PS), and unlike `\s+`
+    // the single `\s` leaves nothing to backtrack into. So a heading whose
+    // separator is exactly one space followed by a bare CR/LS/PS no longer
+    // matches at all (the old greedy `\s+` absorbed the terminator too);
+    // that line now falls through into the current section's body instead
+    // of starting a new one. This narrowing is intentional and pinned by
+    // a regression test — see the "redos-boundary" heading-terminator
+    // cases in tests/tools/unit/lint.test.ts.
+    const h2Match = /^##\s(.+)$/.exec(line);
     if (h2Match) {
       // Save previous section if any
       if (currentSectionKey !== null) {

@@ -345,7 +345,7 @@ describe("PrivacyLeakProbeRunner — OpenClaw citation in verdict", () => {
     // Must be a non-empty 40-char hex SHA (no angle brackets)
     expect(verdict.opencrawCitationSha).not.toContain("<");
     expect(verdict.opencrawCitationSha).not.toContain(">");
-    expect(verdict.opencrawCitationSha.length).toBe(40);
+    expect(verdict.opencrawCitationSha).toHaveLength(40);
     expect(/^[0-9a-f]{40}$/.test(verdict.opencrawCitationSha)).toBe(true);
   });
 });

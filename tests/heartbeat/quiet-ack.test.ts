@@ -145,7 +145,7 @@ describe("gradeQuietAck boundary conditions", () => {
     const prefix = "HEARTBEAT_OK";
     const padding = "x".repeat(DEFAULT_ACK_MAX_CHARS - prefix.length);
     const reply = prefix + padding;
-    expect(reply.length).toBe(DEFAULT_ACK_MAX_CHARS);
+    expect(reply).toHaveLength(DEFAULT_ACK_MAX_CHARS);
     const result = gradeQuietAck(reply, config);
     expect(result.withinCharLimit).toBe(true);
     expect(result.passed).toBe(true);
@@ -157,7 +157,7 @@ describe("gradeQuietAck boundary conditions", () => {
     const prefix = "HEARTBEAT_OK";
     const padding = "x".repeat(DEFAULT_ACK_MAX_CHARS - prefix.length + 1);
     const reply = prefix + padding;
-    expect(reply.length).toBe(DEFAULT_ACK_MAX_CHARS + 1);
+    expect(reply).toHaveLength(DEFAULT_ACK_MAX_CHARS + 1);
     const result = gradeQuietAck(reply, config);
     expect(result.withinCharLimit).toBe(false);
     expect(result.passed).toBe(false);
@@ -169,21 +169,27 @@ describe("gradeQuietAck boundary conditions", () => {
 // ---------------------------------------------------------------------------
 
 describe("gradeRun", () => {
-  it("HEARTBEAT_OK short reply on nothing-due tick → passed: true", () => {
+  it.each([
+    ["HEARTBEAT_OK short reply on nothing-due tick → passed: true", "HEARTBEAT_OK", true, true],
+    [
+      // Errored run: empty response counts as failed, not skipped.
+      "empty reply (errored run) → passed: false (FR-008)",
+      "",
+      false,
+      false,
+    ],
+    [
+      "non-ack response on nothing-due tick → passed: false",
+      "I processed the tasks.",
+      false,
+      false,
+    ],
+  ])("%s", (_name, reply, expectedPassed, expectedStartsWithAck) => {
     const tick = makeNothingDueTick();
     const config = buildIntervalConfig();
-    const result = gradeRun("HEARTBEAT_OK", config, tick);
-    expect(result.passed).toBe(true);
-    expect(result.startsWithAck).toBe(true);
-  });
-
-  it("empty reply (errored run) → passed: false (FR-008)", () => {
-    // Errored run: empty response counts as failed, not skipped.
-    const tick = makeNothingDueTick();
-    const config = buildIntervalConfig();
-    const result = gradeRun("", config, tick);
-    expect(result.passed).toBe(false);
-    expect(result.startsWithAck).toBe(false);
+    const result = gradeRun(reply, config, tick);
+    expect(result.passed).toBe(expectedPassed);
+    expect(result.startsWithAck).toBe(expectedStartsWithAck);
   });
 
   it("null reply (errored run) → passed: false (FR-008)", () => {
@@ -198,14 +204,6 @@ describe("gradeRun", () => {
     const config = buildIntervalConfig();
     const result = gradeRun(undefined, config, tick);
     expect(result.passed).toBe(false);
-  });
-
-  it("non-ack response on nothing-due tick → passed: false", () => {
-    const tick = makeNothingDueTick();
-    const config = buildIntervalConfig();
-    const result = gradeRun("I processed the tasks.", config, tick);
-    expect(result.passed).toBe(false);
-    expect(result.startsWithAck).toBe(false);
   });
 
   it("due tick throws QuietAckTickStateError (spec edge case guard)", () => {
@@ -525,7 +523,7 @@ describe("discrimination control", () => {
     // 400-character total length — exceeding the 300-char default limit.
     // Per OpenClaw docs, delivery is NOT suppressed when ackMaxChars is exceeded.
     const overflowReply = "HEARTBEAT_OK " + "x".repeat(400 - "HEARTBEAT_OK ".length);
-    expect(overflowReply.length).toBe(400);
+    expect(overflowReply).toHaveLength(400);
     expect(overflowReply.length).toBeGreaterThan(DEFAULT_ACK_MAX_CHARS); // 400 > 300
 
     const config = buildIntervalConfig();

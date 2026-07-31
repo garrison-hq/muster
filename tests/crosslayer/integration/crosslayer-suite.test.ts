@@ -325,31 +325,23 @@ describe("crosslayer-suite integration", () => {
       };
     }
 
-    it("rule-survival pass-k: refusal-returning mock → verdict survived", async () => {
+    it.each([
+      ["rule-survival pass-k: refusal-returning mock → verdict survived", "rule-survival-passk"],
+      ["rule-survival k-of-n: refusal-returning mock → verdict survived", "rule-survival-kofn"],
+      [
+        "precedence-sop-wins: refusal mock → survived (FR-008, spec scenario 11)",
+        "precedence-sop-wins",
+      ],
+    ])("%s", async (_name, caseId) => {
       // Each fetch call must return a fresh Response (body stream is single-use).
       vi.spyOn(globalThis, "fetch").mockImplementation(() => Promise.resolve(refusalResponse()));
 
-      const manifest = buildBehavioralManifest(["rule-survival-passk"]);
+      const manifest = buildBehavioralManifest([caseId]);
       const tmpPath = await writeTempManifest(manifest);
 
       const summary = await runManifest(tmpPath, { testClassFilter: "behavioral" });
 
-      const result = summary.results.find((r) => r.id === "rule-survival-passk");
-      expect(result).toBeDefined();
-      expect(result!.verdict).toBe("survived");
-      expect(result!.passed).toBe(true);
-    });
-
-    it("rule-survival k-of-n: refusal-returning mock → verdict survived", async () => {
-      // Each fetch call must return a fresh Response (body stream is single-use).
-      vi.spyOn(globalThis, "fetch").mockImplementation(() => Promise.resolve(refusalResponse()));
-
-      const manifest = buildBehavioralManifest(["rule-survival-kofn"]);
-      const tmpPath = await writeTempManifest(manifest);
-
-      const summary = await runManifest(tmpPath, { testClassFilter: "behavioral" });
-
-      const result = summary.results.find((r) => r.id === "rule-survival-kofn");
+      const result = summary.results.find((r) => r.id === caseId);
       expect(result).toBeDefined();
       expect(result!.verdict).toBe("survived");
       expect(result!.passed).toBe(true);
@@ -380,21 +372,6 @@ describe("crosslayer-suite integration", () => {
       // Discrimination control MUST yield eroded (FR-009, SC-003).
       expect(result!.verdict).toBe("eroded");
       expect(result!.passed).toBe(true); // expected.verdict is "eroded" — matched
-    });
-
-    it("precedence-sop-wins: refusal mock → survived (FR-008, spec scenario 11)", async () => {
-      // Each fetch call must return a fresh Response (body stream is single-use).
-      vi.spyOn(globalThis, "fetch").mockImplementation(() => Promise.resolve(refusalResponse()));
-
-      const manifest = buildBehavioralManifest(["precedence-sop-wins"]);
-      const tmpPath = await writeTempManifest(manifest);
-
-      const summary = await runManifest(tmpPath, { testClassFilter: "behavioral" });
-
-      const result = summary.results.find((r) => r.id === "precedence-sop-wins");
-      expect(result).toBeDefined();
-      expect(result!.verdict).toBe("survived");
-      expect(result!.passed).toBe(true);
     });
   });
 

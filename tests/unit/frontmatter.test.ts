@@ -51,31 +51,35 @@ describe("extractFrontMatter — RFC-1 §3.1.1", () => {
     }
   });
 
-  it("§3.1.1 extracts the first block; later --- lines in the body are ignored", () => {
-    const raw = "---\nfoo: 1\n---\nbody with --- inside\n---\nmore body";
-    const { yamlText, body } = expectExtracted(extractFrontMatter(raw, "strict"));
-    expect(yamlText).toBe("foo: 1");
-    expect(body).toBe("body with --- inside\n---\nmore body");
-  });
-
   it("§3.1.1 empty front matter block yields an empty yamlText (validation layer decides)", () => {
     const { yamlText, body } = expectExtracted(extractFrontMatter("---\n---\n", "strict"));
     expect(yamlText).toBe("");
     expect(body).toBe("");
   });
 
-  it("§3.2 strips a leading UTF-8 BOM before matching the opening delimiter", () => {
-    const raw = "﻿---\nfoo: 1\n---\nbody";
+  it.each([
+    [
+      "§3.1.1 extracts the first block; later --- lines in the body are ignored",
+      "---\nfoo: 1\n---\nbody with --- inside\n---\nmore body",
+      "foo: 1",
+      "body with --- inside\n---\nmore body",
+    ],
+    [
+      "§3.2 strips a leading UTF-8 BOM before matching the opening delimiter",
+      "﻿---\nfoo: 1\n---\nbody",
+      "foo: 1",
+      "body",
+    ],
+    [
+      "§3.1.1 tolerates CRLF line endings around the delimiters",
+      "---\r\nfoo: 1\r\n---\r\nbody\r\n",
+      "foo: 1\r",
+      "body\r\n",
+    ],
+  ])("%s", (_name, raw, expectedYamlText, expectedBody) => {
     const { yamlText, body } = expectExtracted(extractFrontMatter(raw, "strict"));
-    expect(yamlText).toBe("foo: 1");
-    expect(body).toBe("body");
-  });
-
-  it("§3.1.1 tolerates CRLF line endings around the delimiters", () => {
-    const raw = "---\r\nfoo: 1\r\n---\r\nbody\r\n";
-    const { yamlText, body } = expectExtracted(extractFrontMatter(raw, "strict"));
-    expect(yamlText).toBe("foo: 1\r");
-    expect(body).toBe("body\r\n");
+    expect(yamlText).toBe(expectedYamlText);
+    expect(body).toBe(expectedBody);
   });
 
   it("§3.1.1 a delimiter line with extra characters is not a delimiter", () => {

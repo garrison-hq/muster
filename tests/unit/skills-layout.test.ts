@@ -161,7 +161,7 @@ describe("checkLayout — nested SKILL.md detection", () => {
     const warnings = violations.filter(
       (v) => v.path === "(document)" && v.severity === "warning"
     );
-    expect(warnings.length).toBe(0);
+    expect(warnings).toHaveLength(0);
   });
 });
 

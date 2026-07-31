@@ -10,9 +10,11 @@
  * - T006: section key normalisation (lower-case, locale-independent)
  */
 
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import {
   parseTOOLSFile,
   lintTOOLSFile,
@@ -37,7 +39,7 @@ describe("parseTOOLSFile + lintTOOLSFile", () => {
   describe("Scenario 1 — well-formed.md", () => {
     it("parses correctly: two tools, correct names and sections", async () => {
       const parsed = await parseTOOLSFile(wellFormedPath);
-      expect(parsed.tools.length).toBe(2);
+      expect(parsed.tools).toHaveLength(2);
       expect(parsed.tools[0]!.name).toBe("send_email");
       expect(parsed.tools[1]!.name).toBe("list_files");
     });
@@ -62,7 +64,7 @@ describe("parseTOOLSFile + lintTOOLSFile", () => {
       const parsed = await parseTOOLSFile(wellFormedPath);
       const report = lintTOOLSFile(parsed);
       expect(report.ok).toBe(true);
-      expect(report.findings.length).toBe(0);
+      expect(report.findings).toHaveLength(0);
     });
 
     it("section keys are lower-case (normalised, locale-independent)", async () => {
@@ -145,7 +147,7 @@ describe("parseTOOLSFile + lintTOOLSFile", () => {
     it("parser does NOT deduplicate: both send_email entries appear in tools array", async () => {
       const parsed = await parseTOOLSFile(duplicateToolPath);
       const sendEmailTools = parsed.tools.filter((t) => t.name === "send_email");
-      expect(sendEmailTools.length).toBe(2);
+      expect(sendEmailTools).toHaveLength(2);
     });
   });
 
@@ -233,7 +235,7 @@ describe("parseTOOLSFile + lintTOOLSFile", () => {
         tools: Array<{ name: string; description: string; parameters: Record<string, unknown> }>;
         sections: Record<string, string>;
       };
-      expect(plain.tools.length).toBe(2);
+      expect(plain.tools).toHaveLength(2);
       expect(plain.tools[0]!.name).toBe("send_email");
       expect(plain.sections["tools"]).toBeDefined();
       expect(plain.sections["overview"]).toBeDefined();
@@ -276,5 +278,106 @@ describe("parseTOOLSFile + lintTOOLSFile", () => {
       const parsed = await parseTOOLSFile(noParamsPath);
       expect(parsed.tools.map((t) => t.name)).toEqual(["ping_tool", "describe_tool"]);
     });
+  });
+
+  // ---------------------------------------------------------------------------
+  // S8786 ReDoS remediation characterization: the `## heading` regex
+  // (`\s+(.+)$` → `\s(.+)$`) and the parameter-table separator-row regex
+  // (`[\s|:-]+\|?\s*$` → `[\s|:-]+$`) were rewritten to remove overlapping
+  // unbounded-whitespace quantifiers. These boundary cases pin the exact
+  // behavior the old regexes produced so the rewrite cannot silently change
+  // section keys or parameter-table parsing.
+  // ---------------------------------------------------------------------------
+  describe("redos-boundary.md — heading and separator-row regex boundary cases", () => {
+    const redosBoundaryPath = path.join(fixturesDir, "redos-boundary.md");
+
+    it("treats a `##` line followed only by whitespace as a heading with an empty normalised key", async () => {
+      const parsed = await parseTOOLSFile(redosBoundaryPath);
+      expect(parsed.sections.get("overview")).toBe("Overview text.");
+      expect(parsed.sections.has("")).toBe(true);
+      expect(parsed.sections.get("")).toBe(
+        "Body under an all-whitespace-titled heading."
+      );
+    });
+
+    it.each([
+      [
+        "parses a parameter table whose separator row uses colon-aligned dashes",
+        "probe_tool_colon",
+        "b",
+        { type: "string", required: false },
+      ],
+      [
+        "parses a parameter table whose separator row has trailing pipe-and-spaces",
+        "probe_tool_trailing_pipe",
+        "c",
+        { type: "string", required: true },
+      ],
+      [
+        "parses the plain-dash separator row baseline correctly",
+        "probe_tool",
+        "a",
+        { type: "string", required: true },
+      ],
+    ])("%s", async (_name, toolName, paramKey, expected) => {
+      const parsed = await parseTOOLSFile(redosBoundaryPath);
+      const tool = parsed.tools.find((t) => t.name === toolName);
+      expect(tool).toBeDefined();
+      expect(tool!.parameters.get(paramKey)).toEqual(expected);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // The `\s+(.+)$` → `\s(.+)$` rewrite is capture-equivalent after the
+  // normaliseHeading() trim, but NOT match-decision equivalent: `.` never
+  // matches a line terminator (U+000D CR, U+2028 LS, U+2029 PS), and the
+  // single mandatory `\s` — unlike the old greedy `\s+` — leaves nothing to
+  // backtrack into. A `##` heading whose separator is one space followed
+  // directly by a bare CR/LS/PS therefore no longer matches at all; the
+  // heading line (and everything after it, up to the next real heading) is
+  // swallowed into the previous section instead of starting a new one. This
+  // pins that deliberate narrowing so it cannot silently flip back.
+  // ---------------------------------------------------------------------------
+  describe("## heading regex — bare line-terminator narrowing (S8786)", () => {
+    let tempDir: string;
+
+    beforeAll(async () => {
+      tempDir = await mkdtemp(path.join(tmpdir(), "muster-tools-lint-heading-test-"));
+    });
+
+    afterAll(async () => {
+      await rm(tempDir, { recursive: true, force: true });
+    });
+
+    it.each([
+      ["U+000D (CR)", "\r"],
+      ["U+2028 (LINE SEPARATOR)", " "],
+      ["U+2029 (PARAGRAPH SEPARATOR)", " "],
+    ])(
+      "swallows a `##` heading whose only separator content is a bare %s into the previous section",
+      async (_label, terminator) => {
+        const heading = `## ${terminator}Terminator Section`;
+        const content = [
+          "## Normal Section",
+          "",
+          "Normal body text.",
+          "",
+          heading,
+          "",
+          "Body after terminator heading.",
+        ].join("\n");
+        const filePath = path.join(tempDir, "TOOLS.md");
+        await writeFile(filePath, content, "utf8");
+
+        const parsed = await parseTOOLSFile(filePath);
+
+        // The malformed heading never opens "terminator section" — its line
+        // and everything after it stay part of "normal section".
+        expect(parsed.sections.has("terminator section")).toBe(false);
+        expect(parsed.sections.get("normal section")).toBe(
+          `Normal body text.\n\n${heading}\n\nBody after terminator heading.`
+        );
+      }
+    );
   });
 });

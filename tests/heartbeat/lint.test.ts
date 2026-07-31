@@ -316,7 +316,7 @@ describe("T004 lintHeartbeat", () => {
     // 51 short items: 51 lines, ≤600 chars — trips lines threshold only (NFR-001 OR-branch).
     const raw = Array.from({ length: 51 }, (_, i) => `- Item ${String(i + 1).padStart(2, "0")}`).join("\n");
     const file = parseHeartbeat("/tmp/HEARTBEAT.md", raw);
-    expect(file.raw.split("\n").length).toBe(51); // lines > 50
+    expect(file.raw.split("\n")).toHaveLength(51); // lines > 50
     expect(file.raw.length).toBeLessThanOrEqual(2000); // chars ≤ 2000
     const report = lintHeartbeat(file);
     expect(report.findings.some((f) => f.rule === "heartbeat/length-advisory")).toBe(true);

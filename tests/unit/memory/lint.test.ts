@@ -10,8 +10,10 @@
  *   6. Coverage — id determinism (two parse calls yield identical ids)
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   FactParser,
@@ -93,7 +95,7 @@ describe("StalenessLinter — consistent (clean) fixture", () => {
     const report = linter.lint(facts, REFERENCE_DATE);
 
     expect(report.ok).toBe(true);
-    expect(report.stalenessFindings.length).toBe(0);
+    expect(report.stalenessFindings).toHaveLength(0);
     expect(report.stalenessSkip).toBeUndefined();
   });
 });
@@ -123,7 +125,7 @@ describe("StalenessLinter — no reference date", () => {
     expect(report.stalenessSkip?.reason).toBe("no-reference-date");
 
     // No staleness findings — just the skip note
-    expect(report.stalenessFindings.length).toBe(0);
+    expect(report.stalenessFindings).toHaveLength(0);
   });
 });
 
@@ -185,7 +187,7 @@ describe("StalenessLinter — discrimination control", () => {
 
     // Control: no time-sensitive facts → zero findings
     expect(report.ok).toBe(true);
-    expect(report.stalenessFindings.length).toBe(0);
+    expect(report.stalenessFindings).toHaveLength(0);
   });
 
   it("confirms the stale-fact test still produces ok: false, proving the linter can fail (contradiction of always-pass)", () => {
@@ -221,7 +223,7 @@ describe("FactParser — id determinism", () => {
     const facts2 = parser.parse(filePath, manifest);
 
     // Same number of facts
-    expect(facts1.length).toBe(facts2.length);
+    expect(facts1).toHaveLength(facts2.length);
 
     // Every id is identical
     for (let i = 0; i < facts1.length; i++) {
@@ -244,4 +246,118 @@ describe("FactParser — id determinism", () => {
       expect(fact.id).toMatch(/^[a-z0-9-]+$/);
     }
   });
+});
+
+// ---------------------------------------------------------------------------
+// Test 7 — heading-detection regex boundary cases (S8786 ReDoS remediation
+// characterization: the heading regex was rewritten from `\s+(.+)$` to
+// `\s(.+)$` to remove overlapping-quantifier backtracking; this pins the
+// exact heading/non-heading decision at the boundary the old regex produced
+// so the rewrite cannot silently change which lines start a new section).
+// ---------------------------------------------------------------------------
+
+describe("FactParser — heading regex boundary cases", () => {
+  let tempDir: string;
+
+  beforeAll(async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "muster-memory-lint-heading-test-"));
+  });
+
+  afterAll(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it("does not treat a hash followed by exactly one trailing space as a heading", async () => {
+    // "# " (hash + single space, nothing else) has only 1 char after the
+    // hashes — too short to satisfy the original `\s+(.+)$` (needs >= 2
+    // chars total after the hashes). It must remain ordinary paragraph text.
+    const content = "# \nplain paragraph text\n";
+    const filePath = join(tempDir, "MEMORY.md");
+    await writeFile(filePath, content, "utf8");
+
+    const parser = new FactParser();
+    const manifest: FactManifest = { labels: {} };
+    const facts = parser.parse(filePath, manifest);
+
+    expect(facts).toHaveLength(1);
+    // Section stays "root" — the "# " line was never recognised as a heading.
+    expect(facts[0]?.id).toMatch(/^memory-root-0$/);
+    expect(facts[0]?.text).toBe("# \nplain paragraph text");
+  });
+
+  it("treats a hash run followed by only whitespace (length >= 2) as a heading with an empty trimmed title", async () => {
+    // "##   " (2 hashes + 3 spaces) has 3 chars after the hashes (all
+    // whitespace) — this DOES satisfy the original regex via backtracking,
+    // producing an (untrimmed) capture that trims down to "".
+    const content = "##   \nunder the blank-titled section\n";
+    const filePath = join(tempDir, "MEMORY.md");
+    await writeFile(filePath, content, "utf8");
+
+    const parser = new FactParser();
+    const manifest: FactManifest = { labels: {} };
+    const facts = parser.parse(filePath, manifest);
+
+    expect(facts).toHaveLength(1);
+    // slugify("") === "" — section slug segment is empty, not "root".
+    expect(facts[0]?.id).toMatch(/^memory--0$/);
+    expect(facts[0]?.text).toBe("under the blank-titled section");
+  });
+
+  it("still parses an ordinary heading with multiple leading spaces correctly", async () => {
+    const content = "##    Real Heading\nbody text\n";
+    const filePath = join(tempDir, "MEMORY.md");
+    await writeFile(filePath, content, "utf8");
+
+    const parser = new FactParser();
+    const manifest: FactManifest = { labels: {} };
+    const facts = parser.parse(filePath, manifest);
+
+    expect(facts).toHaveLength(1);
+    expect(facts[0]?.id).toMatch(/^memory-real-heading-0$/);
+    expect(facts[0]?.text).toBe("body text");
+  });
+
+  // The `\s+(.+)$` → `\s(.+)$` rewrite is capture-equivalent after .trim()
+  // but NOT match-decision equivalent: `.` never matches a line terminator
+  // (U+000D CR, U+2028 LS, U+2029 PS), and the single mandatory `\s` — unlike
+  // the old greedy `\s+` — leaves nothing to backtrack into. A heading whose
+  // separator is one space followed directly by a bare CR/LS/PS therefore no
+  // longer matches at all; the line falls through and is swallowed into the
+  // previous section's body instead of starting a new section. This pins
+  // that deliberate narrowing so it cannot silently flip back.
+  it.each([
+    ["U+000D (CR)", "\r"],
+    ["U+2028 (LINE SEPARATOR)", " "],
+    ["U+2029 (PARAGRAPH SEPARATOR)", " "],
+  ])(
+    "swallows a heading whose only separator content is a bare %s into the previous section",
+    async (_label, terminator) => {
+      const content = [
+        "### Normal Section",
+        "",
+        "First fact under normal section.",
+        "",
+        `### ${terminator}Terminator Section`,
+        "",
+        "Body text after the terminator heading.",
+      ].join("\n");
+      const filePath = join(tempDir, "MEMORY.md");
+      await writeFile(filePath, content, "utf8");
+
+      const parser = new FactParser();
+      const manifest: FactManifest = { labels: {} };
+      const facts = parser.parse(filePath, manifest);
+
+      // The malformed heading is never recognised — all three paragraphs
+      // stay under "Normal Section" instead of a new "Terminator Section"
+      // being opened.
+      expect(facts).toHaveLength(3);
+      expect(facts[0]?.id).toBe("memory-normal-section-0");
+      expect(facts[0]?.text).toBe("First fact under normal section.");
+      expect(facts[1]?.id).toBe("memory-normal-section-1");
+      expect(facts[1]?.text).toBe(`### ${terminator}Terminator Section`);
+      expect(facts[2]?.id).toBe("memory-normal-section-2");
+      expect(facts[2]?.text).toBe("Body text after the terminator heading.");
+    }
+  );
 });

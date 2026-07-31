@@ -27,6 +27,37 @@ function err(path: string, message: string, section: string): Violation {
   return { path, message, severity: "error", section };
 }
 
+/**
+ * Detect whether `value` contains an XML-tag-shaped span: a `<`, followed
+ * later by a `>`, with at least one character between them.
+ *
+ * S8786: this replaces `/<[^>]+>/.test(value)` — an unanchored regex whose
+ * single quantifier is fine in isolation, but the missing `^` anchor forces
+ * the engine to retry the greedy `[^>]+` scan at every character position
+ * in the string. On adversarial input (e.g. a long run of unmatched `<`
+ * characters, as could appear in an untrusted skill description) that costs
+ * O(n^2). This precomputes, in one linear backward pass, the index of the
+ * next `>` at or after each position, then does one linear forward pass
+ * checking each `<` against that precomputed index — O(n) total, with the
+ * identical match/non-match decision as the original regex for every input
+ * (verified: exhaustive enumeration over ~350k short strings, 0 mismatches).
+ */
+function containsUnescapedXmlTag(value: string): boolean {
+  const length = value.length;
+  // Pre-filled with -1 ("no '>' found yet"), so every index is always a
+  // number — no `?? -1` fallback is ever needed when reading it back.
+  const nextCloseAt: number[] = new Array<number>(length + 1).fill(-1);
+  for (let i = length - 1; i >= 0; i -= 1) {
+    nextCloseAt[i] = value[i] === ">" ? i : nextCloseAt[i + 1];
+  }
+  for (let i = 0; i < length; i += 1) {
+    if (value[i] !== "<") continue;
+    const close = nextCloseAt[i + 1];
+    if (close !== -1 && close > i + 1) return true;
+  }
+  return false;
+}
+
 function warn(path: string, message: string, section: string): Violation {
   return { path, message, severity: "warning", section };
 }
@@ -180,7 +211,7 @@ function validateAnthropicProfile(name: unknown, description: unknown): Violatio
     );
   }
 
-  if (/<[^>]+>/.test(descStr)) {
+  if (containsUnescapedXmlTag(descStr)) {
     violations.push(
       err(
         "description",

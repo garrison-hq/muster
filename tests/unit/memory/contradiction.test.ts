@@ -181,8 +181,8 @@ describe("ContradictionLinter — clean fixture", () => {
       userFacts
     );
 
-    expect(contradictionFindings.length).toBe(0);
-    expect(supersessionNotes.length).toBe(0);
+    expect(contradictionFindings).toHaveLength(0);
+    expect(supersessionNotes).toHaveLength(0);
   });
 });
 
@@ -273,7 +273,7 @@ describe("ContradictionLinter — discrimination control", () => {
     const { contradictionFindings } = linter.lint(memoryFacts, userFacts);
 
     // Discrimination control: disjoint keywords → zero contradictions
-    expect(contradictionFindings.length).toBe(0);
+    expect(contradictionFindings).toHaveLength(0);
   });
 
   it("confirms the contradictory fixture DOES produce findings, proving the linter is not always-pass", () => {
