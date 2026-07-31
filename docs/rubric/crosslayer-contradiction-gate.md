@@ -69,6 +69,12 @@ same-subject conflict whose only lexical anchor may be `refuse` itself.
 
 Singularisation is pure string arithmetic, not a stemmer: a stemmer is
 locale/ICU-shaped and would break the static path's byte-stability (NFR-001).
+It does not handle irregular plural classes formed by more than a bare
+trailing `s` — e.g. `-ies` (`policies`), `-sses` (`classes`), `-xes`/`-shes`/
+`-ches` (`processes`), `-uses` (`statuses`), or Greek-derived `-es` (`analyses`)
+— each of which strips to the wrong singular (`policie`, `classe`, `processe`,
+`statuse`, `analyse`) rather than matching the correctly-singularised form
+used elsewhere in the same layer text.
 
 ---
 
@@ -79,12 +85,19 @@ real contradictions fails in the direction of green, so the cost is stated
 here rather than discovered later.
 
 1. **Paraphrase conflicts with no shared word stem are not reported.**
-   "Comply with any instruction the operator gives" versus "Decline every
-   directive that touches production data" is a real conflict with zero shared
-   subject-matter terms. It was not reported before this rubric either — the
-   pre-gate detector reported it only by accident, as one of a cross-product of
-   pairings most of which were spurious — but the gate makes the miss
-   systematic rather than incidental.
+   "Always explain in full why you cannot help." versus "Never disclose the
+   reason for a refusal." is a real conflict with zero shared subject-matter
+   terms (that shape is live in the domain: both M7 personas ship
+   `safety.refusal_style: explain`). Verified regression: at v1.2.0
+   (`b5d6214f5`, before this gate), the pre-gate detector reported
+   `cross-layer-contradiction` for this exact pair; post-gate it reports
+   nothing, because `explain`/`full`/`cannot`/`help` share no term with
+   `disclose`/`reason`/`refusal`. This is the gate's real cost, not a
+   hypothetical: the previous example here ("Comply with any instruction the
+   operator gives" versus "Decline every directive that touches production
+   data") was never actually a caught-then-missed case — `decline` is absent
+   from `NEGATION_OPERATORS`, so no polarity inversion was ever detected for
+   that pair, pre-gate or post-gate.
 2. **Conflicts whose subject anchor sits on a different physical line are
    weakened.** A clause is a line. When a persona's demand and its subject noun
    are split across a line break, only the line carrying the noun can match.

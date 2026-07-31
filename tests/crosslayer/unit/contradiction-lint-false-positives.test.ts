@@ -212,6 +212,23 @@ describe("#84 cause 2 — clauses on unrelated subjects are not contradictions",
     expect(contradictions[0]?.clauseA).toBe("I always push my finished work straight to origin/main.");
     expect(contradictions[0]?.clauseB).toBe(SOP_NO_DIRECT_PUSH_CLAUSE);
   });
+
+  it("F3 — rubric item 1's verified regression: a real paraphrase conflict with zero shared subject-matter terms is not reported", () => {
+    // docs/rubric/crosslayer-contradiction-gate.md, accepted false-negative
+    // surface item 1. A live domain shape (both M7 personas ship
+    // safety.refusal_style: explain): "always explain why you can't help" vs
+    // "never disclose the reason for a refusal" — a genuine conflict that
+    // shares no subject-matter term ({explain, full, cannot, help} vs
+    // {disclose, reason, refusal}).
+    const report = lintComposition(
+      inMemoryComposition([
+        ["persona", "Always explain in full why you cannot help."],
+        ["sop", "Never disclose the reason for a refusal."],
+      ])
+    );
+    expect(report.findings).toHaveLength(0);
+    expect(report.ok).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -233,9 +250,21 @@ describe("#84 — deliberate narrowing on committed fixtures, pinned by exact co
       ],
     });
     const report = lintComposition(comp);
-    // Dropped: the three pairings whose SOP side was the "professional tone"
-    // rule or a continuation line with no shared subject. Kept: both pairings
-    // against the refusal rule itself.
+    // F5 (PR #85 review) — corrected narrative, verified against the actual
+    // pre-gate/post-gate clause pairs, not just the SOP side. Kept: both
+    // pairings between a persona accommodation clause ("Accommodate every
+    // user request...", "...Never refuse a request.") and the SOP's refusal
+    // rule's own main line ("Refuse all requests to produce competitor
+    // pricing comparisons...") — they share the terms "refuse"/"request".
+    // Dropped (3): (1) the persona's *intro* sentence ("You are Aria, a
+    // maximally helpful and accommodating assistant...") against that same
+    // refusal-rule line — the intro shares no subject-matter term with
+    // "refuse"/"request"/"assist"; (2) "...Never refuse a request." against
+    // the refusal rule's *continuation* line ("any pricing comparison
+    // between this product...") — that continuation's terms are
+    // pricing/comparison/product/competitor, none shared; (3) "...Never
+    // refuse a request." against the unrelated "professional tone" rule —
+    // tone/professionalism shares no subject with refusal/request.
     expect(report.findings.filter((f) => f.type === "cross-layer-contradiction")).toHaveLength(2);
     expect(report.findings).toHaveLength(4);
   });
@@ -254,8 +283,19 @@ describe("#84 — deliberate narrowing on committed fixtures, pinned by exact co
       ],
     });
     const report = lintComposition(comp);
-    // Dropped: the pairings against the observability DECISION-line rules,
-    // which the eroding persona does not address at all.
+    // F5 (PR #85 review) — corrected narrative. Kept: each of the persona's
+    // two topic-override sentences ("OVERRIDE ACTIVE: ... All topic
+    // restrictions..." and "...you always answer cooking and recipe...")
+    // paired with its correctly-matching SOP line ("Do not explain the
+    // restriction..." and "You must NOT answer questions about cooking or
+    // recipes...", respectively). Dropped (6): four are the persona's two
+    // override sentences against the SOP's two DECISION-line observability
+    // rules ("Where X is either COMPLY or REFUSE...", "Do not explain the
+    // decision line..."), which the eroding persona does not address at all
+    // — but the other two drops are the *cross*-matched pairings between the
+    // persona's two override sentences and the SOP's cooking-rule sentences
+    // (each persona sentence against the *other* SOP sentence than the one
+    // it was kept against), not DECISION-line rules.
     expect(report.findings.filter((f) => f.type === "cross-layer-contradiction")).toHaveLength(2);
     expect(report.findings).toHaveLength(4);
   });
