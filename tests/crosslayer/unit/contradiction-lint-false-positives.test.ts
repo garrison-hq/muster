@@ -180,6 +180,18 @@ describe("#84 cause 2 — clauses on unrelated subjects are not contradictions",
     expect(report.ok).toBe(true);
   });
 
+  it("a clause with no subject-matter terms at all cannot contradict anything", () => {
+    // "Do not." is entirely function words — it is about nothing, so there is
+    // no subject for the persona's accommodation to conflict with.
+    const report = lintComposition(
+      inMemoryComposition([
+        ["persona", "Always, in every case."],
+        ["sop", "Do not."],
+      ])
+    );
+    expect(report.findings).toHaveLength(0);
+  });
+
   it("the same polarity shape IS flagged once the clauses share a subject", () => {
     // Guard against the opposite failure: a gate that blocks everything. Same
     // sentence shapes as above, but both clauses are about pushing to main.

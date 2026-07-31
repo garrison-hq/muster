@@ -19,9 +19,16 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   checkSubjectMatterGateControl,
+  describeGateControlOutcome,
   evaluateSubjectMatterGateControl,
 } from "../../../src/crosslayer/lint-controls.js";
 import type { GateControlResult } from "../../../src/crosslayer/lint-controls.js";
+
+const CLEAN_ARM = { clean: true, findingTypes: [] } as const;
+const DIRTY_ARM = {
+  clean: false,
+  findingTypes: ["cross-layer-contradiction", "undefined-precedence"],
+} as const;
 
 describe("subject-matter gate discrimination control (FR-009)", () => {
   it("the rigged arm does NOT meet its impossible expectation — observed failing", () => {
@@ -54,6 +61,36 @@ describe("subject-matter gate discrimination control (FR-009)", () => {
     const first = JSON.stringify(evaluateSubjectMatterGateControl());
     const second = JSON.stringify(evaluateSubjectMatterGateControl());
     expect(first).toBe(second);
+  });
+});
+
+describe("describeGateControlOutcome — the two failure messages", () => {
+  it("names the grader bug when the rigged arm met its impossible expectation", () => {
+    // Vacuous-closed detector: nothing is ever reported, so the rigged arm's
+    // ok: true expectation is satisfied and every downstream suite goes green.
+    const reason = describeGateControlOutcome({
+      passed: true,
+      failedAsDesigned: false,
+      rigged: CLEAN_ARM,
+      polarityNeutralised: CLEAN_ARM,
+      subjectShifted: CLEAN_ARM,
+    });
+    expect(reason).toContain("CONTROL PASSED");
+    expect(reason).toContain("grader bug");
+  });
+
+  it("names the non-discriminating case when a neutralising arm is dirty", () => {
+    // Vacuous-open gate: the subject-shifted arm reports too, so the rigged
+    // arm's failure proves nothing about the gate.
+    const reason = describeGateControlOutcome({
+      passed: false,
+      failedAsDesigned: false,
+      rigged: DIRTY_ARM,
+      polarityNeutralised: CLEAN_ARM,
+      subjectShifted: DIRTY_ARM,
+    });
+    expect(reason).toContain("NOT DISCRIMINATING");
+    expect(reason).toContain("subject-shifted clean=false");
   });
 });
 

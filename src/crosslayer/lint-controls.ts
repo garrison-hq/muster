@@ -112,7 +112,13 @@ function runArm(personaClause: string, skillClause: string): GateControlArm {
   };
 }
 
-function describeOutcome(result: Omit<GateControlResult, "reason">): string {
+/**
+ * The control's human-readable verdict. Exported so the two failure messages
+ * are contract-tested directly: they are only reachable when the detector is
+ * broken, and a message that is never exercised is a message nobody can rely
+ * on when it finally fires.
+ */
+export function describeGateControlOutcome(result: Omit<GateControlResult, "reason">): string {
   if (result.passed) {
     return (
       "SUBJECT-MATTER GATE CONTROL PASSED — grader bug. The rigged arm " +
@@ -151,7 +157,7 @@ export function evaluateSubjectMatterGateControl(): GateControlResult {
     !passed && riggedReportedContradiction && polarityNeutralised.clean && subjectShifted.clean;
 
   const partial = { passed, failedAsDesigned, rigged, polarityNeutralised, subjectShifted };
-  return { ...partial, reason: describeOutcome(partial) };
+  return { ...partial, reason: describeGateControlOutcome(partial) };
 }
 
 /**
