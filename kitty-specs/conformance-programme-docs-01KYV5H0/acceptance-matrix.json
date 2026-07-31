@@ -2,7 +2,7 @@
   "mission_slug": "conformance-programme-docs-01KYV5H0",
   "mission_number": "",
   "mission_type": "documentation",
-  "overall_verdict": "pending",
+  "overall_verdict": "pass",
   "criteria": [
     {
       "criterion_id": "FR-001",
@@ -38,10 +38,10 @@
       "criterion_id": "FR-004",
       "description": "Verify FR-004 is satisfied",
       "proof_type": "automated_test",
-      "evidence": "WP01's one-third landed @ 6cf0ca2fa: site/src/content/docs/guides/spec-kitty-conformance.md authored (Starlight schema, title/description frontmatter matching static-conformance.md's precedent) and site/astro.config.mjs got exactly one new sidebar entry (guides/spec-kitty-conformance). cd site && pnpm build -> exit=0 with the new page present in the built nav; phantom-sidebar-entry falsification confirmed the build gate actually fails (exit=1, AstroUserError naming the missing slug) when a sidebar entry lacks a backing page, then reverted to a clean exit=0. Remaining two-thirds (rubric-index mirror, recorded-gaps mirror, their sidebar entries) are WP02's scope -- leaving this criterion at pending until WP02 lands, per this WP's own Definition of Done.",
-      "pass_fail": "pending",
+      "evidence": "cd site && pnpm build exits 0 with all 3 new pages in the built nav (/guides/spec-kitty-conformance/, /rubric/, /rubric/recorded-gaps/ \u2014 confirmed present in dist/ route listing). Phantom-entry falsification (Hazard 2), both states captured: adding {slug:'rubric/phantom-entry-for-falsification-test'} to site/astro.config.mjs's sidebar and running pnpm build produced 'AstroUserError: The slug \"rubric/phantom-entry-for-falsification-test\" specified in the Starlight sidebar config does not exist' with build_exit=1; removing the phantom entry and rebuilding produced build_exit=0 again. site/astro.config.mjs's sidebar array extended by exactly 2 entries (appended after WP01's own 1 entry), no reformatting of the existing array.",
+      "pass_fail": "pass",
       "verified_by": null,
-      "verified_at": "2026-07-31T12:45:37.412280+00:00",
+      "verified_at": "2026-07-31T13:22:43.921194+00:00",
       "notes": "TODO: replace with a real acceptance criterion"
     },
     {
