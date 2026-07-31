@@ -165,8 +165,9 @@ emits a `console.warn` (`trigger.ts:472-473`) and still returns
 returned unmutated — `return` (`trigger.ts:481-482`)). The mechanical enforcement lives
 one layer up, in `tests/cts/skills-suite.test.ts` — a file owned by WP01, not
 WP04, and whose discrimination-control assertions predate this mission
-entirely (`git log` on that file shows only two commits, `8ae5c0f` and
-`2135429`, both already merged to `main` before this mission existed).
+entirely (`git log` on that file shows three commits, `a46148b96`,
+`2135429c2`, and `8ae5c0fb1`, all already merged to `main` before this
+mission existed).
 
 The assertion that actually runs unconditionally in CI is the **static-mode
 mocked analog** (`describe` (`tests/cts/skills-suite.test.ts:244-321`)): a
@@ -185,10 +186,12 @@ the same `passed:false` assertion (`verdict.passed` (`tests/cts/skills-suite.tes
 against a live model as an addition on top of the static-mode analog, not as
 the primary enforcement.
 
-The literal string `SC-004` appears five times in the test file's own
+The literal string `SC-004` appears seven times in the test file's own
 comments, `describe` block name, and assertion messages (`SC-004`
 (`tests/cts/skills-suite.test.ts:10`), `SC-004`
+(`tests/cts/skills-suite.test.ts:242`), `SC-004`
 (`tests/cts/skills-suite.test.ts:244`), `SC-004`
+(`tests/cts/skills-suite.test.ts:247`), `SC-004`
 (`tests/cts/skills-suite.test.ts:312`), `SC-004`
 (`tests/cts/skills-suite.test.ts:421`), `SC-004`
 (`tests/cts/skills-suite.test.ts:424`)). That label is **legacy
