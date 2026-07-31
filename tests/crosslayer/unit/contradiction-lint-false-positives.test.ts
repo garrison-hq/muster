@@ -105,7 +105,13 @@ describe("#84 cause 1 — multi-line HTML comment bodies are not clause text", (
         ["sop", "<!--\nfor each heading listed below, in order, every line is extracted"],
       ])
     );
-    expect(report.findings).toHaveLength(0);
+    const contradictions = report.findings.filter((f) => f.type === "cross-layer-contradiction");
+    expect(contradictions).toHaveLength(0);
+    // PR #85 review finding F1: the truncation itself is an accepted
+    // false-negative (rubric item 5), but it must not be silent — a
+    // warning finding surfaces the unbalanced <!-- / --> count.
+    const unbalanced = report.findings.filter((f) => f.type === "unbalanced-html-comment-marker");
+    expect(unbalanced).toHaveLength(1);
   });
 });
 

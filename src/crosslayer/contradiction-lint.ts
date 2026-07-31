@@ -50,7 +50,8 @@ export type CrossLayerFindingType =
   | "cross-layer-contradiction" // direct conflict between two layers (FR-003)
   | "undefined-precedence" // conflict where no precedence is declared (FR-004)
   | "resolved-by-precedence" // conflict where declared precedence names a winner (FR-004)
-  | "circular-precedence-error"; // A outranks B outranks A — static error (FR-004)
+  | "circular-precedence-error" // A outranks B outranks A — static error (FR-004)
+  | "unbalanced-html-comment-marker"; // a layer's <!-- count exceeds its --> count (PR #85 F1)
 
 /** A single lint finding produced by lintComposition. Every field is machine-readable (FR-010). */
 export interface CrossLayerFinding {
@@ -408,6 +409,44 @@ function extractClauses(layerText: string): string[] {
     .filter((line) => line.length > 0 && !line.startsWith("#"));
 }
 
+/**
+ * Counts non-overlapping occurrences of `marker` in `text`. Index-based scan,
+ * no regular expression — mirrors stripHtmlComments's no-backtracking-surface
+ * discipline on the offline static path.
+ */
+function countOccurrences(text: string, marker: string): number {
+  let count = 0;
+  let index = text.indexOf(marker);
+  while (index !== -1) {
+    count += 1;
+    index = text.indexOf(marker, index + marker.length);
+  }
+  return count;
+}
+
+/**
+ * Returns true when a layer's `<!--` count exceeds its `-->` count.
+ *
+ * PR #85 review finding F1: `stripHtmlComments` treats an unterminated
+ * `<!--` as opening a comment that runs through end-of-text, deleting every
+ * clause after it — including a genuine contradiction. That narrowing is an
+ * accepted false negative (docs/rubric/crosslayer-contradiction-gate.md,
+ * accepted false-negative surface, item 5) rather than something this lint
+ * attempts to recover, because distinguishing a genuinely unterminated
+ * comment from a marker merely mentioned in prose or a fenced code block is
+ * out of scope. What must not happen is for the loss to stay silent: this
+ * predicate is the basis for the `unbalanced-html-comment-marker` warning
+ * finding, which flips `report.ok` to false whenever the count is unbalanced.
+ *
+ * Deliberately one-directional: a `-->` with no matching `<!--` (e.g. a
+ * mermaid flowchart arrow) never causes stripHtmlComments to drop anything,
+ * so it stays inert here too — this predicate only detects a layer that lost
+ * text, not any occurrence of the closing token in isolation.
+ */
+function hasUnbalancedCommentMarkers(layerText: string): boolean {
+  return countOccurrences(layerText, COMMENT_OPEN) > countOccurrences(layerText, COMMENT_CLOSE);
+}
+
 // ---------------------------------------------------------------------------
 // Precedence resolution helpers (T010)
 // ---------------------------------------------------------------------------
@@ -476,6 +515,23 @@ function buildContradictionFinding(
     clauseB,
     citedSource,
     severity: "error",
+  };
+}
+
+/**
+ * Builds the warning finding for a layer whose `<!--` count exceeds its
+ * `-->` count (PR #85 F1). Both tuple entries name the same layer — this is
+ * a single-layer observation, not a cross-layer pairing.
+ */
+function buildUnbalancedCommentFinding(layerType: LayerType): CrossLayerFinding {
+  return {
+    type: "unbalanced-html-comment-marker",
+    layers: [layerType, layerType],
+    clauseA: `Layer "${layerType}" has more "<!--" markers than "-->" markers — an unterminated ` +
+      "comment silently drops every clause after it (accepted false-negative surface, item 5).",
+    clauseB: "",
+    citedSource: MUSTER_RUBRIC_CITATION,
+    severity: "warning",
   };
 }
 
@@ -676,6 +732,16 @@ export function lintComposition(composition: StackComposition): CrossLayerLintRe
 
   const { layerTexts } = composition.resolved;
   const findings: CrossLayerFinding[] = [];
+
+  // F1 (PR #85 review) — surface a layer whose <!-- count exceeds its -->
+  // count. stripHtmlComments silently drops everything after an unterminated
+  // <!-- (accepted false-negative surface, item 5); this warning stops that
+  // loss from producing a silent ok: true.
+  for (const [layerType, layerText] of layerTexts) {
+    if (hasUnbalancedCommentMarkers(layerText)) {
+      findings.push(buildUnbalancedCommentFinding(layerType));
+    }
+  }
 
   // T011 — Circular-precedence detection (before any finding analysis).
   // FR-004: a circular declaration is a static error; must be detected first.

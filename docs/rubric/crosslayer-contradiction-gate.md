@@ -96,6 +96,26 @@ here rather than discovered later.
    words are treated as subject matter.
 4. **Distinct subjects that happen to share an incidental word are still
    reported.** This is intentional: the gate narrows, it never broadens.
+5. **An unterminated `<!--` still drops every clause after it, to end of
+   layer text, as comment body.** `stripHtmlComments`
+   (`src/crosslayer/contradiction-lint.ts`) strips a comment span from its
+   opener through the matching `-->`; when no closer is found, the entire
+   remainder of the layer is treated as commentary. A layer that merely
+   *mentions* the marker in authoring prose or inside a fenced code block
+   (never opening a real comment) can therefore lose a genuine
+   contradiction living further down the document — PR #85 review finding
+   F1's reproduction is exactly this: an SOP section titled "Authoring
+   note" that explains the marker in backticks, followed by a genuine
+   git-policy clause that is never compared. Distinguishing a truly
+   unterminated comment from a mention-in-prose is out of scope (it would
+   require prose-vs-markup disambiguation this lint does not attempt).
+   **This loss is not silent**: `lintComposition` emits an
+   `unbalanced-html-comment-marker` warning finding whenever a layer's
+   `<!--` count exceeds its `-->` count, so `report.ok` is `false` and the
+   truncation is machine-readable rather than a silent green. The check is
+   deliberately one-directional — a `-->` with no matching `<!--` (e.g. a
+   mermaid flowchart arrow) never causes `stripHtmlComments` to drop
+   anything, so it stays inert and does not warn.
 
 The mitigations are: the gate applies only to pairs that already exhibit
 polarity inversion; the true-positive corpus
