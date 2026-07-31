@@ -79,6 +79,7 @@ export default defineConfig({
             { slug: 'guides/static-conformance' },
             { slug: 'guides/behavioral-conformance' },
             { slug: 'guides/reference-resolution' },
+            { slug: 'guides/spec-kitty-conformance' },
           ],
         },
         {
