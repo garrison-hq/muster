@@ -18,10 +18,10 @@
       "criterion_id": "FR-002",
       "description": "Verify FR-002 is satisfied",
       "proof_type": "automated_test",
-      "evidence": "Commit A (bc09e0c89) re-verified in isolated worktree: node scripts/check-rubric-citations.mjs exits 1, naming the 3 canonical-grammar stale anchors (gradeAxis x2, console.warn x1) real in the tree at that commit (see tracer finding 3c997f7403f1 re: the other 5 of the 8 repair-inventory items being, by design, invisible to a canonical-grammar-only parser pre-repair). Commit B (c8d9eb01e) re-verified in isolated worktree: exits 0; git diff HEAD~1..HEAD -- docs/rubric/skills-trigger-taxonomy.md shows only citation-line changes (3 hunks, no prose/threshold/severity text). Post-merge: node scripts/check-rubric-citations.mjs exits 0 against the full docs/rubric/ corpus (SC-001). Edge case: node scripts/check-rubric-citations.mjs --root tests/fixtures/unindexed-rubric-dir/ exits 1 naming orphan.md specifically, independent of citation-resolution failures. C-004: two same-cwd runs and one run from cwd=/ produce byte-identical stdout.",
+      "evidence": "Review remediation (B1/B2, 2026-07-31): added a dedicated exits-0-against-real-corpus test plus a status===0 assertion inside the C-004 determinism test (tests/scripts/check-rubric-citations.test.ts) so vitest run tests/scripts/ actually gates the real docs/rubric/ corpus, not just relative equality across runs. Falsification proven: mutated a real citation (gradeAxis trigger.ts:237 -> :99999) in docs/rubric/skills-trigger-taxonomy.md, node scripts/check-rubric-citations.mjs exit=1 (STALE CITATION), npx vitest run tests/scripts/ -> 2 failed/58 passed; restored the file, script exit=0, vitest 60/60 passed. Also corrected skills-trigger-taxonomy.md:188's SC-004 count from five to seven (command grep -n SC-004 tests/cts/skills-suite.test.ts -> lines 10,242,244,247,312,421,424; added the two missing anchors at 242/247) and fixed a second enumeration error found during the sweep (the git-log commit count on tests/cts/skills-suite.test.ts was wrong: three commits -- a46148b96,2135429c2,8ae5c0fb1 -- not two). spec.md:109 (the upstream source of the five-vs-seven error) corrected in the same pass. STALE CITATION/UNINDEXED FILE runtime messages in check-rubric-citations.mjs now cite FR-002 per C-006.",
       "pass_fail": "pass",
       "verified_by": null,
-      "verified_at": "2026-07-31T13:22:24.311713+00:00",
+      "verified_at": "2026-07-31T13:49:07.636766+00:00",
       "notes": "TODO: replace with a real acceptance criterion"
     },
     {
