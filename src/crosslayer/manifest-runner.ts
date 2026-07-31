@@ -24,6 +24,7 @@ import { parse as yamlParse } from "yaml";
 import { assembleComposedContext } from "./composition.js";
 import { lintComposition } from "./contradiction-lint.js";
 import { runRuleSurvival } from "./rule-survival.js";
+import { checkSubjectMatterGateControl, evaluateSubjectMatterGateControl } from "./lint-controls.js";
 import type { LayerEntry, PrecedenceDeclaration } from "./composition.js";
 import type { CrossLayerFindingType } from "./contradiction-lint.js";
 import type { GradingClass, RuleSurvivalVerdict } from "./rule-survival.js";
@@ -555,6 +556,19 @@ export async function runManifest(
 
   // Resolve API key once before running any behavioral case.
   const apiKey = resolveApiKey(manifest);
+
+  // FR-009 (PR #85 review finding F2): the subject-matter gate's
+  // rigged-impossible discrimination control must be observed failing on
+  // every static run, not merely under `pnpm test`. Evaluated once per
+  // manifest run (the control is fixed by construction, not case data) so a
+  // consumer's `muster crosslayer run` — the path a static-gate CI job
+  // actually exercises — carries the same coverage as the unit suite.
+  // checkSubjectMatterGateControl only console.warns (stderr) when the
+  // control does NOT fail as designed; a healthy run stays silent, so the
+  // pinned `--json` / human static-gate output is untouched byte-for-byte.
+  if (casesToRun.some((c) => c.testClass === "static")) {
+    checkSubjectMatterGateControl(evaluateSubjectMatterGateControl());
+  }
 
   const results: CaseResult[] = [];
 
