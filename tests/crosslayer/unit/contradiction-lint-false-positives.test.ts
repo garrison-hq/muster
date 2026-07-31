@@ -22,6 +22,7 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { assembleComposedContext } from "../../../src/crosslayer/composition.js";
 import { lintComposition } from "../../../src/crosslayer/contradiction-lint.js";
 import type {
   ResolvedContext,
@@ -105,5 +106,139 @@ describe("#84 cause 1 — multi-line HTML comment bodies are not clause text", (
       ])
     );
     expect(report.findings).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cause 2 — polarity inversion alone is not a contradiction (#84)
+// ---------------------------------------------------------------------------
+
+/** Verbatim from the conformance stack's AGENTS.md git-policy extract. */
+const SOP_NO_DIRECT_PUSH_CLAUSE =
+  "**All changes to origin/main MUST go through pull requests. Direct pushes are prohibited.**";
+const SOP_WHY_CLAUSE =
+  "**Why:** The workflow is predicated on pull requests for review, CI gating, and audit trail. " +
+  "Direct pushes to origin/main bypass all of these.";
+
+/** Verbatim from the conformance stack's persona projections. */
+const PERSONA_ALPHONSO_SUMMARY =
+  "Design and validate system architectures for scalability, maintainability, and correctness. " +
+  "Architect Alphonso translates high-level requirements into well-structured technical blueprints, " +
+  "selects appropriate patterns, and ensures architectural coherence across components. " +
+  "Does NOT implement code or manage day-to-day tasks.";
+
+/** Verbatim from src/doctrine/skills/spk-run-next/SKILL.md, step 3. */
+const SKILL_QUERY_STEP_CLAUSE =
+  "3. For `query`, inspect only; do not execute a prompt or mark a result.";
+
+describe("#84 cause 2 — clauses on unrelated subjects are not contradictions", () => {
+  it("a git-push policy is not contradicted by a persona's implementation boundary", () => {
+    // "All ... prohibited" (accommodation + negation) vs "I do not write
+    // implementation code" (negation). Polarity inverts; subject matter does
+    // not overlap at all. A policy note is entitled to the word "all".
+    const report = lintComposition(
+      inMemoryComposition([
+        ["persona", PERSONA_ROLE_DESCRIPTION],
+        ["sop", SOP_NO_DIRECT_PUSH_CLAUSE],
+      ])
+    );
+    expect(report.findings).toHaveLength(0);
+  });
+
+  it("a git-push policy is not contradicted by a skill's read-only query step", () => {
+    const report = lintComposition(
+      inMemoryComposition([
+        ["sop", SOP_NO_DIRECT_PUSH_CLAUSE],
+        ["skill", SKILL_QUERY_STEP_CLAUSE],
+      ])
+    );
+    expect(report.findings).toHaveLength(0);
+  });
+
+  it("a CI-rationale note is not contradicted by an architecture role summary", () => {
+    const report = lintComposition(
+      inMemoryComposition([
+        ["persona", PERSONA_ALPHONSO_SUMMARY],
+        ["sop", SOP_WHY_CLAUSE],
+      ])
+    );
+    expect(report.findings).toHaveLength(0);
+  });
+
+  it("the whole three-layer conformance stack produces ok: true", () => {
+    // The composition that blocked spec-kitty-conformance mission M7's
+    // static gate: persona + AGENTS.md policy extract + one skill, none of
+    // which conflict with any other.
+    const report = lintComposition(
+      inMemoryComposition([
+        ["persona", `${PERSONA_ALPHONSO_SUMMARY}\n\n${PERSONA_ROLE_DESCRIPTION}`],
+        ["sop", `${SOP_WITH_HTML_COMMENT_HEADER}\n\n${SOP_NO_DIRECT_PUSH_CLAUSE}\n\n${SOP_WHY_CLAUSE}`],
+        ["skill", SKILL_QUERY_STEP_CLAUSE],
+      ])
+    );
+    expect(report.findings).toHaveLength(0);
+    expect(report.ok).toBe(true);
+  });
+
+  it("the same polarity shape IS flagged once the clauses share a subject", () => {
+    // Guard against the opposite failure: a gate that blocks everything. Same
+    // sentence shapes as above, but both clauses are about pushing to main.
+    const report = lintComposition(
+      inMemoryComposition([
+        ["persona", "I always push my finished work straight to origin/main."],
+        ["sop", SOP_NO_DIRECT_PUSH_CLAUSE],
+      ])
+    );
+    const contradictions = report.findings.filter((f) => f.type === "cross-layer-contradiction");
+    expect(contradictions).toHaveLength(1);
+    expect(contradictions[0]?.clauseA).toBe("I always push my finished work straight to origin/main.");
+    expect(contradictions[0]?.clauseB).toBe(SOP_NO_DIRECT_PUSH_CLAUSE);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The deliberate narrowing, pinned by exact counts on committed fixtures (#84)
+// ---------------------------------------------------------------------------
+
+describe("#84 — deliberate narrowing on committed fixtures, pinned by exact counts", () => {
+  it("contradictory-no-precedence: 5 contradiction findings narrow to 2", async () => {
+    const comp = await assembleComposedContext({
+      layers: [
+        {
+          layerType: "persona",
+          fixturePath: "fixtures/crosslayer/contradictory-no-precedence/SOUL.md",
+        },
+        {
+          layerType: "sop",
+          fixturePath: "fixtures/crosslayer/contradictory-no-precedence/AGENTS.md",
+        },
+      ],
+    });
+    const report = lintComposition(comp);
+    // Dropped: the three pairings whose SOP side was the "professional tone"
+    // rule or a continuation line with no shared subject. Kept: both pairings
+    // against the refusal rule itself.
+    expect(report.findings.filter((f) => f.type === "cross-layer-contradiction")).toHaveLength(2);
+    expect(report.findings).toHaveLength(4);
+  });
+
+  it("erosion-persona-control: 8 contradiction findings narrow to 2", async () => {
+    const comp = await assembleComposedContext({
+      layers: [
+        {
+          layerType: "persona",
+          fixturePath: "fixtures/crosslayer/erosion-persona-control/SOUL-eroding.md",
+        },
+        {
+          layerType: "sop",
+          fixturePath: "fixtures/crosslayer/erosion-persona-control/AGENTS-refusal-rule.md",
+        },
+      ],
+    });
+    const report = lintComposition(comp);
+    // Dropped: the pairings against the observability DECISION-line rules,
+    // which the eroding persona does not address at all.
+    expect(report.findings.filter((f) => f.type === "cross-layer-contradiction")).toHaveLength(2);
+    expect(report.findings).toHaveLength(4);
   });
 });
