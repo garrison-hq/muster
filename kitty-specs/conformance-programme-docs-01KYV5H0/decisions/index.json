@@ -1,0 +1,77 @@
+{
+  "entries": [
+    {
+      "created_at": "2026-07-31T04:07:43.999681Z",
+      "decision_id": "01KYV5PJKZHE4T2F6CGR6EJ3YZ",
+      "final_answer": "repair-anchors-now: the drift-check is a byproduct of building the checker; repairing skills-trigger-taxonomy.md's stale file:line anchors is a purely mechanical pointer fix (no rubric judgment/severity content changes), so it does not violate the 'no rubric content changes beyond the index' scope guard, and it prevents shipping a citation-drift gate that is red from minute one.",
+      "input_key": "drift_check_repair_scope",
+      "mission_id": "01KYV5H0CWYEPG8RR593D5GMTZ",
+      "mission_slug": "conformance-programme-docs-01KYV5H0",
+      "opened_by": "cli",
+      "options": [
+        "repair-anchors-now",
+        "ship-checker-advisory-only",
+        "defer-checker-until-80-fixed"
+      ],
+      "origin_flow": "specify",
+      "other_answer": false,
+      "question": "Should the rubric-citation drift-check (FR-002) also mechanically repair skills-trigger-taxonomy.md's stale anchors (muster#80) as part of this mission, or ship the checker without touching #80 and let it go red?",
+      "rationale": null,
+      "resolved_at": "2026-07-31T04:08:06.942087Z",
+      "resolved_by": null,
+      "slot_key": "specify.rubric-index.drift-check-repair-scope",
+      "status": "resolved",
+      "step_id": null,
+      "summary_json": null
+    },
+    {
+      "created_at": "2026-07-31T04:07:54.459784Z",
+      "decision_id": "01KYV5PWTVK8921KT5R6W2Y9WP",
+      "final_answer": "labeled-forward-looking-table: include the test-strategy table as an explicitly-labeled planned/pending-M4-M6 appendix with no verification commands attached to rows that reference non-existent conformance/* paths, so the guide stays honest under AC-1 doc-test discipline instead of fabricating runnable examples.",
+      "input_key": "aspirational_suite_table_treatment",
+      "mission_id": "01KYV5H0CWYEPG8RR593D5GMTZ",
+      "mission_slug": "conformance-programme-docs-01KYV5H0",
+      "opened_by": "cli",
+      "options": [
+        "labeled-forward-looking-table",
+        "omit-until-m4-m6-land",
+        "include-as-runnable-anyway"
+      ],
+      "origin_flow": "specify",
+      "other_answer": false,
+      "question": "The M9 issue's test-strategy table (section 11) cites conformance/* manifest paths in spec-kitty-conformance that mostly do not exist yet (crosslayer, behavioral profiles/directives, skills behavioral-manifest are all absent or unimplemented; skprofile/doctrine paths are wrong). Should the operator guide (FR-001) include this as a clearly-labeled forward-looking/planned table with no runnable commands, or omit it entirely until M4/M6 land?",
+      "rationale": null,
+      "resolved_at": "2026-07-31T04:08:08.899416Z",
+      "resolved_by": null,
+      "slot_key": "specify.operator-guide.aspirational-suite-table",
+      "status": "resolved",
+      "step_id": null,
+      "summary_json": null
+    },
+    {
+      "created_at": "2026-07-31T04:07:56.421637Z",
+      "decision_id": "01KYV5PYR59PZDF1XSZQAP9NAK",
+      "final_answer": "narrow-adapter-specific-correction: rewrite examples/README.md line 5/19 to match muster#78's actual skills-adapter evidence and add a per-adapter exit-code table; record the behave/a2a-vs-skills/sop total-endpoint-failure divergence as a new recorded-gaps register entry rather than erasing behave/a2a's real, deliberately-coded, contracts/cli.md-cited exit-2 behavior.",
+      "input_key": "exit_code_correction_scope",
+      "mission_id": "01KYV5H0CWYEPG8RR593D5GMTZ",
+      "mission_slug": "conformance-programme-docs-01KYV5H0",
+      "opened_by": "cli",
+      "options": [
+        "narrow-adapter-specific-correction",
+        "blanket-universal-rewrite"
+      ],
+      "origin_flow": "specify",
+      "other_answer": false,
+      "question": "examples/README.md line 5 states a blanket 'endpoint unreachable -> exit 2' rule. Code confirms this is TRUE for behave/a2a (deliberate, cited to contracts/cli.md) but FALSE for skills/sop (which exit 1 for the same scenario, per muster#78's own measured evidence). Should the fix be a narrow, adapter-specific correction (skills row + new per-adapter exit-code table) with the divergence recorded as a new gaps-register entry, or a blanket rewrite asserting exit 1 universally?",
+      "rationale": null,
+      "resolved_at": "2026-07-31T04:08:10.763609Z",
+      "resolved_by": null,
+      "slot_key": "specify.exit-code-contract.correction-scope",
+      "status": "resolved",
+      "step_id": null,
+      "summary_json": null
+    }
+  ],
+  "mission_id": "01KYV5H0CWYEPG8RR593D5GMTZ",
+  "version": 1
+}
