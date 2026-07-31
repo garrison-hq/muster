@@ -150,6 +150,104 @@ const SCOPE_QUALIFIERS = new Set([
   "requests",
 ]);
 
+/**
+ * Function words that carry no subject matter: articles, determiners,
+ * quantifiers, pronouns, auxiliaries, prepositions, conjunctions and the bare
+ * temporal/quantifying polarity words ("all", "every", "always", "never",
+ * "not"). They are excluded when deciding whether two clauses are ABOUT the
+ * same thing (garrison-hq/muster#84 cause 2).
+ *
+ * Content-bearing polarity operators ("refuse", "prohibited", "accommodate",
+ * "assist", ...) are deliberately NOT listed: "never refuse" vs "refuse X" is
+ * a genuine same-subject conflict whose only lexical anchor may be "refuse".
+ *
+ * Normative heuristic: muster cross-layer rubric (2026), distinguisher section.
+ */
+const TOPIC_STOPWORDS = new Set([
+  // articles, determiners, quantifiers
+  "a", "an", "the", "this", "that", "these", "those", "all", "any", "each", "every", "some",
+  "no", "none", "both", "either", "neither", "such", "same", "other", "another", "more", "most",
+  "less", "least", "much", "many", "few", "several",
+  // pronouns
+  "i", "me", "my", "mine", "myself", "you", "your", "yours", "yourself", "he", "him", "his",
+  "she", "her", "hers", "it", "its", "itself", "we", "us", "our", "ours", "they", "them",
+  "their", "theirs", "who", "whom", "whose", "which", "what", "whatever", "whoever",
+  // auxiliaries, modals, semantically empty verbs
+  "am", "is", "are", "was", "were", "be", "been", "being", "do", "does", "did", "done", "doing",
+  "have", "has", "had", "having", "can", "could", "shall", "should", "will", "would", "may",
+  "might", "must", "ought", "let", "get", "gets", "got", "make", "makes", "made",
+  // prepositions, conjunctions, adverbs
+  "and", "or", "but", "nor", "so", "yet", "if", "then", "else", "than", "as", "at", "by", "for",
+  "from", "in", "into", "of", "off", "on", "onto", "out", "over", "under", "to", "too", "up",
+  "upon", "with", "within", "without", "about", "above", "after", "again", "against", "before",
+  "below", "between", "during", "further", "here", "there", "how", "however", "just", "not",
+  "now", "only", "also", "once", "per", "since", "still", "through", "thus", "until", "very",
+  "when", "where", "while", "why", "always", "never", "ever", "regardless", "instead", "rather",
+  "even", "because", "via", "use", "using", "used", "way", "ways", "etc",
+]);
+
+/** Shortest token length that can carry subject matter. */
+const MIN_TOPIC_TERM_LENGTH = 3;
+
+/**
+ * Conservative, locale-independent singularisation: strips one trailing "s"
+ * from a token of at least four characters that does not already end in "ss".
+ * "requests" -> "request", "recipes" -> "recipe", "restrictions" ->
+ * "restriction"; "class" and "less" are untouched.
+ *
+ * Deliberately not a stemmer — a stemmer is locale/ICU-shaped and would break
+ * byte-stability (NFR-001). This rule is pure string arithmetic.
+ */
+function singularise(token: string): string {
+  if (token.length >= 4 && token.endsWith("s") && !token.endsWith("ss")) {
+    return token.slice(0, -1);
+  }
+  return token;
+}
+
+/** The set of subject-matter terms a clause is about. */
+function topicalTerms(clause: string): Set<string> {
+  const terms = new Set<string>();
+  for (const raw of tokenize(clause)) {
+    if (raw.length < MIN_TOPIC_TERM_LENGTH || TOPIC_STOPWORDS.has(raw)) {
+      continue;
+    }
+    const term = singularise(raw);
+    if (term.length >= MIN_TOPIC_TERM_LENGTH && !TOPIC_STOPWORDS.has(term)) {
+      terms.add(term);
+    }
+  }
+  return terms;
+}
+
+/**
+ * Returns true when two clauses share at least one subject-matter term.
+ *
+ * Necessary condition for contradiction (FR-003): two directives can only be
+ * mutually exclusive if they are about the same thing. Without this gate the
+ * lint reported a git-push policy ("**All changes to origin/main MUST go
+ * through pull requests. Direct pushes are prohibited.**") as contradicting a
+ * persona role description ("I do not write implementation code") purely
+ * because one contained "all" and the other "not" (garrison-hq/muster#84).
+ *
+ * The rubric's bias is still to over-report: a SINGLE shared term is enough,
+ * and content-bearing polarity verbs count as shared subject matter. The
+ * accepted cost is a paraphrase contradiction with zero shared word stems —
+ * see docs/rubric/crosslayer-contradiction-gate.md.
+ */
+function sharesSubjectMatter(clauseA: string, clauseB: string): boolean {
+  const termsB = topicalTerms(clauseB);
+  if (termsB.size === 0) {
+    return false;
+  }
+  for (const term of topicalTerms(clauseA)) {
+    if (termsB.has(term)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // Refinement-vs-contradiction distinguisher (T009)
 // ---------------------------------------------------------------------------
@@ -479,6 +577,13 @@ function analyseClausePair(
   const isPolarityInversion =
     (aHasAccommodation && bHasNegation) || (aHasNegation && bHasAccommodation);
   if (!isPolarityInversion) {
+    return [];
+  }
+
+  // Subject-matter gate (FR-003, #84): mutually exclusive directives must be
+  // about the same thing. Polarity inversion between clauses on unrelated
+  // subjects is not a contradiction.
+  if (!sharesSubjectMatter(clauseA, clauseB)) {
     return [];
   }
 
