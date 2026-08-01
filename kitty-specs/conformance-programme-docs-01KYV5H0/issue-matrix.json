@@ -1,0 +1,41 @@
+{
+  "rows": {
+    "#60": {
+      "evidence_ref": "spec.md Input field: this mission implements garrison-hq/muster#60 (M9 operator guide/rubric index/register), with six corrections to #60's own claims recorded at spec.md's top; WP01+WP02 jointly deliver it",
+      "fr": null,
+      "nfr": null,
+      "repo": null,
+      "sc": null,
+      "scope": null,
+      "source_file": "spec.md",
+      "title": "<fill at WP-implementation time>",
+      "verdict": "in-mission",
+      "wp": "WP01"
+    },
+    "#67": {
+      "evidence_ref": "Context-only citation inside spec.md Correction 5's discussion of muster#79 (which cross-references #67 while describing an unrelated prior M5 mission's spec.md:218). Not a finding this mission verifies or resolves \u2014 no WP owns it. Follow-up: rewrite spec.md's issue citations as full URLs (e.g. github.com/garrison-hq/muster/issues/67) so incidental context mentions like this are filtered by discover_issue_references instead of demanding a verdict.",
+      "fr": null,
+      "nfr": null,
+      "repo": null,
+      "sc": null,
+      "scope": null,
+      "source_file": "spec.md",
+      "title": "<fill at WP-implementation time>",
+      "verdict": "deferred-with-followup",
+      "wp": null
+    },
+    "#78": {
+      "evidence_ref": "muster#78's measured reproduction (skills: FAIL, 1/3 passed, exit 1) is the direct evidence for FR-005's narrow correction to examples/README.md and for RG-007 (recorded-gaps register, WP02) documenting the behave/a2a-vs-skills/sop exit-code divergence",
+      "fr": null,
+      "nfr": null,
+      "repo": null,
+      "sc": null,
+      "scope": null,
+      "source_file": "spec.md",
+      "title": "<fill at WP-implementation time>",
+      "verdict": "in-mission",
+      "wp": "WP01"
+    }
+  },
+  "schema_version": 1
+}

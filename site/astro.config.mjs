@@ -79,6 +79,7 @@ export default defineConfig({
             { slug: 'guides/static-conformance' },
             { slug: 'guides/behavioral-conformance' },
             { slug: 'guides/reference-resolution' },
+            { slug: 'guides/spec-kitty-conformance' },
           ],
         },
         {
@@ -88,6 +89,13 @@ export default defineConfig({
             { slug: 'reference/cts-1-coverage' },
             { slug: 'reference/thresholds' },
             { slug: 'reference/architecture' },
+          ],
+        },
+        {
+          label: 'Rubric',
+          items: [
+            { slug: 'rubric' },
+            { slug: 'rubric/recorded-gaps' },
           ],
         },
       ],

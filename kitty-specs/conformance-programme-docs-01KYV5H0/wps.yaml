@@ -1,0 +1,73 @@
+work_packages:
+  - id: WP01
+    title: "Operator guide, examples/README.md, .env.example, one Starlight mirror"
+    dependencies: []
+    owned_files:
+      - "docs/guides/spec-kitty-conformance.md"
+      - "site/src/content/docs/guides/spec-kitty-conformance.md"
+      - "site/astro.config.mjs"
+      - "examples/README.md"
+      - ".env.example"
+    requirement_refs:
+      - FR-001
+      - FR-004
+      - FR-005
+      - FR-006
+      - C-001
+      - C-005
+      - C-006
+    cross_cutting: true
+    subtasks:
+      - T001
+      - T002
+      - T003
+      - T004
+      - T005
+      - T006
+      - T007
+    prompt_file: "tasks/WP01-operator-guide-examples-env-mirror.md"
+    agent_profile: "curator-carla"
+    role: "implementer"
+    agent: "claude"
+
+  - id: WP02
+    title: "Rubric index, drift-check, eight-anchor repair, recorded-gaps register, schema-check, remaining Starlight mirrors, sidebar completion"
+    dependencies:
+      - WP01
+    owned_files:
+      - "scripts/check-rubric-citations.mjs"
+      - "scripts/check-register-schema.mjs"
+      - "docs/rubric/skills-trigger-taxonomy.md"
+      - "docs/rubric/index.md"
+      - "docs/rubric/recorded-gaps.md"
+      - "site/src/content/docs/rubric/index.md"
+      - "site/src/content/docs/rubric/recorded-gaps.md"
+      - "site/astro.config.mjs"
+      - "tests/scripts/check-rubric-citations.test.ts"
+      - "tests/scripts/check-register-schema.test.ts"
+      - "tests/fixtures/recorded-gaps-missing-field.md"
+      - "tests/fixtures/unindexed-rubric-dir/**"
+    requirement_refs:
+      - FR-002
+      - FR-003
+      - FR-004
+      - C-001
+      - C-002
+      - C-003
+      - C-004
+      - C-006
+    cross_cutting: true
+    subtasks:
+      - T008
+      - T009
+      - T010
+      - T011
+      - T012
+      - T013
+      - T014
+      - T015
+      - T016
+    prompt_file: "tasks/WP02-rubric-index-drift-check-register-mirrors.md"
+    agent_profile: "curator-carla"
+    role: "implementer"
+    agent: "claude"

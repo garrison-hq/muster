@@ -2,7 +2,7 @@
 
 Ready-to-run examples for every `muster` conformance layer. All commands are run from the **repo root**.
 
-Static-path examples exit 0 with no environment set. Examples marked **needs endpoint** skip live grading gracefully and still exit 0, unless every run fails (endpoint unreachable → exit 2).
+Static-path examples exit 0 with no environment set. Examples marked **needs endpoint** skip live grading gracefully and still exit 0. What happens when *every* run of a live suite fails (endpoint unreachable) differs by adapter — see the operator guide's per-adapter exit-code table (`../docs/guides/spec-kitty-conformance.md`, §3): `behave` and `a2a` treat total endpoint failure as an execution fault and exit 2; `skills` and `sop` have no such special case and count it as an ordinary failed run, exiting 1 instead. Exit 2 is also returned by every adapter for a manifest read/parse error or an unexpected internal error, independent of this divergence.
 
 ## Commands
 
@@ -16,7 +16,7 @@ Static-path examples exit 0 with no environment set. Examples marked **needs end
 | heartbeat | `node dist/cli/index.js heartbeat run examples/heartbeat/manifest.json` | Heartbeat adapter: static lint on a HEARTBEAT.md checklist | static-only |
 | a2a | `node dist/cli/index.js a2a run examples/a2a/manifest.json` | A2A Agent Card adapter: static lint on an agent card JSON | static-only |
 | crosslayer | `node dist/cli/index.js crosslayer run examples/crosslayer/manifest.yaml` | Cross-layer composition lint: persona + SOP layer stack | static-only |
-| skills | `node dist/cli/index.js skills run examples/skills/manifest.yaml` | Agent Skills adapter: static SKILL.md conformance lint | static-only |
+| skills | `node dist/cli/index.js skills run examples/skills/manifest.yaml` | Agent Skills adapter: static SKILL.md conformance lint | static + behavioral (2 cases; needs endpoint) |
 | sop | `node dist/cli/index.js sop run examples/sop/manifest.yaml` | OpenClaw SOP adapter: static AGENTS.md rule-text lint | static-only |
 | tools | `node dist/cli/index.js tools run examples/tools/manifest.json` | Tools adapter: static TOOLS.md conformance lint | static-only |
 

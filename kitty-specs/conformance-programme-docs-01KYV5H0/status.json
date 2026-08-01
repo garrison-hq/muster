@@ -1,0 +1,62 @@
+{
+  "event_count": 10,
+  "last_event_id": "01KYZNY91C957H0QQVEQRNF9BF",
+  "materialized_at": "2026-08-01T22:08:31.276928+00:00",
+  "mission_number": "",
+  "mission_slug": "conformance-programme-docs-01KYV5H0",
+  "mission_type": "documentation",
+  "summary": {
+    "approved": 2,
+    "blocked": 0,
+    "canceled": 0,
+    "claimed": 0,
+    "done": 0,
+    "for_review": 0,
+    "in_progress": 0,
+    "in_review": 0,
+    "planned": 0
+  },
+  "work_packages": {
+    "WP01": {
+      "actor": "claude",
+      "force_count": 0,
+      "lane": "approved",
+      "last_event_id": "01KYZNXZVK0EWT50FR8SRBJRFV",
+      "last_transition_at": "2026-08-01T22:08:21.875985+00:00",
+      "subtasks": {
+        "T001": "done",
+        "T002": "done",
+        "T003": "done",
+        "T004": "done",
+        "T005": "done",
+        "T006": "done",
+        "T007": "done"
+      }
+    },
+    "WP02": {
+      "actor": "claude",
+      "agent": "claude",
+      "agent_profile": "__resolved_profile_absent__",
+      "agent_profile_version": "__resolved_profile_version_absent__",
+      "assignee": "claude",
+      "force_count": 0,
+      "lane": "approved",
+      "last_event_id": "01KYZNY91C957H0QQVEQRNF9BF",
+      "last_transition_at": "2026-08-01T22:08:31.276928+00:00",
+      "model": "__resolved_model_absent__",
+      "provider": "__resolved_provider_absent__",
+      "role": "implementer",
+      "subtasks": {
+        "T008": "done",
+        "T009": "done",
+        "T010": "done",
+        "T011": "done",
+        "T012": "done",
+        "T013": "done",
+        "T014": "done",
+        "T015": "done",
+        "T016": "done"
+      }
+    }
+  }
+}

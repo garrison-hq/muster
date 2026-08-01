@@ -1,0 +1,69 @@
+{
+  "mission_slug": "conformance-programme-docs-01KYV5H0",
+  "mission_number": "",
+  "mission_type": "documentation",
+  "overall_verdict": "pass",
+  "criteria": [
+    {
+      "criterion_id": "FR-001",
+      "description": "Verify FR-001 is satisfied",
+      "proof_type": "automated_test",
+      "evidence": "T001-T004 @ 6cf0ca2fa: docs/guides/spec-kitty-conformance.md authored (11 real CLI suites, env-var matrix incl. skills-only MUSTER_BASE_URL alias and a2a's separate MUSTER_A2A_ENDPOINT/TOKEN namespace, per-adapter exit-code table, PLANNED appendix). Every static-suite command run: check/resolve/cts/memory/heartbeat/a2a(static)/crosslayer/skills/sop/tools all exit=0 (matches guide). Contrast pair captured: MUSTER_ENDPOINT=http://127.0.0.1:9/v1 skills run -> exit=1; same address, behave run --base-url http://127.0.0.1:9/v1 -> exit=2. Rejection case: skills run against a nonexistent manifest path -> exit=2 (manifest read/parse error, universal). Starlight mirror + 1 sidebar entry landed; cd site && pnpm build -> exit=0 with guides/spec-kitty-conformance page present; phantom-sidebar-entry falsification run and reverted: build with an invented slug -> exit=1 (AstroUserError naming the missing slug), removed and rebuilt clean -> exit=0 again. Appendix re-verified read-only against spec-kitty-conformance's origin/main (c36b727cf): confirms conformance/skills/manifest.yaml (54 entries) AND ALSO conformance/doctrine/*.yaml (13 manifests, doctrine-rule-manifests-01KYH7AM) are now real/merged there -- a second row needing the distinct 'exists but not wired into examples/**' label beyond what spec.md/plan.md called out (only the skills-manifest row), flagged in the guide's own appendix text. Citations pinned to commit 16f0d34c3126fab5df2ee0b6e1e304a4d9bcb8e3 (src/cli/index.ts confirmed byte-identical between that commit and this WP's HEAD, so line numbers are stable).",
+      "pass_fail": "pass",
+      "verified_by": null,
+      "verified_at": "2026-07-31T12:45:12.356381+00:00",
+      "notes": "TODO: replace with a real acceptance criterion"
+    },
+    {
+      "criterion_id": "FR-002",
+      "description": "Verify FR-002 is satisfied",
+      "proof_type": "automated_test",
+      "evidence": "Review remediation (B1/B2, 2026-07-31): added a dedicated exits-0-against-real-corpus test plus a status===0 assertion inside the C-004 determinism test (tests/scripts/check-rubric-citations.test.ts) so vitest run tests/scripts/ actually gates the real docs/rubric/ corpus, not just relative equality across runs. Falsification proven: mutated a real citation (gradeAxis trigger.ts:237 -> :99999) in docs/rubric/skills-trigger-taxonomy.md, node scripts/check-rubric-citations.mjs exit=1 (STALE CITATION), npx vitest run tests/scripts/ -> 2 failed/58 passed; restored the file, script exit=0, vitest 60/60 passed. Also corrected skills-trigger-taxonomy.md:188's SC-004 count from five to seven (command grep -n SC-004 tests/cts/skills-suite.test.ts -> lines 10,242,244,247,312,421,424; added the two missing anchors at 242/247) and fixed a second enumeration error found during the sweep (the git-log commit count on tests/cts/skills-suite.test.ts was wrong: three commits -- a46148b96,2135429c2,8ae5c0fb1 -- not two). spec.md:109 (the upstream source of the five-vs-seven error) corrected in the same pass. STALE CITATION/UNINDEXED FILE runtime messages in check-rubric-citations.mjs now cite FR-002 per C-006.",
+      "pass_fail": "pass",
+      "verified_by": null,
+      "verified_at": "2026-07-31T13:49:07.636766+00:00",
+      "notes": "TODO: replace with a real acceptance criterion"
+    },
+    {
+      "criterion_id": "FR-003",
+      "description": "Verify FR-003 is satisfied",
+      "proof_type": "automated_test",
+      "evidence": "Review remediation (2026-07-31): fixed recorded-gaps.md's four bare 'what-was-tried: none.' entries (RG-003, RG-005, RG-010, RG-011) to carry a concrete one-clause rationale matching the other eight entries' convention, and corrected RG-006's out-of-enum 'status: accepted-tradeoff (for now)' to the spec.md-defined enum value 'accepted-tradeoff'. Mirrored the same corrections into site/src/content/docs/rubric/recorded-gaps.md. node scripts/check-register-schema.mjs docs/rubric/recorded-gaps.md still exits 0 (12 entries, all schema fields populated, all citations resolve) after the edits.",
+      "pass_fail": "pass",
+      "verified_by": null,
+      "verified_at": "2026-07-31T13:49:17.877150+00:00",
+      "notes": "TODO: replace with a real acceptance criterion"
+    },
+    {
+      "criterion_id": "FR-004",
+      "description": "Verify FR-004 is satisfied",
+      "proof_type": "automated_test",
+      "evidence": "cd site && pnpm build exits 0 with all 3 new pages in the built nav (/guides/spec-kitty-conformance/, /rubric/, /rubric/recorded-gaps/ \u2014 confirmed present in dist/ route listing). Phantom-entry falsification (Hazard 2), both states captured: adding {slug:'rubric/phantom-entry-for-falsification-test'} to site/astro.config.mjs's sidebar and running pnpm build produced 'AstroUserError: The slug \"rubric/phantom-entry-for-falsification-test\" specified in the Starlight sidebar config does not exist' with build_exit=1; removing the phantom entry and rebuilding produced build_exit=0 again. site/astro.config.mjs's sidebar array extended by exactly 2 entries (appended after WP01's own 1 entry), no reformatting of the existing array.",
+      "pass_fail": "pass",
+      "verified_by": null,
+      "verified_at": "2026-07-31T13:22:43.921194+00:00",
+      "notes": "TODO: replace with a real acceptance criterion"
+    },
+    {
+      "criterion_id": "FR-005",
+      "description": "Verify FR-005 is satisfied",
+      "proof_type": "automated_test",
+      "evidence": "T005 @ 8c0c03701: node dist/cli/index.js skills run examples/skills/manifest.yaml (env unset) -> exit=0; MUSTER_ENDPOINT=http://127.0.0.1:9/v1 node dist/cli/index.js skills run examples/skills/manifest.yaml -> exit=1 (NOT 2, matches corrected doc); same unreachable endpoint against behave run examples/behave/manifest.yaml -> exit=2 (contrast pair captured together). command grep -n 'exit 2' examples/README.md -> exactly one hit (line 5), explicitly naming behave/a2a before the exit-2 clause and skills/sop before the exit-1 clause; command grep -c 'behave|a2a' examples/README.md -> 7 (scoping confirmed). Rejection case: a constructed line 'Every adapter exit 2 when the endpoint is unreachable, no exceptions.' is found by the same grep -n 'exit 2' (present) but fails a grep -c 'behave|a2a' scoping check (0 matches, exit=1) -- proving the sweep can actually detect an unscoped claim, not just the corrected one.",
+      "pass_fail": "pass",
+      "verified_by": null,
+      "verified_at": "2026-07-31T09:31:50.670689+00:00",
+      "notes": "TODO: replace with a real acceptance criterion"
+    },
+    {
+      "criterion_id": "FR-006",
+      "description": "Verify FR-006 is satisfied",
+      "proof_type": "manual_review",
+      "evidence": "T006 @ 7d8884f90: .env.example adds NI-001 caveat (BASE_EXCLUDES scan, no .gitignore consultation). 'command grep -c NI-001 .env.example' -> count=2, exit=0 (real target, pass); against a constructed rejection file with no caveat -> count=0, exit=1 (correctly rejects). Manual review confirms wording does NOT claim NI-001 'enforces' .env safety (muster#79 inversion risk avoided); --env-file example line retained per FR-006.",
+      "pass_fail": "pass",
+      "verified_by": null,
+      "verified_at": "2026-07-31T09:29:26.535105+00:00",
+      "notes": "TODO: replace with a real acceptance criterion"
+    }
+  ],
+  "negative_invariants": []
+}
