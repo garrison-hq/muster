@@ -78,28 +78,9 @@ function makeConstantClient(response: string): ChatClient {
  * prompt carries the verbatim `<RUBRIC>` block. Everything else is an agent turn.
  * This makes the mock insensitive to call ordering, so a test can assert on the
  * verdict rather than on a hand-counted response sequence.
- */
-function makeJudgeAwareClient(opts: {
-  agentReply: string;
-  judgeVerdict: "PASS" | "FAIL";
-}): ChatClient {
-  return {
-    async chat(messages: { role: string; content: string }[]): Promise<string> {
-      const system = messages.find((m) => m.role === "system")?.content ?? "";
-      if (!system.includes("<RUBRIC>")) {
-        return opts.agentReply;
-      }
-      return `${opts.judgeVerdict} - judged against the rubric.`;
-    },
-  };
-}
-
-/**
- * Like makeJudgeAwareClient, but the judge's verdict varies per behavioral run.
  *
- * Run boundaries are detected by counting agent turns: each run replays the
- * scenario (one agent call here) before its two judge calls, so the Nth agent
- * call opens run N. Verdicts past the end of the array reuse the last entry.
+ * The judge's verdict may vary per behavioral run; verdicts past the end of
+ * `verdictsByRun` reuse the last entry.
  */
 function makeRunVaryingJudgeClient(
   agentReply: string,
@@ -110,6 +91,8 @@ function makeRunVaryingJudgeClient(
     async chat(messages: { role: string; content: string }[]): Promise<string> {
       const system = messages.find((m) => m.role === "system")?.content ?? "";
       if (!system.includes("<RUBRIC>")) {
+        // Each run replays the scenario (one agent call) before its two judge
+        // calls, so the Nth agent call opens run N.
         runIndex++;
         return agentReply;
       }
@@ -117,6 +100,14 @@ function makeRunVaryingJudgeClient(
       return `${verdict} - judged against the rubric.`;
     },
   };
+}
+
+/** The constant-verdict case: every run gets the same judge verdict. */
+function makeJudgeAwareClient(opts: {
+  agentReply: string;
+  judgeVerdict: "PASS" | "FAIL";
+}): ChatClient {
+  return makeRunVaryingJudgeClient(opts.agentReply, [opts.judgeVerdict]);
 }
 
 /**
