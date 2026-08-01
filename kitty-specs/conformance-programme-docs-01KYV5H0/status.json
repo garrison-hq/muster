@@ -1,18 +1,18 @@
 {
-  "event_count": 8,
-  "last_event_id": "01KYZNXT4H0RFS2WDNCPXXMJZ9",
-  "materialized_at": "2026-08-01T22:08:16.017966+00:00",
+  "event_count": 9,
+  "last_event_id": "01KYZNXZVK0EWT50FR8SRBJRFV",
+  "materialized_at": "2026-08-01T22:08:21.875985+00:00",
   "mission_number": "",
   "mission_slug": "conformance-programme-docs-01KYV5H0",
   "mission_type": "documentation",
   "summary": {
-    "approved": 0,
+    "approved": 1,
     "blocked": 0,
     "canceled": 0,
     "claimed": 0,
     "done": 0,
     "for_review": 0,
-    "in_progress": 1,
+    "in_progress": 0,
     "in_review": 1,
     "planned": 0
   },
@@ -20,9 +20,9 @@
     "WP01": {
       "actor": "claude",
       "force_count": 0,
-      "lane": "in_progress",
-      "last_event_id": "01KYZNXT4H0RFS2WDNCPXXMJZ9",
-      "last_transition_at": "2026-08-01T22:08:16.017966+00:00",
+      "lane": "approved",
+      "last_event_id": "01KYZNXZVK0EWT50FR8SRBJRFV",
+      "last_transition_at": "2026-08-01T22:08:21.875985+00:00",
       "subtasks": {
         "T001": "done",
         "T002": "done",
