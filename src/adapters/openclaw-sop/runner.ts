@@ -302,13 +302,26 @@ async function runComplianceProbeEntry(
         passed = grade.passed;
       } else if (probe.gradingClass === "judge" && probe.judgeAssertion !== undefined) {
         const judgeAssertion = probe.judgeAssertion;
-        const passThreshold = entry.passThreshold ?? Math.ceil(entry.k / 2);
+        // Threshold tiers (garrison-hq/muster#88). entry.passThreshold ranges over
+        // k RUNS — "passThreshold out of k runs must pass"
+        // (docs/rubric/sop-rule-taxonomy.md:161) — and is applied by the outer
+        // aggregation in dispatchProbeVerdicts. It must NOT be applied here: this
+        // call grades ONE run, so gradeJudgeCompliance's passCount ranges over
+        // {0, 1} and any threshold >= 2 would make the run unpassable however
+        // compliant the model.
+        //
+        // The inner decision is over that run's two order-swap calls, which
+        // sop-rule-taxonomy.md:150-153 frames purely as a bias mitigation, not as
+        // a consumer of the rule's passThreshold. Omitting the argument uses
+        // gradeJudgeCompliance's own default, Math.ceil(runs / 2) = 1 at runs = 1,
+        // i.e. the shipped OR-of-two rule (judge.ts:264-266) left deliberately
+        // unchanged here — its strictness is tracked separately as RG-008 in
+        // docs/rubric/recorded-gaps.md and needs an FR, not a bug fix, to revisit.
         const result = await gradeJudgeCompliance(
           transcript,
           judgeAssertion,
           client,
-          1, // single judge run per behavioral run
-          passThreshold
+          1 // single judge run per behavioral run; inner threshold defaults to 1
         );
         grades = result.grades;
         passed = result.passed;

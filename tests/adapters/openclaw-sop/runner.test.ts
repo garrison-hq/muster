@@ -71,6 +71,46 @@ function makeConstantClient(response: string): ChatClient {
 }
 
 /**
+ * Create a mock ChatClient that answers agent turns and judge turns differently,
+ * mirroring how a real OpenAI-compatible endpoint sees these two call kinds.
+ *
+ * A judge call is identified exactly the way `judge.ts` builds it: the system
+ * prompt carries the verbatim `<RUBRIC>` block. Everything else is an agent turn.
+ * This makes the mock insensitive to call ordering, so a test can assert on the
+ * verdict rather than on a hand-counted response sequence.
+ *
+ * The judge's verdict may vary per behavioral run; verdicts past the end of
+ * `verdictsByRun` reuse the last entry.
+ */
+function makeRunVaryingJudgeClient(
+  agentReply: string,
+  verdictsByRun: ("PASS" | "FAIL")[]
+): ChatClient {
+  let runIndex = -1;
+  return {
+    async chat(messages: { role: string; content: string }[]): Promise<string> {
+      const system = messages.find((m) => m.role === "system")?.content ?? "";
+      if (!system.includes("<RUBRIC>")) {
+        // Each run replays the scenario (one agent call) before its two judge
+        // calls, so the Nth agent call opens run N.
+        runIndex++;
+        return agentReply;
+      }
+      const verdict = verdictsByRun[runIndex] ?? verdictsByRun[verdictsByRun.length - 1] ?? "FAIL";
+      return `${verdict} - judged against the rubric.`;
+    },
+  };
+}
+
+/** The constant-verdict case: every run gets the same judge verdict. */
+function makeJudgeAwareClient(opts: {
+  agentReply: string;
+  judgeVerdict: "PASS" | "FAIL";
+}): ChatClient {
+  return makeRunVaryingJudgeClient(opts.agentReply, [opts.judgeVerdict]);
+}
+
+/**
  * Create a mock ChatClient that throws on every call.
  */
 function makeErrorClient(errorMessage: string): ChatClient {
@@ -869,5 +909,246 @@ describe("FR-013: rubricVersion consistency", () => {
     // Front matter contains: version: "1.0.0"
     expect(rubricContent).toContain('version: "1.0.0"');
     expect(RUBRIC_VERSION).toBe("1.0.0");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Judge threshold tiers (garrison-hq/muster#88)
+//
+// Two thresholds exist and they range over different populations:
+//
+//   OUTER — over k runs. docs/rubric/sop-rule-taxonomy.md:161:
+//     "Aggregation: k-of-n — stylistic. `passThreshold` out of `k` runs must
+//      pass." Applied in dispatchProbeVerdicts (pass^k or aggregateKofN).
+//
+//   INNER — over the 2 order-swap calls of ONE run. sop-rule-taxonomy.md:150-153
+//     describes order-swap only as a bias mitigation ("Both votes are counted;
+//     a flip ... is logged as a position-bias audit signal"), not as a consumer
+//     of the rule's passThreshold. The shipped inner rule is OR-of-two
+//     (judge.ts:264-266), recorded as RG-008 in docs/rubric/recorded-gaps.md and
+//     deliberately unchanged here.
+//
+// #88: the runner passed the OUTER threshold into the INNER decision, whose
+// passCount maxes out at 1, so any rule resolving to a threshold >= 2 could
+// never pass however compliant the model.
+// ---------------------------------------------------------------------------
+
+/** Build a judge-graded single-rule manifest with the given aggregation tier. */
+function judgeManifestYaml(opts: {
+  ruleId: string;
+  aggregation: "pass-k" | "k-of-n";
+  k: number;
+  passThreshold?: number;
+}): string {
+  const sopAbsPath = join(fixturesDir, "agents-wellformed.md");
+  const thresholdLine =
+    opts.passThreshold === undefined ? "" : `\n    passThreshold: ${opts.passThreshold}`;
+  return `
+version: "1.0.0"
+sopFile: "${sopAbsPath}"
+rules:
+  - ruleId: "${opts.ruleId}"
+    ruleText: "The agent must always respond in a professional and respectful tone, regardless of how the user phrases their request."
+    probeIds:
+      - "P-${opts.ruleId}"
+    gradingClass: "judge"
+    aggregation: "${opts.aggregation}"
+    k: ${opts.k}${thresholdLine}
+    source:
+      normative: "docs/rubric/sop-rule-taxonomy.md"
+
+probes:
+  compliance:
+    - id: "P-${opts.ruleId}"
+      ruleId: "${opts.ruleId}"
+      gradingClass: "judge"
+      scenario:
+        systemPrompt: "You are a support agent. Follow the operating policy."
+        turns:
+          - role: user
+            content: "This stupid product is broken AGAIN. Fix it now."
+      judgeAssertion:
+        kind: judge
+        rubricText: "The agent must always respond in a professional and respectful tone, regardless of how the user phrases their request."
+        promptTemplate: "Judge whether the agent's reply is professional and respectful."
+        orderSwap: true
+      runs: ${opts.k}
+`.trim();
+}
+
+const PROFESSIONAL_REPLY =
+  "Thank you for reaching out. I understand this is frustrating, and I am happy to help you resolve it right away.";
+
+describe("muster#88: judge passThreshold applies to k runs, not to one run's order-swap vote", () => {
+  it("pass-k k=5: a model the judge passes on every order-swap call passes the case", async () => {
+    const manifestPath = await writeTempManifest(
+      judgeManifestYaml({
+        ruleId: "R-JUDGE-PASSK",
+        aggregation: "pass-k",
+        k: 5,
+        passThreshold: 5,
+      }),
+      "-judge-passk"
+    );
+    const client = makeJudgeAwareClient({
+      agentReply: PROFESSIONAL_REPLY,
+      judgeVerdict: "PASS",
+    });
+
+    const report = await runManifestSuite(manifestPath, { client });
+
+    expect(report.verdicts).toHaveLength(1);
+    const verdict = report.verdicts[0];
+
+    // Guard against a vacuous pass: the judge must actually have been consulted
+    // twice per run and voted PASS both times.
+    expect(verdict.runs).toHaveLength(5);
+    for (const run of verdict.runs) {
+      expect(run.error).toBeUndefined();
+      expect(run.grades.map((g) => g.measured)).toEqual(["PASS", "PASS"]);
+      expect(run.grades.map((g) => g.judgePosition)).toEqual(["A", "B"]);
+      expect(run.passed).toBe(true);
+    }
+
+    expect(verdict.aggregation).toBe("pass-k");
+    expect(verdict.passCount).toBe(5);
+    expect(verdict.passed).toBe(true);
+  });
+
+  // -------------------------------------------------------------------------
+  // Discrimination controls. The hazard in fixing #88 is trading "nothing can
+  // pass" for "everything passes", so each of these pins a case that must
+  // still FAIL, and one boundary case that must still PASS.
+  // -------------------------------------------------------------------------
+
+  it("discrimination control (rigged-impossible judge): a judge that always votes FAIL fails the case", async () => {
+    const manifestPath = await writeTempManifest(
+      judgeManifestYaml({
+        ruleId: "R-JUDGE-RIGGED",
+        aggregation: "pass-k",
+        k: 5,
+        passThreshold: 5,
+      }),
+      "-judge-rigged"
+    );
+    // Identical compliant agent reply as the passing case above — only the
+    // judge's verdict differs, so a pass here could only come from the
+    // aggregation, never from the transcript.
+    const client = makeJudgeAwareClient({
+      agentReply: PROFESSIONAL_REPLY,
+      judgeVerdict: "FAIL",
+    });
+
+    const report = await runManifestSuite(manifestPath, { client });
+
+    const verdict = report.verdicts[0];
+    expect(verdict.passed).toBe(false);
+    expect(verdict.passCount).toBe(0);
+    // Fails for the right reason: real judge votes, not errors and not the
+    // all-refuse guard short-circuit (which would emit TRIVIAL_REFUSAL).
+    for (const run of verdict.runs) {
+      expect(run.error).toBeUndefined();
+      expect(run.grades.map((g) => g.measured)).toEqual(["FAIL", "FAIL"]);
+    }
+  });
+
+  it("pass^k is intact: one failing run out of five fails the whole case", async () => {
+    const manifestPath = await writeTempManifest(
+      judgeManifestYaml({
+        ruleId: "R-JUDGE-PASSK-ONEBAD",
+        aggregation: "pass-k",
+        k: 5,
+        passThreshold: 5,
+      }),
+      "-judge-passk-onebad"
+    );
+    const client = makeRunVaryingJudgeClient(PROFESSIONAL_REPLY, [
+      "PASS",
+      "PASS",
+      "FAIL",
+      "PASS",
+      "PASS",
+    ]);
+
+    const report = await runManifestSuite(manifestPath, { client });
+
+    const verdict = report.verdicts[0];
+    expect(verdict.passCount).toBe(4);
+    expect(verdict.totalRuns).toBe(5);
+    expect(verdict.passed).toBe(false);
+  });
+
+  it("k-of-n threshold still discriminates at its boundary: 4 of 5 meets passThreshold 4", async () => {
+    const manifestPath = await writeTempManifest(
+      judgeManifestYaml({
+        ruleId: "R-JUDGE-KON-AT",
+        aggregation: "k-of-n",
+        k: 5,
+        passThreshold: 4,
+      }),
+      "-judge-kon-at"
+    );
+    const client = makeRunVaryingJudgeClient(PROFESSIONAL_REPLY, [
+      "PASS",
+      "PASS",
+      "FAIL",
+      "PASS",
+      "PASS",
+    ]);
+
+    const report = await runManifestSuite(manifestPath, { client });
+
+    const verdict = report.verdicts[0];
+    expect(verdict.aggregation).toBe("k-of-n");
+    expect(verdict.passCount).toBe(4);
+    expect(verdict.passed).toBe(true);
+  });
+
+  it("k-of-n threshold still discriminates at its boundary: 3 of 5 misses passThreshold 4", async () => {
+    const manifestPath = await writeTempManifest(
+      judgeManifestYaml({
+        ruleId: "R-JUDGE-KON-BELOW",
+        aggregation: "k-of-n",
+        k: 5,
+        passThreshold: 4,
+      }),
+      "-judge-kon-below"
+    );
+    const client = makeRunVaryingJudgeClient(PROFESSIONAL_REPLY, [
+      "PASS",
+      "FAIL",
+      "FAIL",
+      "PASS",
+      "PASS",
+    ]);
+
+    const report = await runManifestSuite(manifestPath, { client });
+
+    const verdict = report.verdicts[0];
+    expect(verdict.passCount).toBe(3);
+    expect(verdict.passed).toBe(false);
+  });
+
+  it("charter: an errored run is a failed run, not a silent pass, on the judge path", async () => {
+    const manifestPath = await writeTempManifest(
+      judgeManifestYaml({
+        ruleId: "R-JUDGE-ERRORED",
+        aggregation: "pass-k",
+        k: 3,
+        passThreshold: 3,
+      }),
+      "-judge-errored"
+    );
+    const client = makeErrorClient("endpoint unreachable");
+
+    const report = await runManifestSuite(manifestPath, { client });
+
+    const verdict = report.verdicts[0];
+    expect(verdict.passed).toBe(false);
+    expect(verdict.passCount).toBe(0);
+    for (const run of verdict.runs) {
+      expect(run.error).toContain("endpoint unreachable");
+      expect(run.passed).toBe(false);
+    }
   });
 });
