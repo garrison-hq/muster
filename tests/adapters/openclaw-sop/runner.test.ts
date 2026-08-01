@@ -95,6 +95,31 @@ function makeJudgeAwareClient(opts: {
 }
 
 /**
+ * Like makeJudgeAwareClient, but the judge's verdict varies per behavioral run.
+ *
+ * Run boundaries are detected by counting agent turns: each run replays the
+ * scenario (one agent call here) before its two judge calls, so the Nth agent
+ * call opens run N. Verdicts past the end of the array reuse the last entry.
+ */
+function makeRunVaryingJudgeClient(
+  agentReply: string,
+  verdictsByRun: ("PASS" | "FAIL")[]
+): ChatClient {
+  let runIndex = -1;
+  return {
+    async chat(messages: { role: string; content: string }[]): Promise<string> {
+      const system = messages.find((m) => m.role === "system")?.content ?? "";
+      if (!system.includes("<RUBRIC>")) {
+        runIndex++;
+        return agentReply;
+      }
+      const verdict = verdictsByRun[runIndex] ?? verdictsByRun[verdictsByRun.length - 1] ?? "FAIL";
+      return `${verdict} - judged against the rubric.`;
+    },
+  };
+}
+
+/**
  * Create a mock ChatClient that throws on every call.
  */
 function makeErrorClient(errorMessage: string): ChatClient {
@@ -997,5 +1022,142 @@ describe("muster#88: judge passThreshold applies to k runs, not to one run's ord
     expect(verdict.aggregation).toBe("pass-k");
     expect(verdict.passCount).toBe(5);
     expect(verdict.passed).toBe(true);
+  });
+
+  // -------------------------------------------------------------------------
+  // Discrimination controls. The hazard in fixing #88 is trading "nothing can
+  // pass" for "everything passes", so each of these pins a case that must
+  // still FAIL, and one boundary case that must still PASS.
+  // -------------------------------------------------------------------------
+
+  it("discrimination control (rigged-impossible judge): a judge that always votes FAIL fails the case", async () => {
+    const manifestPath = await writeTempManifest(
+      judgeManifestYaml({
+        ruleId: "R-JUDGE-RIGGED",
+        aggregation: "pass-k",
+        k: 5,
+        passThreshold: 5,
+      }),
+      "-judge-rigged"
+    );
+    // Identical compliant agent reply as the passing case above — only the
+    // judge's verdict differs, so a pass here could only come from the
+    // aggregation, never from the transcript.
+    const client = makeJudgeAwareClient({
+      agentReply: PROFESSIONAL_REPLY,
+      judgeVerdict: "FAIL",
+    });
+
+    const report = await runManifestSuite(manifestPath, { client });
+
+    const verdict = report.verdicts[0];
+    expect(verdict.passed).toBe(false);
+    expect(verdict.passCount).toBe(0);
+    // Fails for the right reason: real judge votes, not errors and not the
+    // all-refuse guard short-circuit (which would emit TRIVIAL_REFUSAL).
+    for (const run of verdict.runs) {
+      expect(run.error).toBeUndefined();
+      expect(run.grades.map((g) => g.measured)).toEqual(["FAIL", "FAIL"]);
+    }
+  });
+
+  it("pass^k is intact: one failing run out of five fails the whole case", async () => {
+    const manifestPath = await writeTempManifest(
+      judgeManifestYaml({
+        ruleId: "R-JUDGE-PASSK-ONEBAD",
+        aggregation: "pass-k",
+        k: 5,
+        passThreshold: 5,
+      }),
+      "-judge-passk-onebad"
+    );
+    const client = makeRunVaryingJudgeClient(PROFESSIONAL_REPLY, [
+      "PASS",
+      "PASS",
+      "FAIL",
+      "PASS",
+      "PASS",
+    ]);
+
+    const report = await runManifestSuite(manifestPath, { client });
+
+    const verdict = report.verdicts[0];
+    expect(verdict.passCount).toBe(4);
+    expect(verdict.totalRuns).toBe(5);
+    expect(verdict.passed).toBe(false);
+  });
+
+  it("k-of-n threshold still discriminates at its boundary: 4 of 5 meets passThreshold 4", async () => {
+    const manifestPath = await writeTempManifest(
+      judgeManifestYaml({
+        ruleId: "R-JUDGE-KON-AT",
+        aggregation: "k-of-n",
+        k: 5,
+        passThreshold: 4,
+      }),
+      "-judge-kon-at"
+    );
+    const client = makeRunVaryingJudgeClient(PROFESSIONAL_REPLY, [
+      "PASS",
+      "PASS",
+      "FAIL",
+      "PASS",
+      "PASS",
+    ]);
+
+    const report = await runManifestSuite(manifestPath, { client });
+
+    const verdict = report.verdicts[0];
+    expect(verdict.aggregation).toBe("k-of-n");
+    expect(verdict.passCount).toBe(4);
+    expect(verdict.passed).toBe(true);
+  });
+
+  it("k-of-n threshold still discriminates at its boundary: 3 of 5 misses passThreshold 4", async () => {
+    const manifestPath = await writeTempManifest(
+      judgeManifestYaml({
+        ruleId: "R-JUDGE-KON-BELOW",
+        aggregation: "k-of-n",
+        k: 5,
+        passThreshold: 4,
+      }),
+      "-judge-kon-below"
+    );
+    const client = makeRunVaryingJudgeClient(PROFESSIONAL_REPLY, [
+      "PASS",
+      "FAIL",
+      "FAIL",
+      "PASS",
+      "PASS",
+    ]);
+
+    const report = await runManifestSuite(manifestPath, { client });
+
+    const verdict = report.verdicts[0];
+    expect(verdict.passCount).toBe(3);
+    expect(verdict.passed).toBe(false);
+  });
+
+  it("charter: an errored run is a failed run, not a silent pass, on the judge path", async () => {
+    const manifestPath = await writeTempManifest(
+      judgeManifestYaml({
+        ruleId: "R-JUDGE-ERRORED",
+        aggregation: "pass-k",
+        k: 3,
+        passThreshold: 3,
+      }),
+      "-judge-errored"
+    );
+    const client = makeErrorClient("endpoint unreachable");
+
+    const report = await runManifestSuite(manifestPath, { client });
+
+    const verdict = report.verdicts[0];
+    expect(verdict.passed).toBe(false);
+    expect(verdict.passCount).toBe(0);
+    for (const run of verdict.runs) {
+      expect(run.error).toContain("endpoint unreachable");
+      expect(run.passed).toBe(false);
+    }
   });
 });
