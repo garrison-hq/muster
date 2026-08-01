@@ -71,6 +71,30 @@ function makeConstantClient(response: string): ChatClient {
 }
 
 /**
+ * Create a mock ChatClient that answers agent turns and judge turns differently,
+ * mirroring how a real OpenAI-compatible endpoint sees these two call kinds.
+ *
+ * A judge call is identified exactly the way `judge.ts` builds it: the system
+ * prompt carries the verbatim `<RUBRIC>` block. Everything else is an agent turn.
+ * This makes the mock insensitive to call ordering, so a test can assert on the
+ * verdict rather than on a hand-counted response sequence.
+ */
+function makeJudgeAwareClient(opts: {
+  agentReply: string;
+  judgeVerdict: "PASS" | "FAIL";
+}): ChatClient {
+  return {
+    async chat(messages: { role: string; content: string }[]): Promise<string> {
+      const system = messages.find((m) => m.role === "system")?.content ?? "";
+      if (!system.includes("<RUBRIC>")) {
+        return opts.agentReply;
+      }
+      return `${opts.judgeVerdict} - judged against the rubric.`;
+    },
+  };
+}
+
+/**
  * Create a mock ChatClient that throws on every call.
  */
 function makeErrorClient(errorMessage: string): ChatClient {
@@ -869,5 +893,109 @@ describe("FR-013: rubricVersion consistency", () => {
     // Front matter contains: version: "1.0.0"
     expect(rubricContent).toContain('version: "1.0.0"');
     expect(RUBRIC_VERSION).toBe("1.0.0");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Judge threshold tiers (garrison-hq/muster#88)
+//
+// Two thresholds exist and they range over different populations:
+//
+//   OUTER — over k runs. docs/rubric/sop-rule-taxonomy.md:161:
+//     "Aggregation: k-of-n — stylistic. `passThreshold` out of `k` runs must
+//      pass." Applied in dispatchProbeVerdicts (pass^k or aggregateKofN).
+//
+//   INNER — over the 2 order-swap calls of ONE run. sop-rule-taxonomy.md:150-153
+//     describes order-swap only as a bias mitigation ("Both votes are counted;
+//     a flip ... is logged as a position-bias audit signal"), not as a consumer
+//     of the rule's passThreshold. The shipped inner rule is OR-of-two
+//     (judge.ts:264-266), recorded as RG-008 in docs/rubric/recorded-gaps.md and
+//     deliberately unchanged here.
+//
+// #88: the runner passed the OUTER threshold into the INNER decision, whose
+// passCount maxes out at 1, so any rule resolving to a threshold >= 2 could
+// never pass however compliant the model.
+// ---------------------------------------------------------------------------
+
+/** Build a judge-graded single-rule manifest with the given aggregation tier. */
+function judgeManifestYaml(opts: {
+  ruleId: string;
+  aggregation: "pass-k" | "k-of-n";
+  k: number;
+  passThreshold?: number;
+}): string {
+  const sopAbsPath = join(fixturesDir, "agents-wellformed.md");
+  const thresholdLine =
+    opts.passThreshold === undefined ? "" : `\n    passThreshold: ${opts.passThreshold}`;
+  return `
+version: "1.0.0"
+sopFile: "${sopAbsPath}"
+rules:
+  - ruleId: "${opts.ruleId}"
+    ruleText: "The agent must always respond in a professional and respectful tone, regardless of how the user phrases their request."
+    probeIds:
+      - "P-${opts.ruleId}"
+    gradingClass: "judge"
+    aggregation: "${opts.aggregation}"
+    k: ${opts.k}${thresholdLine}
+    source:
+      normative: "docs/rubric/sop-rule-taxonomy.md"
+
+probes:
+  compliance:
+    - id: "P-${opts.ruleId}"
+      ruleId: "${opts.ruleId}"
+      gradingClass: "judge"
+      scenario:
+        systemPrompt: "You are a support agent. Follow the operating policy."
+        turns:
+          - role: user
+            content: "This stupid product is broken AGAIN. Fix it now."
+      judgeAssertion:
+        kind: judge
+        rubricText: "The agent must always respond in a professional and respectful tone, regardless of how the user phrases their request."
+        promptTemplate: "Judge whether the agent's reply is professional and respectful."
+        orderSwap: true
+      runs: ${opts.k}
+`.trim();
+}
+
+const PROFESSIONAL_REPLY =
+  "Thank you for reaching out. I understand this is frustrating, and I am happy to help you resolve it right away.";
+
+describe("muster#88: judge passThreshold applies to k runs, not to one run's order-swap vote", () => {
+  it("pass-k k=5: a model the judge passes on every order-swap call passes the case", async () => {
+    const manifestPath = await writeTempManifest(
+      judgeManifestYaml({
+        ruleId: "R-JUDGE-PASSK",
+        aggregation: "pass-k",
+        k: 5,
+        passThreshold: 5,
+      }),
+      "-judge-passk"
+    );
+    const client = makeJudgeAwareClient({
+      agentReply: PROFESSIONAL_REPLY,
+      judgeVerdict: "PASS",
+    });
+
+    const report = await runManifestSuite(manifestPath, { client });
+
+    expect(report.verdicts).toHaveLength(1);
+    const verdict = report.verdicts[0];
+
+    // Guard against a vacuous pass: the judge must actually have been consulted
+    // twice per run and voted PASS both times.
+    expect(verdict.runs).toHaveLength(5);
+    for (const run of verdict.runs) {
+      expect(run.error).toBeUndefined();
+      expect(run.grades.map((g) => g.measured)).toEqual(["PASS", "PASS"]);
+      expect(run.grades.map((g) => g.judgePosition)).toEqual(["A", "B"]);
+      expect(run.passed).toBe(true);
+    }
+
+    expect(verdict.aggregation).toBe("pass-k");
+    expect(verdict.passCount).toBe(5);
+    expect(verdict.passed).toBe(true);
   });
 });
