@@ -1,19 +1,19 @@
 {
-  "event_count": 30,
-  "last_event_id": "01KZEYAWGKAVQYEHJNNXZ8PY13",
-  "materialized_at": "2026-08-07T20:23:49.523647+00:00",
+  "event_count": 31,
+  "last_event_id": "01KZEYAXBJGQE6Y5ZTCN6TBVA4",
+  "materialized_at": "2026-08-07T20:23:50.386374+00:00",
   "mission_number": "",
   "mission_slug": "cassette-core-engine-01KZCWFE",
   "mission_type": "software-dev",
   "summary": {
-    "approved": 4,
+    "approved": 5,
     "blocked": 0,
     "canceled": 0,
     "claimed": 0,
     "done": 0,
     "for_review": 0,
     "in_progress": 0,
-    "in_review": 1,
+    "in_review": 0,
     "planned": 1
   },
   "work_packages": {
@@ -47,10 +47,10 @@
     },
     "WP05": {
       "actor": "orry-reconstruction",
-      "force_count": 4,
-      "lane": "in_review",
-      "last_event_id": "01KZEYAWGKAVQYEHJNNXZ8PY13",
-      "last_transition_at": "2026-08-07T20:23:49.523647+00:00"
+      "force_count": 5,
+      "lane": "approved",
+      "last_event_id": "01KZEYAXBJGQE6Y5ZTCN6TBVA4",
+      "last_transition_at": "2026-08-07T20:23:50.386374+00:00"
     },
     "WP06": {
       "actor": "finalize-tasks",
