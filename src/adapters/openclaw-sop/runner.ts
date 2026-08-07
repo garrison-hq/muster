@@ -98,6 +98,9 @@ export interface SuiteRunOptions {
  * exports it for the cassette module to reuse); this is a small, local
  * mirror of the same extraction logic rather than a parallel redaction
  * scheme.
+ *
+ * TODO(WP03): once `hostnameOf` is exported from `src/core/behavioral/client.ts`,
+ * delete this local copy and import that export instead.
  */
 function hostnameOf(baseUrl: string): string {
   try {
