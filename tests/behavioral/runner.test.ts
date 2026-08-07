@@ -610,6 +610,44 @@ describe("personaPrompt rendering", () => {
   });
 });
 
+describe("FR-022 personaPrompt purity (the request-hash keying purity assumption, WP05 T034)", () => {
+  it("personaPrompt and its rendering helpers (personaIdentityLine..personaPrompt) read none of Date, Math.random, or process.env", () => {
+    // The cassette request-hash (FR-005) is computed over the fully-built
+    // request, which embeds personaPrompt's rendered output as the system
+    // message — a hash key that only stays stable across record/replay if
+    // rendering is a pure function of the effective config + options. This
+    // scans personaPrompt's OWN source text (not the whole file — runCase's
+    // Date.now() timing wrapper, elsewhere in this file, legitimately uses
+    // Date and would false-positive a whole-file scan) plus its four
+    // private helper functions, since personaPrompt calls them directly and
+    // a violation hidden in any one of them would break the same purity
+    // assumption just as surely as one in personaPrompt itself.
+    const runnerSource = readFileSync(
+      new URL("../../src/core/behavioral/runner.ts", import.meta.url),
+      "utf8"
+    );
+    const startAnchor = "function personaIdentityLine(";
+    const endAnchor = "function stateOverlay(";
+    const startIndex = runnerSource.indexOf(startAnchor);
+    const endIndex = runnerSource.indexOf(endAnchor);
+    // Guard the guard: both anchors must still exist, in order, or this
+    // test would vacuously scan an empty/wrong slice.
+    expect(startIndex).toBeGreaterThanOrEqual(0);
+    expect(endIndex).toBeGreaterThan(startIndex);
+    const renderingBlock = runnerSource.slice(startIndex, endIndex);
+    expect(renderingBlock).toContain("export function personaPrompt(");
+
+    // Precise, usage-shaped patterns — not bare `"Date"`/`"process.env"`
+    // substring checks, which would false-positive on this very function's
+    // OWN doc comment ("a pure function ... — no Date, no random, no
+    // environment").
+    expect(renderingBlock).not.toMatch(/\bDate\s*\.\s*now\s*\(/);
+    expect(renderingBlock).not.toMatch(/\bnew\s+Date\s*\(/);
+    expect(renderingBlock).not.toMatch(/\bMath\s*\.\s*random\s*\(/);
+    expect(renderingBlock).not.toMatch(/\bprocess\s*\.\s*env\b/);
+  });
+});
+
 // ─── OpenAI-compatible client (T033 request-shape, mocked fetch only) ────────
 
 function okResponse(content: string): Response {
