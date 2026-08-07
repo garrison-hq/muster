@@ -42,6 +42,16 @@ import {
 } from "../core/behavioral/manifest.js";
 import { runCase, type RunnerOptions } from "../core/behavioral/runner.js";
 import { makeClient } from "../core/behavioral/client.js";
+import {
+  makeCassetteClient,
+  readCassetteCase,
+  writeCassetteCase,
+  readCassetteSuiteIndex,
+  writeCassetteSuiteIndex,
+  SCHEMA_VERSION as CASSETTE_SCHEMA_VERSION,
+  type CassetteExchange,
+  type CassetteSuiteIndex,
+} from "../core/cassette/index.js";
 import type {
   CaseVerdict,
   ChatClient,
@@ -390,6 +400,12 @@ interface BehaveOpts extends GlobalOpts {
   temperature?: number;
   runs?: number;
   restrictRefs?: string | boolean;
+  /** Cassette directory for --record/--replay (FR-016). */
+  cassette?: string;
+  /** Record a cassette from a live endpoint into --cassette <dir> (FR-007/008). */
+  record?: boolean;
+  /** Replay a previously recorded cassette from --cassette <dir> (FR-007/009). */
+  replay?: boolean;
 }
 
 /**
@@ -411,12 +427,60 @@ function effectiveApiKeyEnv(
   return configured;
 }
 
+/**
+ * Append a `(replayed: true)` marker to the summary line of a human-readable
+ * behave report — Hazard 2's "spirit" extension of FR-017 to the
+ * human-readable output path (only `--json` is named literally by FR-017).
+ * Replay-only caller (Hazard 2).
+ */
+function withReplayedMarker(human: string): string {
+  const lines = human.split("\n");
+  const lastIndex = lines.length - 1;
+  lines[lastIndex] = `${lines[lastIndex]} (replayed: true)`;
+  return lines.join("\n");
+}
+
+/**
+ * Hazard 3 / NFR-002: a replay-only COPY of `verdicts` with every
+ * `transcript.durationMs` normalized to 0 — three levels deep
+ * (`CaseVerdict[] -> RunVerdict[] -> Transcript`) — so two `--replay`
+ * invocations of the same suite emit byte-identical `--json`/human output
+ * despite real (non-deterministic) in-process wall-clock jitter
+ * (`runCase`'s timing wrapper has zero cassette-mode awareness and stamps a
+ * real `Date.now()`-measured duration regardless of mode). A shallow copy
+ * would alias and mutate the `RunVerdict`/`Transcript` objects `runCase`
+ * returns — which the exit-code logic below still reads from the ORIGINAL
+ * `verdicts` — so every level is copied explicitly. Gated strictly on the
+ * replay-only call site below (never on non-replay output, NFR-006).
+ */
+function normalizeDurationsForReplay(verdicts: readonly CaseVerdict[]): CaseVerdict[] {
+  return verdicts.map((verdict) => ({
+    ...verdict,
+    runs: verdict.runs.map((run) => ({
+      ...run,
+      transcript: { ...run.transcript, durationMs: 0 },
+    })),
+  }));
+}
+
 async function doBehaveRun(
   manifestPath: string,
   opts: BehaveOpts,
   io: Io,
   clientFactory: (endpoint: EndpointConfig) => ChatClient
 ): Promise<number> {
+  // FR-016: --cassette/--record/--replay flag discipline, checked before the
+  // manifest is even loaded so it never depends on manifest validity.
+  if (opts.record === true && opts.replay === true) {
+    throw new ExecutionError("behave run: --record and --replay are mutually exclusive");
+  }
+  if ((opts.record === true || opts.replay === true) && opts.cassette === undefined) {
+    throw new ExecutionError("behave run: --record/--replay requires --cassette <dir>");
+  }
+  if (opts.cassette !== undefined && opts.record !== true && opts.replay !== true) {
+    throw new ExecutionError("behave run: --cassette requires --record or --replay");
+  }
+
   const loaded = await loadBehavioralManifest(toAbsolute(manifestPath));
   if (isBehavioralManifestError(loaded)) {
     throw new ExecutionError(
@@ -437,6 +501,35 @@ async function doBehaveRun(
   };
   const client = clientFactory(endpoint);
 
+  // FR-014/015: in replay mode, the run count is resolved by reading the
+  // cassette suite index BEFORE any other run-count/k resolution — reading
+  // ONLY the suite index file, never opening per-case files here (a case
+  // missing from the index, or whose own file is absent, is NOT a preflight
+  // failure — it is a per-case D2/FR-013 stale-miss handled later in the
+  // main loop below). A conflicting explicit --runs fails before any case
+  // executes, naming both the requested and the recorded counts (FR-015). A
+  // missing/absent suite index (e.g. the whole cassette directory was
+  // deleted) is likewise NOT a preflight failure here — every case simply
+  // has no recorded count to resolve against, and each case's own replay
+  // lookup below reports the resulting miss as a per-case stale failure
+  // (Hazard 1: this is deliberately NOT an ExecutionError/exit 2).
+  let suiteIndex: CassetteSuiteIndex | undefined;
+  if (opts.replay === true && opts.cassette !== undefined) {
+    suiteIndex = readCassetteSuiteIndex(opts.cassette);
+    if (opts.runs !== undefined && suiteIndex !== undefined) {
+      for (const kase of loaded.cases) {
+        const recorded = suiteIndex.cases.find((c) => c.id === kase.id);
+        if (recorded !== undefined && recorded.runs !== opts.runs) {
+          throw new ExecutionError(
+            `behave run --replay: --runs ${opts.runs} conflicts with the cassette's ` +
+              `recorded run count ${recorded.runs} for case "${kase.id}"`
+          );
+        }
+      }
+    }
+  }
+
+  const recordedSuiteCases: { id: string; runs: number }[] = [];
   const verdicts: CaseVerdict[] = [];
   for (const kase of loaded.cases) {
     // Static gate first: never grade against a non-conforming persona.
@@ -459,28 +552,99 @@ async function doBehaveRun(
       );
     }
 
-    // --runs overrides the manifest-resolved n; k clamps so k ≤ n holds.
+    // --runs overrides the manifest-resolved n; k clamps so k ≤ n holds. In
+    // replay mode, the recorded per-case count (from the suite index) wins
+    // over --runs/manifest resolution when present (FR-014).
+    const recordedRuns = suiteIndex?.cases.find((c) => c.id === kase.id)?.runs;
+    const resolvedRuns =
+      opts.replay === true && recordedRuns !== undefined ? recordedRuns : opts.runs;
     const applied =
-      opts.runs === undefined
+      resolvedRuns === undefined
         ? kase
         : {
             ...kase,
-            runs: opts.runs,
-            pass_threshold: Math.min(kase.pass_threshold, opts.runs),
+            runs: resolvedRuns,
+            pass_threshold: Math.min(kase.pass_threshold, resolvedRuns),
           };
-    verdicts.push(await runCase(rfc1Adapter, check, applied, client, runnerOpts));
+
+    // Per-case cassette decoration (FR-007..010): constructed fresh per
+    // case — matching D1's one-file-per-case shape — never per-suite.
+    let caseClient: ChatClient = client;
+    let recordSink: CassetteExchange[] | undefined;
+    if (opts.cassette !== undefined && opts.record === true) {
+      recordSink = [];
+      caseClient = makeCassetteClient(client, {
+        mode: "record",
+        caseId: kase.id,
+        recordSink,
+        endpoint,
+      });
+    } else if (opts.cassette !== undefined && opts.replay === true) {
+      const caseFile = readCassetteCase(opts.cassette, kase.id);
+      caseClient = makeCassetteClient(client, {
+        mode: "replay",
+        caseId: kase.id,
+        replaySource: caseFile?.exchanges ?? [],
+      });
+    }
+
+    verdicts.push(await runCase(rfc1Adapter, check, applied, caseClient, runnerOpts));
+
+    if (recordSink !== undefined && opts.cassette !== undefined) {
+      writeCassetteCase(opts.cassette, {
+        schemaVersion: CASSETTE_SCHEMA_VERSION,
+        caseId: kase.id,
+        exchanges: recordSink,
+      });
+      recordedSuiteCases.push({ id: kase.id, runs: applied.runs });
+    }
+  }
+
+  if (opts.cassette !== undefined && opts.record === true) {
+    writeCassetteSuiteIndex(opts.cassette, {
+      schemaVersion: CASSETTE_SCHEMA_VERSION,
+      suiteId: toAbsolute(manifestPath),
+      cases: recordedSuiteCases,
+      recordedAt: new Date().toISOString(),
+    });
   }
 
   // The verdicts are the artifact — emit them before deciding the exit code.
-  io.outLine(
-    opts.json === true ? JSON.stringify(verdicts, null, 2) : formatBehaveHuman(verdicts)
-  );
+  // Hazard 2 (FR-017): --json shape is deliberately asymmetric — only
+  // --replay wraps the array as { replayed: true, verdicts }; every other
+  // invocation (no cassette, --record) keeps emitting the bare array
+  // unchanged, so non-replay --json output stays byte-identical to its
+  // pre-mission shape (NFR-006). The human formatter gets an analogous
+  // marker appended on replay only.
+  if (opts.replay === true) {
+    // Hazard 3 (NFR-002): normalize durationMs to 0 in a COPY — the
+    // originals `runCase` returned are untouched (read again just below).
+    const normalized = normalizeDurationsForReplay(verdicts);
+    io.outLine(
+      opts.json === true
+        ? JSON.stringify({ replayed: true, verdicts: normalized }, null, 2)
+        : withReplayedMarker(formatBehaveHuman(normalized))
+    );
+  } else {
+    io.outLine(
+      opts.json === true ? JSON.stringify(verdicts, null, 2) : formatBehaveHuman(verdicts)
+    );
+  }
 
   // Exit discipline: mid-suite endpoint errors fail cases and exit 1; an
   // endpoint unreachable for the ENTIRE run (every run of every case errored)
-  // is an execution failure → 2 (contracts/cli.md exit codes).
+  // is an execution failure → 2 (contracts/cli.md exit codes). Hazard 1:
+  // replay never touches a live endpoint (NFR-003) so this heuristic's
+  // premise — "maybe the endpoint is down" — never applies in replay mode;
+  // gated off entirely so an all-stale replay still exits via the normal
+  // pass/fail path below, per FR-013 ("never 0, never a skip code" — never
+  // exit 2 either).
   const allRuns = verdicts.flatMap((verdict) => verdict.runs);
-  if (allRuns.length > 0 && allRuns.every((run) => run.error !== undefined)) {
+  if (
+    opts.replay !== true &&
+    allRuns.length > 0 &&
+    allRuns.every((run) => run.error !== undefined)
+  ) {
     io.errLine(
       "endpoint fatal: every run of every case errored — treating as an execution error (exit 2)"
     );
@@ -2023,6 +2187,20 @@ function buildProgram(
         "unrestricted, shipped behavior; bare: restrict each case to its soul " +
         "document's directory; with <dir>: restrict every case to that " +
         "directory, resolved from cwd)"
+    )
+    .option(
+      "--cassette <dir>",
+      "cassette directory for --record/--replay (FR-016); requires exactly " +
+        "one of --record or --replay"
+    )
+    .option(
+      "--record",
+      "record a cassette into --cassette <dir> from a live endpoint (FR-007/008)"
+    )
+    .option(
+      "--replay",
+      "replay a previously recorded cassette from --cassette <dir> — zero " +
+        "network I/O (FR-007/009)"
     )
     .addHelpText(
       "after",
