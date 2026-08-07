@@ -1,0 +1,404 @@
+schema: review-findings/v1
+complete: true
+phase: spec
+lens_group: merged
+mission: cassette-core-engine-01KZCWFE
+source_groups:
+- gov
+- arch
+- complete
+raw_count: 13
+merged_count: 12
+deduped:
+- dropped: SPEC-ARCH-003
+  into: SPEC-GOV-001
+  reason: 'same artifact section (Dependencies & Assumptions) and substantially the same claim: createHash
+    miscited for a2a/signature.ts'
+findings:
+- id: SPEC-ARCH-001
+  lens: Wave-2 resolver contract
+  severity: 4
+  title: Execution-source resolver contract is unspecified against the four commands' genuinely divergent
+    existing endpoint-configured checks
+  evidence:
+  - artifact: spec.md § FR-018
+  - artifact: spec.md § C-005
+  - artifact: spec.md § SC-006
+  - code: 'src/cli/index.ts:936-943 (crosslayer: falls back to static-only only after catching an error
+      whose message includes both "endpoint" and "required" - i.e. its ''configured execution source''
+      signal is env var OR manifest endpoint-block presence, detected via error-message substring matching,
+      not a boolean check)'
+  - code: 'src/cli/index.ts:1616-1646 (sop: buildSopClient/SOP_NOOP_CLIENT - configured-or-not is purely
+      process.env["MUSTER_ENDPOINT"] presence)'
+  - code: 'src/adapters/heartbeat/index.ts:497 (heartbeat: purely process.env["MUSTER_ENDPOINT"] presence)'
+  - code: 'src/adapters/skills/trigger.ts:83-92 (skills: MUSTER_ENDPOINT canonical, MUSTER_BASE_URL deprecated
+      alias - a third distinct precedence shape)'
+  claim: FR-018/C-005/SC-006 assert one core-exported resolver function that all three wave-2 missions
+    (#100/#101/#102, covering skills/sop/crosslayer/heartbeat's gate-bearing surfaces) will consume "without
+    modification to src/core/". The spec's entire documented contract for that resolver is one sentence
+    -- "a replay-configured cassette counts as a configured execution source" -- with no stated input
+    signature (does it take CLI opts, an env snapshot, the manifest's endpoint block, or all three). Grep
+    of the actual current implementations shows the four commands do NOT share one shape today. crosslayer's
+    endpoint-configured check is env-var-OR-manifest-endpoint-block, detected by catching and string-matching
+    an error message from runCrossLayerManifest; sop and heartbeat check only the env var; skills additionally
+    resolves a deprecated alias. A resolver built to the spec's one-line contract (env var vs. cassette
+    only) will not, as written, cover crosslayer's manifest-endpoint-block signal, so at least one of
+    the three wave-2 missions is likely to need a src/core/ change to accommodate it -- directly contradicting
+    the "without modification" guarantee C-005/SC-006 make.
+  remediation: Before tasks are cut, define the resolver's concrete input contract (parameters and precedence
+    order) and show, in the plan, that it can replace all four existing call sites (heartbeat/index.ts:497,
+    cli/index.ts:936-943 crosslayer, cli/index.ts:1616-1646 sop, skills/trigger.ts:83-92) verbatim --
+    or explicitly narrow FR-018/C-005's promise to the subset of commands whose check is a bare env-var/cassette
+    test, and flag crosslayer's manifest-endpoint-block signal as a known wave-2 core-change risk rather
+    than implying it is already covered.
+- id: SPEC-COMPLETE-001
+  lens: coverage
+  severity: 4
+  title: FR-005's post-blinding hash-timing requirement has zero acceptance-scenario coverage
+  evidence:
+  - artifact: spec.md § FR-005 (line 211)
+  - artifact: spec.md § Acceptance Scenarios (lines 119-178) and § Edge Cases (lines 180-199)
+  - code: src/adapters/memory-utilization/rubric.ts:234-245 (blindArmOrder — the real, deterministic arm-order
+      transform FR-005 is presumably guarding against)
+  claim: 'FR-005 is a MUST requirement central to this mission''s own "hash/ordinal determinism" concern:
+    the request hash must be computed AFTER any blinding/arm-ordering transform, never over a pre-blinding
+    logical probe identity. The words "blind" and "arm-order" appear exactly once in the entire spec —
+    inside FR-005 itself — and nowhere in any of the 14 Acceptance Scenarios, the Edge Cases section,
+    or the Key Entities'' "Request hash" definition (lines 280-282, which only says "the canonical-JSON
+    hash of the fully-built, post-transform request" without an AC exercising the pre- vs. post-transform
+    distinction). A real, deterministic blinding transform already exists in the codebase (`blindArmOrder`
+    in src/adapters/memory-utilization/rubric.ts:234, used for judge arm-order blinding per that file''s
+    FR-011/NFR-001 doc comments), so this is not a hypothetical edge case — it is a real code path that
+    could silently hash the wrong (pre-blinding) request identity and nobody would notice, because no
+    acceptance scenario checks it. This satisfies the severity-4 bar ("FR without coverage").
+
+    '
+  remediation: 'Add an explicit Acceptance Scenario (or Edge Case) under "Recording" or "Discrimination
+    control" that: given a case whose request undergoes a blinding/arm-ordering transform before being
+    sent, when two calls carry the same post-transform request but different pre-transform probe identities
+    (or vice versa), then the recorded/replayed request-hash keys reflect the post-transform form — i.e.,
+    a test that would fail if the hash were computed over the pre-blinding identity instead.
+
+    '
+- id: SPEC-COMPLETE-002
+  lens: determinism
+  severity: 4
+  title: tools/selection.ts's behavioral probes bypass the ChatClient/ToolChatClient seam entirely, contradicting
+    the spec's foundational 'one seam' premise
+  evidence:
+  - artifact: 'spec.md § Summary (lines 16-21): "muster today has one seam every chat-based command calls
+      through: ChatClient.chat / ToolChatClient.chatWithTools"'
+  - artifact: 'spec.md § Non-Goals (lines 53-55): lists "tools" among "the other six chat-based commands"
+      that wave-2 wires cassette support into'
+  - code: 'src/adapters/tools/selection.ts:141 (`export type FetchFn = (url: string, init: RequestInit)
+      => Promise<Response>;`)'
+  - code: src/adapters/tools/selection.ts:520-530 (`runSelectionCase` resolves `httpFetch` from an injected
+      `FetchFn`, defaulting to `globalThis.fetch` — no `ChatClient`/`ToolChatClient` import anywhere in
+      the file)
+  claim: 'The mission''s entire architecture (FR-002, FR-007, C-005, SC-006) rests on the premise that
+    every live behavioral call in the codebase passes through the single `ChatClient`/`ToolChatClient`
+    seam that `makeCassetteClient` wraps. This is false for the tools adapter''s behavioral tool-selection
+    probes: `src/adapters/tools/selection.ts` imports only `TOOLSFile` from `./lint.js` and implements
+    its own direct HTTP call via an injectable `FetchFn` (default `globalThis.fetch`), deliberately avoiding
+    the literal "fetch(" token to stay out of NI-003''s `FETCH_ALLOWED` scan (per the file''s own comment
+    at lines 18-21). Since the cassette decorator only wraps `ChatClient`/`ToolChatClient` instances,
+    it cannot intercept `tools/selection.ts`''s calls no matter how it is wired — meaning the spec''s
+    own Non-Goals claim that a later wave-2 mission can "wire cassette support into" the tools adapter''s
+    "gate-bearing CLI surface" is not actually achievable with the decorator this mission ships, without
+    an unstated prerequisite refactor of the tools adapter onto the ChatClient seam. This directly contradicts
+    existing code (severity-4 criterion).
+
+    '
+  remediation: 'Either (a) narrow the Summary''s "one seam" claim and the Non-Goals'' "six chat-based
+    commands" list to exclude `tools`, and note as a Dependency/Risk that the tools adapter''s behavioral
+    probes need a ChatClient-seam refactor before any wave-2 cassette wiring is possible, or (b) if tools''
+    cassette support is still intended for wave 2, add an explicit Non-Goal/Dependency stating that `tools/selection.ts`
+    must first be migrated onto `ChatClient`/`ToolChatClient` (a prerequisite not covered by this mission
+    or any named wave-2 mission today).
+
+    '
+- id: SPEC-ARCH-002
+  lens: Decorator seam feasibility
+  severity: 3
+  title: chatWithTools decoration has no acceptance-scenario or CLI exercise path within this mission
+  evidence:
+  - artifact: spec.md § FR-007
+  - artifact: spec.md § D4
+  - artifact: spec.md § FR-011
+  - artifact: spec.md § Non-Goals ("The other six chat-based commands (skills run, ...) - M17 (#100)...
+      wire cassette support into their own gate-bearing CLI surfaces.")
+  - code: 'src/cli/index.ts:157-159 (clientFactory?: (endpoint: EndpointConfig) => ChatClient -- behave
+      run''s only injected client type; no ToolChatClient variant exists on RunCliOptions)'
+  - code: 'src/core/behavioral/runner.ts:255,384 (the behave-run engine takes client: ChatClient and only
+      ever calls client.chat(...); chatWithTools is never invoked anywhere in this file)'
+  - code: 'src/adapters/skills/trigger.ts:115-122 (the only chatWithTools-shaped consumer in the tree
+      is the adapter-private TriggerChatClient, signature chatWithTools(userMessage: string, tools: ToolDefinition[]):
+      Promise<string | null> -- structurally different from core''s ToolChatClient.chatWithTools(messages:
+      ChatMessage[], tools: unknown[]): Promise<unknown> that FR-007 cites at client.ts:105-111)'
+  claim: 'D4 declares chatWithTools "in scope for v1" and FR-007/FR-011 require makeCassetteClient to
+    decorate and record/replay it, but this mission''s only wired CLI surface (behave run, per FR-016/FR-017)
+    never calls chatWithTools -- its client factory type is plain ChatClient, and the runner engine only
+    ever calls .chat(). The one real chatWithTools consumer in the codebase (skills run) is explicitly
+    Non-Goal/wave-2 work, and it doesn''t even use core''s ToolChatClient shape directly -- it wraps makeClientWithTools''s
+    output behind its own differently-shaped adapter interface. None of the 14 Acceptance Scenarios in
+    this spec exercises chatWithTools. The result: chatWithTools decoration can only be validated by synthetic
+    core-level unit tests built directly against makeClientWithTools''s return value, with no acceptance-level
+    scenario in this spec demonstrating it end-to-end -- a real risk that this surface is under-specified/under-tested
+    until wave 2 discovers a gap.'
+  remediation: Add an explicit Acceptance Scenario (or FR) describing a chatWithTools-specific record/replay
+    test built directly against a ToolChatClient instance (bypassing any CLI, since none exists in this
+    mission), so the plan phase designs deliberate integration-level coverage rather than leaving it implicit.
+    Note explicitly that TriggerChatClient (skills/trigger.ts) is not core's ToolChatClient and is incompatible
+    in shape, so wave-2's skills-run integration will need its own adapter-level wrapping around the decorated
+    core client, not a drop-in swap.
+- id: SPEC-COMPLETE-003
+  lens: coverage
+  severity: 3
+  title: C-006's 'seven behavioral runners' figure and the Non-Goals' 'six chat-based commands' list both
+    omit memory-utilization run
+  evidence:
+  - artifact: 'spec.md § C-006 (line 252): "confirmed across all seven behavioral runners"'
+  - artifact: 'spec.md § Non-Goals (lines 53-55): "The other six chat-based commands (skills run, sop
+      run''s ... crosslayer, tools, memory, heartbeat)"'
+  - code: src/adapters/memory-utilization/index.ts:181 (`const response = await ctx.client.chat(...)`)
+      and :38 (imports `ChatClient` from core/behavioral/types.js)
+  - code: src/cli/index.ts:2039-2068 (`muster memory-utilization run` — a distinct CLI subcommand from
+      `muster memory run`)
+  claim: '`muster memory-utilization run` is a distinct, ChatClient-based, live-endpoint behavioral CLI
+    surface (src/adapters/memory-utilization/index.ts), separate from `muster memory run` (src/adapters/memory/{recall,privacy}.ts).
+    Counting behave (persona), memory, memory-utilization, crosslayer, heartbeat, skills, sop, and tools
+    gives eight distinct chat/behavioral CLI commands (excluding a2a, which the spec itself notes has
+    "zero ChatClient references"). Neither the Non-Goals'' explicit six-item enumeration nor C-006''s
+    "seven" count names memory-utilization anywhere in the document. This leaves two open questions unresolved
+    by the spec: whether memory-utilization''s sequential-execution behavior was actually part of what
+    C-006 "confirmed," and whether memory-utilization is in scope for any future wave-2 cassette wiring
+    at all.
+
+    '
+  remediation: 'Update C-006 to state the correct total runner count (verify by enumerating actual chat-based
+    CLI commands) and add `memory-utilization run` to the Non-Goals'' explicit per-command list (or explain
+    why it is deliberately omitted, e.g. covered by a different future mission), so the count and the
+    enumeration agree with each other and with the code.
+
+    '
+- id: SPEC-COMPLETE-004
+  lens: testability
+  severity: 3
+  title: FR-013/AC-8's 'labeled distinctly as staleness' has no specified mechanism, and the existing
+    verdict shape only carries a free-text error string
+  evidence:
+  - artifact: 'spec.md § FR-013 (line 219): "MUST be labeled distinctly as staleness (not generic conformance
+      failure) in the run/case output"'
+  - artifact: 'spec.md § Acceptance Scenario 8 (lines 150-153): "the affected run fails and is labeled
+      distinctly as stale"'
+  - code: 'src/core/behavioral/types.ts:102-108 (`RunVerdict` — the only error-carrying field is `error?:
+      string`, free text, no kind/reason enum)'
+  claim: 'Neither FR-013 nor AC-8 specifies HOW a staleness failure is distinguished from any other errored
+    run in the report/`--json` shape. The only existing mechanism (`RunVerdict.error?: string`, types.ts:107)
+    is an untyped free-text message. Two equally literal readings of "labeled distinctly" both satisfy
+    the AC as written: (a) embed a recognizable substring/prefix in the free-text `error` message, or
+    (b) add a new structured field (e.g. an additive `stale?: boolean` alongside the `passRate`/`replayed`
+    precedent FR-017 already establishes). These are not equivalent for a downstream consumer (e.g. a
+    CI dashboard programmatically distinguishing staleness from a real conformance regression per SC-003)
+    — one is string-matching-fragile, the other is a stable contract. NFR-006 requires any change to stay
+    additive/byte-stable for non-replay paths, which argues for (b), but the spec never says so, leaving
+    this open to two implementers landing on different, incompatible mechanisms across work packages.
+
+    '
+  remediation: 'Add a line to FR-013 (or a new FR) specifying the concrete mechanism: e.g. "a new additive,
+    optional field (name TBD at plan time) on `RunVerdict`/`CaseVerdict` distinguishes a staleness failure
+    from any other error, consistent with the additive field precedent set by `passRate` and `replayed`"
+    — so the plan phase has one, not two, compatible options to choose from.
+
+    '
+- id: SPEC-COMPLETE-005
+  lens: security
+  severity: 3
+  title: hostnameOf, the exact redaction function FR-004/C-004 cite as the pattern to match, is private/unexported
+    — no constraint forbids a parallel, potentially-diverging redaction implementation
+  evidence:
+  - artifact: 'spec.md § FR-004 (line 210): "minimal provenance limited to the model name and the endpoint
+      hostname only"'
+  - artifact: 'spec.md § C-004 (line 250): "matching the client''s existing error-hygiene convention (hostnameOf
+      in client.ts)"'
+  - artifact: 'spec.md § C-003 (line 249, contrast): explicitly forbids "a parallel canonicalization implementation"
+      and mandates reuse of `canonicalJson`'
+  - code: 'src/core/behavioral/client.ts:57 (`function hostnameOf(baseUrl: string): string {` — no `export`
+      keyword; confirmed via `grep -n "^export" src/core/behavioral/client.ts`, which lists `EmptyResponseError`,
+      `ToolChatClient`, `makeClientWithTools`, `makeClient` — `hostnameOf` is absent)'
+  claim: 'C-003 explicitly closes the door on a parallel canonical-JSON implementation by requiring reuse
+    of the existing `canonicalJson` export. FR-004/C-004 cite `hostnameOf` as the exact convention the
+    new cassette module''s redaction must match, but `hostnameOf` is a private, unexported function (client.ts:57)
+    — the new cassette module (which per FR-002 must import no adapter code, but CAN import other core
+    files) has no way to literally reuse it without a change to client.ts, and the spec never says this
+    export needs to happen. Absent an explicit reuse requirement, an implementer may instead write a second,
+    subtly different hostname-extraction routine for the cassette path — exactly the kind of unintentional
+    divergence C-003 was written to prevent for canonicalization, but here on a security-relevant redaction
+    path (a divergent implementation could, e.g., handle a malformed URL or a credential-shaped userinfo
+    component differently than the proven `hostnameOf`).
+
+    '
+  remediation: 'Add a constraint parallel to C-003: "`hostnameOf` (or an exported equivalent) MUST be
+    reused by the cassette module — no parallel hostname-extraction/redaction implementation is added,"
+    and note in FR-004 or Dependencies that `hostnameOf` needs to be exported from `src/core/behavioral/client.ts`
+    as part of this work.
+
+    '
+- id: SPEC-COMPLETE-006
+  lens: determinism
+  severity: 3
+  title: C-006's sequential-execution invariant (no Promise.all around any model call) has no automated
+    regression guard, unlike the other NI-guarded invariants it sits alongside
+  evidence:
+  - artifact: 'spec.md § C-006 (line 252): "the sequential-only, per-suite model-call execution model
+      ... is preserved; this mission introduces no concurrent model-call path, since ordinal keying depends
+      on strict sequencing"'
+  - artifact: 'spec.md § Dependencies & Assumptions (lines 311-313): "all seven behavioral runners execute
+      cases and runs sequentially — no Promise.all around any model call — confirmed in the current tree"'
+  - code: tests/unit/invariants.test.ts:1-27 (module doc comment enumerating exactly NI-001/NI-002/NI-003
+      — no fourth guard exists for concurrent-model-call detection)
+  claim: 'FR-006''s ordinal-keying scheme (a k-of-n case with identical prompts replays n distinct responses
+    "in recorded order") is only correct if model calls within a case are strictly sequential — C-006
+    says exactly this. NI-002 (core/adapter boundary) and NI-003 (fetch call-site isolation) are both
+    codified as automated, `pnpm test`-enforced regression guards in tests/unit/invariants.test.ts specifically
+    because the mission''s other structural invariants (C-001/C-002) needed a guard stronger than a one-time
+    manual check. C-006 is at least as load-bearing for correctness (it is the assumption FR-006''s determinism
+    scheme depends on) but has no equivalent guard anywhere in the FR list — it is asserted as "confirmed
+    in the current tree," a point-in-time fact with nothing stopping a future PR from introducing `Promise.all`
+    around a model call and silently breaking cassette replay determinism.
+
+    '
+  remediation: 'Add an FR (or extend FR-021, which already touches the invariant suite) requiring a fourth
+    automated guard (e.g. NI-004) in tests/unit/invariants.test.ts that scans for `Promise.all` wrapping
+    a `.chat(`/`.chatWithTools(` call site across all runner files, analogous to the existing NI-002/NI-003
+    pattern, so C-006 stays enforced rather than merely asserted.
+
+    '
+- id: SPEC-COMPLETE-007
+  lens: testability
+  severity: 3
+  title: NFR-001/AC-2's 'opt-in durationMs field' is never defined as part of the cassette exchange schema,
+    and FR-004's exhaustive provenance wording arguably excludes it
+  evidence:
+  - artifact: 'spec.md § NFR-001 (line 235): "Recording the same suite twice ... yields byte-identical
+      cassette files, modulo the opt-in durationMs field"'
+  - artifact: 'spec.md § Acceptance Scenario 2 (lines 125-127): "the files are byte-identical except for
+      the opt-in durationMs field"'
+  - artifact: 'spec.md § FR-004 (line 210): "minimal provenance limited to the model name and the endpoint
+      hostname only"'
+  - artifact: 'spec.md § Key Entities "Exchange" (lines 277-279): lists request hash, ordinal, fully-built
+      request, response, and provenance (requested model, endpoint hostname) — no durationMs'
+  claim: 'NFR-001 and AC-2 both assume a cassette exchange (or case file) contains a durationMs field
+    that is sometimes present ("opt-in") and excluded from byte-stability comparison. But FR-004 defines
+    the exchange''s provenance as "limited to the model name and the endpoint hostname only," and the
+    Key Entities "Exchange" definition — the closest thing to a schema in this spec — enumerates request
+    hash, ordinal, request, response, and provenance (model, hostname) with no durationMs field at all.
+    Nothing in FR-003, FR-004, or Key Entities defines what "opt-in" means (a CLI flag? a config toggle?
+    always present but non-deterministic and thus excluded from comparison?), so the plan phase has no
+    grounding for implementing this field, and a straightforward reading of FR-004''s "limited to X and
+    Y" language would forbid adding it at all.
+
+    '
+  remediation: 'Add durationMs explicitly to FR-004''s provenance enumeration (or to a new field list)
+    and state what "opt-in" means operationally — e.g. "durationMs is recorded when available but excluded
+    from the RFC 8785 canonical form used for byte-stability comparison, matching FR-001''s real-timing
+    requirement for SOP transcripts" — so NFR-001/AC-2 have a concrete field to test against.
+
+    '
+- id: SPEC-GOV-002
+  lens: '[mission-derived] Neighbouring-mission boundaries'
+  severity: 3
+  title: '''Four gate-bearing commands'' in Summary/Non-Goals contradicts the six chat-based commands
+    the same section names, and miscasts #103/M20 as a gate-bearing consumer'
+  evidence:
+  - artifact: 'spec.md § Summary ("the four gate-bearing commands in wave 2 (#100/#101/#102, plus the
+      transitively-blocked #103) will consume unmodified")'
+  - artifact: 'spec.md § Non-Goals ("The other six chat-based commands (skills run, sop run''s live endpoint
+      probes beyond the #90 fix, crosslayer, tools, memory, heartbeat) — M17 (#100), M18 (#101), M19 (#102)
+      wire cassette support into their own gate-bearing CLI surfaces.")'
+  - artifact: spec.md § Non-Goals ("Any change to the four gate-bearing commands' own MUSTER_ENDPOINT
+      skip-gate behavior.")
+  - artifact: 'spec.md § Non-Goals ("Test-suite migration to cassette-backed fixtures (M20, #103)")'
+  - code: src/cli/index.ts:942 (crosslayer skip-gate)
+  - code: src/cli/index.ts:1646 (sop skip-gate)
+  - code: src/cli/index.ts:2158 (heartbeat skip-gate)
+  - code: src/cli/index.ts:2183 (skills skip-gate)
+  - code: src/cli/index.ts:2245 (tools skip-gate)
+  - code: src/cli/index.ts:2015-2033 (memory command — opt-in --behavioral flag, no MUSTER_ENDPOINT auto
+      skip-gate)
+  claim: 'The spec uses "four gate-bearing commands" twice (Summary; Non-Goals'' MUSTER_ENDPOINT bullet)
+    but its own Non-Goals section separately names SIX chat-based commands (skills, sop, crosslayer, tools,
+    memory, heartbeat) as the wave-2 surface those same three missions (#100/#101/#102) wire cassette
+    support into. Verified against the CLI: skills, sop, crosslayer, tools, and heartbeat each implement
+    a MUSTER_ENDPOINT-based skip-gate (cited above); "memory" (src/cli/index.ts:2014-2033) instead uses
+    an explicit opt-in --behavioral flag with no MUSTER_ENDPOINT auto-gate — so at most five of the six
+    named commands are actually "gate-bearing" today, not four, and not six. Separately, the Summary''s
+    parenthetical "(#100/#101/#102, plus the transitively-blocked #103)" bundles #103/M20 into "the four
+    gate-bearing commands," but the spec''s own Non-Goals and Dependencies&Assumptions sections describe
+    #103/M20 as "Test-suite migration to cassette-backed fixtures" — not a CLI command with a gate at
+    all. This is an internally inconsistent count of the resolver''s real downstream consumer surface,
+    which matters directly for my lens (verifying the spec does not misrepresent wave-2/#103 boundaries)
+    and could mislead the plan phase about how many CLI surfaces the execution-source resolver (FR-018)
+    actually needs to serve.
+
+    '
+  remediation: 'Reconcile the command count: either correct "four gate-bearing commands" to the accurate
+    number of commands that currently implement a MUSTER_ENDPOINT skip-gate (five, per the code cited
+    above, once "memory" is excluded or its gate is separately clarified), or explain in prose why the
+    resolver''s real consumer count differs from the six named chat-based commands. Remove #103/M20 from
+    the "gate-bearing commands" parenthetical since the spec itself classifies #103 as test-fixture migration,
+    not a CLI command with its own gate.
+
+    '
+- id: SPEC-GOV-001
+  lens: Normative
+  severity: 2
+  title: Dependencies & Assumptions cites createHash usage in a2a/signature.ts that does not exist
+  evidence:
+  - artifact: 'spec.md § Dependencies & Assumptions (Assumption: node:crypto''s createHash...)'
+  - code: src/adapters/a2a/signature.ts:22
+  - code: src/adapters/spec-kitty-profile/projection.ts:32
+  - artifact: spec.md § Dependencies & Assumptions ("node:crypto's createHash (already used in src/adapters/spec-kitty-profile/projection.ts
+      and src/adapters/a2a/signature.ts) is available and sufficient for request hashing")
+  - code: src/adapters/a2a/signature.ts:22 (imports only createPublicKey, verify as cryptoVerify from
+      node:crypto -- no createHash import or call anywhere in the file)
+  - code: src/adapters/spec-kitty-profile/projection.ts:32,133 (this file is the only site in src/ that
+      actually imports and calls createHash)
+  claim: 'The spec asserts "node:crypto''s createHash (already used in src/adapters/spec-kitty-profile/projection.ts
+    and src/adapters/a2a/signature.ts) is available and sufficient for request hashing." Verified against
+    the codebase: projection.ts:32 does import and use createHash (confirmed), but signature.ts:22 imports
+    only createPublicKey and verify from node:crypto — a full-repo grep for "createHash" across src/ returns
+    exactly one hit, in projection.ts. The cited second precedent for createHash usage does not exist.
+    This is a factual misstatement of existing code offered as normative-convention evidence (my lens
+    requires every check to cite an accurate source); it does not change the underlying conclusion (createHash
+    is a standard Node API and is available regardless), but the citation as written is false and would
+    mislead a plan-phase reader auditing precedent.
+
+    '
+  remediation: 'Correct the Dependencies & Assumptions bullet to cite only src/adapters/spec-kitty-profile/projection.ts:32
+    as the existing createHash precedent (or, if a second precedent is wanted, cite the actual node:crypto
+    usage in signature.ts correctly, e.g. createPublicKey/verify for signature checking, not createHash).
+
+    '
+  merged_from:
+  - SPEC-ARCH-003
+- id: SPEC-GOV-003
+  lens: Normative
+  severity: 1
+  title: ToolChatClient.chatWithTools line citation (client.ts:105-111) is off by one line
+  evidence:
+  - artifact: spec.md § Summary ("ToolChatClient.chatWithTools (src/core/behavioral/client.ts:105-111)")
+  - artifact: spec.md § FR-007 ("ToolChatClient.chatWithTools (client.ts:105-111)")
+  - code: src/core/behavioral/client.ts:105-110
+  claim: 'Both citations of the ToolChatClient interface give the line range 105-111. Reading the actual
+    file, the interface declaration ("export interface ToolChatClient extends ChatClient { chatWithTools(...):
+    Promise<unknown>; }") spans lines 105-110 only; line 111 is a blank line after the closing brace.
+    A one-line citation drift with no effect on implementation, but worth correcting since this same off-by-one
+    is repeated in two places in the spec (Summary and FR-007), suggesting it was copied rather than independently
+    re-verified.
+
+    '
+  remediation: 'Correct both citations (Summary and FR-007) to client.ts:105-110, or re-verify against
+    the file at plan time before the range is copied into plan.md/tasks.
+
+    '

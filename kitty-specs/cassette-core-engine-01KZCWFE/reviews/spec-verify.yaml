@@ -1,0 +1,48 @@
+schema: review-verify/v1
+complete: false
+phase: spec
+round: 2
+results:
+  - id: SPEC-ARCH-001
+    status: resolved
+    reason: FR-018's concrete ExecutionSourceInput/ExecutionSourceResult precedence contract (added round 1, untouched in substance by round 2) still maps all cited call sites verbatim against current source.
+  - id: SPEC-COMPLETE-001
+    status: resolved
+    reason: Acceptance Scenario 4 (lines 150-157) still exercises the post-blindArmOrder hash-collision requirement end to end, unchanged by round 2.
+  - id: SPEC-COMPLETE-002
+    status: resolved
+    reason: Summary still states the seam is used by "nearly every" chat-based command with tools run's FetchFn bypass named as the explicit exception, unchanged by round 2.
+  - id: SPEC-ARCH-002
+    status: resolved
+    reason: Acceptance Scenario 16 "Decorator coverage" (lines 206-220) still provides an integration-level chatWithTools record/replay test, unchanged by round 2.
+  - id: SPEC-COMPLETE-003
+    status: resolved
+    reason: memory-utilization run remains named in Non-Goals' seven-command list and the runner count is consistently eight across Summary/C-006/Dependencies, unchanged by round 2.
+  - id: SPEC-COMPLETE-004
+    status: resolved
+    reason: FR-013 still specifies the additive stale?:boolean-style field mechanism on RunVerdict/CaseVerdict, unchanged by round 2.
+  - id: SPEC-COMPLETE-005
+    status: resolved
+    reason: FR-004/C-004 still mandate exporting and reusing hostnameOf with no parallel implementation, unchanged by round 2; client.ts:57 confirmed still unexported.
+  - id: SPEC-COMPLETE-006
+    status: resolved
+    reason: FR-024's NI-004 Promise.all guard and its C-006/NFR-007 references remain in place, unchanged by round 2.
+  - id: SPEC-COMPLETE-007
+    status: resolved
+    reason: FR-004 and Key Entities "Exchange" still define durationMs as opt-in and excluded from the byte-stability canonical form, unchanged by round 2.
+  - id: SPEC-GOV-002
+    status: resolved
+    reason: Round 2 changed FR-018 and C-005 from "four" to "five existing/wave-2 call sites" and added tools's doToolsRun (verified at cli/index.ts:1778) as the fifth, so the count and enumeration now agree with Summary's and Non-Goals' "five gate-bearing commands" everywhere the figure appears.
+  - id: SPEC-GOV-001
+    status: resolved
+    reason: Dependencies & Assumptions still cites only projection.ts:32,133 as the createHash precedent and correctly notes signature.ts uses createPublicKey/verify instead, unchanged by round 2.
+  - id: SPEC-GOV-003
+    status: resolved
+    reason: Summary and FR-007 both still cite client.ts:105-110 (verified as the exact ToolChatClient interface span), unchanged by round 2.
+  - id: SPEC-FRESH-001
+    status: resolved
+    reason: FR-018 and C-005 now explicitly include tools's doToolsRun MUSTER_ENDPOINT check (verified accurate at cli/index.ts:1778, an env-only check matching the "{ env }" characterization) as a fifth named call site, closing the gap with Summary/Non-Goals' five-command count and restoring SC-006's "no src/core/ change" guarantee for all five.
+  - id: SPEC-FRESH-002
+    status: resolved
+    reason: Open Questions now cites only src/core/behavioral/runner.ts:384 for the "only ever calls .chat(...)" claim, dropping the erroneous :255 field-declaration citation; grep confirms line 384 is the sole .chat( call site in the file.
+complete: true

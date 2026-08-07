@@ -1,0 +1,96 @@
+schema: review-findings/v1
+complete: true
+phase: spec
+lens_group: arch
+mission: cassette-core-engine-01KZCWFE
+findings:
+- id: SPEC-ARCH-001
+  lens: Wave-2 resolver contract
+  severity: 4
+  title: Execution-source resolver contract is unspecified against the four commands' genuinely divergent
+    existing endpoint-configured checks
+  evidence:
+  - artifact: spec.md § FR-018
+  - artifact: spec.md § C-005
+  - artifact: spec.md § SC-006
+  - code: 'src/cli/index.ts:936-943 (crosslayer: falls back to static-only only after catching an error
+      whose message includes both "endpoint" and "required" - i.e. its ''configured execution source''
+      signal is env var OR manifest endpoint-block presence, detected via error-message substring matching,
+      not a boolean check)'
+  - code: 'src/cli/index.ts:1616-1646 (sop: buildSopClient/SOP_NOOP_CLIENT - configured-or-not is purely
+      process.env["MUSTER_ENDPOINT"] presence)'
+  - code: 'src/adapters/heartbeat/index.ts:497 (heartbeat: purely process.env["MUSTER_ENDPOINT"] presence)'
+  - code: 'src/adapters/skills/trigger.ts:83-92 (skills: MUSTER_ENDPOINT canonical, MUSTER_BASE_URL deprecated
+      alias - a third distinct precedence shape)'
+  claim: FR-018/C-005/SC-006 assert one core-exported resolver function that all three wave-2 missions
+    (#100/#101/#102, covering skills/sop/crosslayer/heartbeat's gate-bearing surfaces) will consume "without
+    modification to src/core/". The spec's entire documented contract for that resolver is one sentence
+    -- "a replay-configured cassette counts as a configured execution source" -- with no stated input
+    signature (does it take CLI opts, an env snapshot, the manifest's endpoint block, or all three). Grep
+    of the actual current implementations shows the four commands do NOT share one shape today. crosslayer's
+    endpoint-configured check is env-var-OR-manifest-endpoint-block, detected by catching and string-matching
+    an error message from runCrossLayerManifest; sop and heartbeat check only the env var; skills additionally
+    resolves a deprecated alias. A resolver built to the spec's one-line contract (env var vs. cassette
+    only) will not, as written, cover crosslayer's manifest-endpoint-block signal, so at least one of
+    the three wave-2 missions is likely to need a src/core/ change to accommodate it -- directly contradicting
+    the "without modification" guarantee C-005/SC-006 make.
+  remediation: Before tasks are cut, define the resolver's concrete input contract (parameters and precedence
+    order) and show, in the plan, that it can replace all four existing call sites (heartbeat/index.ts:497,
+    cli/index.ts:936-943 crosslayer, cli/index.ts:1616-1646 sop, skills/trigger.ts:83-92) verbatim --
+    or explicitly narrow FR-018/C-005's promise to the subset of commands whose check is a bare env-var/cassette
+    test, and flag crosslayer's manifest-endpoint-block signal as a known wave-2 core-change risk rather
+    than implying it is already covered.
+- id: SPEC-ARCH-002
+  lens: Decorator seam feasibility
+  severity: 3
+  title: chatWithTools decoration has no acceptance-scenario or CLI exercise path within this mission
+  evidence:
+  - artifact: spec.md § FR-007
+  - artifact: spec.md § D4
+  - artifact: spec.md § FR-011
+  - artifact: spec.md § Non-Goals ("The other six chat-based commands (skills run, ...) - M17 (#100)...
+      wire cassette support into their own gate-bearing CLI surfaces.")
+  - code: 'src/cli/index.ts:157-159 (clientFactory?: (endpoint: EndpointConfig) => ChatClient -- behave
+      run''s only injected client type; no ToolChatClient variant exists on RunCliOptions)'
+  - code: 'src/core/behavioral/runner.ts:255,384 (the behave-run engine takes client: ChatClient and only
+      ever calls client.chat(...); chatWithTools is never invoked anywhere in this file)'
+  - code: 'src/adapters/skills/trigger.ts:115-122 (the only chatWithTools-shaped consumer in the tree
+      is the adapter-private TriggerChatClient, signature chatWithTools(userMessage: string, tools: ToolDefinition[]):
+      Promise<string | null> -- structurally different from core''s ToolChatClient.chatWithTools(messages:
+      ChatMessage[], tools: unknown[]): Promise<unknown> that FR-007 cites at client.ts:105-111)'
+  claim: 'D4 declares chatWithTools "in scope for v1" and FR-007/FR-011 require makeCassetteClient to
+    decorate and record/replay it, but this mission''s only wired CLI surface (behave run, per FR-016/FR-017)
+    never calls chatWithTools -- its client factory type is plain ChatClient, and the runner engine only
+    ever calls .chat(). The one real chatWithTools consumer in the codebase (skills run) is explicitly
+    Non-Goal/wave-2 work, and it doesn''t even use core''s ToolChatClient shape directly -- it wraps makeClientWithTools''s
+    output behind its own differently-shaped adapter interface. None of the 14 Acceptance Scenarios in
+    this spec exercises chatWithTools. The result: chatWithTools decoration can only be validated by synthetic
+    core-level unit tests built directly against makeClientWithTools''s return value, with no acceptance-level
+    scenario in this spec demonstrating it end-to-end -- a real risk that this surface is under-specified/under-tested
+    until wave 2 discovers a gap.'
+  remediation: Add an explicit Acceptance Scenario (or FR) describing a chatWithTools-specific record/replay
+    test built directly against a ToolChatClient instance (bypassing any CLI, since none exists in this
+    mission), so the plan phase designs deliberate integration-level coverage rather than leaving it implicit.
+    Note explicitly that TriggerChatClient (skills/trigger.ts) is not core's ToolChatClient and is incompatible
+    in shape, so wave-2's skills-run integration will need its own adapter-level wrapping around the decorated
+    core client, not a drop-in swap.
+- id: SPEC-ARCH-003
+  lens: Architecture
+  severity: 2
+  title: Dependencies & Assumptions cites src/adapters/a2a/signature.ts as an existing createHash precedent;
+    it does not use createHash
+  evidence:
+  - artifact: spec.md § Dependencies & Assumptions ("node:crypto's createHash (already used in src/adapters/spec-kitty-profile/projection.ts
+      and src/adapters/a2a/signature.ts) is available and sufficient for request hashing")
+  - code: src/adapters/a2a/signature.ts:22 (imports only createPublicKey, verify as cryptoVerify from
+      node:crypto -- no createHash import or call anywhere in the file)
+  - code: src/adapters/spec-kitty-profile/projection.ts:32,133 (this file is the only site in src/ that
+      actually imports and calls createHash)
+  claim: The spec's precedent citation for createHash usage is factually wrong for one of its two named
+    files. signature.ts uses createPublicKey/verify for JWS signature verification, not createHash for
+    hashing. The underlying assumption (node:crypto is a built-in, no new dependency needed) still holds
+    since createHash genuinely is available and already used once in projection.ts, but a plan-time reader
+    following the citation to signature.ts for a second precedent will not find one.
+  remediation: Correct the Dependencies & Assumptions bullet to cite only src/adapters/spec-kitty-profile/projection.ts:133
+    as the existing createHash precedent, or drop the signature.ts citation and note node:crypto's createHash
+    as a built-in Node API rather than implying a second existing call site.
