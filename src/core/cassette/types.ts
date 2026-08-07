@@ -57,6 +57,21 @@ export interface CassetteToolRequest {
  * duration) and is excluded from NFR-001's byte-stability comparison — it
  * is real, non-deterministic wall-clock timing, not part of the
  * deterministic replay contract.
+ *
+ * FR-012 fidelity asymmetry: `ChatClient.chat()` (`src/core/behavioral/
+ * client.ts`) parses the raw OpenAI-style JSON response and hands cassette
+ * code only `choices[0].message.content` as a plain string — `finish_reason`,
+ * `usage`, any additional `choices` beyond the first, and the server-echoed
+ * `model` are all discarded before that seam returns, and cassette code
+ * never sees them. A `kind: "chat"` exchange's `response` is therefore just
+ * that extracted string. `chatWithTools`, by contrast, returns the full raw
+ * JSON-parsed payload (`unknown`) untouched, so a `kind: "chatWithTools"`
+ * exchange's `response` retains everything the server sent — this is the
+ * `chat`/`chatWithTools` fidelity asymmetry. `provenance.model` on both
+ * kinds is always the *requested* model (`endpoint.model`, config-supplied)
+ * — never the served one, since the served model is one of the fields
+ * `chat()` discards and `chatWithTools` never inspects for provenance
+ * purposes.
  */
 export type CassetteExchange =
   | {
