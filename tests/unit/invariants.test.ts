@@ -431,6 +431,40 @@ describe("NI-004 / FR-024 / C-006 no Promise.all wrapping a chat call site", () 
     expect(ni004ScannedFiles.length).toBeGreaterThan(50);
   });
 
+  it("scan reaches all three directories independently (WP05-C1-001 regression)", () => {
+    // The "actually scanned a non-trivial file set" check above only asserts
+    // ni004ScannedFiles.length > 50 — removing any ONE of the three walk()
+    // roots below still leaves ~78/72/83 files (well above 50) and that
+    // check stays green. None of the fixture tests in this file exercise
+    // ni004ScannedFiles either — they all call findPromiseAllChatViolations
+    // directly against readFileSync content, bypassing the scan array
+    // entirely. So a silent narrowing of scan scope — the exact failure mode
+    // NI-004 was redesigned across three plan-review rounds to prevent, per
+    // plan.md's "NI-004 design" (a hand-maintained allowlist "rotted
+    // mid-review and silently dropped two real .chat( call sites") — would
+    // go uncaught without this test.
+    //
+    // Three independent, precise assertions: each one is falsifiable by
+    // deleting its own directory's `...walk(join(repoRoot, ...), { exclude:
+    // BASE_EXCLUDES }),` line from ni004ScannedFiles above, and is NOT
+    // satisfiable by an accidentally-narrowed walk over only one or two of
+    // the three directories (verified manually per-root; see WP05 report).
+    const scannedRel = ni004ScannedFiles.map(rel);
+    const adaptersFiles = scannedRel.filter((f) => f.startsWith("src/adapters/"));
+    const behavioralFiles = scannedRel.filter((f) => f.startsWith("src/core/behavioral/"));
+    const crosslayerFiles = scannedRel.filter((f) => f.startsWith("src/crosslayer/"));
+
+    expect(adaptersFiles.some((f) => f.startsWith("src/adapters/"))).toBe(true);
+    expect(behavioralFiles.some((f) => f.startsWith("src/core/behavioral/"))).toBe(true);
+    expect(crosslayerFiles.some((f) => f.startsWith("src/crosslayer/"))).toBe(true);
+
+    // Non-trivially populated per root, not merely one stray file — cheap
+    // and still robust to normal file churn within each directory.
+    expect(adaptersFiles.length).toBeGreaterThan(1);
+    expect(behavioralFiles.length).toBeGreaterThan(1);
+    expect(crosslayerFiles.length).toBeGreaterThan(1);
+  });
+
   it("src/crosslayer/manifest-runner.ts's real Promise.all(...) (a plain arr.map(...) shape, no chat call inside) does not false-positive", () => {
     // The one real Promise.all( call site in scan scope that is NOT a
     // violation — plan.md "NI-004 design" names it explicitly as the
