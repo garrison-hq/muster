@@ -1,0 +1,84 @@
+schema: wp-verdict/v1
+complete: true
+wp: WP02
+cycle: 1
+mission: cassette-core-engine-01KZCWFE
+verdict: rejected
+gates_observed:
+  tsc: pass                  # `npx tsc --noEmit` on HEAD (2f7d324): exit 0, no output
+  tests: pass                 # `pnpm test` on HEAD: 186 files / 3798 passed / 3 skipped / 0 failed — matches implementer's claim exactly
+  coverage: 100                # src/core/execution-source.ts verified via `coverage-summary.json`: 12/12 stmts, 14/14 branches, 1/1 funcs, 12/12 lines. lcov FNDA:14 matches the file's 14 `it(` blocks 1:1 (each test calls the function exactly once) — genuine execution, not a WP01-style unreachable-line misattribution.
+feedback:
+  - id: WP02-C1-001
+    severity: 3
+    claim: >
+      The resolver's documented contract, applied as FR-018's own prose
+      literally instructs ("manifestHasEndpointBlock ... consulted only
+      after both env vars are checked" — src/core/execution-source.ts:46-51),
+      does not faithfully replace crosslayer's `doCrossLayerNoEnvEndpoint`
+      fallback (src/cli/index.ts:929-951) — the one call site the review
+      brief flagged as "the hard one." Evidence, traced by hand:
+      (1) `doCrossLayerNoEnvEndpoint` is reached only when
+      `endpointFromEnv()` (src/cli/index.ts:887-895) has already returned
+      `undefined` — and `endpointFromEnv` checks *only*
+      `process.env["MUSTER_ENDPOINT"]`, never `MUSTER_BASE_URL`,
+      unlike heartbeat/sop/tools/skills. (2) `runCrossLayerManifest`
+      (src/crosslayer/manifest-runner.ts) never reads `process.env` for a
+      base URL at all — it only ever uses an explicit `endpointOverride`
+      (manifest-runner.ts:293) or the manifest's own `manifest.endpoint`
+      block; the real "no endpoint" error is thrown at
+      manifest-runner.ts:248-250
+      (`"'endpoint' is required when behavioral cases are present."`) purely
+      from `manifest.endpoint === undefined` — `MUSTER_BASE_URL` plays no
+      role anywhere in crosslayer's call graph. (3) If a wave-2 integrator
+      wires the fallback the way FR-018's own text instructs — replace the
+      string-match with `resolveExecutionSource({ manifestHasEndpointBlock
+      }).configured`, letting `env` default to `process.env` per the
+      resolver's documented default (execution-source.ts:36-39,91-94) — then
+      in an environment with `MUSTER_BASE_URL` set (a real, named scenario:
+      it's the deprecated alias skills/trigger.ts explicitly supports) and no
+      manifest endpoint block, the resolver reports `{ configured: true,
+      source: "env", usedDeprecatedAlias: true }`. The wave-2 caller,
+      trusting `configured: true`, skips the graceful static-only fallback
+      and calls `runCrossLayerManifest(absManifestPath)` with no override —
+      which still throws the manifest-runner's "endpoint is required" error
+      (nothing ever passed `MUSTER_BASE_URL`'s value anywhere), and since
+      this WP's whole premise is that the string-matching catch this error
+      relied on is being retired, that error now propagates as an *uncaught*
+      crash where today's shipped behavior is a graceful stderr message plus
+      a static-only run. This is a genuine behavior change at exactly the
+      site FR-018/C-005 promises wave-2 can wire "without any change to
+      src/core/" — the promise only holds if wave-2 independently discovers
+      it must suppress or scope `env` at this one call site, and nothing in
+      the module's otherwise-thorough per-call-site documentation
+      (execution-source.ts:7-23, itself the primary value of this
+      "deliberately unwired, contract-is-the-deliverable" WP) says so.
+    remediation: >
+      Add an explicit doc-comment caveat — no code/precedence redesign
+      required, only a documentation addition inside this WP's own owned
+      file — either on `ExecutionSourceInput.manifestHasEndpointBlock`'s
+      tsdoc or in the module's top-of-file per-call-site notes, stating that
+      the crosslayer fallback caller must NOT let `env` default to
+      `process.env` (or must pass an env snapshot with `MUSTER_BASE_URL`
+      excluded/undefined), because `runCrossLayerManifest`/`endpointFromEnv`
+      have no `MUSTER_BASE_URL` support anywhere in their call graph, so
+      re-consulting the raw environment for the alias at that specific call
+      would report `configured: true` for a signal crosslayer cannot act on,
+      turning today's graceful static-only degrade into an uncaught
+      validation error once the string-matching catch is removed.
+  - id: WP02-C1-002
+    severity: 1
+    claim: >
+      spec.md's FR-018 text and plan.md's IC-03 both cite
+      `cli/index.ts:1778` for `doToolsRun`'s endpoint check; the actual
+      current line (confirmed by `grep -n 'MUSTER_ENDPOINT' src/cli/index.ts`)
+      is 1802 — a 24-line drift, most likely from WP01's `clientFactory` seam
+      addition shifting the file. Not introduced by this WP and does not
+      affect its shipped code: `src/core/execution-source.ts`'s own
+      per-call-site doc comment (lines 15-16) wisely cites no line number for
+      this site at all, so the drift doesn't propagate into the deliverable.
+      Advisory only — does not block.
+    remediation: >
+      No action required from WP02. Whoever next touches spec.md/plan.md
+      (or the mission's closing documentation pass, IC-06/WP06) should
+      refresh the `cli/index.ts:1778` citation to `:1802`.
