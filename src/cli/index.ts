@@ -1605,6 +1605,17 @@ function formatSkillsResultHuman(result: SkillsRunResult): string {
 // ─── muster sop run ─────────────────────────────────────────────────────────
 
 /**
+ * A configured ChatClient plus the real endpoint identity it was built
+ * from (FR-001) — callers thread `model`/`baseUrl` alongside `client` so
+ * `Transcript` provenance reflects the actual endpoint, not a literal.
+ */
+interface SopClientBundle {
+  client: import("../core/behavioral/types.js").ChatClient;
+  model: string;
+  baseUrl: string;
+}
+
+/**
  * Build a minimal ChatClient from env vars for SOP behavioral probes.
  *
  * When MUSTER_ENDPOINT is present, creates an OpenAI-compatible client.
@@ -1612,7 +1623,7 @@ function formatSkillsResultHuman(result: SkillsRunResult): string {
  *
  * NFR-005: API key read from process.env at call time; never stored.
  */
-function buildSopClient(): import("../core/behavioral/types.js").ChatClient | undefined {
+function buildSopClient(): SopClientBundle | undefined {
   const baseUrl = process.env["MUSTER_ENDPOINT"];
   if (baseUrl === undefined || baseUrl === "") {
     return undefined;
@@ -1625,7 +1636,7 @@ function buildSopClient(): import("../core/behavioral/types.js").ChatClient | un
     model,
     apiKeyEnv,
   };
-  return makeClient(endpoint);
+  return { client: makeClient(endpoint), model, baseUrl };
 }
 
 /**
@@ -1672,11 +1683,18 @@ async function doSopRun(
   // runManifestSuite handles unreadable manifests internally (returns passed: false),
   // but the CLI contract requires exit 2 for execution errors (unreadable manifest).
   await readFileOrThrow(absManifestPath, "sop manifest");
-  const client = buildSopClient() ?? SOP_NOOP_CLIENT;
+  // FR-001: the "unconfigured"/"unconfigured://no-endpoint" sentinel is used
+  // ONLY when no endpoint is configured (SOP_NOOP_CLIENT path below) — never
+  // unconditionally. When an endpoint IS configured, its real model/baseUrl
+  // are threaded through so Transcript provenance reflects it.
+  const sopClient = buildSopClient();
+  const client = sopClient?.client ?? SOP_NOOP_CLIENT;
+  const model = sopClient?.model ?? "unconfigured";
+  const baseUrl = sopClient?.baseUrl ?? "unconfigured://no-endpoint";
 
   let report: SOPSuiteReport;
   try {
-    report = await runSopManifestSuite(absManifestPath, { client });
+    report = await runSopManifestSuite(absManifestPath, { client, model, baseUrl });
   } catch (error) {
     throw new ExecutionError(`sop manifest run failed: ${errorMessage(error)}`);
   }
