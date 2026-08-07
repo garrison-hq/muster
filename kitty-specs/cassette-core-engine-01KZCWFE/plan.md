@@ -422,7 +422,8 @@ trigger.ts`'s existing `resolveEndpointBaseUrl` precedent verbatim).
 
 ## Hazard 1 — the exit-2 "endpoint fatal" heuristic misfires on an all-stale replay
 
-`doBehaveRun`'s existing tail (`src/cli/index.ts` ~L479-488):
+`doBehaveRun`'s existing tail (`src/cli/index.ts:482-489` — the same
+block Hazard 3 below cites precisely):
 ```ts
 const allRuns = verdicts.flatMap((verdict) => verdict.runs);
 if (allRuns.length > 0 && allRuns.every((run) => run.error !== undefined)) {
@@ -599,14 +600,38 @@ NI-003 style — no AST parser/new dependency introduced):
    since their "Promise.all" occurrences are inside `//`/`/* */` comments
    outside any string.
 2. In the comment-stripped text, scan for `PROMISE_ALL_CALL = "Promise" +
-   "." + "all" + "("` (built by concatenation, mirroring NI-003's
-   `FETCH_CALL` self-exemption convention, so this test file's own source
-   describing the guard never self-trips it).
+   "." + "all" + "("` (built by concatenation, matching NI-003's
+   `FETCH_CALL` token style for consistency — not a functional necessity
+   here, since NI-004's scan scope, `src/adapters/`, `src/core/
+   behavioral/`, and `src/crosslayer/`, structurally excludes this test
+   file at `tests/unit/invariants.test.ts`; unlike NI-003, which scans
+   `src/` + `tests/` and so does need `FETCH_CALL`'s concatenation to
+   avoid self-tripping on its own literal token).
 3. For every match, balance-track parens from that opening `(` to find its
-   matching closing `)` (a simple depth counter over the substring;
-   Promise.all call sites in this codebase are plain `Promise.all([...])`/
-   `Promise.all(arr.map(...))` shapes, so string/template-literal-embedded
-   parens are not a concern in practice).
+   matching closing `)`, walking the **same quote/template-literal state
+   machine built in step 1** (none / `"` / `'` / `` ` ``, escape-aware) over
+   the raw (not comment-stripped — step 1 already removed comments from the
+   text this walk runs over, so only string/template state remains to
+   track) substring: the depth counter increments/decrements on `(`/`)`
+   only while that state is "none," and is left untouched by any `(`/`)`
+   character encountered while inside a string or template-literal span.
+   This is required, not defensive-only, for the same reason step 1's
+   quote-awareness is: a `Promise.all(...)` argument containing a string
+   literal with an unbalanced paren (e.g. an error message like `"forgot to
+   close ("`) would otherwise desync a raw depth counter, either truncating
+   the enclosure span early (a real `.chat(`/`.chatWithTools(` wrap goes
+   unreported — a false negative undermining the C-006 guarantee NI-004
+   exists to enforce) or extending it past the call's real close paren (a
+   false positive sweeping in an unrelated later call). No `Promise.all(`
+   call site in the scan scope embeds such a string today
+   (`src/crosslayer/manifest-runner.ts:195`'s is a plain
+   `Promise.all(arr.map(...))` shape with no argument string) — this is
+   the same "the guard must hold under future changes, not just today's
+   tree" discipline step 1 already applies, extended to step 3 instead of
+   stopping short of it. The quote-tracking logic itself is factored into
+   one shared local helper (`trackQuoteState`, or equivalent) called from
+   both step 1's stripping pass and step 3's paren-balance walk, so the two
+   never drift apart into two separately-maintained scanners.
 4. Report a violation only if a `.chat(` or `.chatWithTools(` token
    substring falls **inside** that matched span (between the opening paren
    and its balanced closing paren) — same-file or nearby co-occurrence
@@ -667,17 +692,44 @@ anticipates it growing behavioral judging later. Total walked files: 83
 inside NFR-007's combined budget and the same order of magnitude NI-003
 already walks today (all of `src/` + `tests/`).
 
-**Must-not-false-positive fixtures**: `src/adapters/memory-utilization/
-index.ts` and `src/crosslayer/rule-survival.ts` are explicit assertions in
-NI-004's own test coverage — NI-004 must report zero violations for both,
-verified directly (not merely inferred from the guard suite staying green).
-A third fixture covers the quote-aware stripper specifically: a scan-scope
-file containing a `://`-bearing string literal (e.g.
-`src/adapters/openclaw-sop/runner.ts`'s `"mock://test"` literals) followed
-on a later line by a real, uncommented `Promise.all(...)`/`.chat(` pairing
-must still be reported as a violation — proving the stripper does not
-swallow real code after an in-string `//`. This fixture is synthetic test
-fixture, not a change to any production file.
+**Fixture coverage**: `src/adapters/memory-utilization/index.ts` and
+`src/crosslayer/rule-survival.ts` are explicit must-not-false-positive
+assertions in NI-004's own test coverage — both are real files already
+inside the directory-walk scan scope, so no extra wiring is needed to
+exercise them; NI-004 must report zero violations for both, verified
+directly (not merely inferred from the guard suite staying green).
+
+Two further fixtures exercise the quote/template-literal state machine
+itself — the one shared by step 1's comment stripper and step 3's
+paren-balance enclosure walk — rather than the directory-walk scan. That
+state-tracking logic (and the stripping/enclosure logic built on it) is
+factored into small local helper functions at module scope in `tests/
+unit/invariants.test.ts`, alongside `walk()`/`PROMISE_ALL_CALL`, exactly
+mirroring how NI-002/NI-003's `walk()` and `FETCH_ALLOWED` are already
+both used inside their scan and asserted against directly in separate
+`it()` blocks. These two fixtures call those helpers directly with
+literal strings, never through the filesystem walk, so neither requires
+a synthetic or production file under the scanned directories:
+
+- **Quote-aware stripper**: a literal string containing a `://`-bearing
+  segment followed by real code on the same line (e.g. `` `baseUrl:
+  "mock://test", Promise.all(x.chat())` ``, mirroring
+  `src/adapters/openclaw-sop/runner.ts`'s real `"mock://test"` shape) fed
+  directly to the stripping helper must leave the trailing
+  `Promise.all(x.chat())` text intact in the output — proving the
+  stripper does not swallow real code after an in-string `//`.
+- **Quote-aware enclosure walk**: a literal string shaped like
+  `Promise.all(["forgot to close (", x.chat()])` fed directly to the
+  paren-balance helper must still resolve the enclosure span to the
+  call's real matching closing paren — not desynced by the unbalanced
+  `(` inside the string argument — and report `.chat(` as enclosed,
+  proving step 3's quote-awareness holds against exactly the shape
+  identified as the guard's remaining gap.
+
+Neither fixture changes any production file or adds a file to the
+scanned directories; both are direct unit assertions against the shared
+helper functions the directory-walk scan itself also calls, so the
+helpers and the scan can never silently drift apart.
 
 ## Implementation Concern Map
 
@@ -816,11 +868,15 @@ fixture, not a change to any production file.
   `://`-bearing string literal (`"mock://test"`, citation URLs) misread as
   a line comment. The quote-aware comment-strip + paren-balanced-enclosure
   algorithm specified above avoids both, and its own `PROMISE_ALL_CALL`
-  token is built by string concatenation (mirroring NI-003's `FETCH_CALL`
-  self-exemption trick at `invariants.test.ts:128`) so this test file's own
-  source describing the guard does not self-trip it. A hand-maintained scan
-  scope carries its own rot risk independent of the algorithm — see "NI-004
-  design"'s scope discussion for why the scope is directory-derived instead.
+  token is built by string concatenation matching NI-003's `FETCH_CALL`
+  token style at `invariants.test.ts:128` — a stylistic choice, not a
+  functional necessity, since NI-004's scan scope (`src/adapters/`,
+  `src/core/behavioral/`, `src/crosslayer/`) structurally excludes this
+  test file at `tests/unit/invariants.test.ts`, unlike NI-003 whose
+  `src/` + `tests/` scan does need the concatenation to avoid self-tripping.
+  A hand-maintained scan scope carries its own rot risk independent of the
+  algorithm — see "NI-004 design"'s scope discussion for why the scope is
+  directory-derived instead.
 
 ### IC-06 — Documentation + final gate verification
 

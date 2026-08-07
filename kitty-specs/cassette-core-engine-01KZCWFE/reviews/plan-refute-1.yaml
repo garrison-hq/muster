@@ -1,0 +1,17 @@
+schema: review-refute/v1
+complete: true
+phase: plan
+batch: 1
+verdicts:
+  - id: PLAN-VERIFY-001
+    verdict: confirmed
+    reason: types.ts:88 confirms Transcript.durationMs is a required (non-optional) field and runner.ts:547/572 confirms runCase wraps executeRun in unconditional Date.now() wall-clock diffing with no cassette-mode awareness, and doBehaveRun (src/cli/index.ts:471-476) JSON.stringifies the resulting verdicts verbatim with no normalization, while the plan's own "MODIFIED" scope for runner.ts (plan.md:199-201) touches only the catch-block stale flag and spec.md's Scenario 6/NFR-002 (unlike Scenario 2/NFR-001) carries no "modulo durationMs" clause anywhere in plan.md's Test Strategy row 6 or Hazard 1/2 sections.
+  - id: PLAN-FIT-001
+    verdict: confirmed
+    reason: plan.md:128-134's Charter Check bullet literally states "This mission makes zero edits to ... cli/index.ts:1616-1646 (buildSopClient/SOP_NOOP_CLIENT)" while plan.md:215-221 (Project Structure) and :467-469 (IC-01) both describe editing doSopRun/buildSopClient at ~L1615-1686 to thread {model, baseUrl} through, an overlapping line range and the same named functions, and spec.md:294's actual C-005 text only forbids further src/core/ modification at the five wave-2 call sites, not src/cli/index.ts, confirming the plan invented and then contradicted its own broader claim.
+  - id: PLAN-VERIFY-005
+    verdict: confirmed
+    reason: plan.md:314-321 states the non-empty-directory overwrite-only-touched-files decision as a plan-authored safety behavior, but the Test Strategy table (plan.md:596-615) is scoped strictly to spec.md's 16 numbered Acceptance Scenarios and IC-02's own affected-surfaces/risks bullets (plan.md:478-497) never mention it, so no test anywhere maps to this branch despite the plan's explicit "No branch is planned that lacks a corresponding test" claim at plan.md:628-629.
+  - id: PLAN-FIT-003
+    verdict: confirmed
+    reason: plan.md cites "AC-9" (line 418) and "AC-15" (lines 279, 476) as if spec.md defines such IDs, but grepping spec.md for "AC-" returns zero matches — its Acceptance Scenarios section (lines 135-229) uses bare numbers 1-16 only, and the quoted text in both plan citations does verifiably match scenario 9's and scenario 15's wording, confirming a fabricated-looking citation scheme wrapped around accurate content.

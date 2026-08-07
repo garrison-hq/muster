@@ -1,0 +1,14 @@
+schema: review-refute/v1
+complete: true
+phase: plan
+batch: 3
+verdicts:
+  - id: PLAN-VERIFY-003
+    verdict: confirmed
+    reason: Plan.md never names the interception mechanism (only "verified by test" and a file location at line 71/604/604), the cited existing tests all use a non-instrumented plain-object clientFactory mock (tests/unit/cli.test.ts:64-74 mockFactory returns a literal object, not a vi.fn spy) while the one real fetch-interception precedent (vi.spyOn(globalThis,"fetch") at cli.test.ts:727) is unreferenced, and the plan's own design text confirms replay's whole point is that the decorator must never call inner.chat, so a mockFactory-based test would show "zero network I/O" even if that invariant were broken.
+  - id: PLAN-VERIFY-004
+    verdict: confirmed
+    reason: Verified the three literal durationMs:0 sites in src/adapters/openclaw-sop/runner.ts and confirmed every existing mock ChatClient factory in tests/adapters/openclaw-sop/runner.test.ts (makeMockClient, makeConstantClient, makeRunVaryingJudgeClient, makeErrorClient) resolves synchronously with no delay, so an un-delayed AC-15 regression test's measured durationMs could legitimately compute to 0 and be indistinguishable from the removed literal, and the plan's IC-01/Test Strategy text specifies no artificial delay or stronger-than-"field exists" assertion.
+  - id: PLAN-SEQ-002
+    verdict: confirmed
+    reason: Read the full Project Structure test tree (plan.md lines 246-284) and IC-02/IC-03/IC-06 Affected-surfaces bullets (485-487, 504-505, 570) and none names a file or owner for the SC-006 cross-boundary import smoke test described only in the Test Strategy prose at lines 619-622.

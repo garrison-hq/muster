@@ -1,0 +1,410 @@
+schema: review-findings/v1
+complete: true
+phase: plan
+lens_group: merged
+mission: cassette-core-engine-01KZCWFE
+source_groups:
+- fit
+- seq
+- verify
+raw_count: 11
+merged_count: 11
+deduped: []
+findings:
+- id: PLAN-VERIFY-001
+  lens: '[mission-derived] Byte-stability and determinism testing'
+  severity: 5
+  title: NFR-002's 'byte-identical replay --json twice' claim conflicts with the pre-existing, always-populated
+    Transcript.durationMs field
+  evidence:
+  - artifact: plan.md § Test Strategy, row 6 ("Same replay run twice → byte-identical `--json` | `tests/unit/cli.test.ts`")
+  - artifact: plan.md § Technical Context, "Performance Goals" ("byte-stable, deterministic recording/replay
+      (NFR-001/002)")
+  - artifact: plan.md § Determinism/byte-stability verification paragraph (only addresses NFR-001 store.test.ts
+      and NFR-002 cli.test.ts as "round-trip tests that record/replay twice and diff the resulting bytes"
+      — no mention of durationMs neutralization for the replay case)
+  - code: 'src/core/behavioral/types.ts:88 (Transcript.durationMs: number — required, not optional)'
+  - code: 'src/core/behavioral/runner.ts:572 (durationMs: Date.now() - started, computed unconditionally
+      by runCase around the whole case''s turn loop, independent of the cassette decorator)'
+  claim: 'RunVerdict.transcript.durationMs is a required field, computed in runCase via real wall-clock
+    Date.now() diffing around executeRun''s turn loop — this happens identically whether the client is
+    live, cassette-record, or cassette-replay decorated, since the decorator sits underneath client.chat()
+    and runCase''s timing wrapper has no cassette awareness. NFR-002 requires "running [replay] twice
+    yields byte-identical verdict `--json`" with no modulo clause (unlike NFR-001, which explicitly says
+    "modulo the opt-in durationMs field" for the persisted cassette files). Two consecutive `--replay`
+    invocations of the same suite will measure slightly different wall-clock durations for the in-process
+    replay loop (file I/O + JS scheduling jitter), so the emitted `--json` verdicts array — which embeds
+    this Transcript.durationMs on every RunVerdict — is not actually guaranteed byte-identical run over
+    run. This is a distinct field from the cassette module''s own opt-in CassetteExchange.durationMs (correctly
+    excluded from NFR-001''s comparison per FR-004); the plan''s Hazard 1/Hazard 2 sections pre-empt two
+    other subtle interactions but do not address this one, and no design decision or IC neutralizes/zeroes
+    this field for replay output.
+
+    '
+  remediation: 'Add an explicit design decision (alongside Hazard 1/2) stating how replay mode keeps `--json`
+    output byte-identical across runs despite Transcript.durationMs: either (a) doBehaveRun''s replay
+    path zeroes/normalizes transcript.durationMs before emitting verdicts (e.g. always 0, since replay
+    makes no real timed network call), or (b) runCase is made cassette-aware enough to skip real timing
+    when the decorator is in replay mode, or (c) NFR-002''s acceptance criterion and the row-6 test are
+    explicitly amended to be "modulo durationMs" like NFR-001, if a literal byte-identical guarantee is
+    not actually achievable. Whichever is chosen, add a corresponding assertion to the scenario-6 test
+    in tests/unit/cli.test.ts that would fail if the chosen mechanism were absent (e.g. run replay twice
+    with an artificial delay injected into file-read timing and confirm the two --json payloads are still
+    byte-identical).
+
+    '
+- id: PLAN-VERIFY-002
+  lens: '[mission-derived] NI-004 guard feasibility'
+  severity: 4
+  title: NI-004's 'scan runner files for Promise.all wrapping a .chat(/.chatWithTools( call site' is underspecified
+    and, if implemented in NI-002/NI-003's existing simple-substring style, already false-positives on
+    two real files
+  evidence:
+  - artifact: plan.md § IC-05 Risks ("NI-004's `Promise.all` scan needs a token that does not trigger
+      on itself (mirroring NI-003's `FETCH_CALL = "fetch" + "("` self-exemption trick...) — the scan pattern
+      must be built the same way (string concatenation)")
+  - artifact: plan.md § Project Structure, tests/unit/invariants.test.ts bullet ("+ NI-004 (Promise.all-around-chat
+      scan, FR-024/C-006)")
+  - artifact: spec.md FR-024 ("a fourth automated guard (NI-004) that scans all runner files for a `Promise.all`
+      call wrapping a `.chat(`/`.chatWithTools(` call site... analogous to the existing NI-002/NI-003
+      pattern")
+  - code: 'tests/unit/invariants.test.ts:107-121 (NI-002: a per-line `line.includes("adapters")` substring
+      check) and :128-152 (NI-003: `content.indexOf(FETCH_CALL)` whole-file substring check) — the two
+      existing guards this mission is told to mirror are both flat substring/co-occurrence checks, not
+      structural/AST checks'
+  - code: src/adapters/memory-utilization/index.ts:7 and :288 (comments containing the literal substring
+      "Promise.all", explicitly documenting the ABSENCE of concurrency) and :181 (a real `ctx.client.chat(`
+      call site in the same file)
+  - code: src/crosslayer/rule-survival.ts:309 (comment containing "Promise.all") and :322 (a real `client.chat(`
+      call 13 lines later, in the same file)
+  claim: 'The plan directs NI-004 to be built "analogous to the existing NI-002/NI-003 pattern" — both
+    of which are simple same-file (NI-002) or whole-corpus (NI-003) substring/co-occurrence checks, not
+    structural parses. FR-024''s actual requirement ("a Promise.all call wrapping a .chat(/.chatWithTools(
+    call site") is a nesting/enclosure relationship, not a co-occurrence — and the codebase already contains
+    two files (memory-utilization/index.ts, crosslayer/rule-survival.ts) where the literal substring "Promise.all"
+    appears in a comment in the same file as, and in rule-survival.ts''s case within 13 lines of, a real
+    `.chat(`/`.chatWithTools(` call site that documents exactly why Promise.all is NOT used there. A naive
+    same-file-co-occurrence or small-proximity-window implementation — the style the plan explicitly tells
+    the implementer to mirror — would false-positive on existing, correct code on day one, breaking the
+    invariant suite (and therefore the merge gate) immediately upon landing. The plan''s only stated mitigation
+    (the FETCH_CALL-style self-exemption trick) addresses NI-004''s own test file source tripping on itself;
+    it says nothing about these two pre-existing, unrelated files.
+
+    '
+  remediation: 'Specify NI-004''s actual detection algorithm precisely before /tasks: either (a) strip
+    comments before scanning and require the `Promise.all(` token to be a syntactic ancestor of the call
+    site (e.g. brace/paren-depth tracking to confirm the `.chat(`/`.chatWithTools(` token lies inside
+    the argument list opened by a preceding `Promise.all(`), or (b) reuse the TypeScript compiler API
+    (already an existing devDependency via `tsc`, so no new package.json dependency is introduced) to
+    walk the AST and check CallExpression nesting directly instead of text matching. Whichever is chosen,
+    add `src/adapters/memory-utilization/index.ts` and `src/crosslayer/rule-survival.ts` as explicit must-not-false-positive
+    fixtures in NI-004''s own test coverage, since both already exist and already contain the literal
+    trigger substring today.
+
+    '
+- id: PLAN-VERIFY-003
+  lens: '[mission-derived] Zero-network-IO proof'
+  severity: 4
+  title: The plan never specifies the interception mechanism for NFR-003's 'zero network I/O' assertion,
+    and the codebase's existing 'muster behave run' test pattern (mock clientFactory) would make the obvious
+    implementation vacuous
+  evidence:
+  - artifact: plan.md § Technical Context, "Performance Goals" ("zero network I/O during replay (NFR-003,
+      verified by test, not merely asserted)")
+  - artifact: plan.md § Test Strategy, row 5 ("Replay with no endpoint/API key env set → completes, zero
+      network I/O | `tests/unit/cli.test.ts` (NFR-002/003)")
+  - artifact: plan.md § Project Structure, tests/unit/cli.test.ts bullet ("zero network I/O during replay
+      (NFR-003)") — names the location, not the mechanism
+  - code: 'tests/unit/cli.test.ts:380,388,397,426,439,454 (every existing `muster behave run` test passes
+      `clientFactory: mockFactory(...)`, a fully in-process fake ChatClient that never touches `fetch`
+      at all — this is the pattern IC-04 explicitly extends, per plan.md''s own "existing `muster behave
+      run` describe block" note)'
+  - code: tests/unit/cli.test.ts:727 (`vi.spyOn(globalThis, "fetch")` — the one place in this test file
+      that actually intercepts real network calls, used for an unrelated BUG-B regression test, not cited
+      or reused anywhere in the plan)
+  claim: '"Verified by test, not merely asserted" is stated as a design principle but the plan never says
+    which of two structurally different techniques the NFR-003 test uses: (a) spy on `globalThis.fetch`
+    directly and assert zero calls (the only technique that actually observes network I/O at the lowest
+    level, proving the decorator itself never lets a call through), or (b) inject a mock ChatClient via
+    `clientFactory` (as every existing `muster behave run` test in this file already does) and merely
+    assert the mock''s spy was not called. Technique (b) is the path of least resistance given IC-04 explicitly
+    builds on "the existing `muster behave run` describe block," and it would prove nothing about NFR-003
+    that wasn''t already true by construction — a mock ChatClient never touches the network regardless
+    of whether the decorator correctly intercepts it, so a broken decorator that erroneously passed every
+    replay call through to the (mock) inner client would still show "zero network I/O" under technique
+    (b). This is exactly the vacuous-negative-proof failure mode the lens calls out, and the plan gives
+    no signal that the stronger fetch-spy technique (b), for which a precedent already exists at cli.test.ts:727,
+    is the one required.
+
+    '
+  remediation: 'State explicitly in the plan (Test Strategy row 5, or a new Hazard-style callout) that
+    the NFR-003 replay test must spy on `globalThis.fetch` (mirroring the existing `vi.spyOn(globalThis,
+    "fetch")` precedent at cli.test.ts:727) — or, if it uses a mock `clientFactory`, that the mock client''s
+    `chat`/`chatWithTools` methods must themselves be spied and asserted `not.toHaveBeenCalled()`, so
+    a decorator bug that leaks a call through to the inner client is actually caught. Either is acceptable;
+    leaving the choice unstated risks the weaker, vacuous version being implemented by default since it
+    requires no new test infrastructure.
+
+    '
+- id: PLAN-FIT-001
+  lens: architecture
+  severity: 3
+  title: Charter Check's C-005 'zero edits' claim contradicts IC-01's own described edit to the same code
+    range
+  evidence:
+  - artifact: 'plan.md § Charter Check, ''Resolver ships, is not wired (C-005)'' bullet (lines ~125-134):
+      "This mission makes zero edits to ... `cli/index.ts:1616-1646` (`buildSopClient`/`SOP_NOOP_CLIENT`)
+      ..."'
+  - artifact: 'plan.md § IC-01 ''Affected surfaces'' (lines ~465-470): "`src/cli/index.ts` (`doSopRun`/`buildSopClient`
+      thread `{model, baseUrl}` through — the endpoint identity already exists there today and is simply
+      discarded after `makeClient(endpoint)` is built; it needs to be passed alongside the client instead)"'
+  - artifact: 'plan.md § Project Structure, src/cli/ block (lines ~214-221): "(a) doSopRun/buildSopClient
+      (~L1615-1686): thread {model, baseUrl} through to runManifestSuite, using an \"unconfigured\"/\"unconfigured://no-endpoint\"
+      sentinel ONLY when no endpoint is configured (SOP_NOOP_CLIENT path)"'
+  - code: src/cli/index.ts:1615 (buildSopClient start) through src/cli/index.ts:1649 (SOP_NOOP_CLIENT
+      close) — the exact function/const pair the Charter Check bullet names as untouched
+  claim: 'The plan''s own Charter Check asserts, under the C-005 gate, that this mission "makes zero edits"
+    to `cli/index.ts:1616-1646` (`buildSopClient`/`SOP_NOOP_CLIENT`). But IC-01 (FR-001, the #90 fix)
+    explicitly requires editing exactly that region: `doSopRun`/`buildSopClient` currently build a `ChatClient`
+    via `makeClient(endpoint)` and discard the endpoint identity — verified live at src/cli/index.ts:1615-1629
+    and 1665-1680 (buildSopClient/doSopRun), where no `{model, baseUrl}` value survives past client construction.
+    For `openclaw-sop/runner.ts`''s three hardcoded `"mock"` / `"mock://test"` / `0` literals (src/adapters/openclaw-sop/runner.ts:191-194,351-354,
+    424-427) to be replaced with real stamped identity per FR-001, that identity has to be threaded from
+    `buildSopClient`/`doSopRun` down to the runner — which IC-01''s own Project Structure entry confirms
+    is exactly the planned edit, including giving SOP_NOOP_CLIENT a sentinel model/baseUrl. Note the plan''s
+    claim is *stronger* than what spec.md''s actual C-005 requires: C-005 only forbids further `src/core/`
+    modification at the five wave-2 call sites, it says nothing about `src/cli/index.ts`. The plan invented
+    and then violated its own extra "zero edits to this file range" claim. A task-writer or reviewer checking
+    the Charter Check gate literally (e.g. by diffing that line range) would flag IC-01''s legitimate,
+    required edit as a C-005 violation, or a careless implementer could read the gate as prohibiting the
+    very edit FR-001 needs.
+
+    '
+  remediation: 'Reword the C-005 Charter Check bullet to scope its "zero edits" claim correctly: state
+    that this mission makes no edits that call `resolveExecutionSource` or otherwise change the *skip-gate
+    decision logic* at the five named sites, while explicitly carving out that `cli/index.ts:1616-1646`
+    IS edited by IC-01 for the unrelated FR-001 endpoint-identity-threading fix (a different concern,
+    landed before the resolver exists). Cross-reference IC-01 from the C-005 bullet so the two sections
+    cannot be read as contradicting each other.
+
+    '
+- id: PLAN-SEQ-001
+  lens: Front-loading of the genuinely risky work / Phasing
+  severity: 3
+  title: IC-04's FR-014/015 preflight description contradicts the plan's own suite-index design decision,
+    risking a per-case-file read that conflates run-count validation with D2 miss-handling
+  evidence:
+  - artifact: plan.md § Design decisions resolving the spec's "plan-time" Open Questions, item 1 (lines
+      306-312)
+  - artifact: plan.md § IC-04 — `behave run` CLI wiring, Risks (lines 529-531)
+  - artifact: 'plan.md § Project Structure, `src/core/cassette/store.ts` (lines 180-184: `writeCassetteSuiteIndex/readCassetteSuiteIndex`)'
+  - artifact: spec.md D2 (line 95) and FR-013/FR-015 (lines 261, 263)
+  claim: 'Design decision #1 states plainly that "`cases[].runs` is the authoritative per-case declared
+    run count FR-014 reads ... not inferred from exchange counts" and that this field lives in the single
+    suite index file (`{ schemaVersion, suiteId, cases: {id, runs}[], recordedAt }`), which the plan''s
+    own Project Structure gives a dedicated one-file reader for (`readCassetteSuiteIndex`). But IC-04''s
+    Risks paragraph, describing the FR-014/015 preflight, says the check "requires reading every case''s
+    cassette file up front, before the main per-case loop starts — a second, cheap pass over `loaded.cases`."
+    "Every case''s cassette file" (plural, one per case, matching D1''s one-file-per-case store layout)
+    is a different operation than reading the single suite index once — and the plan never reconciles
+    the two. If a work-package implementer follows the IC-04 wording literally and opens each case''s
+    own cassette file during the preflight (via `readCassetteCase`, not `readCassetteSuiteIndex`), two
+    problems follow: (a) it duplicates the file-format-authority already established in design decision
+    #1 for no benefit, and (b) it creates an unspecified failure-mode collision — a case file that is
+    simply *absent* (D2''s per-case "miss", which must NOT abort the suite per FR-013/D2) would, if hit
+    during a naive per-case-file preflight pass, look indistinguishable from an FR-015 "run-count conflicts,
+    fail before any case executes" condition, which explicitly SHOULD abort the whole run. The plan pre-solves
+    two other subtle interaction bugs (Hazard 1, Hazard 2) explicitly for exactly this reason ("exactly
+    the kind of interaction a reviewer would otherwise have to find independently") but leaves this third
+    one, of the same class, unresolved and internally inconsistent with the plan''s own suite-index design.
+
+    '
+  remediation: 'Amend IC-04''s Risks paragraph (plan.md lines 529-531) to state explicitly that the FR-014/015
+    preflight reads only the single suite index file via `readCassetteSuiteIndex` (already designed for
+    exactly this purpose in design decision #1 and listed in the Project Structure''s `store.ts` surface)
+    to get every case''s authoritative `runs` count in one file read — never opening individual per-case
+    cassette files during the preflight. Also state explicitly that a case missing from the suite index''s
+    `cases[]` list (or a case whose per-case file is absent) is NOT a preflight/FR-015 failure — it remains
+    a per-case D2/FR-013 stale-miss handled later, during that case''s own turn in the main loop, so the
+    two failure modes stay structurally separate in the IC-04 implementation.
+
+    '
+- id: PLAN-VERIFY-004
+  lens: '[mission-derived] FR-001 regression proof'
+  severity: 3
+  title: 'The planned FR-001 ''measured durationMs'' regression test risks being indistinguishable from
+    the removed durationMs: 0 literal unless the plan requires an artificial delay'
+  evidence:
+  - artifact: plan.md § Test Strategy, row 15 ("SOP transcript reflects real endpoint + measured duration,
+      no \"mock\" literal remains | `tests/adapters/openclaw-sop/runner.test.ts`")
+  - artifact: plan.md § IC-01 Risks ("Existing SOP runner tests assert no \"mock\" literal today (verified
+      live)... only new assertions are added (AC-15)")
+  - code: 'src/adapters/openclaw-sop/runner.ts:191-194,349-354,421-427 (the three current unconditional
+      literals `model: "mock"`, `baseUrl: "mock://test"`, `durationMs: 0`)'
+  - code: tests/adapters/openclaw-sop/runner.test.ts (grep confirms all 10 occurrences of "mock" are prose/comments
+      about mock clients, e.g. lines 7, 47, 63, 74, 79, 114 — none assert on Transcript.model/baseUrl/durationMs
+      field values today, confirming the plan's "no rewrite needed" claim but also confirming no pre-existing
+      precedent for how to assert a *measured* durationMs)
+  claim: 'FR-001''s fix makes `runProbeOnce` "time its client-call loop and stamp[] ... real model/baseUrl
+    ... instead of the ... 0 literal[]." If the AC-15 regression test''s mock ChatClient resolves synchronously/near-instantly
+    (as every existing mock client in this test file does, per the "CRITICAL: Zero live network calls"
+    tests), `Date.now() - started` can legitimately compute to `0` on a fast machine at ms-granularity
+    — making a genuinely-measured duration indistinguishable, byte-for-byte, from the exact hardcoded
+    literal FR-001 is supposed to remove. A test that asserts merely `durationMs !== undefined` or `typeof
+    durationMs === "number"` would not catch a regression back to the literal `0`; a test that happens
+    to assert `durationMs === 0` on a fast mock would pass today even with the bug still present, undermining
+    the "regression proof" this lens requires. The plan does not specify that the mock client used in
+    the AC-15 test must introduce a deliberate delay to make the measured value deterministically distinguishable
+    from `0`.
+
+    '
+  remediation: 'Specify in IC-01 (or the Test Strategy row 15 entry) that the AC-15 regression test''s
+    mock ChatClient introduces an artificial async delay (e.g. `await new Promise(r => setTimeout(r, 5))`
+    before returning) and asserts `durationMs > 0` (or `>= 5`), not just that the field exists or is a
+    number — so the test would actually fail if the hardcoded `0` literal reappeared.
+
+    '
+- id: PLAN-VERIFY-005
+  lens: Test strategy
+  severity: 3
+  title: The plan-time 'non-empty target directory on --record' decision (overwrite-only-touched-files,
+    never delete untouched files) has no corresponding test anywhere in the Test Strategy table or the
+    IC-02/IC-05 test file lists
+  evidence:
+  - artifact: plan.md § "Design decisions resolving the spec's 'plan-time' Open Questions", item 2 ("overwrite
+      the specific files this run produces... create the directory if absent, and never delete files this
+      run does not touch")
+  - artifact: plan.md § Test Strategy table (16 rows, each mapped to one of spec.md's 16 numbered Acceptance
+      Scenarios — none covers non-empty-directory overwrite/non-destructive semantics)
+  - artifact: 'plan.md § Project Structure, tests/cassette/store.test.ts bullet ("FR-003/004/006: file
+      format, ordinal reset/increment, redaction" — no mention of directory-overwrite behavior)'
+  claim: 'This is a plan-authored, safety-relevant design decision (explicitly framed as preventing "silently
+    destroying an unrelated prior recording") with no test anywhere in the plan''s coverage tables. Because
+    it is not one of spec.md''s 16 numbered Acceptance Scenarios, it falls outside the Test Strategy table''s
+    scenario-by-scenario mapping entirely and is easy to lose track of at /spec-kitty.tasks time — the
+    plan''s own coverage claim ("every new file listed in Project Structure gets direct unit coverage...
+    No branch is planned that lacks a corresponding test") is not actually true for this specific, plan-invented
+    behavior.
+
+    '
+  remediation: 'Add an explicit row (or sub-bullet under store.test.ts) to the Test Strategy / Project
+    Structure sections: pre-populate a cassette directory with an unrelated file plus a stale case file
+    from a different suite, run `--record` for the current suite, and assert (a) the unrelated file is
+    untouched and (b) only the current suite''s case/index files were written or overwritten.
+
+    '
+- id: PLAN-FIT-002
+  lens: '[mission-derived] Out-of-place content'
+  severity: 2
+  title: '''Tooling note'' recording a spec-kitty scaffold failure sits inside the architecture artifact,
+    not the mission''s operational record'
+  evidence:
+  - artifact: plan.md lines 11-33, the 'Tooling note (transparency, not a state edit)' paragraph, positioned
+      between the Branch contract and the Summary section
+  claim: 'plan.md''s opening section contains a ~23-line paragraph about a `spec-kitty plan --mission
+    ... --json` / `spec-kitty agent mission setup-plan` CLI failure (`SPEC_FILE_MISSING`), its root cause
+    in `specify_cli`, and a justification for hand-authoring this file outside the normal scaffold. This
+    is pipeline-tooling commentary about how the artifact was produced, not architecture, requirements
+    mapping, or design content — the material `/spec-kitty.tasks` and future readers of plan.md need.
+    It sits in the most prominent position in the document (before "## Summary"), and its presence risks
+    two concrete problems: (1) any downstream tooling that parses plan.md structurally (section headers,
+    FR tables) now has to skip past unrelated prose to reach the first real section; (2) a future mission-
+    review or drift-audit reading plan.md for "what does the architecture say" has to manually filter
+    out an incident report about the spec-kitty CLI itself, which has nothing to do with the cassette
+    engine''s design.
+
+    '
+  remediation: 'Move the tooling-failure account out of plan.md into the mission''s existing operational
+    record — `status.events.jsonl` already exists in this mission directory and is the correct place for
+    a state/process anomaly note, or record it as a one-line entry in the PR description per the charter''s
+    Exception Policy ("Deviations from ... upstream tooling suggestions require a written one-line justification
+    recorded in the mission work log"). Keep plan.md starting at "## Summary" as pure design content;
+    a single one-line pointer ("see mission work log for a tooling note about how this file was authored")
+    is enough if traceability is wanted in-place.
+
+    '
+- id: PLAN-SEQ-002
+  lens: Phasing
+  severity: 2
+  title: SC-006's cross-boundary import smoke test has no assigned Implementation Concern or file path
+  evidence:
+  - artifact: 'plan.md § Test Strategy, SC-006 row (lines 617-622: "SC-006↔ IC-02/IC-03''s public-export
+      tests + a same-mission smoke test that imports makeCassetteClient/resolveExecutionSource from a
+      path outside src/core/ the way an adapter would")'
+  - artifact: plan.md § Project Structure, `tests/` tree (lines 246-284) — no file corresponds to this
+      smoke test
+  - artifact: plan.md § Implementation Concern Map, IC-02/IC-03/IC-06 Affected surfaces (lines 485-487,
+      504-505, 570) — none lists this test
+  claim: 'Every other scenario/criterion in the Test Strategy table maps to a concrete file already listed
+    in Project Structure under a specific IC''s "Affected surfaces" (e.g. scenario 1 → `tests/cassette/store.test.ts`
+    under IC-02). The SC-006 row is the one exception: it names a "same-mission smoke test that imports
+    ... from a path outside `src/core/` the way an adapter would" but this test appears in no file list
+    and is not claimed by IC-02, IC-03, or IC-06''s "Affected surfaces" bullets. Since this smoke test
+    is exactly what verifies the mission-derived concern that wave-2 can genuinely consume these exports
+    (not just that unit tests inside `src/core/` pass), leaving it unassigned risks it being silently
+    dropped when `/spec-kitty.tasks` materializes work packages from the Implementation Concern Map, since
+    nothing in the map currently owns it.
+
+    '
+  remediation: 'Add the smoke test as an explicit file (e.g. `tests/cassette/ public-api.test.ts` or fold
+    it into `tests/unit/execution-source.test.ts`) to the Project Structure tree, and list it under IC-06''s
+    "Affected surfaces" (the natural mission-closing concern, since it needs both `makeCassetteClient`
+    from IC-02 and `resolveExecutionSource` from IC-03 to exist) so it is not lost between concerns.
+
+    '
+- id: PLAN-VERIFY-006
+  lens: '[mission-derived] NI-004 guard feasibility'
+  severity: 2
+  title: The plan does not enumerate which files/directories NI-004 walks, despite C-006's scope being
+    'all eight behavioral runners' across at least five different directories
+  evidence:
+  - artifact: plan.md § IC-05 ("NI-004 (FR-024/C-006 — scans runner files for `Promise.all` wrapping a
+      `.chat(`/`.chatWithTools(` call site)") — quotes FR-024 verbatim, does not name a file set
+  - artifact: spec.md Dependencies & Assumptions ("all eight behavioral runners (behave, memory, memory-utilization,
+      crosslayer, heartbeat, skills, sop, tools) execute cases and runs sequentially")
+  - code: 'the eight runners'' chat-call sites are scattered across at least five directories/files: src/adapters/skills/trigger.ts,
+      src/adapters/heartbeat/index.ts, src/adapters/memory/{privacy,recall}.ts, src/adapters/memory-utilization/index.ts,
+      src/adapters/openclaw-sop/runner.ts, src/core/behavioral/runner.ts, src/crosslayer/rule-survival.ts
+      — none of which is uniformly named `runner.ts`'
+  claim: '"Runner files" is not a defined term anywhere in the plan or the existing test file''s naming
+    conventions (NI-002/NI-003 walk `src/core` or all of `src`+`tests`, not a "runner files" subset).
+    Without an explicit file list or glob, an implementer could plausibly scope NI-004 to only `src/**/runner.ts`
+    (missing heartbeat/index.ts, crosslayer''s files, memory-utilization/index.ts, skills/trigger.ts entirely)
+    and still satisfy the plan''s own words, silently under-enforcing C-006 for five of the eight named
+    runners.
+
+    '
+  remediation: 'Enumerate NI-004''s scan scope explicitly in plan.md (either an allowlist of files mirroring
+    FETCH_ALLOWED''s style, or a walk of `src/adapters/**` + `src/core/behavioral/runner.ts` + `src/crosslayer/**`,
+    filtered to files containing `.chat(`/`.chatWithTools(` at all), so /spec-kitty.tasks has no ambiguity
+    about which files must be covered.
+
+    '
+- id: PLAN-FIT-003
+  lens: spec_fidelity
+  title: Plan cites 'AC-9' and 'AC-15' as if spec.md defines Acceptance-Criteria IDs, but spec.md's Acceptance
+    Scenarios are plain-numbered 1-16 with no 'AC-' prefix
+  severity: 1
+  evidence:
+  - artifact: 'plan.md line 418-419 (Hazard 1): "AC-9 requires \"the process exits with the normal failure
+      exit code — not 0, not a skip code\""'
+  - artifact: 'plan.md line 476 (IC-01 Risks): "only new assertions are added (AC-15)"'
+  - artifact: 'plan.md line 279 (Project Structure, tests/adapters/openclaw-sop/runner.test.ts): "FR-001/AC-15:
+      real endpoint identity + measured durationMs assertions"'
+  - artifact: 'spec.md § Acceptance Scenarios (lines 135-220): scenarios are numbered plainly ''1.'' through
+      ''16.''; no ''AC-'' identifier scheme appears anywhere in spec.md'
+  claim: 'The plan repeatedly cites "AC-9" and "AC-15" as though spec.md defines these as formal acceptance-criteria
+    IDs (the way it defines FR-/NFR-/C-/SC- IDs). It does not — spec.md''s Acceptance Scenarios section
+    uses bare sequence numbers (scenario 9 is the stale-miss exit-code scenario, scenario 15 is the SOP
+    transcript-identity scenario, and the quoted text in both plan citations does match those scenarios
+    verbatim), but there is no citable "AC-9" or "AC-15" anywhere in the reference artifact. A reader
+    trying to verify the plan''s claim by grepping spec.md for "AC-9" or "AC-15" finds nothing, which
+    reads as a fabricated citation even though the underlying content is accurate.
+
+    '
+  remediation: 'Replace "AC-9"/"AC-15" with "Acceptance Scenario 9"/"Scenario 15" (matching spec.md''s
+    actual numbering), or add one line to plan.md''s own conventions stating "this plan refers to spec.md''s
+    numbered Acceptance Scenarios as AC-N" so the shorthand is self-documenting instead of looking like
+    a spec-defined ID.
+
+    '

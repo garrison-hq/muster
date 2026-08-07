@@ -1,0 +1,99 @@
+schema: review-findings/v1
+complete: true
+phase: plan
+lens_group: fit
+mission: cassette-core-engine-01KZCWFE
+findings:
+  - id: PLAN-FIT-001
+    lens: architecture
+    severity: 3
+    title: "Charter Check's C-005 'zero edits' claim contradicts IC-01's own described edit to the same code range"
+    evidence:
+      - artifact: "plan.md § Charter Check, 'Resolver ships, is not wired (C-005)' bullet (lines ~125-134): \"This mission makes zero edits to ... `cli/index.ts:1616-1646` (`buildSopClient`/`SOP_NOOP_CLIENT`) ...\""
+      - artifact: "plan.md § IC-01 'Affected surfaces' (lines ~465-470): \"`src/cli/index.ts` (`doSopRun`/`buildSopClient` thread `{model, baseUrl}` through — the endpoint identity already exists there today and is simply discarded after `makeClient(endpoint)` is built; it needs to be passed alongside the client instead)\""
+      - artifact: "plan.md § Project Structure, src/cli/ block (lines ~214-221): \"(a) doSopRun/buildSopClient (~L1615-1686): thread {model, baseUrl} through to runManifestSuite, using an \\\"unconfigured\\\"/\\\"unconfigured://no-endpoint\\\" sentinel ONLY when no endpoint is configured (SOP_NOOP_CLIENT path)\""
+      - code: "src/cli/index.ts:1615 (buildSopClient start) through src/cli/index.ts:1649 (SOP_NOOP_CLIENT close) — the exact function/const pair the Charter Check bullet names as untouched"
+    claim: >
+      The plan's own Charter Check asserts, under the C-005 gate, that this mission
+      "makes zero edits" to `cli/index.ts:1616-1646` (`buildSopClient`/`SOP_NOOP_CLIENT`).
+      But IC-01 (FR-001, the #90 fix) explicitly requires editing exactly that region:
+      `doSopRun`/`buildSopClient` currently build a `ChatClient` via `makeClient(endpoint)`
+      and discard the endpoint identity — verified live at src/cli/index.ts:1615-1629 and
+      1665-1680 (buildSopClient/doSopRun), where no `{model, baseUrl}` value survives past
+      client construction. For `openclaw-sop/runner.ts`'s three hardcoded `"mock"` /
+      `"mock://test"` / `0` literals (src/adapters/openclaw-sop/runner.ts:191-194,351-354,
+      424-427) to be replaced with real stamped identity per FR-001, that identity has to
+      be threaded from `buildSopClient`/`doSopRun` down to the runner — which IC-01's own
+      Project Structure entry confirms is exactly the planned edit, including giving
+      SOP_NOOP_CLIENT a sentinel model/baseUrl. Note the plan's claim is *stronger* than
+      what spec.md's actual C-005 requires: C-005 only forbids further `src/core/`
+      modification at the five wave-2 call sites, it says nothing about `src/cli/index.ts`.
+      The plan invented and then violated its own extra "zero edits to this file range"
+      claim. A task-writer or reviewer checking the Charter Check gate literally (e.g. by
+      diffing that line range) would flag IC-01's legitimate, required edit as a C-005
+      violation, or a careless implementer could read the gate as prohibiting the very
+      edit FR-001 needs.
+    remediation: >
+      Reword the C-005 Charter Check bullet to scope its "zero edits" claim correctly:
+      state that this mission makes no edits that call `resolveExecutionSource` or
+      otherwise change the *skip-gate decision logic* at the five named sites, while
+      explicitly carving out that `cli/index.ts:1616-1646` IS edited by IC-01 for the
+      unrelated FR-001 endpoint-identity-threading fix (a different concern, landed
+      before the resolver exists). Cross-reference IC-01 from the C-005 bullet so the
+      two sections cannot be read as contradicting each other.
+
+  - id: PLAN-FIT-002
+    lens: "[mission-derived] Out-of-place content"
+    severity: 2
+    title: "'Tooling note' recording a spec-kitty scaffold failure sits inside the architecture artifact, not the mission's operational record"
+    evidence:
+      - artifact: "plan.md lines 11-33, the 'Tooling note (transparency, not a state edit)' paragraph, positioned between the Branch contract and the Summary section"
+    claim: >
+      plan.md's opening section contains a ~23-line paragraph about a `spec-kitty plan
+      --mission ... --json` / `spec-kitty agent mission setup-plan` CLI failure
+      (`SPEC_FILE_MISSING`), its root cause in `specify_cli`, and a justification for
+      hand-authoring this file outside the normal scaffold. This is pipeline-tooling
+      commentary about how the artifact was produced, not architecture, requirements
+      mapping, or design content — the material `/spec-kitty.tasks` and future readers
+      of plan.md need. It sits in the most prominent position in the document (before
+      "## Summary"), and its presence risks two concrete problems: (1) any downstream
+      tooling that parses plan.md structurally (section headers, FR tables) now has to
+      skip past unrelated prose to reach the first real section; (2) a future mission-
+      review or drift-audit reading plan.md for "what does the architecture say" has to
+      manually filter out an incident report about the spec-kitty CLI itself, which has
+      nothing to do with the cassette engine's design.
+    remediation: >
+      Move the tooling-failure account out of plan.md into the mission's existing
+      operational record — `status.events.jsonl` already exists in this mission
+      directory and is the correct place for a state/process anomaly note, or record it
+      as a one-line entry in the PR description per the charter's Exception Policy
+      ("Deviations from ... upstream tooling suggestions require a written one-line
+      justification recorded in the mission work log"). Keep plan.md starting at
+      "## Summary" as pure design content; a single one-line pointer ("see mission work
+      log for a tooling note about how this file was authored") is enough if traceability
+      is wanted in-place.
+
+  - id: PLAN-FIT-003
+    lens: spec_fidelity
+    title: "Plan cites 'AC-9' and 'AC-15' as if spec.md defines Acceptance-Criteria IDs, but spec.md's Acceptance Scenarios are plain-numbered 1-16 with no 'AC-' prefix"
+    severity: 1
+    evidence:
+      - artifact: "plan.md line 418-419 (Hazard 1): \"AC-9 requires \\\"the process exits with the normal failure exit code — not 0, not a skip code\\\"\""
+      - artifact: "plan.md line 476 (IC-01 Risks): \"only new assertions are added (AC-15)\""
+      - artifact: "plan.md line 279 (Project Structure, tests/adapters/openclaw-sop/runner.test.ts): \"FR-001/AC-15: real endpoint identity + measured durationMs assertions\""
+      - artifact: "spec.md § Acceptance Scenarios (lines 135-220): scenarios are numbered plainly '1.' through '16.'; no 'AC-' identifier scheme appears anywhere in spec.md"
+    claim: >
+      The plan repeatedly cites "AC-9" and "AC-15" as though spec.md defines these as
+      formal acceptance-criteria IDs (the way it defines FR-/NFR-/C-/SC- IDs). It does
+      not — spec.md's Acceptance Scenarios section uses bare sequence numbers (scenario
+      9 is the stale-miss exit-code scenario, scenario 15 is the SOP transcript-identity
+      scenario, and the quoted text in both plan citations does match those scenarios
+      verbatim), but there is no citable "AC-9" or "AC-15" anywhere in the reference
+      artifact. A reader trying to verify the plan's claim by grepping spec.md for
+      "AC-9" or "AC-15" finds nothing, which reads as a fabricated citation even though
+      the underlying content is accurate.
+    remediation: >
+      Replace "AC-9"/"AC-15" with "Acceptance Scenario 9"/"Scenario 15" (matching
+      spec.md's actual numbering), or add one line to plan.md's own conventions stating
+      "this plan refers to spec.md's numbered Acceptance Scenarios as AC-N" so the
+      shorthand is self-documenting instead of looking like a spec-defined ID.

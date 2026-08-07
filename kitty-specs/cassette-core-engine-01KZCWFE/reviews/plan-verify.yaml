@@ -1,0 +1,60 @@
+schema: review-verify/v1
+complete: true
+phase: plan
+round: 3
+final: true
+results:
+- id: PLAN-VERIFY-001
+  status: resolved
+  reason: Live re-derivation confirms types.ts:82-128 is genuinely CaseVerdict->RunVerdict[]->Transcript (3 levels), the round-3-untouched Hazard 3 copy still builds new objects at all 3 levels with opts.replay===true gating intact (plan.md:498-499), and cli/index.ts:475-477 (io.outLine emission) vs :482-489 (exit-code branch reading only run.error) match the plan's citations exactly, so the replay-only normalization and exit-code ordering both still hold.
+- id: PLAN-VERIFY-002
+  status: resolved
+  reason: NI-004 is specified as a quote-aware comment strip plus a now-quote-aware paren-balanced enclosure walk (round 3 hardened step 3), and memory-utilization/index.ts:7,288 and rule-survival.ts:309 remain explicit must-not-false-positive fixtures, independently re-verified live as real same-file Promise.all-comment/.chat( co-occurrences.
+- id: PLAN-VERIFY-003
+  status: resolved
+  reason: Technical Context, Test Strategy row 5, and Project Structure all still explicitly require vi.spyOn(globalThis, "fetch") asserting zero calls, mirroring the real cli.test.ts:727 precedent, re-verified live to exist unchanged.
+- id: PLAN-VERIFY-004
+  status: resolved
+  reason: IC-01 Risks and Test Strategy row 15 still require the Scenario-15 mock client to introduce a >=5ms async delay and assert durationMs >= 5, unaffected by round 3's edits (which were confined to NI-004/Hazard 1).
+- id: PLAN-VERIFY-005
+  status: resolved
+  reason: 'The store.test.ts bullet and "Plan-authored behavior coverage" paragraph still explicitly assign a test for design decision #2 (non-empty directory overwrite-only-touched-files); untouched by round 3 and re-confirmed present in current plan.md.'
+- id: PLAN-VERIFY-006
+  status: resolved
+  reason: NI-004's scan scope is a directory walk over src/adapters, src/core/behavioral, src/crosslayer; live re-run of `grep -rln '.chat(|.chatWithTools(' src/adapters src/core/behavioral src/crosslayer` at current HEAD returns exactly the same 10 files the plan enumerates, including memory-utilization/judge.ts:137 and openclaw-sop/judge.ts:118 at the exact cited lines.
+- id: PLAN-FIT-001
+  status: resolved
+  reason: The Charter Check C-005 bullet still carries the caveat cross-referencing IC-01 and scoping "zero edits" to skip-gate decision logic only, unaffected by round 3; cli/index.ts:1615-1649 buildSopClient/SOP_NOOP_CLIENT range re-verified live.
+- id: PLAN-SEQ-001
+  status: resolved
+  reason: IC-04's Risks paragraph still states the FR-014/015 preflight reads only the suite index via readCassetteSuiteIndex, separating it from per-case D2/FR-013 stale misses; cross-checked live against spec.md FR-013/014/015 (lines 261-263), unchanged and consistent.
+- id: PLAN-FIT-002
+  status: resolved
+  reason: Live grep for "Tooling note"/"scaffold failure"/"SPEC_FILE_MISSING" in plan.md returns zero matches; the document still flows directly from Branch contract to Summary.
+- id: PLAN-SEQ-002
+  status: resolved
+  reason: Project Structure still lists tests/cassette/public-api.test.ts explicitly "owned by IC-06", and IC-06's Affected surfaces bullet still names that file (plan.md:263-266, 891), unaffected by round 3.
+- id: PLAN-FIT-003
+  status: resolved
+  reason: Live grep for "AC-[0-9]" across plan.md returns zero matches; the Test Strategy header still states the plan's own "Scenario N" convention.
+- id: PLAN-FRESH-001
+  status: resolved
+  reason: Same underlying defect as PLAN-VERIFY-006 (original finding text not separately committed to git and thus not recoverable verbatim; reconstructed from round 2's plan-verify.yaml reason, which describes it as NI-004's scan scope not being enumerated). Live re-run of the cited grep against the current tree confirms exactly the 10 files and the two judge.ts line numbers the plan now enumerates, and round 3 did not touch this section.
+- id: PLAN-FRESH-002
+  status: resolved
+  reason: Original finding text not recoverable verbatim (not separately committed; reconstructed from round 2's plan-verify.yaml reason, which describes the risk as a naive end-of-line comment stripper). NI-004's step 1 is still an explicit quote/escape-aware, backtick-span-opaque comment stripper; live-verified runner.ts:192,352,425 and memory/recall.ts:24 do contain in-string slash-slash/colon-slash-slash sequences as the plan claims, and round 3 only added quote-awareness to step 3, leaving step 1 intact.
+- id: PLAN-FRESH-003
+  status: resolved
+  reason: Original finding text not recoverable verbatim (reconstructed from round 2's plan-verify.yaml reason, which describes Hazard 3's original copy as called "shallow"). Hazard 3's Resolution still says "three levels deep" with the exact nested-spread code; live-verified against types.ts that CaseVerdict->RunVerdict[]->Transcript.durationMs is genuinely 3 levels, and round 3 did not touch this passage.
+- id: PLAN-FRESH2-001
+  status: resolved
+  reason: Step 3 (paren-balance enclosure detection) now explicitly reuses step 1's quote/template-literal state machine (skipping parens encountered inside string/template spans) instead of a raw depth counter, with a new dedicated fixture proving the behavior against a string argument containing an unbalanced paren; this is a substantive mechanism change, not a restatement.
+- id: PLAN-FRESH2-002
+  status: resolved
+  reason: Both the NI-004 design section and IC-05 now correctly state the string-concatenation token style is "not a functional necessity" because NI-004's scan scope structurally excludes its own test file (unlike NI-003's src/+tests/ scope, verified live at invariants.test.ts:143-146), replacing the prior factually-incorrect self-exemption claim.
+- id: PLAN-FRESH2-003
+  status: resolved
+  reason: The plan now explicitly states the quote-aware-stripper and paren-balance fixtures are direct unit assertions against small local helper functions (factored out and shared with the directory-walk scan), never through the filesystem walk and never requiring a synthetic or production fixture file, resolving the previously unstated mechanism.
+- id: PLAN-FRESH2-004
+  status: resolved
+  reason: 'Hazard 1''s citation was corrected to the precise src/cli/index.ts:482-489, matching Hazard 3 exactly (live-verified against cli/index.ts: allRuns at 482 through the return at 489); the finding''s evidence named only Hazard 1 vs Hazard 3''s prose, both of which now agree, so the leftover approximate ~L483-488 inside the unrelated Project Structure file-tree comment block (which uses ~L approximations for many other ranges too, e.g. ~L1615-1686, ~L387-393, ~L1978-2011, ~L414-490) is a different, locally-consistent citation style not named by this finding''s scope, not a residual instance of the drift the finding identified.'
