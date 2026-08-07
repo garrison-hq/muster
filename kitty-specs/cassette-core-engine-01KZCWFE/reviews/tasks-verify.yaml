@@ -1,0 +1,30 @@
+schema: review-verify/v1
+complete: true
+phase: tasks
+round: 3
+final: true
+results:
+  - id: TASKS-DECOMP-001
+    status: resolved
+    reason: All runner.test.ts mentions (ownership-note WP04 bullet L12, T026 L82, WP05 Dependencies L191, WP04 Risks L172) and the Extension-not-overlap note L16 now correctly describe it as a pre-existing 895-line file with 11 describe blocks extended by WP04 then WP05 (never created), matching the live file exactly (wc -l = 895; 11 top-level describes incl. "personaPrompt rendering" L596, "C-006 makeClient" L621, "FR-023 transcript completeness" L547, all cited by name and all real); store.test.ts is correctly kept as WP03-created-fresh since tests/cassette/ is genuinely a new directory.
+  - id: TASKS-DECOMP-003
+    status: resolved
+    reason: Current T038 (L94) replaces the old unfalsifiable "positioned to clear" language with concrete pass/fail criteria — explicit thresholds and "fail the gate ... if a changed region's hit rate falls below 80%" — and the WP06 Independent-test line (L201) mirrors it, so the done-condition is now checkable rather than aspirational.
+  - id: TASKS-ORDER-001
+    status: resolved
+    reason: The [P] marker is removed from both T028 and T030 in the Subtask Index (T029 was already unmarked), and WP05's Parallel prose (L192) now explicitly states same-file edits to tests/unit/invariants.test.ts are never [P] per tasks-template.md's own convention (verified at ~/.kittify/missions/software-dev/templates/tasks-template.md:18, "different files/components"), eliminating the collision.
+  - id: TASKS-ORDER-002
+    status: resolved
+    reason: WP03's Parallel prose (L150) now correctly states T012 (hostnameOf export in behavioral/client.ts) has no dependency on T008 and can start immediately alongside T008/T009, matching its own [P] marking in the Subtask Index; verified against the real file — src/core/behavioral/client.ts imports only from ./types.js (behavioral/types.ts), never from the new core/cassette/types.ts T008 creates, so the two tasks are genuinely independent.
+  - id: TASKS-FRESH-001
+    status: resolved
+    reason: Current T038/WP06 wording splits the coverage check by file class — wholly-new files (src/core/cassette/**, execution-source.ts) keep a whole-file assertion (valid because whole-file coverage equals new-code coverage for a brand-new file), while large partially-touched shared files (src/cli/index.ts, openclaw-sop/runner.ts, behavioral/{client,runner}.ts) are checked via per-line/branch-hit inspection of only the touched regions named per WP/task — this is new-code-grained, not a whole-file aggregate, for the files where that distinction matters.
+  - id: TASKS-FRESH2-001
+    status: resolved
+    reason: Every threshold in the current coverage text (T038 L94, WP06 Independent-test L201, Gates section L263, NFR map L47) reads ">=80%"/"at least 80%" and explicitly disclaims "rather than a stricter 100%-hit bar" — live re-derivation confirms this matches spec.md NFR-005 ("≥ 80% coverage on new code (SonarCloud quality gate), lcov-uploaded") and charter.md's Testing Standards/Quality Gates clauses ("at least 80%... the 80% threshold applies to new code only"), so the text no longer rejects work that would pass the real SonarCloud gate.
+  - id: TASKS-FRESH2-002
+    status: resolved
+    reason: T038 (L94) names src/core/behavioral/types.ts within the general "shared files this mission edits" list (accurate — T023 does touch it) but then explicitly excludes it from the per-region hit-rate enumeration with a verifiable rationale ("grep -nE '^(export )?(function|const|class|enum)' src/core/behavioral/types.ts returns no matches ... no executable line or branch ... carries no coverage obligation"); live re-derivation confirms the grep genuinely returns zero matches and the file's only non-blank, non-brace content is comments/interface fields, so the claim is factually correct and the type-only change is not subject to the coverage verification — WP06's Independent-test line (L201) goes further and omits types.ts from the shared-files list entirely, which is consistent in substance (no obligation either way) even though the two lines group the filename slightly differently.
+  - id: TASKS-DECOMP-002
+    status: resolved
+    reason: Diffing c343f10 against HEAD (ee3f39f) shows WP03's only change across all three fix rounds is the T012 dependency-prose correction (TASKS-ORDER-002); the Goal, Independent-test line, full T008-T019 subtask set, single T019 verification gate, and Risks paragraph are byte-identical to the pre-fix version, confirming the refuted split proposal was correctly left unapplied throughout.
