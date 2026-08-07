@@ -32,7 +32,7 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { runCli } from "../../src/cli/index.js";
 import type { RunCliOptions } from "../../src/cli/index.js";
-import type { ChatClient, EndpointConfig } from "../../src/core/behavioral/types.js";
+import type { CaseVerdict, ChatClient, EndpointConfig } from "../../src/core/behavioral/types.js";
 
 const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
 const cassetteDir = join(repoRoot, "fixtures", "cassettes", "discrimination-control");
@@ -51,11 +51,12 @@ function neverCalledClientFactory(_endpoint: EndpointConfig): ChatClient {
   };
 }
 
-interface ReplayVerdict {
-  id: string;
-  passed: boolean;
-  stale?: boolean;
-}
+// PR-FRESH-006: derived from the production `CaseVerdict` type (not
+// hand-duplicated) so a future rename of any of these fields — especially
+// `stale`, the field this file's core anti-vacuity assertion reads — breaks
+// this file at compile time instead of silently degrading the assertion
+// below to a no-op.
+type ReplayVerdict = Pick<CaseVerdict, "id" | "passed" | "stale">;
 
 async function replayDiscriminationControl(
   runCliFn: typeof runCli

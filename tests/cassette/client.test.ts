@@ -176,6 +176,95 @@ describe("makeCassetteClient — record mode (FR-008)", () => {
     }
   );
 
+  it(
+    "PR-FRESH-005: freezes the persisted request's `opts` at call time — mutating the caller's " +
+      "`opts` object AFTER `chat()` returns (the opts-side counterpart of the `messages` " +
+      "mutation exercised above) must not corrupt the already-recorded exchange",
+    async () => {
+      const inner = fakeChatClient();
+      const recordSink: CassetteExchange[] = [];
+      const client = makeCassetteClient(inner, {
+        mode: "record",
+        caseId: "case-1",
+        recordSink,
+        endpoint: { model: "test-model", baseUrl: "https://api.example.com/v1" },
+      });
+      const messages: ChatMessage[] = [{ role: "user", content: "hi" }];
+      const mutableOpts: { temperature?: number } = { temperature: 0.5 };
+      const originalOptsSnapshot = { ...mutableOpts };
+
+      await client.chat(messages, mutableOpts);
+
+      // Mutate the same opts object the caller passed in, immediately after
+      // the call returns.
+      mutableOpts.temperature = 0.9;
+
+      expect(recordSink).toHaveLength(1);
+      const persistedOpts = recordSink[0]?.request.opts;
+      expect(persistedOpts).toEqual(originalOptsSnapshot);
+      // The persisted opts is a copy, not the same object reference.
+      expect(persistedOpts).not.toBe(mutableOpts);
+    }
+  );
+
+  it(
+    "PR-FRESH-004: freezes the persisted request at call time for chatWithTools too — mutating " +
+      "the caller's `messages` and `tools` arrays AFTER `chatWithTools()` returns must not " +
+      "corrupt the already-recorded exchange (ca5d777 fixed the `chat` and `chatWithTools` " +
+      "call sites identically; only `chat` had a regression test until now)",
+    async () => {
+      const inner: ToolChatClient & { toolCalls: unknown[][] } = {
+        toolCalls: [],
+        async chat(messages: ChatMessage[]): Promise<string> {
+          return `chat-${messages.length}`;
+        },
+        async chatWithTools(_messages: ChatMessage[], tools: unknown[]): Promise<unknown> {
+          inner.toolCalls.push(tools);
+          return { toolResult: `response-${inner.toolCalls.length}` };
+        },
+      };
+      const recordSink: CassetteExchange[] = [];
+      const client = makeCassetteClient(inner, {
+        mode: "record",
+        caseId: "case-1",
+        recordSink,
+        endpoint: { model: "test-model", baseUrl: "https://api.example.com/v1" },
+      });
+      const messages: ChatMessage[] = [
+        { role: "system", content: "system prompt" },
+        { role: "user", content: "call a tool" },
+      ];
+      const tools: unknown[] = [{ type: "function", function: { name: "lookup" } }];
+      const originalMessagesLength = messages.length;
+      const originalMessagesSnapshot = messages.map((m) => ({ ...m }));
+      const originalToolsSnapshot = [...tools];
+
+      const result = await client.chatWithTools(messages, tools);
+      expect(result).toEqual({ toolResult: "response-1" });
+
+      // Mimic the same after-return mutation pattern PR-TESTS-001 guards
+      // against for `chat`: push onto `messages`, and also mutate `tools`
+      // (push a new entry — exactly the pattern the array-shell copy in
+      // client.ts's chatWithTools protects against; see PR-FRESH-003).
+      messages.push({ role: "assistant", content: "tool call" });
+      tools.push({ type: "function", function: { name: "extra" } });
+
+      expect(recordSink).toHaveLength(1);
+      const exchange = recordSink[0];
+      expect(exchange?.kind).toBe("chatWithTools");
+      if (exchange?.kind !== "chatWithTools") {
+        throw new Error("expected a chatWithTools exchange");
+      }
+      const persisted = exchange.request;
+      expect(persisted.messages).toHaveLength(originalMessagesLength);
+      expect(persisted.messages).toEqual(originalMessagesSnapshot);
+      // The persisted request is a copy, not the same array references.
+      expect(persisted.messages).not.toBe(messages);
+      expect(persisted.tools).toEqual(originalToolsSnapshot);
+      expect(persisted.tools).not.toBe(tools);
+    }
+  );
+
   it("a new decorator instance (new case) starts the ordinal counter over at 1 (resets per case file)", async () => {
     const innerA = fakeChatClient();
     const sinkA: CassetteExchange[] = [];

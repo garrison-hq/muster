@@ -319,6 +319,12 @@ describe("fixture integrity: committed fixtures/cassettes/**/*.json (PR-TESTS-00
 
       // Guard against a silently-empty glob (a vacuously-passing test).
       expect(caseFiles.length).toBeGreaterThan(0);
+      // PR-FRESH-007: guard against a non-empty file set whose exchanges are
+      // ALL empty — that would still pass the check above and then run the
+      // nested loop below zero times, asserting nothing. Guarding on the
+      // total exchange count closes that one-level-down vacuity gap.
+      const totalExchanges = caseFiles.reduce((n, cf) => n + cf.parsed.exchanges.length, 0);
+      expect(totalExchanges).toBeGreaterThan(0);
 
       for (const { path, parsed } of caseFiles) {
         for (const exchange of parsed.exchanges) {

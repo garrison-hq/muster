@@ -169,8 +169,17 @@ export function makeCassetteClient(
         messages: ChatMessage[],
         tools: unknown[]
       ): Promise<unknown> => {
-        // Deep-copy at call time — same PR-TESTS-001 rationale as `chat`
-        // above: freeze a copy, never alias the caller's mutable array.
+        // Copy at call time — same PR-TESTS-001 rationale as `chat` above,
+        // but ONE LEVEL SHALLOWER: `tools: [...tools]` freezes the array
+        // shell (immune to the caller push/splice-after-return pattern this
+        // fix targets), not each tool object's own fields. Unlike `chat`'s
+        // `messages` (flat `ChatMessage` — spread-copied per element), the
+        // `tools` element type is opaque (`unknown[]`, see
+        // `ToolChatClient.chatWithTools` in `../behavioral/client.ts`), so
+        // there is no generic way to clone it deeper here. A caller that
+        // mutates `tools[i]`'s own fields in place *after* this call returns
+        // can still corrupt the persisted request — no known call site does
+        // this today (see PR-FRESH-003).
         const request = { messages: messages.map((m) => ({ ...m })), tools: [...tools] };
         const started = Date.now();
         const response = await toolInner.chatWithTools(messages, tools);
