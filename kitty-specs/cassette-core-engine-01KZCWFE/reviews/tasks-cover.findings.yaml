@@ -1,0 +1,43 @@
+schema: review-findings/v1
+complete: true
+phase: tasks
+lens_group: cover
+mission: cassette-core-engine-01KZCWFE
+findings:
+  - id: TASKS-COVER-001
+    lens: File references are real
+    severity: 4
+    title: "tasks.md wrongly claims WP04 creates tests/behavioral/runner.test.ts \"fresh\"/\"new\" — the file already exists with 895 lines of unrelated pre-existing tests"
+    evidence:
+      - artifact: "tasks.md § Ownership note, WP04 bullet (line 12): \"tests/behavioral/runner.test.ts (created fresh here — FR-013 stale-propagation assertion) (IC-04)\""
+      - artifact: "tasks.md § T026: \"tests/behavioral/runner.test.ts (new): `stale` field propagation assertion ...\""
+      - artifact: "tasks.md § Extension-not-overlap note (line 16): \"these two extensions are always sequenced after the file's creating WP has merged\" (referring to WP04 as the file's creating WP)"
+      - code: "tests/behavioral/runner.test.ts:1-895 (file exists pre-mission, 895 lines, 12 pre-existing describe blocks: FR-022 k-of-n grading, personaPrompt rendering, C-006 makeClient, C-004/directive 5 source hygiene, etc. — confirmed present at HEAD db80a42, not created by this mission)"
+      - artifact: "plan.md § Project Structure (line 293-296): correctly marks this file `MODIFIED`, not new: \"tests/behavioral/ └── runner.test.ts # MODIFIED — + personaPrompt purity guard (FR-022...) + `stale` field propagation assertion (FR-013)\""
+    claim: >
+      tasks.md's Ownership note and T026 both describe tests/behavioral/runner.test.ts as
+      created fresh by WP04, and the Extension-not-overlap note builds its whole
+      same-file-sequencing argument (WP05's T034 extension must land "after the file's
+      creating WP has merged") on that premise. This is factually wrong against both the
+      codebase and the authoritative plan.md: the file already exists at
+      tests/behavioral/runner.test.ts with 895 lines and 12 describe blocks covering
+      unrelated behavior (a prior mission's own "FR-022" k-of-n grading tests,
+      personaPrompt rendering, makeClient mocking, source hygiene, etc.). plan.md's own
+      Project Structure table correctly labels this file "MODIFIED" — tasks.md introduces
+      the "(new)"/"created fresh here" framing itself, a drift from the reviewed plan. An
+      implementer or WP-scoped agent following T026's "(new)" label literally risks using
+      a file-creation tool (Write, overwriting the whole file) instead of an edit/append,
+      which would silently delete 895 lines of pre-existing, currently-passing test
+      coverage — a direct regression against charter's "full Vitest suite green" gate and
+      spec.md's SC-007 ("all previously passing behavioral and invariant tests ...
+      unchanged by this mission").
+    remediation: >
+      Change the Ownership note's WP04 bullet and T026's description from "(new)"/"created
+      fresh here" to "(existing — extended here with the stale-propagation assertion)",
+      matching plan.md's "MODIFIED" framing. Update the Extension-not-overlap note's
+      "after the file's creating WP has merged" language to "after WP04's edit to the
+      pre-existing file has merged" so the sequencing argument no longer depends on the
+      false premise that WP04 originates the file. No change to WP dependency ordering is
+      needed — WP05 still correctly waits for WP04 to land first — only the file-origin
+      characterization needs correcting to prevent an overwrite mistake during
+      implementation.
