@@ -41,7 +41,6 @@ import {
   loadBehavioralManifest,
 } from "../core/behavioral/manifest.js";
 import { runCase, type RunnerOptions } from "../core/behavioral/runner.js";
-import type { BehavioralCase } from "../core/behavioral/types.js";
 import { makeClient } from "../core/behavioral/client.js";
 import {
   makeCassetteClient,
@@ -54,6 +53,7 @@ import {
   type CassetteSuiteIndex,
 } from "../core/cassette/index.js";
 import type {
+  BehavioralCase,
   CaseVerdict,
   ChatClient,
   EndpointConfig,
