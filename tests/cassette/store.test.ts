@@ -14,6 +14,7 @@ import {
 } from "../../src/core/cassette/store.js";
 import { SCHEMA_VERSION, type CassetteCaseFile, type CassetteExchange, type CassetteSuiteIndex } from "../../src/core/cassette/types.js";
 import { canonicalJson } from "../../src/core/canonical-json.js";
+import { makeCassetteClient } from "../../src/core/cassette/client.js";
 
 let tmpDirs: string[] = [];
 
@@ -222,5 +223,51 @@ describe("non-empty-target-directory overwrite semantics (plan design decision #
 
     expect(readCassetteCase(dir, "case-1")?.exchanges[0]?.response).toBe("v2");
     expect(readCassetteCase(dir, "case-2")?.exchanges[0]?.response).toBe("v1");
+  });
+});
+
+describe("FR-020 credential-shaped endpoint base URL is never persisted (Scenario 3)", () => {
+  it("recording against an endpoint whose base URL embeds a credential-shaped fake token persists no API key value, no apiKeyEnv value, and no full endpoint URL — hostname only", async () => {
+    const dir = await makeTmpDir();
+    const FAKE_TOKEN = "fake-token-abc123";
+    const baseUrl = `https://${FAKE_TOKEN}@api.example.com/v1`;
+
+    // Full record-mode path (makeCassetteClient, not a hand-built
+    // provenance object) — the actual seam FR-020/C-004 constrain.
+    const recordSink: CassetteExchange[] = [];
+    const client = makeCassetteClient(
+      { chat: async () => "hello there" },
+      {
+        mode: "record",
+        caseId: "credential-case",
+        recordSink,
+        endpoint: { model: "test-model", baseUrl },
+      }
+    );
+    await client.chat([{ role: "user", content: "hi" }], {});
+    expect(recordSink).toHaveLength(1);
+
+    writeCassetteCase(dir, {
+      schemaVersion: SCHEMA_VERSION,
+      caseId: "credential-case",
+      exchanges: recordSink,
+    });
+
+    const raw = await readFile(join(dir, "credential-case.json"), "utf8");
+    // No API key value.
+    expect(raw).not.toContain(FAKE_TOKEN);
+    // No apiKeyEnv value — the store's provenance shape has no such field at
+    // all (CassetteRecordOptions.endpoint carries no apiKeyEnv), so this
+    // also guards against a future field addition leaking it.
+    expect(raw).not.toContain("apiKeyEnv");
+    // No full endpoint URL (userinfo, path, or scheme+host together).
+    expect(raw).not.toContain(baseUrl);
+    expect(raw).not.toContain("/v1");
+    expect(raw).not.toMatch(/https?:\/\//);
+    // Hostname only, extracted via hostnameOf (C-004) — the credential
+    // segment (`fake-token-abc123@`) is stripped, the path is dropped.
+    const parsed = JSON.parse(raw) as CassetteCaseFile;
+    const exchange = parsed.exchanges[0] as Extract<CassetteExchange, { kind: "chat" }>;
+    expect(exchange.provenance.hostname).toBe("api.example.com");
   });
 });
