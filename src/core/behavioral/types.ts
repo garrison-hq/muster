@@ -118,6 +118,14 @@ export interface RunVerdict {
    * `RunVerdict` object literals elsewhere in the codebase stay valid.
    */
   passRate?: number;
+  /**
+   * Set `true` when this run's error was a cassette replay miss
+   * (`CassetteMissError`) — staleness, distinct from a generic conformance
+   * failure (FR-013). Additive, mirrors the `passRate` precedent: optional
+   * so pre-existing `RunVerdict` object literals elsewhere in the codebase
+   * stay valid. Never set for a live-mode or record-mode run.
+   */
+  stale?: boolean;
 }
 
 /** Case verdict: `passed = passCount >= pass_threshold` (FR-022). */
@@ -134,6 +142,13 @@ export interface CaseVerdict {
    * elsewhere in the codebase (e.g. adapter tests) stay valid.
    */
   passRate?: number;
+  /**
+   * `true` when at least one of `runs` is itself `stale` (a cassette replay
+   * miss, FR-013). Additive, mirrors the `passRate` precedent: optional so
+   * pre-existing `CaseVerdict` object literals elsewhere in the codebase
+   * stay valid. Never set for a live-mode or record-mode run.
+   */
+  stale?: boolean;
 }
 
 /**

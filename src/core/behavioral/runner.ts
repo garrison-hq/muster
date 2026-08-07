@@ -32,6 +32,7 @@ import type {
 import { merge } from "../merge.js";
 import type { CheckResult } from "../pipeline.js";
 import type { Violation } from "../report.js";
+import { CassetteMissError } from "../cassette/errors.js";
 import { gradeRefusal, gradeStateShift, gradeVerbosity, verbosityLimit } from "./graders.js";
 import type {
   AxisGrade,
@@ -547,6 +548,7 @@ export async function runCase(
     const started = Date.now();
     let records: TurnRecord[] | null = null;
     let error: string | undefined;
+    let stale = false;
 
     try {
       records = await executeRun({
@@ -562,6 +564,12 @@ export async function runCase(
     } catch (error_) {
       // FR-022: an errored run is a failed run — record, never re-throw.
       error = error_ instanceof Error ? error_.message : String(error_);
+      // FR-013: a cassette replay miss is staleness, not a generic
+      // conformance failure — label it distinctly, reusing this same
+      // untouched error-containment path rather than adding a second one.
+      if (error_ instanceof CassetteMissError) {
+        stale = true;
+      }
     }
 
     const transcript: Transcript = {
@@ -582,6 +590,9 @@ export async function runCase(
         // Additive (research.md §3 prerequisite 1) — appended last so
         // pre-existing fields/ordering are unchanged for existing consumers.
         passRate: computeRunPassRate(false, []),
+        // Additive (FR-013) — appended last, same reason; only present when
+        // the error was a cassette replay miss.
+        ...(stale && { stale: true }),
       });
       continue;
     }
@@ -605,5 +616,8 @@ export async function runCase(
     runs,
     // Additive (research.md §3 prerequisite 1) — appended last, same reason.
     passRate: runs.length === 0 ? 0 : passCount / runs.length,
+    // Additive (FR-013) — appended last, same reason; true iff any run of
+    // this case was labeled stale.
+    ...(runs.some((run) => run.stale === true) && { stale: true }),
   };
 }
