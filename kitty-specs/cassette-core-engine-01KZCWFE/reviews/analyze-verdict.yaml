@@ -1,0 +1,40 @@
+schema: analysis-findings/v1
+complete: true
+mission: cassette-core-engine-01KZCWFE
+mission_id: 01KZCWFEZC1TS3N5250Q5G0XPM
+run: re-analysis-after-fix-653dced
+verdict: ready
+findings:
+  - id: ANALYZE-003
+    severity: low
+    category: inconsistency
+    summary: >-
+      tasks.md T025 cites tests/unit/cli.test.ts:725 for the
+      vi.spyOn(globalThis, "fetch") NFR-003 precedent; plan.md correctly
+      cites :727 (the actual vi.spyOn call, verified against source).
+      Non-blocking two-line citation drift, precedent still unambiguous
+      from surrounding prose in both documents.
+analyze_001_resolved: true
+analyze_001_verification: >-
+  src/core/behavioral/types.ts lines 66/101/112 verified against source at
+  commit db80a42 and confirmed to carry the "an errored run counts as a
+  failed run" (FR-022) contract from an earlier mission, exactly as
+  plan.md's disambiguating parenthetical now states; cross-checked against
+  spec.md's own FR-022 (personaPrompt purity guard) and confirmed distinct.
+analyze_002_resolved: true
+analyze_002_verification: >-
+  spec.md NFR-005's widened Requirement text ("across every work package,
+  not only src/core/cassette/") now agrees with plan.md line 917 and
+  tasks.md line 47/T038, which already scoped the >=80% new-code coverage
+  gate cross-cuttingly before the fix; no contradiction found anywhere
+  else across the three artifacts.
+fix_introduced_issues: none
+three_mechanisms_consistent: true
+persistence_note: >-
+  spec-kitty agent mission record-analysis was unusable for this mission
+  because it resolves the project root via the linked worktree's .git
+  pointer back to the primary checkout on protected main (no mission
+  directory there, no --project-root flag or env override available), so
+  this report was written directly to kitty-specs/cassette-core-engine-01KZCWFE/reviews/
+  and committed via spec-kitty safe-commit instead, per operator
+  authorization, leaving the canonical analysis-report.md path absent.

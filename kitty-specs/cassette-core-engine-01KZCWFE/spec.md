@@ -279,7 +279,7 @@ provenance, so this fix lands first, in the same mission.
 | NFR-002 | Replay MUST be credential-free and deterministic. | `--replay` completes and produces verdicts with `MUSTER_ENDPOINT` unset and no API key environment variable set; running it twice yields byte-identical verdict `--json`. | Proposed |
 | NFR-003 | Replay MUST perform zero network I/O. | 0 network/`fetch` invocations observed during a replay run, asserted by test. | Proposed |
 | NFR-004 | The decorator MUST introduce no new fetch call site. | `tests/unit/invariants.test.ts`'s NI-003 `FETCH_ALLOWED` list stays exactly `["src/core/behavioral/client.ts", "src/adapters/a2a/transport.ts"]`. | Proposed |
-| NFR-005 | New cassette-core code MUST meet the project's new-code coverage gate. | ≥ 80% coverage on new code (SonarCloud quality gate), lcov-uploaded. | Proposed |
+| NFR-005 | All new code added by this mission (across every work package, not only `src/core/cassette/`) MUST meet the project's new-code coverage gate. | ≥ 80% coverage on new code (SonarCloud quality gate), lcov-uploaded. | Proposed |
 | NFR-006 | Existing `--json` output for every non-cassette and non-replay command path MUST NOT change. | 100% of pre-mission `--json` golden/byte-stability tests still pass unchanged. | Proposed |
 | NFR-007 | The invariant guard suite (including the new size lint and the new NI-004 sequential-execution guard) MUST stay inside its existing combined performance budget. | Combined NI-001/002/003/004 (+ size lint) runtime ≤ the suite's existing 2000 ms budget. | Proposed |
 

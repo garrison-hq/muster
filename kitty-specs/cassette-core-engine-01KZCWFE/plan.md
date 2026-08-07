@@ -406,8 +406,11 @@ to remember to invoke.
 identifying the case id and the missing `(requestHash, ordinal)` key.
 `runCase`'s existing per-run `catch` block (`src/core/behavioral/
 runner.ts` line ~562, unchanged control flow) already converts any thrown
-error into an errored/failed run (FR-022's pre-existing "errored run
-counts as failed" contract) — this plan adds one `instanceof
+error into an errored/failed run (the pre-existing "an errored run
+counts as a failed run" contract documented at `src/core/behavioral/
+types.ts` lines 66/101/112 — an earlier mission's FR-022, distinct from
+*this* mission's FR-022, the `personaPrompt` purity guard) — this plan
+adds one `instanceof
 CassetteMissError` check inside that same catch block to additionally set
 `stale: true` on the `RunVerdict` (FR-013), reusing the untouched
 error-containment path rather than adding a second one.
