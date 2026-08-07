@@ -1,0 +1,8 @@
+schema: review-findings/v1
+complete: true
+phase: integration
+lens_group: integration
+round: 2
+mission: cassette-core-engine-01KZCWFE
+int_001_status: resolved
+findings: []

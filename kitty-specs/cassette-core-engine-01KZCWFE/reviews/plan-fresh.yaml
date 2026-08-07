@@ -1,0 +1,112 @@
+schema: review-findings/v1
+complete: true
+phase: plan
+lens_group: fresh
+round: 2
+mission: cassette-core-engine-01KZCWFE
+findings:
+  - id: PLAN-FRESH2-001
+    lens: mechanism-soundness
+    severity: 3
+    title: NI-004's paren-balance enclosure scan is not string/template-literal-aware, unlike its own comment stripper
+    evidence:
+      - artifact: "plan.md § NI-004 design, step 3 (lines ~605-609)"
+      - code: "src/crosslayer/manifest-runner.ts:195-196"
+    claim: >
+      Step 1 of NI-004's algorithm was hardened this round specifically because a
+      naive, non-quote-aware stripper could delete real code following an in-string
+      `//` (e.g. `openclaw-sop/runner.ts`'s `"mock://test"`), and the plan explicitly
+      argues this must hold "under future changes, not just today's tree" rather than
+      relying on today's absence of a colliding line. Step 3 (paren-balance enclosure
+      detection) does not apply the same discipline: it walks raw `(`/`)` characters in
+      the comment-stripped text to find a `Promise.all(...)`'s matching close paren,
+      with no string-literal tracking. A `Promise.all(...)` call whose argument list
+      contains a string/template literal with an unbalanced paren (e.g. an error message
+      like `"forgot to close ("`) would desync the depth counter, either truncating the
+      enclosure span early (false negative — a real `.chat(`/`.chatWithTools(` wrap goes
+      unreported, undermining the very C-006 guarantee NI-004 exists to enforce) or
+      extending it too far (false positive sweeping in an unrelated later call). Verified
+      live: today only one real `Promise.all(` call exists inside the scan scope
+      (`src/crosslayer/manifest-runner.ts:195`, wrapping `.map(...)`, no `.chat(`/
+      `.chatWithTools(` inside it), so this is not exercised today — it is exactly the
+      "unverified-today, wrong-tomorrow" failure mode the same revision's own step-1
+      rationale (lines ~592-597) argues against, applied inconsistently to step 3.
+    remediation: >
+      Either track quote/template-literal state through the paren-balance walk too (skip
+      `(`/`)` characters encountered while inside a string/template span, reusing the
+      same state machine already built for comment-stripping), or explicitly document the
+      accepted limitation in the plan/IC-05 risk note so a reviewer does not need to
+      rediscover it, and add a fixture case (a `Promise.all` argument containing a string
+      with an unbalanced paren) proving the guard's actual behavior in that shape.
+
+  - id: PLAN-FRESH2-002
+    lens: internal-consistency
+    severity: 2
+    title: "NI-004's \"self-exemption via string concatenation\" rationale is inapplicable — its scan scope structurally excludes the test file that would need exempting"
+    evidence:
+      - artifact: "plan.md § NI-004 design (line ~603) and § IC-05 (lines ~819-821)"
+      - code: "tests/unit/invariants.test.ts:143-146"
+    claim: >
+      Both the NI-004 design section and IC-05 justify building `PROMISE_ALL_CALL` by
+      string concatenation as "mirroring NI-003's `FETCH_CALL` self-exemption convention,
+      so this test file's own source describing the guard does not self-trip it." That
+      rationale is real for NI-003, whose scan scope is `walk(src) + walk(tests)`
+      (`invariants.test.ts:143-146`) — `invariants.test.ts` itself is inside `tests/` and
+      would self-match `fetch(` as a literal string if built directly. NI-004's scan scope,
+      confirmed elsewhere in this same revision, is only `src/adapters/`,
+      `src/core/behavioral/`, and `src/crosslayer/` — none of which contain
+      `tests/unit/invariants.test.ts`. NI-004 could never scan its own defining file
+      regardless of how `PROMISE_ALL_CALL` is built, so the self-exemption concern does not
+      apply to it; the stated justification is factually incorrect, though harmless in
+      practice (concatenation still works, just for no operative reason).
+    remediation: >
+      Drop the "mirrors NI-003's self-exemption convention, avoids self-tripping" claim
+      for NI-004's `PROMISE_ALL_CALL`, or replace it with the actual reason (if any) for
+      using concatenation there — e.g. stylistic consistency with NI-003's token, not a
+      functional necessity.
+
+  - id: PLAN-FRESH2-003
+    lens: gap-hunting
+    severity: 2
+    title: NI-004's third ("quote-aware stripper") fixture doesn't specify how it is fed into the guard given the inline, filesystem-walk-only scan architecture
+    evidence:
+      - artifact: "plan.md § NI-004 design, \"Must-not-false-positive fixtures\" (lines ~674-680)"
+    claim: >
+      The new third fixture requires a "scan-scope file containing a `://`-bearing string
+      literal ... followed on a later line by a real, uncommented `Promise.all(...)`/
+      `.chat(` pairing" to be reported as a violation, but also states "this fixture is
+      synthetic test fixture, not a change to any production file." NI-004 as specified is
+      an inline scan driven entirely by `walk()` over three real source directories
+      (mirroring NI-002/NI-003's style — no exported/testable helper function is proposed).
+      Given that architecture, exercising the stripper against synthetic text requires
+      either (a) extracting the stripper into a directly-callable helper the test invokes
+      with a literal string (a design choice the plan never states), or (b) adding an
+      actual fixture `.ts` file under one of the three scanned directories (which would
+      then be a "change to a production-tree file" and inflate the "self-maintaining
+      scope" file count the same revision just argued for). The plan leaves this
+      unresolved, unlike every other design decision in this revision which is pinned down
+      to the exact mechanism.
+    remediation: >
+      State explicitly in the plan (or IC-05) which of the two approaches is intended —
+      most likely extracting the comment/quote stripper into a small local function shared
+      by both the directory-walk scan and a direct unit-style assertion, consistent with
+      how NI-002/NI-003's `walk()` and `FETCH_ALLOWED` are already both used inside the
+      scan and asserted against directly in separate `it()` blocks.
+
+  - id: PLAN-FRESH2-004
+    lens: cross-reference-integrity
+    severity: 1
+    title: "Hazard 1's line citation for the exit-code tail (~L479-488) drifts from Hazard 3's exact citation (482-489) for the identical code block"
+    evidence:
+      - artifact: "plan.md § Hazard 1 (line ~425) and § Hazard 3 Resolution (line ~516)"
+      - code: "src/cli/index.ts:482-489"
+    claim: >
+      Hazard 1 cites `doBehaveRun`'s existing tail as "`src/cli/index.ts` ~L479-488" and
+      quotes a code block beginning with `const allRuns = verdicts.flatMap(...)`. This
+      round's Hazard 3 edit cites the exact same code block precisely as
+      "`src/cli/index.ts:482-489`" — and 482-489 is the verified-correct range (`const
+      allRuns` is at line 482, the closing `return verdicts.every(...)` at line 489).
+      Hazard 1's approximate range is off by 3 lines from the now-precise Hazard 3
+      citation for the same snippet, an internal inconsistency within the same document
+      this round did not reconcile while it was tightening every other citation nearby.
+    remediation: "Update Hazard 1's citation to the same precise `src/cli/index.ts:482-489` range used in Hazard 3, or explicitly note both point at the same block."

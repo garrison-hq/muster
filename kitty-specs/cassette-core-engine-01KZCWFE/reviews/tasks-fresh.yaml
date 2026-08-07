@@ -1,0 +1,61 @@
+schema: review-findings/v1
+complete: true
+phase: tasks
+lens_group: fresh
+round: 2
+mission: cassette-core-engine-01KZCWFE
+findings:
+  - id: TASKS-FRESH2-001
+    lens: coverage-gate-correctness
+    severity: 3
+    title: "T038's local per-region coverage check demands 100%-line-hit, stricter than the charter's own ≥80% new-code threshold it claims to proxy"
+    evidence:
+      - artifact: "tasks.md § Subtask Index / T038 (line 94)"
+      - artifact: "tasks.md § WP06 Independent test (line 201)"
+      - artifact: "spec.md:282 (NFR-005: \"≥ 80% coverage on new code (SonarCloud quality gate), lcov-uploaded\")"
+      - artifact: ".kittify/charter/charter.md § Testing Standards (\"New-code test coverage must meet the SonarCloud quality-gate threshold of at least 80%\")"
+    claim: >
+      This latest revision replaced the previous overcorrection (whole-file ≥80% for
+      large partially-touched files) with a new criterion for those same files: "confirm
+      every changed line/branch is hit at least once; fail the gate and route back to
+      the under-covered WP if a changed region shows an unhit line/branch." That is a
+      100%-hit-rate bar, not the ≥80% bar that NFR-005 and the charter actually specify.
+      The paragraph's own framing says this local read is a "sanity check" proxying
+      "SonarCloud's ≥80%-new-code gate... the check that actually blocks the PR" — but
+      the proxy is strictly stricter than the thing it proxies. A touched region with,
+      say, 9 of 10 changed lines hit (90%, comfortably clearing Sonar's 80% gate) would
+      still trip T038's literal "fail the gate... if a changed region shows an unhit
+      line" instruction, sending an already-compliant WP back for unneeded rework. This
+      is the second consecutive correction to this exact sentence, and it swaps a
+      wrong-grained-too-loose check (file-aggregate ≥80%) for a wrong-grained-too-strict
+      one (region 100%-hit) rather than the correct grain (region ≥80%, matching Sonar's
+      own new-code-coverage definition of "percentage of new lines covered by tests").
+    remediation: >
+      Change T038's and WP06's touched-region criterion from "every changed line/branch
+      is hit at least once" to "≥80% of changed lines/branches in the region are hit,"
+      matching NFR-005 and the charter's stated threshold exactly, so the local proxy
+      cannot fail a WP that Sonar's real gate would pass.
+
+  - id: TASKS-FRESH2-002
+    lens: wrong-code-claim
+    severity: 2
+    title: "T038 lists T023's stale?: boolean addition to behavioral/types.ts among 'changed regions' requiring line/branch-hit verification, but that file has zero executable statements"
+    evidence:
+      - artifact: "tasks.md § Subtask Index / T038 (line 94): \"...T023 in `behavioral/types.ts`) and confirm every changed line/branch is hit at least once...\""
+      - code: "src/core/behavioral/types.ts:102 (export interface RunVerdict), :124 (export interface CaseVerdict) — both pure TypeScript interfaces, erased at compile time"
+    claim: >
+      T023 adds `stale?: boolean` to the `RunVerdict` and `CaseVerdict` interfaces in
+      `src/core/behavioral/types.ts`. `grep -nE '^(export )?(function|const|class|enum)'
+      src/core/behavioral/types.ts` returns no matches — the entire 192-line file is
+      type-only declarations with no executable statements at all, so v8/lcov coverage
+      instrumentation has nothing to measure there. T038 nonetheless folds `behavioral/
+      types.ts` into the "large, only-partially-touched shared files" bucket and directs
+      the implementer to "open the lcov report's per-line hit annotations... and confirm
+      every changed line/branch is hit at least once" for T023's change specifically.
+      That instruction is vacuous for this file: there is no line or branch for the
+      coverage tool to report as hit or unhit.
+    remediation: >
+      Drop `behavioral/types.ts`/T023 from T038's per-region line/branch-hit
+      enumeration (or note explicitly that pure type-only changes are exempt from the
+      coverage check by construction), so the task doesn't send the implementer looking
+      for lcov annotations that cannot exist.

@@ -1,0 +1,56 @@
+schema: analysis-findings/v1
+complete: true
+mission: cassette-core-engine-01KZCWFE
+mission_id: 01KZCWFEZC1TS3N5250Q5G0XPM
+run: final-re-analysis-after-fix-e36b2b0
+verdict: ready
+findings: []
+analyze_001_resolved: true
+analyze_001_verification: >-
+  src/core/behavioral/types.ts lines 66/101/112 re-verified against source at
+  commit db80a42 and confirmed to carry the "an errored run counts as a
+  failed run" (FR-022) contract from an earlier mission, exactly as
+  plan.md's disambiguating parenthetical states; cross-checked against this
+  mission's own FR-022 (personaPrompt purity guard, spec.md line 270) and
+  confirmed genuinely distinct.
+analyze_002_resolved: true
+analyze_002_verification: >-
+  spec.md NFR-005's Requirement column ("across every work package, not only
+  src/core/cassette/") re-verified to agree with its own Measure column,
+  plan.md line 917, and tasks.md line 47/T038, all of which scope the
+  >=80% new-code coverage gate cross-cuttingly. The type-only carve-out for
+  behavioral/types.ts's stale?: boolean addition was re-confirmed valid via
+  grep -nE '^(export )?(function|const|class|enum)' returning zero matches
+  against the file.
+analyze_003_resolved: true
+analyze_003_verification: >-
+  tests/unit/cli.test.ts re-verified at commit db80a42: line 725 is the
+  enclosing it("BUG-B: ...") block description; line 727 is the exact
+  vi.spyOn(globalThis, "fetch") call. tasks.md T025 now cites cli.test.ts:727
+  (fixed by e36b2b0, a one-line change), matching plan.md's Technical
+  Context and Test Strategy row 5, both of which already cited :727
+  correctly. Both artifacts now cite the same, correct line.
+fix_introduced_issues: none
+three_mechanisms_consistent: true
+three_mechanisms_verification: >-
+  NFR-002 (replay-only transcript.durationMs normalization, three levels
+  deep: CaseVerdict[] -> RunVerdict[] -> Transcript) re-derived from
+  runner.ts:547/572 and cli/index.ts:475-489 (verbatim match to plan.md's
+  Hazard 3 quoted excerpt) and found consistent across spec.md/plan.md/
+  tasks.md. NI-004 (FR-024 directory-walk over src/adapters, src/core/
+  behavioral, src/crosslayer; quote/template-literal-aware comment
+  stripping; paren-balance enclosure detection) re-derived via
+  grep -rln '\.chat(\|\.chatWithTools(' (exact 10-file match to plan.md's
+  list) and file/line counts (83 files, 25022 lines, matching plan.md's
+  "~25,000 lines" claim); found consistent across all three artifacts.
+  NFR-005 (>=80% new-code coverage, whole-file for new files, per-region
+  hit-rate for large shared files, type-only carve-out) re-verified
+  consistent, see analyze_002_verification.
+persistence_note: >-
+  spec-kitty agent mission record-analysis was unusable for this mission
+  because it resolves the project root via the linked worktree's .git
+  pointer back to the primary checkout on protected main (no mission
+  directory there, no --project-root flag or env override available), so
+  this report was written directly to kitty-specs/cassette-core-engine-01KZCWFE/reviews/
+  and committed via spec-kitty safe-commit instead, per operator
+  authorization, leaving the canonical analysis-report.md path absent.

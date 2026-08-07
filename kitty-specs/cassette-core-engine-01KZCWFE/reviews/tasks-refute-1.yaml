@@ -1,0 +1,11 @@
+schema: review-refute/v1
+complete: true
+phase: tasks
+batch: 1
+verdicts:
+  - id: TASKS-DECOMP-001
+    verdict: confirmed
+    reason: All three cited tasks.md lines (12, 82, 191) verified verbatim and mischaracterize tests/behavioral/runner.test.ts as new/created-by-WP04, while the file is confirmed at HEAD db80a42 to already exist at 895 lines with pre-existing coverage (e.g. describe("personaPrompt rendering") at line 596), and plan.md line 293-296 correctly labels the same file MODIFIED.
+  - id: TASKS-ORDER-002
+    verdict: confirmed
+    reason: tasks.md line 150 verified verbatim groups T012 with T009 as gated "once T008 lands" despite the same sentence's own T008-prerequisite list (T009-T011/T013) excluding T012, and src/core/behavioral/client.ts:57's hostnameOf is confirmed to import nothing from src/core/cassette/types.ts, so the prose asserts a functional dependency the code does not have.

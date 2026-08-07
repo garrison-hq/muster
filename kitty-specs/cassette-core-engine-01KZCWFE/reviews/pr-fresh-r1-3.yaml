@@ -1,0 +1,53 @@
+schema: review-findings/v1
+complete: true
+phase: pr
+lens_group: fresh
+mission: cassette-core-engine-01KZCWFE
+findings:
+  - id: PR-FRESH-001
+    lens: fresh
+    severity: 2
+    title: "chatWithTools's freeze comment claims parity with chat's copy but the
+      implementation copies one level shallower (array only, not per-tool-object)"
+    evidence:
+      - "src/core/cassette/client.ts:141-148 — chat's request: `messages:
+        messages.map((m) => ({ ...m })), opts: { ...chatOpts }` — a new array PLUS
+        a new object per message/opts."
+      - "src/core/cassette/client.ts:172-174 — chatWithTools's comment: \"Deep-copy
+        at call time — same PR-TESTS-001 rationale as `chat` above: freeze a copy,
+        never alias the caller's mutable array.\" But the code is `tools:
+        [...tools]` — only a new array; the individual tool-definition objects
+        inside it are the SAME references as the caller's."
+      - "src/core/behavioral/client.ts:109-113 (`ToolChatClient`) types `tools` as
+        `unknown[]` — fully opaque; core has no guarantee its elements are
+        immutable primitives the way `ChatMessage` (types.ts:190-193, flat
+        `{role, content: string}`) is."
+    claim: "The comment on the `chatWithTools` copy asserts it uses \"same
+      PR-TESTS-001 rationale\" as `chat`'s fix, implying equivalent protection
+      against the confirmed aliasing class. For `chat`, the fix is genuinely
+      immune to any caller mutation because `ChatMessage` is flat (both fields are
+      primitive strings), so the per-message spread plus the fresh array closes
+      the aliasing hole completely. For `chatWithTools`, `tools: [...tools]` only
+      protects against the SPECIFIC confirmed pattern (a caller pushing/splicing
+      the array after the call, mirroring `executeRun`'s `messages.push`) — it
+      does NOT protect against a caller mutating a tool object's own fields in
+      place after the call (e.g. `tools[0].function.name = ...`), since the copy
+      is one level shallower than `chat`'s. Today no call site does that (the only
+      `chatWithTools` caller reachable through `makeCassetteClient` is
+      `tests/cassette/client-tools.test.ts`; the only production `chatWithTools`
+      caller, `src/adapters/skills/trigger.ts`'s `runSingleQuery`/`makeToolClient`,
+      reuses a static, never-mutated `tools` array and does not route through
+      `makeCassetteClient` at all — `src/cli/index.ts`'s `buildCaseClient` only
+      ever calls `makeCassetteClient` with the plain `ChatClient` overload), so
+      this is not exploitable right now. But the comment's \"same rationale\"
+      phrasing overstates the guarantee for a genuinely opaque (`unknown[]`) type,
+      which could mislead a future maintainer who reuses a `tools` array across
+      turns and mutates an element in place, assuming the cassette decorator
+      already froze it the same way it froze `messages`."
+    remediation: "Either (a) reword the `chatWithTools` comment to state precisely
+      what is guaranteed — \"freezes the array shell against push/splice; does NOT
+      protect a tool object's own fields against later in-place mutation, since
+      `tools` is opaque (`unknown[]`)\" — or (b) if per-element immunity is
+      desired for parity, deep-clone each tool entry too (e.g.
+      `tools.map((t) => structuredClone(t))`, guarding for non-cloneable values)
+      so the guarantee genuinely matches `chat`'s."

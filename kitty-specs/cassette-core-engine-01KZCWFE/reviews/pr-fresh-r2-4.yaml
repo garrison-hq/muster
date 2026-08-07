@@ -1,0 +1,71 @@
+schema: review-findings/v1
+complete: true
+phase: pr
+lens_group: fresh
+mission: cassette-core-engine-01KZCWFE
+findings:
+  - id: PR-FRESH-001
+    lens: fresh
+    severity: 4
+    title: >-
+      The claimed compile-time link is real in isolation but never actually
+      enforced by any command this repo runs — the round-2 fix's stated
+      guarantee does not fire in practice
+    evidence: >-
+      tests/cassette/discrimination-control.test.ts:54-59 (comment: "a future
+      rename of any of these fields — especially `stale` ... breaks this file
+      at compile time instead of silently degrading the assertion below to a
+      no-op" backing `type ReplayVerdict = Pick<CaseVerdict, "id" | "passed" |
+      "stale">;`); tsconfig.json:15-16 (`"include": ["src/**/*.ts"]`,
+      `"exclude": ["tests", "dist", "node_modules"]`); vitest.config.ts:6-10
+      (`typecheck: { enabled: true, include: ["tests/**/*.test.ts"],
+      tsconfig: "tsconfig.json" }`); package.json:78 (`"typecheck": "tsc
+      --noEmit"`); .github/workflows/ci.yml "Build (tsc strict)" step runs
+      `pnpm build` and the "Test" step runs `pnpm test` (= `vitest run`) —
+      neither other step type-checks tests/. Empirically verified by
+      temporarily renaming `CaseVerdict.stale` to `staleRENAMED` in
+      src/core/behavioral/types.ts (the exact scenario the comment cites) and
+      running, in order: (1) `pnpm typecheck` (`tsc --noEmit`) — zero errors,
+      anywhere, because tsconfig.json's own `exclude: ["tests"]` keeps this
+      file out of the program entirely; (2) `npx vitest run --typecheck`
+      (both scoped to this file and for the full suite) — reports "Type
+      Errors  no errors" and both tests still show a green `✓ TS` line; the
+      expected TS2344 at line 59 never surfaces. To rule out a scoping fluke
+      I additionally planted an unrelated, unambiguous type error directly in
+      this file (`const __obviousTypeError: string = 12345;`) and reran
+      `vitest run --typecheck` — it was ALSO not caught, proving vitest's
+      typecheck pass is not actually evaluating this file's contents under
+      the current wiring, independent of the CaseVerdict question. (3) As a
+      control, I built an ad-hoc tsconfig extending tsconfig.json but with
+      `include: ["src/**/*.ts", "tests/**/*.test.ts"]` (no `tests` exclude)
+      and ran `tsc --noEmit -p` it directly: this correctly produced
+      `tests/cassette/discrimination-control.test.ts(59,40): error TS2344:
+      Type '"id" | "passed" | "stale"' does not satisfy the constraint
+      'keyof CaseVerdict'.` — confirming the Pick<> type mechanism itself is
+      sound; it is the project wiring, not the type, that fails to invoke it.
+      All edits were reverted (`git status --porcelain -uno` empty
+      afterward, confirmed twice).
+    claim: >-
+      The round-2 comment asserts a rename of `CaseVerdict.stale` "breaks
+      this file at compile time instead of silently degrading the assertion
+      below to a no-op." That is false for every command actually wired in
+      this repo: `pnpm typecheck` never sees tests/ (tsconfig.json excludes
+      it), and `pnpm test` — the command CI runs, and the one vitest.config.ts
+      configures `typecheck.enabled: true` for — silently reports "no errors"
+      for this file even under the exact rename the comment describes, and
+      even under a deliberately planted, unrelated, blatant type error placed
+      directly in the file. So under the repo's actual build/test pipeline, a
+      future rename of `stale` would compile clean, `pnpm build` would pass,
+      `pnpm test`/CI would go green, and this test's `stale`-vacuity guard
+      would degrade to a no-op exactly as round 1 was found to risk — the
+      round-2 revision fixes the type shape but not the enforcement gap that
+      makes the shape matter, so the discrimination control's own anti-
+      regression safety net is not actually armed.
+    remediation: >-
+      Either wire an actual gate that type-checks tests/ against src/ types
+      (e.g. point vitest's `typecheck.tsconfig` at a project config that does
+      not exclude tests/, or add a dedicated CI step running `tsc --noEmit`
+      against a tests-inclusive project) and confirm the rename experiment
+      above now fails red; or, if that's out of scope for this WP, soften the
+      lines 54-58 comment so it doesn't promise a compile-time guarantee that
+      isn't actually enforced by any command this repo runs today.

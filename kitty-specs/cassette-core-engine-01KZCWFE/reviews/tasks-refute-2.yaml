@@ -1,0 +1,11 @@
+schema: review-refute/v1
+complete: true
+phase: tasks
+batch: 2
+verdicts:
+  - id: TASKS-DECOMP-002
+    verdict: refuted
+    reason: The size figures are accurate but the "3-4x any other WP" framing cherry-picks Phase-1/Phase-4 comparators while omitting WP04 (450 lines/8 subtasks) and WP05 (350 lines/8 subtasks), which are much closer to WP03's 500/12, and the split recommendation asks to re-litigate plan.md's already-locked 1-IC-to-1-WP mapping (tasks.md's own Ownership note states no concern was split or merged) without demonstrating concrete realized harm beyond a hypothetical "expensive to discover late" risk that tasks.md's WP03 section already mitigates via T016's dedicated ordinal-design test sequenced before WP04/WP05 depend on it and via Phase-1 scheduling itself.
+  - id: TASKS-ORDER-001
+    verdict: confirmed
+    reason: Verified directly against tasks.md lines 84 and 86 that T028 and T030 are both marked [P] and both target the identical file tests/unit/invariants.test.ts (folded into the "same combined timer"), which literally contradicts tasks-template.md:18's definition of [P] as "different files/components" (confirmed verbatim), and no other [P]-marked pair in the Subtask Index shares a file, making this a genuine, isolated violation not cured by the WP05 prose (line 192), which explains intent but does not change the marker itself.

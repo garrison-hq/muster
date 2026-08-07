@@ -53,8 +53,12 @@ export class EmptyResponseError extends Error {
   }
 }
 
-/** Hostname for error context — never the full URL (no path/query leakage). */
-function hostnameOf(baseUrl: string): string {
+/**
+ * Hostname for error context — never the full URL (no path/query leakage).
+ * Exported (C-004, FR-004) so the cassette module (`src/core/cassette/`)
+ * reuses this exact extraction rather than adding a parallel implementation.
+ */
+export function hostnameOf(baseUrl: string): string {
   try {
     return new URL(baseUrl).host;
   } catch {

@@ -1,0 +1,39 @@
+schema: wp-verdict/v1
+complete: true
+wp: WP01
+cycle: 2
+mission: cassette-core-engine-01KZCWFE
+verdict: approved
+gates_observed:
+  tsc: pass                 # `npx tsc --noEmit` on HEAD (12ddb36): exit 0, no output — verified directly by me
+  tests: pass                # `pnpm test` (vitest run) on HEAD: 184 files / 3770 passed / 3 skipped / 0 failed — matches implementer's claim exactly; repeated the full run 6 additional times (7 total), all green
+  coverage: pass              # NOT taken from lcov (per cycle-1 lesson). Reachability of buildSopClient's "endpoint configured" branch established empirically by reproducing proof (a) myself: applied the exact field-swap (`model: baseUrl, baseUrl: model`) at src/cli/index.ts:1644 in the working tree, ran `npx vitest run tests/sop/cli.test.ts`, and got exactly 1 failure — the new WP01-C1-001 regression test ("expected 'https://injected-endpoint.example.com/v1' to be 'injected-model-x1'"), 15/16 other tests in the file unaffected. Reverted the edit; `git diff --stat` empty afterward, confirming clean restoration. This directly falsifies the cycle-1 finding that no test could catch such a swap.
+feedback:
+  - id: WP01-C2-ADV-001
+    severity: 1
+    claim: >
+      The implementer's reported flake (one isolated full-suite failure on a
+      5th run, not reproduced across 8 targeted tests/sop/cli.test.ts reruns
+      + 4 further full-suite runs) could not be independently confirmed or
+      refuted. I ran the full suite 7 times myself (once for the primary gate
+      check, 6 more explicitly hunting for it) — all 184 files / 3770 passed
+      / 3 skipped / 0 failed, no flake observed. I could not identify which
+      test flaked (no failure log/stack trace was available to me), so I
+      cannot independently corroborate the implementer's root-cause judgment
+      that it is pre-existing and unrelated to WP01. The suite does contain
+      several timing-sensitive test files outside WP01's owned files (e.g.
+      tests/unit/invariants.test.ts, tests/crosslayer/integration/crosslayer-suite.test.ts,
+      tests/cts/suite.test.ts, tests/integration/memory/memory-suite.test.ts,
+      tests/tools/unit/selection.test.ts) that are plausible pre-existing
+      flake sources, which is consistent with (but does not prove) the
+      implementer's judgment. This is not blocking: 1-in-~20 observed
+      non-reproduction is thin, isolated-incident evidence, not a
+      demonstrated pattern tied to this WP's changed files.
+    remediation: >
+      If the flake recurs, capture the full stderr/stack trace and file name
+      before rerunning, and check whether it correlates with
+      tests/adapters/openclaw-sop/runner.test.ts's makeDelayedClient (5ms
+      setTimeout-based durationMs assertion, tests/adapters/openclaw-sop/runner.test.ts:1182)
+      under CI load — that is the one timing-sensitive test WP01 itself
+      introduced (in cycle 1, unchanged in cycle 2) and the most WP01-adjacent
+      suspect, even though it was not shown to be the culprit here.

@@ -1,0 +1,68 @@
+schema: wp-verdict/v1
+complete: true
+wp: WP01
+cycle: 1
+mission: cassette-core-engine-01KZCWFE
+verdict: rejected
+gates_observed:
+  tsc: pass                 # `npx tsc --noEmit` on HEAD (b6a8d73): exit 0, no output
+  tests: pass                # `npx vitest run` on HEAD: 184 files / 3768 passed / 3 skipped / 0 failed — matches implementer's claim exactly
+  coverage: fail              # runner.ts (T001) new code fully exercised, verified by direct lcov DA/BRDA inspection; cli/index.ts (T002) "endpoint configured" branch has zero behavioral test coverage — see WP01-C1-001
+feedback:
+  - id: WP01-C1-001
+    severity: 3
+    claim: >
+      T002's actual deliverable — buildSopClient/doSopRun threading real
+      {model, baseUrl} through to runManifestSuite (src/cli/index.ts:1626-1703)
+      — has no automated test exercising the "endpoint configured" branch.
+      Every test in tests/sop/cli.test.ts explicitly `delete
+      process.env["MUSTER_ENDPOINT"]` before calling `sop run` (lines 54, 73,
+      96, 120, 152 — untouched by this diff), so buildSopClient always takes
+      the early `return undefined` at line 1629 and the object-literal return
+      at line 1639 (`return { client: makeClient(endpoint), model, baseUrl
+      };`) is never reached by any test in the repo. Confirmed by `grep -rln
+      "buildSopClient\|SopClientBundle" tests/ src/` returning only
+      src/cli/index.ts itself — no test references either symbol. Unlike
+      doBehaveRun/doMemoryUtilizationRun in the same file, doSopRun is called
+      without a `clientFactory` (src/cli/index.ts:2248), so buildSopClient
+      always calls the real, non-injectable `makeClient` — there is no seam
+      to exercise the configured path without live network I/O, which is why
+      no such test exists (this limitation predates the WP). The new
+      Scenario-15 tests (tests/adapters/openclaw-sop/runner.test.ts) all call
+      `runManifestSuite` directly, bypassing doSopRun/buildSopClient entirely,
+      so they cannot substitute. I traced the code by hand and it is
+      currently correct (no swap or logic bug), but a same-type swap (e.g.
+      `return { client: makeClient(endpoint), model: baseUrl, baseUrl: model
+      }`, or swapping the two `??` sentinel fallbacks at lines 1692-1693)
+      would type-check cleanly and would be caught by zero tests — on the
+      exact code path that produces the real-world fix for #90 (the bug FR-001
+      exists to close). lcov line-hit counts for this region (e.g.
+      DA:1639,6) appear non-zero in local coverage runs but are provably an
+      artifact/misattribution, not real execution, since no code path can
+      reach line 1639 without MUSTER_ENDPOINT being truthy, which never
+      happens in the suite as configured.
+    remediation: >
+      Add an optional `clientFactory` parameter to buildSopClient/doSopRun
+      mirroring the existing pattern already used by doBehaveRun
+      (src/cli/index.ts:1925) and doMemoryUtilizationRun (src/cli/index.ts:814),
+      threaded from RunCliOptions the same way. Then add one CLI-level test in
+      tests/sop/cli.test.ts that sets MUSTER_ENDPOINT/MUSTER_MODEL, injects a
+      stub ChatClient via the new seam (no live network), runs a manifest with
+      one inline probe, and asserts the JSON output's
+      `verdicts[0].runs[0].transcript.model`/`.baseUrl` match the injected
+      values — closing the actual gap the mock-literal bug (#90) lived in.
+  - id: WP01-C1-002
+    severity: 1
+    claim: >
+      The local `hostnameOf` mirror at src/adapters/openclaw-sop/runner.ts:102
+      is byte-identical in logic (verified by diff) to the module-private
+      `hostnameOf` at src/core/behavioral/client.ts:57, but is a second,
+      independently-maintained copy. Advisory only — see ruling below; this
+      does not block approval on its own.
+    remediation: >
+      No action required now. When WP03 lands T012 (exporting `hostnameOf`
+      from client.ts), replace this WP's local copy with an import in the
+      same PR/cycle that lands WP03, per the in-code comment's own stated
+      intent ("expected to converge once WP03 lands"). Consider a `// TODO(WP03)`
+      marker referencing the specific export so the convergence isn't only
+      documented in prose.

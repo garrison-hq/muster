@@ -1,0 +1,64 @@
+schema: review-findings/v1
+complete: true
+phase: tasks
+lens_group: order
+mission: cassette-core-engine-01KZCWFE
+findings:
+  - id: TASKS-ORDER-001
+    lens: Parallel markers
+    severity: 3
+    title: T028 and T030 both marked [P] target the identical file, violating the mission's own [P] definition
+    evidence:
+      - artifact: "tasks.md § Subtask Index, T028 and T030 rows (lines 84, 86)"
+      - artifact: "tasks.md § WP05 description (line 178) — both tasks write into `tests/unit/invariants.test.ts`"
+      - artifact: "tasks-template.md § Subtask Format — canonical definition"
+      - code: "/home/jeroennouws/.kittify/missions/software-dev/templates/tasks-template.md:18 — \"[P] indicates the subtask can proceed in parallel (different files/components).\""
+    claim: >
+      T028 (NI-004 scan + algorithm) and T030 (fixtures/cassettes size lint) are both marked [P] in
+      the Subtask Index, and both are explicitly described as editing the same file,
+      `tests/unit/invariants.test.ts` (T028: "folded into the existing combined timer"; T030: "folded
+      into the same combined timer" — the identical timer variable in the identical file). This
+      directly contradicts the mission's own [P] convention, which defines the marker as meaning
+      "different files/components" (tasks-template.md line 18). No other pair of [P]-marked subtasks
+      in tasks.md shares a file (T001/T005/T008/T012/T036 each target distinct files); T028/T030 is
+      the sole violation. WP05's prose (line 192) tries to explain this away by noting the tasks "still
+      wait for Phase 3 to start" and are owned by one WP, but that reasoning is not encoded in the
+      marker itself — a marker readable at face value as "safe to work concurrently" on two edits that
+      must interleave into the same shared timer construct in the same file is a genuine same-file
+      collision risk if ever taken literally (e.g. by future subtask-level dispatch tooling, or a
+      reviewer skimming the table rather than the prose).
+    remediation: >
+      Remove the [P] marker from one of T028/T030 (or both) in the Subtask Index table, since they
+      are same-file edits per the mission's own definition of [P]. If the intent is genuinely
+      "no ordering dependency between these two, but still same-writer/same-file," add an explicit
+      note next to the table (as is already done in the WP05 prose) clarifying that this specific
+      [P] usage is scoped to "no data dependency" rather than "safe for concurrent writers," so the
+      marker is not misread as license for two separate agents/threads to edit
+      `tests/unit/invariants.test.ts` at the same time.
+
+  - id: TASKS-ORDER-002
+    lens: Dependency correctness
+    severity: 2
+    title: WP03 prose claims T012 depends on T008, contradicted by the Subtask Index's own [P] marking and by the actual code
+    evidence:
+      - artifact: "tasks.md § WP03, Dependencies bullet (line 150): \"T009 (hash) and T012 (hostnameOf export) can proceed in parallel with each other once T008 lands\""
+      - artifact: "tasks.md § Subtask Index, T008 and T012 rows (lines 64, 68) — both marked [P], the same tier as WP01/WP02's zero-prerequisite entry tasks T001/T005"
+      - code: "src/core/behavioral/client.ts:57 — function hostnameOf(baseUrl: string): string { ... } — a standalone function with no reference to src/core/cassette/types.ts or any type T008 introduces"
+    claim: >
+      T012 is a one-line edit adding `export` to the existing `hostnameOf` function in
+      `src/core/behavioral/client.ts:57`, a file with no import relationship to
+      `src/core/cassette/types.ts` (T008's file). The WP03 Dependencies prose nonetheless groups T012
+      with T009 as a task that "can proceed in parallel... once T008 lands," implying T012 is gated
+      behind T008. This is inconsistent with the Subtask Index, which marks T012 [P] at the same tier
+      as T008 itself (i.e., a task with no prerequisite, able to start immediately) — and inconsistent
+      with the actual code, which shows T012 has zero relationship to T008's output. Read literally,
+      the prose would have an implementer needlessly sequence a trivial, fully independent one-line
+      edit behind WP03's riskiest task (T008/types.ts), which is also explicitly called out elsewhere
+      in the same WP03 section as "the riskiest, least-precedented concern in the mission" — an odd
+      task to gate a zero-risk one-liner behind for no functional reason.
+    remediation: >
+      Correct the WP03 Dependencies prose to state that T012 has no dependency on T008 — it can start
+      immediately, in parallel with T008 (matching its own [P] marking in the Subtask Index) — since
+      it touches an unrelated file with no shared types. If the intent actually was to gate T012 behind
+      T008 for some reason not captured in the current text, remove the [P] marker from T012 in the
+      Subtask Index instead so the table and prose agree.

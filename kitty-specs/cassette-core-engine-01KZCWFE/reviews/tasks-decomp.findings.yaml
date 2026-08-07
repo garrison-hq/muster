@@ -1,0 +1,109 @@
+schema: review-findings/v1
+complete: true
+phase: tasks
+lens_group: decomp
+mission: cassette-core-engine-01KZCWFE
+findings:
+  - id: TASKS-DECOMP-001
+    lens: shared-file extension claim / implementable-without-re-deriving
+    severity: 4
+    title: "tests/behavioral/runner.test.ts is mischaracterized as created fresh by WP04 — it is a pre-existing 895-line file"
+    evidence:
+      - artifact: "tasks.md § Ownership note, WP04 bullet (line 12): \"tests/behavioral/runner.test.ts (created fresh here — FR-013 stale-propagation assertion)\""
+      - artifact: "tasks.md § Subtask Index, T026 (line 82): \"tests/behavioral/runner.test.ts (new): `stale` field propagation assertion...\""
+      - artifact: "tasks.md § WP05 Dependencies (line 191): \"T034 extends WP04's tests/behavioral/runner.test.ts, which does not exist until WP04 creates it.\""
+      - code: "tests/behavioral/runner.test.ts:1-895 — file exists today with 11 pre-existing describe blocks, including `describe(\"personaPrompt rendering\", ...)` at line 596-609, the exact area FR-022's purity guard (T034) targets"
+      - artifact: "plan.md § Project Structure (line 293-296) correctly labels this file `MODIFIED`, not new: \"tests/behavioral/ └── runner.test.ts # MODIFIED — + personaPrompt purity guard ... + `stale` field propagation assertion\""
+    claim: >
+      tasks.md repeatedly and explicitly states that `tests/behavioral/runner.test.ts`
+      does not exist until WP04 creates it ("created fresh here", "(new)", "does not
+      exist until WP04 creates it"). This directly contradicts the actual codebase
+      (the file already exists at 895 lines with substantial pre-existing coverage —
+      `personaPrompt rendering`, `C-006 makeClient`, `FR-023 transcript completeness`,
+      `behavioral manifest loader`, etc.) and contradicts plan.md's own Project
+      Structure section, which correctly marks the file `MODIFIED`. This also
+      undermines the mission-derived "extension-not-overlap" note's own reasoning:
+      it frames the file's lineage as a clean two-party WP04-creates → WP05-extends
+      chain, when the real lineage is three-party (pre-existing file → WP04 adds a
+      `stale`-propagation test → WP05 adds a `personaPrompt` purity test). The
+      practical risk is concrete: an implementing agent following T026's "(new)"
+      instruction could use a file-creation tool that overwrites the existing file,
+      destroying ~895 lines of unrelated pre-existing test coverage (11 describe
+      blocks spanning FR-022/FR-023/C-004/C-005/C-006 and more) rather than adding
+      one new test case to it.
+    remediation: >
+      Correct every occurrence to "MODIFIED"/"extends the existing file", matching
+      plan.md and the codebase: tasks.md line 12 ("created fresh here" → "extended
+      here — pre-existing file, FR-013 stale-propagation assertion added"), line 82
+      (T026: "(new)" → "(existing file, extended)"), and line 191 ("which does not
+      exist until WP04 creates it" → "which already exists and is first extended by
+      WP04, then further extended by WP05"). Also update T026's own text to instruct
+      adding the new `describe`/`it` block to the existing file rather than
+      implying file creation, and note in WP04's Independent-test / Risks section
+      that the diff for this file must be an addition, not a rewrite.
+
+  - id: TASKS-DECOMP-002
+    lens: single-concern sizing
+    severity: 3
+    title: "WP03 concentrates the mission's riskiest, largest concern (12 of 38 subtasks, ~500 of ~1790 estimated lines) into a single unreviewed-until-the-end work package"
+    evidence:
+      - artifact: "tasks.md § WP03 section (lines 130-152): T008-T019, twelve subtasks, ~500 estimated prompt lines, one verification gate (T019) at the very end"
+      - artifact: "tasks.md § WP01/WP02/WP06 sections: 3-4 subtasks each, ~120-150 estimated prompt lines each — WP03 is roughly 3-4x any other Phase-1/Phase-4 WP"
+      - artifact: "plan.md § IC-02 (lines 772-791): \"This is the riskiest, least-precedented concern in the mission ... a design defect here is expensive to discover late\""
+      - artifact: "tasks.md § WP03 Risks (line 151): \"This WP is the load-bearing dependency for WP04 and WP05 — a design defect here is expensive to discover late, hence it is scheduled in Phase 1, not deferred\" — acknowledges the risk but mitigates only via task ordering inside the WP, not via an earlier review checkpoint"
+    claim: >
+      WP03/IC-02 is internally decomposable along a dependency seam tasks.md itself
+      states (line 150): T008 (types) gates T009 (hash)/T012 (hostnameOf export)/T010
+      (errors), which in turn gate T011 (store) and T013 (client decorator), which gate
+      T014 (barrel). The first group (types/hash/errors/hostnameOf-export, T008-T010 +
+      T012, plus T015 hash.test.ts) is pure-function, low-risk, precedented code. The
+      second group (T011 store, T013 client decorator, T014 barrel, T016-T018 tests) is
+      the stateful, novel-design, high-risk part plan.md specifically flags. Bundling
+      both into one WP means the entire ~500-line, highest-risk diff is reviewed once,
+      at the end, rather than getting an independent review checkpoint on the riskier
+      half before it becomes the foundation WP04 and WP05 build on — the opposite of
+      what plan.md's own risk framing recommends ("expensive to discover late").
+    remediation: >
+      Split WP03 into two sequential WPs along the stated dependency seam: WP03a
+      (T008 types, T009 hash, T010 errors, T012 hostnameOf export, T015 hash.test.ts —
+      primitives, low risk) and WP03b (T011 store, T013 client decorator, T014 barrel,
+      T016 store.test.ts, T017 client.test.ts, T018 client-tools.test.ts — the
+      stateful/novel-design half), each with its own verification gate, WP03b
+      depending on WP03a. If splitting is judged not worth the coordination overhead,
+      at minimum insert an explicit mid-WP checkpoint (e.g. run T019's gate after
+      T008-T012+T015 land, before starting T011/T013) so the ordinal/hash design gets
+      validated independently before the decorator and store are built on top of it.
+
+  - id: TASKS-DECOMP-003
+    lens: no padding, no vacuous tasks
+    severity: 3
+    title: "T038's NFR-005 coverage check has an unfalsifiable done-condition and never invokes the repo's existing local coverage command"
+    evidence:
+      - artifact: "tasks.md § T038 (line 94): \"confirm the new cassette-module code is positioned to clear SonarCloud's ≥80%-new-code coverage gate (lcov-uploaded, checked cross-cuttingly per NFR-005)\""
+      - artifact: "tasks.md § WP06 Independent test (lines 200-201): only \"pnpm test and tsc --noEmit both green ... tests/cassette/public-api.test.ts imports ... successfully\" — no coverage-specific check is listed as part of WP06's own done-condition"
+      - code: "package.json:77 — `\"test:coverage\": \"vitest run --coverage\"` (existing script, unused by any task in tasks.md)"
+      - code: "vitest.config.ts:11-15 — coverage provider v8, reporters [\"text\",\"lcov\"], include [\"src/**\"] — already configured to produce exactly the lcov + per-file text summary NFR-005 needs"
+    claim: >
+      T038 is the only place in tasks.md where NFR-005 (≥80% new-code coverage) is
+      checked, and its wording ("confirm ... is positioned to clear") is not a
+      falsifiable done-condition — an implementer could satisfy it by asserting
+      confidence without ever running a coverage tool, since no other task or gate in
+      the mission (T004/T007/T019/T027/T035 all check only `pnpm test`/`tsc --noEmit`)
+      touches coverage either. The repository already has `pnpm test:coverage`
+      wired to `vitest run --coverage` with lcov + text reporters over `src/**`,
+      which would give an actual measured percentage per new file — this task never
+      references it. Given the charter states the SonarCloud coverage gate blocks
+      the PR, discovering a shortfall only at CI time (after all six WPs are merged)
+      means rework has to be retrofitted into whichever WP under-tested, undermining
+      the mission's own stated rationale for running gates "at the close of every WP
+      ... to catch regressions before they compound" (tasks.md § Gates, line 263).
+    remediation: >
+      Reword T038 to require running `pnpm test:coverage` and inspecting the lcov/text
+      summary for each new file (`src/core/cassette/*.ts`, `src/core/
+      execution-source.ts`, and the touched lines of `src/adapters/openclaw-sop/
+      runner.ts`, `src/cli/index.ts`, `src/core/behavioral/{types,client,runner}.ts`),
+      asserting each meets or exceeds 80% line/branch coverage — not merely asserting
+      the code is "positioned to" pass. Optionally add the same check as a lightweight
+      step to each WP's own verification gate (T004/T007/T019/T027/T035) for its own
+      new files, so a coverage shortfall surfaces at the WP that introduced it rather
+      than only at the mission-closing WP06 gate.

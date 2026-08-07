@@ -8,6 +8,35 @@ high-level changelog; detailed per-release notes are published automatically to
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- **Cassette record/replay for `behave run`.** `behave run --cassette <dir>
+  --record` captures a behavioral suite's chat exchanges against a live,
+  credentialed endpoint into a byte-stable, canonical-JSON cassette
+  directory; `behave run --cassette <dir> --replay` later reproduces that
+  suite's verdicts with no API key and no network access. `--record` and
+  `--replay` are mutually exclusive and both require `--cassette <dir>`. See
+  the new [cassette format guide](./docs/guides/cassette-format.md) for the
+  on-disk layout and the `chat`/`chatWithTools` fidelity asymmetry.
+- Every report and `--json` payload from a `--replay` run now carries a
+  `replayed: true` marker, so a cassette-backed CI green can never be
+  mistaken for a live-endpoint conformance pass. Non-cassette and `--record`
+  output is unaffected: no such field is added, and existing `--json` shapes
+  stay byte-identical.
+- A stale cassette — a case whose recorded exchange no longer matches, or is
+  missing — now fails that run distinctly as staleness rather than as an
+  ordinary conformance failure or a silent pass; the rest of the suite still
+  completes and the overall exit code stays non-zero.
+
+### Fixed
+
+- `sop run` transcripts no longer stamp `model: "mock"`, `baseUrl:
+  "mock://test"`, or `durationMs: 0` regardless of the endpoint actually
+  used. They now carry the real endpoint's model and hostname and a measured
+  `durationMs`, so recorded provenance is trustworthy (#90).
+
 ## 1.0.0
 
 The first stable release. muster is a conformance harness for the agent-file

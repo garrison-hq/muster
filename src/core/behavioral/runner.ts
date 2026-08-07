@@ -32,6 +32,7 @@ import type {
 import { merge } from "../merge.js";
 import type { CheckResult } from "../pipeline.js";
 import type { Violation } from "../report.js";
+import { CassetteMissError } from "../cassette/errors.js";
 import { gradeRefusal, gradeStateShift, gradeVerbosity, verbosityLimit } from "./graders.js";
 import type {
   AxisGrade,
@@ -483,6 +484,42 @@ function computeRunPassRate(passed: boolean, axes: readonly AxisGrade[]): number
   return axes.filter((grade) => grade.passed).length / axes.length;
 }
 
+/**
+ * FR-013/FR-022: an errored run is a failed run — record, never re-throw. A
+ * cassette replay miss is staleness, not a generic conformance failure —
+ * labeled distinctly via `instanceof CassetteMissError` so a generic error
+ * does NOT get `stale`.
+ */
+function describeRunError(error: unknown): { message: string; stale: boolean } {
+  return {
+    message: error instanceof Error ? error.message : String(error),
+    stale: error instanceof CassetteMissError,
+  };
+}
+
+/**
+ * Build the `RunVerdict` for a run whose `executeRun` threw (FR-022: an
+ * errored run fails only that run, never the whole case; FR-013: a replay
+ * miss additionally carries `stale: true`). Fields are additive/appended
+ * last per research.md §3 prerequisite 1, matching the pre-extraction shape.
+ */
+function buildFailedRunVerdict(
+  run: number,
+  transcript: Transcript,
+  error: string | undefined,
+  stale: boolean
+): RunVerdict {
+  return {
+    run,
+    passed: false,
+    axes: [],
+    transcript,
+    ...(error !== undefined && { error }),
+    passRate: computeRunPassRate(false, []),
+    ...(stale && { stale: true }),
+  };
+}
+
 /** Grade every axis of the case against the per-turn active effective configs. */
 function gradeRun(
   adapter: SpecAdapter,
@@ -547,6 +584,7 @@ export async function runCase(
     const started = Date.now();
     let records: TurnRecord[] | null = null;
     let error: string | undefined;
+    let stale = false;
 
     try {
       records = await executeRun({
@@ -560,8 +598,9 @@ export async function runCase(
         entries,
       });
     } catch (error_) {
-      // FR-022: an errored run is a failed run — record, never re-throw.
-      error = error_ instanceof Error ? error_.message : String(error_);
+      const described = describeRunError(error_);
+      error = described.message;
+      stale = described.stale;
     }
 
     const transcript: Transcript = {
@@ -573,16 +612,7 @@ export async function runCase(
     };
 
     if (records === null) {
-      runs.push({
-        run,
-        passed: false,
-        axes: [],
-        transcript,
-        ...(error !== undefined && { error }),
-        // Additive (research.md §3 prerequisite 1) — appended last so
-        // pre-existing fields/ordering are unchanged for existing consumers.
-        passRate: computeRunPassRate(false, []),
-      });
+      runs.push(buildFailedRunVerdict(run, transcript, error, stale));
       continue;
     }
 
@@ -605,5 +635,8 @@ export async function runCase(
     runs,
     // Additive (research.md §3 prerequisite 1) — appended last, same reason.
     passRate: runs.length === 0 ? 0 : passCount / runs.length,
+    // Additive (FR-013) — appended last, same reason; true iff any run of
+    // this case was labeled stale.
+    ...(runs.some((run) => run.stale === true) && { stale: true }),
   };
 }

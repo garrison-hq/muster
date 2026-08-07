@@ -1,0 +1,104 @@
+schema: review-findings/v1
+complete: false
+phase: spec
+lens_group: gov
+mission: cassette-core-engine-01KZCWFE
+findings:
+  - id: SPEC-GOV-001
+    lens: Normative
+    severity: 2
+    title: "Dependencies & Assumptions cites createHash usage in a2a/signature.ts that does not exist"
+    evidence:
+      - artifact: "spec.md § Dependencies & Assumptions (Assumption: node:crypto's createHash...)"
+      - code: "src/adapters/a2a/signature.ts:22"
+      - code: "src/adapters/spec-kitty-profile/projection.ts:32"
+    claim: >
+      The spec asserts "node:crypto's createHash (already used in
+      src/adapters/spec-kitty-profile/projection.ts and
+      src/adapters/a2a/signature.ts) is available and sufficient for request
+      hashing." Verified against the codebase: projection.ts:32 does import
+      and use createHash (confirmed), but signature.ts:22 imports only
+      createPublicKey and verify from node:crypto — a full-repo grep for
+      "createHash" across src/ returns exactly one hit, in projection.ts. The
+      cited second precedent for createHash usage does not exist. This is a
+      factual misstatement of existing code offered as normative-convention
+      evidence (my lens requires every check to cite an accurate source); it
+      does not change the underlying conclusion (createHash is a standard
+      Node API and is available regardless), but the citation as written is
+      false and would mislead a plan-phase reader auditing precedent.
+    remediation: >
+      Correct the Dependencies & Assumptions bullet to cite only
+      src/adapters/spec-kitty-profile/projection.ts:32 as the existing
+      createHash precedent (or, if a second precedent is wanted, cite the
+      actual node:crypto usage in signature.ts correctly, e.g.
+      createPublicKey/verify for signature checking, not createHash).
+
+  - id: SPEC-GOV-002
+    lens: "[mission-derived] Neighbouring-mission boundaries"
+    severity: 3
+    title: "'Four gate-bearing commands' in Summary/Non-Goals contradicts the six chat-based commands the same section names, and miscasts #103/M20 as a gate-bearing consumer"
+    evidence:
+      - artifact: "spec.md § Summary (\"the four gate-bearing commands in wave 2 (#100/#101/#102, plus the transitively-blocked #103) will consume unmodified\")"
+      - artifact: "spec.md § Non-Goals (\"The other six chat-based commands (skills run, sop run's live endpoint probes beyond the #90 fix, crosslayer, tools, memory, heartbeat) — M17 (#100), M18 (#101), M19 (#102) wire cassette support into their own gate-bearing CLI surfaces.\")"
+      - artifact: "spec.md § Non-Goals (\"Any change to the four gate-bearing commands' own MUSTER_ENDPOINT skip-gate behavior.\")"
+      - artifact: "spec.md § Non-Goals (\"Test-suite migration to cassette-backed fixtures (M20, #103)\")"
+      - code: "src/cli/index.ts:942 (crosslayer skip-gate)"
+      - code: "src/cli/index.ts:1646 (sop skip-gate)"
+      - code: "src/cli/index.ts:2158 (heartbeat skip-gate)"
+      - code: "src/cli/index.ts:2183 (skills skip-gate)"
+      - code: "src/cli/index.ts:2245 (tools skip-gate)"
+      - code: "src/cli/index.ts:2015-2033 (memory command — opt-in --behavioral flag, no MUSTER_ENDPOINT auto skip-gate)"
+    claim: >
+      The spec uses "four gate-bearing commands" twice (Summary; Non-Goals'
+      MUSTER_ENDPOINT bullet) but its own Non-Goals section separately names
+      SIX chat-based commands (skills, sop, crosslayer, tools, memory,
+      heartbeat) as the wave-2 surface those same three missions
+      (#100/#101/#102) wire cassette support into. Verified against the CLI:
+      skills, sop, crosslayer, tools, and heartbeat each implement a
+      MUSTER_ENDPOINT-based skip-gate (cited above); "memory" (src/cli/index.ts:2014-2033)
+      instead uses an explicit opt-in --behavioral flag with no
+      MUSTER_ENDPOINT auto-gate — so at most five of the six named commands
+      are actually "gate-bearing" today, not four, and not six. Separately,
+      the Summary's parenthetical "(#100/#101/#102, plus the
+      transitively-blocked #103)" bundles #103/M20 into "the four
+      gate-bearing commands," but the spec's own Non-Goals and
+      Dependencies&Assumptions sections describe #103/M20 as "Test-suite
+      migration to cassette-backed fixtures" — not a CLI command with a gate
+      at all. This is an internally inconsistent count of the resolver's
+      real downstream consumer surface, which matters directly for my lens
+      (verifying the spec does not misrepresent wave-2/#103 boundaries) and
+      could mislead the plan phase about how many CLI surfaces the
+      execution-source resolver (FR-018) actually needs to serve.
+    remediation: >
+      Reconcile the command count: either correct "four gate-bearing
+      commands" to the accurate number of commands that currently implement
+      a MUSTER_ENDPOINT skip-gate (five, per the code cited above, once
+      "memory" is excluded or its gate is separately clarified), or explain
+      in prose why the resolver's real consumer count differs from the six
+      named chat-based commands. Remove #103/M20 from the "gate-bearing
+      commands" parenthetical since the spec itself classifies #103 as
+      test-fixture migration, not a CLI command with its own gate.
+
+  - id: SPEC-GOV-003
+    lens: Normative
+    severity: 1
+    title: "ToolChatClient.chatWithTools line citation (client.ts:105-111) is off by one line"
+    evidence:
+      - artifact: "spec.md § Summary (\"ToolChatClient.chatWithTools (src/core/behavioral/client.ts:105-111)\")"
+      - artifact: "spec.md § FR-007 (\"ToolChatClient.chatWithTools (client.ts:105-111)\")"
+      - code: "src/core/behavioral/client.ts:105-110"
+    claim: >
+      Both citations of the ToolChatClient interface give the line range
+      105-111. Reading the actual file, the interface declaration
+      ("export interface ToolChatClient extends ChatClient { chatWithTools(...): Promise<unknown>; }")
+      spans lines 105-110 only; line 111 is a blank line after the closing
+      brace. A one-line citation drift with no effect on implementation, but
+      worth correcting since this same off-by-one is repeated in two places
+      in the spec (Summary and FR-007), suggesting it was copied rather than
+      independently re-verified.
+    remediation: >
+      Correct both citations (Summary and FR-007) to client.ts:105-110, or
+      re-verify against the file at plan time before the range is copied
+      into plan.md/tasks.
+
+complete: true

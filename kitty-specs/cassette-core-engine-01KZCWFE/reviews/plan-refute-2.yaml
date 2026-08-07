@@ -1,0 +1,17 @@
+schema: review-refute/v1
+complete: true
+phase: plan
+batch: 2
+verdicts:
+  - id: PLAN-VERIFY-002
+    verdict: confirmed
+    reason: Verified live that src/adapters/memory-utilization/index.ts:7,288 hold literal "Promise.all" comments in the same file as a real .chat( call at :181, and src/crosslayer/rule-survival.ts:309 holds one 13 lines before a real client.chat( at :322, while tests/unit/invariants.test.ts:107-152 confirms NI-002/NI-003 are indeed flat substring/co-occurrence checks and plan.md's only stated NI-004 mitigation (line ~555-557) covers only the test file's own self-trip, not these two pre-existing files.
+  - id: PLAN-SEQ-001
+    verdict: confirmed
+    reason: Design decision #1 (plan.md ~line 306-312) explicitly makes the suite index's cases[].runs the FR-014 authority "not inferred from exchange counts," yet IC-04's Risks text (plan.md ~529-531) says the FR-014/015 preflight "requires reading every case's cassette file up front" over "loaded.cases" — and loaded.cases is confirmably the pre-existing behavioral manifest (src/cli/index.ts:441 `for (const kase of loaded.cases)`), not the suite index, so the two plan passages genuinely describe different, contradictory data sources.
+  - id: PLAN-FIT-002
+    verdict: confirmed
+    reason: The canonical plan-template.md (~/.kittify/missions/software-dev/templates/plan-template.md) shows the header block flows directly into "## Summary" with no incident-report section, and the charter's Exception Policy (.kittify/charter/charter.md) calls for "a written one-line justification recorded in the mission work log," so the 23-line tooling-failure paragraph sitting before "## Summary" in plan.md is a genuine structural/charter deviation, not mere taste.
+  - id: PLAN-VERIFY-006
+    verdict: confirmed
+    reason: grep across src/adapters/** and src/core/behavioral confirms .chat(/.chatWithTools( call sites in at least 7 distinct directories/files (heartbeat/index.ts, memory/{privacy,recall}.ts, memory-utilization/index.ts, openclaw-sop/runner.ts, skills/trigger.ts, crosslayer/rule-survival.ts, core/behavioral/runner.ts) named nothing like a uniform "runner.ts", while plan.md never enumerates NI-004's scan scope anywhere (only "scans runner files" prose at IC-05 and the Project Structure bullet).

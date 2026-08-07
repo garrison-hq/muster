@@ -1,0 +1,83 @@
+schema: review-findings/v1
+complete: true
+phase: plan
+lens_group: seq
+mission: cassette-core-engine-01KZCWFE
+findings:
+  - id: PLAN-SEQ-001
+    lens: Front-loading of the genuinely risky work / Phasing
+    severity: 3
+    title: "IC-04's FR-014/015 preflight description contradicts the plan's own suite-index design decision, risking a per-case-file read that conflates run-count validation with D2 miss-handling"
+    evidence:
+      - artifact: "plan.md § Design decisions resolving the spec's \"plan-time\" Open Questions, item 1 (lines 306-312)"
+      - artifact: "plan.md § IC-04 — `behave run` CLI wiring, Risks (lines 529-531)"
+      - artifact: "plan.md § Project Structure, `src/core/cassette/store.ts` (lines 180-184: `writeCassetteSuiteIndex/readCassetteSuiteIndex`)"
+      - artifact: "spec.md D2 (line 95) and FR-013/FR-015 (lines 261, 263)"
+    claim: >
+      Design decision #1 states plainly that "`cases[].runs` is the authoritative
+      per-case declared run count FR-014 reads ... not inferred from exchange
+      counts" and that this field lives in the single suite index file (`{
+      schemaVersion, suiteId, cases: {id, runs}[], recordedAt }`), which the
+      plan's own Project Structure gives a dedicated one-file reader for
+      (`readCassetteSuiteIndex`). But IC-04's Risks paragraph, describing the
+      FR-014/015 preflight, says the check "requires reading every case's
+      cassette file up front, before the main per-case loop starts — a second,
+      cheap pass over `loaded.cases`." "Every case's cassette file" (plural,
+      one per case, matching D1's one-file-per-case store layout) is a
+      different operation than reading the single suite index once — and the
+      plan never reconciles the two. If a work-package implementer follows the
+      IC-04 wording literally and opens each case's own cassette file during
+      the preflight (via `readCassetteCase`, not `readCassetteSuiteIndex`),
+      two problems follow: (a) it duplicates the file-format-authority already
+      established in design decision #1 for no benefit, and (b) it creates an
+      unspecified failure-mode collision — a case file that is simply *absent*
+      (D2's per-case "miss", which must NOT abort the suite per FR-013/D2)
+      would, if hit during a naive per-case-file preflight pass, look
+      indistinguishable from an FR-015 "run-count conflicts, fail before any
+      case executes" condition, which explicitly SHOULD abort the whole run.
+      The plan pre-solves two other subtle interaction bugs (Hazard 1, Hazard
+      2) explicitly for exactly this reason ("exactly the kind of interaction
+      a reviewer would otherwise have to find independently") but leaves this
+      third one, of the same class, unresolved and internally inconsistent
+      with the plan's own suite-index design.
+    remediation: >
+      Amend IC-04's Risks paragraph (plan.md lines 529-531) to state explicitly
+      that the FR-014/015 preflight reads only the single suite index file via
+      `readCassetteSuiteIndex` (already designed for exactly this purpose in
+      design decision #1 and listed in the Project Structure's `store.ts`
+      surface) to get every case's authoritative `runs` count in one file read
+      — never opening individual per-case cassette files during the preflight.
+      Also state explicitly that a case missing from the suite index's `cases[]`
+      list (or a case whose per-case file is absent) is NOT a preflight/FR-015
+      failure — it remains a per-case D2/FR-013 stale-miss handled later, during
+      that case's own turn in the main loop, so the two failure modes stay
+      structurally separate in the IC-04 implementation.
+
+  - id: PLAN-SEQ-002
+    lens: Phasing
+    severity: 2
+    title: "SC-006's cross-boundary import smoke test has no assigned Implementation Concern or file path"
+    evidence:
+      - artifact: "plan.md § Test Strategy, SC-006 row (lines 617-622: \"SC-006↔ IC-02/IC-03's public-export tests + a same-mission smoke test that imports makeCassetteClient/resolveExecutionSource from a path outside src/core/ the way an adapter would\")"
+      - artifact: "plan.md § Project Structure, `tests/` tree (lines 246-284) — no file corresponds to this smoke test"
+      - artifact: "plan.md § Implementation Concern Map, IC-02/IC-03/IC-06 Affected surfaces (lines 485-487, 504-505, 570) — none lists this test"
+    claim: >
+      Every other scenario/criterion in the Test Strategy table maps to a
+      concrete file already listed in Project Structure under a specific IC's
+      "Affected surfaces" (e.g. scenario 1 → `tests/cassette/store.test.ts`
+      under IC-02). The SC-006 row is the one exception: it names a
+      "same-mission smoke test that imports ... from a path outside `src/core/`
+      the way an adapter would" but this test appears in no file list and is
+      not claimed by IC-02, IC-03, or IC-06's "Affected surfaces" bullets. Since
+      this smoke test is exactly what verifies the mission-derived concern that
+      wave-2 can genuinely consume these exports (not just that unit tests
+      inside `src/core/` pass), leaving it unassigned risks it being silently
+      dropped when `/spec-kitty.tasks` materializes work packages from the
+      Implementation Concern Map, since nothing in the map currently owns it.
+    remediation: >
+      Add the smoke test as an explicit file (e.g. `tests/cassette/
+      public-api.test.ts` or fold it into `tests/unit/execution-source.test.ts`)
+      to the Project Structure tree, and list it under IC-06's "Affected
+      surfaces" (the natural mission-closing concern, since it needs both
+      `makeCassetteClient` from IC-02 and `resolveExecutionSource` from IC-03
+      to exist) so it is not lost between concerns.

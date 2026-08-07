@@ -42,7 +42,18 @@ import {
 } from "../core/behavioral/manifest.js";
 import { runCase, type RunnerOptions } from "../core/behavioral/runner.js";
 import { makeClient } from "../core/behavioral/client.js";
+import {
+  makeCassetteClient,
+  readCassetteCase,
+  writeCassetteCase,
+  readCassetteSuiteIndex,
+  writeCassetteSuiteIndex,
+  SCHEMA_VERSION as CASSETTE_SCHEMA_VERSION,
+  type CassetteExchange,
+  type CassetteSuiteIndex,
+} from "../core/cassette/index.js";
 import type {
+  BehavioralCase,
   CaseVerdict,
   ChatClient,
   EndpointConfig,
@@ -390,6 +401,12 @@ interface BehaveOpts extends GlobalOpts {
   temperature?: number;
   runs?: number;
   restrictRefs?: string | boolean;
+  /** Cassette directory for --record/--replay (FR-016). */
+  cassette?: string;
+  /** Record a cassette from a live endpoint into --cassette <dir> (FR-007/008). */
+  record?: boolean;
+  /** Replay a previously recorded cassette from --cassette <dir> (FR-007/009). */
+  replay?: boolean;
 }
 
 /**
@@ -411,12 +428,151 @@ function effectiveApiKeyEnv(
   return configured;
 }
 
+/**
+ * Append a `(replayed: true)` marker to the summary line of a human-readable
+ * behave report — Hazard 2's "spirit" extension of FR-017 to the
+ * human-readable output path (only `--json` is named literally by FR-017).
+ * Replay-only caller (Hazard 2).
+ */
+function withReplayedMarker(human: string): string {
+  const lines = human.split("\n");
+  const lastIndex = lines.length - 1;
+  lines[lastIndex] = `${lines[lastIndex]} (replayed: true)`;
+  return lines.join("\n");
+}
+
+/**
+ * Hazard 3 / NFR-002: a replay-only COPY of `verdicts` with every
+ * `transcript.durationMs` normalized to 0 — three levels deep
+ * (`CaseVerdict[] -> RunVerdict[] -> Transcript`) — so two `--replay`
+ * invocations of the same suite emit byte-identical `--json`/human output
+ * despite real (non-deterministic) in-process wall-clock jitter
+ * (`runCase`'s timing wrapper has zero cassette-mode awareness and stamps a
+ * real `Date.now()`-measured duration regardless of mode). A shallow copy
+ * would alias and mutate the `RunVerdict`/`Transcript` objects `runCase`
+ * returns — which the exit-code logic below still reads from the ORIGINAL
+ * `verdicts` — so every level is copied explicitly. Gated strictly on the
+ * replay-only call site below (never on non-replay output, NFR-006).
+ */
+export function normalizeDurationsForReplay(verdicts: readonly CaseVerdict[]): CaseVerdict[] {
+  return verdicts.map((verdict) => ({
+    ...verdict,
+    runs: verdict.runs.map((run) => ({
+      ...run,
+      transcript: { ...run.transcript, durationMs: 0 },
+    })),
+  }));
+}
+
+// FR-016: --cassette/--record/--replay flag discipline, checked before the
+// manifest is even loaded so it never depends on manifest validity.
+function validateCassetteFlags(opts: BehaveOpts): void {
+  if (opts.record === true && opts.replay === true) {
+    throw new ExecutionError("behave run: --record and --replay are mutually exclusive");
+  }
+  if ((opts.record === true || opts.replay === true) && opts.cassette === undefined) {
+    throw new ExecutionError("behave run: --record/--replay requires --cassette <dir>");
+  }
+  if (opts.cassette !== undefined && opts.record !== true && opts.replay !== true) {
+    throw new ExecutionError("behave run: --cassette requires --record or --replay");
+  }
+}
+
+// FR-014/015: resolve the replay run count from the cassette suite index
+// before other resolution; a missing index/case defers to the per-case
+// FR-013 stale path (Hazard 1). Conflicting --runs fails first, naming
+// both counts (FR-015).
+function resolveReplaySuiteIndex(
+  opts: BehaveOpts,
+  cases: readonly BehavioralCase[]
+): CassetteSuiteIndex | undefined {
+  if (opts.replay !== true || opts.cassette === undefined) return undefined;
+  const suiteIndex = readCassetteSuiteIndex(opts.cassette);
+  if (opts.runs === undefined || suiteIndex === undefined) return suiteIndex;
+  for (const kase of cases) {
+    const recorded = suiteIndex.cases.find((c) => c.id === kase.id);
+    if (recorded !== undefined && recorded.runs !== opts.runs) {
+      throw new ExecutionError(
+        `behave run --replay: --runs ${opts.runs} conflicts with the cassette's recorded run count ${recorded.runs} for case "${kase.id}"`
+      );
+    }
+  }
+  return suiteIndex;
+}
+
+// Static gate first: never grade against a non-conforming persona.
+function assertCaseSoulConforms(
+  kase: BehavioralCase,
+  check: CheckResult,
+  opts: BehaveOpts,
+  io: Io
+): void {
+  if (check.report.ok && check.effective !== null) return;
+  io.errLine(`case "${kase.id}": soul "${kase.soul}" is not conforming — static report:`);
+  io.errLine(opts.json === true ? JSON.stringify(check.report, null, 2) : formatReportHuman(check.report));
+  throw new ExecutionError(`behavioral run aborted: non-conforming soul for case "${kase.id}"`);
+}
+
+// --runs overrides the manifest-resolved n; k clamps so k ≤ n holds. In
+// replay mode, the recorded per-case count wins over --runs (FR-014).
+function resolveCaseRunConfig(
+  kase: BehavioralCase,
+  opts: BehaveOpts,
+  suiteIndex: CassetteSuiteIndex | undefined
+): BehavioralCase {
+  const recordedRuns = suiteIndex?.cases.find((c) => c.id === kase.id)?.runs;
+  const resolvedRuns =
+    opts.replay === true && recordedRuns !== undefined ? recordedRuns : opts.runs;
+  if (resolvedRuns === undefined) return kase;
+  return {
+    ...kase,
+    runs: resolvedRuns,
+    pass_threshold: Math.min(kase.pass_threshold, resolvedRuns),
+  };
+}
+
+// Per-case cassette decoration (FR-007..010): constructed fresh per case.
+function buildCaseClient(
+  client: ChatClient,
+  opts: BehaveOpts,
+  caseId: string,
+  endpoint: EndpointConfig
+): { caseClient: ChatClient; recordSink: CassetteExchange[] | undefined } {
+  if (opts.cassette !== undefined && opts.record === true) {
+    const recordSink: CassetteExchange[] = [];
+    const caseClient = makeCassetteClient(client, { mode: "record", caseId, recordSink, endpoint });
+    return { caseClient, recordSink };
+  }
+  if (opts.cassette !== undefined && opts.replay === true) {
+    const replaySource = readCassetteCase(opts.cassette, caseId)?.exchanges ?? [];
+    const caseClient = makeCassetteClient(client, { mode: "replay", caseId, replaySource });
+    return { caseClient, recordSink: undefined };
+  }
+  return { caseClient: client, recordSink: undefined };
+}
+
+// Hazard 2 (FR-017): only --replay wraps the array as { replayed, verdicts
+// }; every other invocation keeps emitting the bare array (NFR-006).
+function emitBehaveOutput(io: Io, opts: BehaveOpts, verdicts: CaseVerdict[]): void {
+  if (opts.replay === true) {
+    // Hazard 3 (NFR-002): normalize durationMs to 0 in a COPY — originals are untouched.
+    const normalized = normalizeDurationsForReplay(verdicts);
+    io.outLine(opts.json === true
+      ? JSON.stringify({ replayed: true, verdicts: normalized }, null, 2)
+      : withReplayedMarker(formatBehaveHuman(normalized)));
+    return;
+  }
+  io.outLine(opts.json === true ? JSON.stringify(verdicts, null, 2) : formatBehaveHuman(verdicts));
+}
+
 async function doBehaveRun(
   manifestPath: string,
   opts: BehaveOpts,
   io: Io,
   clientFactory: (endpoint: EndpointConfig) => ChatClient
 ): Promise<number> {
+  validateCassetteFlags(opts);
+
   const loaded = await loadBehavioralManifest(toAbsolute(manifestPath));
   if (isBehavioralManifestError(loaded)) {
     throw new ExecutionError(
@@ -437,6 +593,8 @@ async function doBehaveRun(
   };
   const client = clientFactory(endpoint);
 
+  const suiteIndex = resolveReplaySuiteIndex(opts, loaded.cases);
+  const recordedSuiteCases: { id: string; runs: number }[] = [];
   const verdicts: CaseVerdict[] = [];
   for (const kase of loaded.cases) {
     // Static gate first: never grade against a non-conforming persona.
@@ -447,40 +605,46 @@ async function doBehaveRun(
       ...(kase.state !== undefined && { state: kase.state }),
       ...restrictRefsOpt(opts.restrictRefs),
     });
-    if (!check.report.ok || check.effective === null) {
-      io.errLine(`case "${kase.id}": soul "${kase.soul}" is not conforming — static report:`);
-      io.errLine(
-        opts.json === true
-          ? JSON.stringify(check.report, null, 2)
-          : formatReportHuman(check.report)
-      );
-      throw new ExecutionError(
-        `behavioral run aborted: non-conforming soul for case "${kase.id}"`
-      );
-    }
+    assertCaseSoulConforms(kase, check, opts, io);
+    const applied = resolveCaseRunConfig(kase, opts, suiteIndex);
+    const { caseClient, recordSink } = buildCaseClient(client, opts, kase.id, endpoint);
+    verdicts.push(await runCase(rfc1Adapter, check, applied, caseClient, runnerOpts));
 
-    // --runs overrides the manifest-resolved n; k clamps so k ≤ n holds.
-    const applied =
-      opts.runs === undefined
-        ? kase
-        : {
-            ...kase,
-            runs: opts.runs,
-            pass_threshold: Math.min(kase.pass_threshold, opts.runs),
-          };
-    verdicts.push(await runCase(rfc1Adapter, check, applied, client, runnerOpts));
+    if (recordSink !== undefined && opts.cassette !== undefined) {
+      writeCassetteCase(opts.cassette, {
+        schemaVersion: CASSETTE_SCHEMA_VERSION,
+        caseId: kase.id,
+        exchanges: recordSink,
+      });
+      recordedSuiteCases.push({ id: kase.id, runs: applied.runs });
+    }
   }
 
-  // The verdicts are the artifact — emit them before deciding the exit code.
-  io.outLine(
-    opts.json === true ? JSON.stringify(verdicts, null, 2) : formatBehaveHuman(verdicts)
-  );
+  if (opts.cassette !== undefined && opts.record === true) {
+    writeCassetteSuiteIndex(opts.cassette, {
+      schemaVersion: CASSETTE_SCHEMA_VERSION,
+      suiteId: toAbsolute(manifestPath),
+      cases: recordedSuiteCases,
+      recordedAt: new Date().toISOString(),
+    });
+  }
+
+  emitBehaveOutput(io, opts, verdicts);
 
   // Exit discipline: mid-suite endpoint errors fail cases and exit 1; an
   // endpoint unreachable for the ENTIRE run (every run of every case errored)
-  // is an execution failure → 2 (contracts/cli.md exit codes).
+  // is an execution failure → 2 (contracts/cli.md exit codes). Hazard 1:
+  // replay never touches a live endpoint (NFR-003) so this heuristic's
+  // premise — "maybe the endpoint is down" — never applies in replay mode;
+  // gated off entirely so an all-stale replay still exits via the normal
+  // pass/fail path below, per FR-013 ("never 0, never a skip code" — never
+  // exit 2 either).
   const allRuns = verdicts.flatMap((verdict) => verdict.runs);
-  if (allRuns.length > 0 && allRuns.every((run) => run.error !== undefined)) {
+  if (
+    opts.replay !== true &&
+    allRuns.length > 0 &&
+    allRuns.every((run) => run.error !== undefined)
+  ) {
     io.errLine(
       "endpoint fatal: every run of every case errored — treating as an execution error (exit 2)"
     );
@@ -1605,14 +1769,30 @@ function formatSkillsResultHuman(result: SkillsRunResult): string {
 // ─── muster sop run ─────────────────────────────────────────────────────────
 
 /**
+ * A configured ChatClient plus the real endpoint identity it was built
+ * from (FR-001) — callers thread `model`/`baseUrl` alongside `client` so
+ * `Transcript` provenance reflects the actual endpoint, not a literal.
+ */
+interface SopClientBundle {
+  client: ChatClient;
+  model: string;
+  baseUrl: string;
+}
+
+/**
  * Build a minimal ChatClient from env vars for SOP behavioral probes.
  *
- * When MUSTER_ENDPOINT is present, creates an OpenAI-compatible client.
+ * When MUSTER_ENDPOINT is present, creates an OpenAI-compatible client via
+ * the injected `clientFactory` (defaults to the real fetch client, mirroring
+ * doBehaveRun/doMemoryUtilizationRun's seam — tests inject a stub so the
+ * "endpoint configured" path is exercised without live network I/O).
  * Returns undefined when the env var is absent (callers skip behavioral).
  *
  * NFR-005: API key read from process.env at call time; never stored.
  */
-function buildSopClient(): import("../core/behavioral/types.js").ChatClient | undefined {
+function buildSopClient(
+  clientFactory: (endpoint: EndpointConfig) => ChatClient
+): SopClientBundle | undefined {
   const baseUrl = process.env["MUSTER_ENDPOINT"];
   if (baseUrl === undefined || baseUrl === "") {
     return undefined;
@@ -1620,12 +1800,12 @@ function buildSopClient(): import("../core/behavioral/types.js").ChatClient | un
   const model = process.env["MUSTER_MODEL"] ?? "gpt-4o-mini";
   const apiKeyEnv: "MUSTER_API_KEY" | "OPENAI_API_KEY" =
     (process.env["MUSTER_API_KEY"] ?? "") === "" ? "OPENAI_API_KEY" : "MUSTER_API_KEY";
-  const endpoint: import("../core/behavioral/types.js").EndpointConfig = {
+  const endpoint: EndpointConfig = {
     baseUrl,
     model,
     apiKeyEnv,
   };
-  return makeClient(endpoint);
+  return { client: clientFactory(endpoint), model, baseUrl };
 }
 
 /**
@@ -1640,7 +1820,7 @@ function buildSopClient(): import("../core/behavioral/types.js").ChatClient | un
  * For manifests with no inline probes (static-only), this client is
  * never called at all.
  */
-const SOP_NOOP_CLIENT: import("../core/behavioral/types.js").ChatClient = {
+const SOP_NOOP_CLIENT: ChatClient = {
   async chat(): Promise<string> {
     throw new Error(
       "muster sop: MUSTER_ENDPOINT not set — behavioral probes skipped (no-op client)"
@@ -1665,18 +1845,26 @@ const SOP_NOOP_CLIENT: import("../core/behavioral/types.js").ChatClient = {
 async function doSopRun(
   manifestPath: string,
   opts: GlobalOpts,
-  io: Io
+  io: Io,
+  clientFactory: (endpoint: EndpointConfig) => ChatClient
 ): Promise<number> {
   const absManifestPath = toAbsolute(manifestPath);
   // Pre-check: verify the manifest is readable before invoking runManifestSuite.
   // runManifestSuite handles unreadable manifests internally (returns passed: false),
   // but the CLI contract requires exit 2 for execution errors (unreadable manifest).
   await readFileOrThrow(absManifestPath, "sop manifest");
-  const client = buildSopClient() ?? SOP_NOOP_CLIENT;
+  // FR-001: the "unconfigured"/"unconfigured://no-endpoint" sentinel is used
+  // ONLY when no endpoint is configured (SOP_NOOP_CLIENT path below) — never
+  // unconditionally. When an endpoint IS configured, its real model/baseUrl
+  // are threaded through so Transcript provenance reflects it.
+  const sopClient = buildSopClient(clientFactory);
+  const client = sopClient?.client ?? SOP_NOOP_CLIENT;
+  const model = sopClient?.model ?? "unconfigured";
+  const baseUrl = sopClient?.baseUrl ?? "unconfigured://no-endpoint";
 
   let report: SOPSuiteReport;
   try {
-    report = await runSopManifestSuite(absManifestPath, { client });
+    report = await runSopManifestSuite(absManifestPath, { client, model, baseUrl });
   } catch (error) {
     throw new ExecutionError(`sop manifest run failed: ${errorMessage(error)}`);
   }
@@ -2000,6 +2188,20 @@ function buildProgram(
         "document's directory; with <dir>: restrict every case to that " +
         "directory, resolved from cwd)"
     )
+    .option(
+      "--cassette <dir>",
+      "cassette directory for --record/--replay (FR-016); requires exactly " +
+        "one of --record or --replay"
+    )
+    .option(
+      "--record",
+      "record a cassette into --cassette <dir> from a live endpoint (FR-007/008)"
+    )
+    .option(
+      "--replay",
+      "replay a previously recorded cassette from --cassette <dir> — zero " +
+        "network I/O (FR-007/009)"
+    )
     .addHelpText(
       "after",
       "\nAPI key: read from the MUSTER_API_KEY environment variable " +
@@ -2227,7 +2429,7 @@ function buildProgram(
         "The adapter name is 'openclaw-sop'; the CLI command is 'sop' (short form)."
     )
     .action(async (manifest: string, _local, cmd: Command) => {
-      setExit(await doSopRun(manifest, cmd.optsWithGlobals(), io));
+      setExit(await doSopRun(manifest, cmd.optsWithGlobals(), io, clientFactory));
     });
 
   // ─── muster tools ─────────────────────────────────────────────────────────

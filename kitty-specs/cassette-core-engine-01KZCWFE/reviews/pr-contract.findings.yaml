@@ -1,0 +1,75 @@
+# review-findings/v1 — canonical format for lens-session and fresh-sweep output.
+schema: review-findings/v1
+complete: true
+phase: pr
+lens_group: contract
+mission: cassette-core-engine-01KZCWFE
+findings:
+  - id: PR-CONTRACT-001
+    lens: coverage-honesty / doc-drift (charter Project Directive 2)
+    severity: 2
+    title: >-
+      docs/guides/spec-kitty-conformance.md's exit-code contract table is not
+      updated for behave run's new --cassette --replay carve-out and its
+      doBehaveRun line citations are now stale
+    evidence:
+      - artifact: "spec.md FR-013 / Hazard 1 (plan.md)"
+      - code: "src/cli/index.ts:643-651 (opts.replay !== true gate added around the exit-2 endpoint-fatal heuristic)"
+      - code: "docs/guides/spec-kitty-conformance.md:164 (cites doBehaveRun \":479-489\" for the exit-2 rule)"
+      - code: "docs/rubric/recorded-gaps.md (RG-007 entry, same PR: line citation was updated to \":634-653\" for the identical doBehaveRun return-2 statement)"
+    claim: >-
+      This PR adds ~150 lines to src/cli/index.ts ahead of doBehaveRun, and
+      introduces a new behavioral carve-out: in --replay mode the "endpoint
+      unreachable for the entire run" exit-2 heuristic is now gated off
+      entirely (opts.replay !== true), so an all-stale replay exits 1, not 2 —
+      a genuine, intentional divergence from the pre-mission exit-code
+      contract for this one new mode. The PR's own docs/rubric/recorded-gaps.md
+      was correctly re-pointed to doBehaveRun's new line range (634-653) for
+      the pre-existing RG-007 entry, proving the team tracks line drift when
+      touching that file — but docs/guides/spec-kitty-conformance.md §3, the
+      guide whose whole purpose is a per-adapter exit-code contract table with
+      exact line citations, was left both stale (still cites the old
+      "doBehaveRun, :479-489" range, off by ~150 lines) and incomplete (no
+      mention that --replay mode never returns exit 2 for the endpoint-fatal
+      condition, a brand-new documented CLI behavior this mission ships).
+      Charter Project Directive 2 requires documentation stay synchronized
+      with workflow/behavior changes; the new docs/guides/cassette-format.md
+      this mission adds does not cross-reference or reconcile this exit-code
+      table either. This is a seam only visible reviewing the PR as a whole —
+      no single WP owned updating a pre-existing, unrelated-mission doc that
+      cites doBehaveRun's internals by line number.
+    remediation: >-
+      Add a short note to docs/guides/spec-kitty-conformance.md §3's behave
+      row (or a new row) documenting that --cassette --replay never returns
+      exit 2 for the endpoint-fatal condition (it exits via the normal
+      pass/fail path per FR-013, since replay never touches an endpoint at
+      all), and refresh the stale ":479-489" line citation to the current
+      doBehaveRun return-2 location (currently around src/cli/index.ts:643-651).
+  - id: PR-CONTRACT-002
+    lens: fakeable-DoDs / coverage honesty
+    severity: 1
+    title: >-
+      FR-019 discrimination-control test's primary assertion doesn't rule out
+      a cassette-miss (stale) explanation on its own; only the paired
+      load-bearing test closes that gap
+    evidence:
+      - artifact: "spec.md Scenario 14 / FR-019"
+      - code: "tests/cassette/discrimination-control.test.ts:80-90 (first test: asserts verdicts[0].passed === false and code === 1, without asserting stale is undefined)"
+      - code: "tests/cassette/discrimination-control.test.ts:92-138 (second test: grader-stubbed control, which does catch the miss-vs-fail ambiguity because a stale miss would stay failing even with the grader stubbed)"
+    claim: >-
+      Taken alone, the first test's assertions (passed: false, exit code 1)
+      would also be satisfied if the fixture's requestHash/ordinal ever
+      drifted out of sync with what the manifest+decorator compute at replay
+      time (a cassette miss/staleness, not a genuine grader failure) — both
+      failure modes produce passed: false and exit 1, and the first test does
+      not assert `verdicts[0].stale` is undefined to rule the miss case out
+      explicitly. The suite is not vacuous in practice only because the
+      second (grader-stubbed) test would also fail in that scenario, since
+      stubbing the grader cannot un-stale a hash miss — but that safety net
+      is implicit or coincidental, not a direct assertion in the primary test.
+    remediation: >-
+      Add `expect(verdicts[0]?.stale).toBeUndefined();` (or equivalent) to
+      the first test in tests/cassette/discrimination-control.test.ts so the
+      "produces a failing verdict" assertion is self-evidently about a real
+      grader failure, not implicitly relying on the second test to rule out
+      a cassette-miss explanation.

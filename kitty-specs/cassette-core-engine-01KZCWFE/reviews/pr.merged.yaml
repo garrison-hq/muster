@@ -1,0 +1,184 @@
+schema: review-findings/v1
+phase: pr
+lens_group: merged
+mission: cassette-core-engine-01KZCWFE
+findings:
+- id: PR-CONTRACT-001
+  lens: coverage-honesty / doc-drift (charter Project Directive 2)
+  severity: 2
+  title: docs/guides/spec-kitty-conformance.md's exit-code contract table is not updated
+    for behave run's new --cassette --replay carve-out and its doBehaveRun line citations
+    are now stale
+  evidence:
+  - artifact: spec.md FR-013 / Hazard 1 (plan.md)
+  - code: src/cli/index.ts:643-651 (opts.replay !== true gate added around the exit-2
+      endpoint-fatal heuristic)
+  - code: docs/guides/spec-kitty-conformance.md:164 (cites doBehaveRun ":479-489"
+      for the exit-2 rule)
+  - code: 'docs/rubric/recorded-gaps.md (RG-007 entry, same PR: line citation was
+      updated to ":634-653" for the identical doBehaveRun return-2 statement)'
+  claim: 'This PR adds ~150 lines to src/cli/index.ts ahead of doBehaveRun, and introduces
+    a new behavioral carve-out: in --replay mode the "endpoint unreachable for the
+    entire run" exit-2 heuristic is now gated off entirely (opts.replay !== true),
+    so an all-stale replay exits 1, not 2 — a genuine, intentional divergence from
+    the pre-mission exit-code contract for this one new mode. The PR''s own docs/rubric/recorded-gaps.md
+    was correctly re-pointed to doBehaveRun''s new line range (634-653) for the pre-existing
+    RG-007 entry, proving the team tracks line drift when touching that file — but
+    docs/guides/spec-kitty-conformance.md §3, the guide whose whole purpose is a per-adapter
+    exit-code contract table with exact line citations, was left both stale (still
+    cites the old "doBehaveRun, :479-489" range, off by ~150 lines) and incomplete
+    (no mention that --replay mode never returns exit 2 for the endpoint-fatal condition,
+    a brand-new documented CLI behavior this mission ships). Charter Project Directive
+    2 requires documentation stay synchronized with workflow/behavior changes; the
+    new docs/guides/cassette-format.md this mission adds does not cross-reference
+    or reconcile this exit-code table either. This is a seam only visible reviewing
+    the PR as a whole — no single WP owned updating a pre-existing, unrelated-mission
+    doc that cites doBehaveRun''s internals by line number.'
+  remediation: Add a short note to docs/guides/spec-kitty-conformance.md §3's behave
+    row (or a new row) documenting that --cassette --replay never returns exit 2 for
+    the endpoint-fatal condition (it exits via the normal pass/fail path per FR-013,
+    since replay never touches an endpoint at all), and refresh the stale ":479-489"
+    line citation to the current doBehaveRun return-2 location (currently around src/cli/index.ts:643-651).
+  lens_group: contract
+- id: PR-CONTRACT-002
+  lens: fakeable-DoDs / coverage honesty
+  severity: 1
+  title: FR-019 discrimination-control test's primary assertion doesn't rule out a
+    cassette-miss (stale) explanation on its own; only the paired load-bearing test
+    closes that gap
+  evidence:
+  - artifact: spec.md Scenario 14 / FR-019
+  - code: 'tests/cassette/discrimination-control.test.ts:80-90 (first test: asserts
+      verdicts[0].passed === false and code === 1, without asserting stale is undefined)'
+  - code: 'tests/cassette/discrimination-control.test.ts:92-138 (second test: grader-stubbed
+      control, which does catch the miss-vs-fail ambiguity because a stale miss would
+      stay failing even with the grader stubbed)'
+  claim: 'Taken alone, the first test''s assertions (passed: false, exit code 1) would
+    also be satisfied if the fixture''s requestHash/ordinal ever drifted out of sync
+    with what the manifest+decorator compute at replay time (a cassette miss/staleness,
+    not a genuine grader failure) — both failure modes produce passed: false and exit
+    1, and the first test does not assert `verdicts[0].stale` is undefined to rule
+    the miss case out explicitly. The suite is not vacuous in practice only because
+    the second (grader-stubbed) test would also fail in that scenario, since stubbing
+    the grader cannot un-stale a hash miss — but that safety net is implicit or coincidental,
+    not a direct assertion in the primary test.'
+  remediation: Add `expect(verdicts[0]?.stale).toBeUndefined();` (or equivalent) to
+    the first test in tests/cassette/discrimination-control.test.ts so the "produces
+    a failing verdict" assertion is self-evidently about a real grader failure, not
+    implicitly relying on the second test to rule out a cassette-miss explanation.
+  lens_group: contract
+- id: PR-TESTS-001
+  lens: Would these tests catch it
+  severity: 4
+  title: Cassette record mode aliases the caller's mutable `messages` array into the
+    persisted `request` field; the shipped discrimination-control fixture proves the
+    corruption, and no test in the suite would catch a regression here
+  evidence:
+  - artifact: spec.md FR-004 ("the fully-built request (`messages[]`, `opts`)" must
+      be recorded), FR-005 (hash computed over the same fully-built request)
+  - code: 'src/core/cassette/client.ts:530-550 (record-mode `chat`): `const request
+      = { messages, opts: chatOpts }; ... const response = await inner.chat(messages,
+      chatOpts); ... recordSink.push({ ..., request, ... });` — `request.messages`
+      is a reference to the caller''s array, never copied.'
+  - code: 'src/core/behavioral/runner.ts:382-386 (`executeRun`): `messages.push({
+      role: "user", content: turn.content }); const reply = await client.chat(messages,
+      chatOpts); messages.push({ role: "assistant", content: reply });` — the SAME
+      array object is mutated immediately after `client.chat` (i.e. the decorator)
+      returns.'
+  - code: fixtures/cassettes/discrimination-control/rigged-case.json — the committed
+      exchange's `request.messages` has 3 entries (system, user "Hello there", assistant
+      — the 70-word rigged reply itself), even though the case declares exactly one
+      turn and the actual request sent to `chat()` was only [system, user].
+  claim: '`makeCassetteClient`''s record-mode `chat`/`chatWithTools` store `request:
+    { messages, opts }` by reference, not by copy. The only real caller in this mission,
+    `runCase`''s `executeRun` (`src/core/behavioral/runner.ts`), builds one `messages`
+    array per run and pushes the assistant''s reply onto that SAME array immediately
+    after `client.chat(...)` resolves — which is after the decorator has already stored
+    a reference to it in the pushed `CassetteExchange`. By the time `writeCassetteCase`
+    serializes the case (after the whole run loop completes), every recorded exchange''s
+    `request.messages` reflects the array''s FINAL mutated state, not the request
+    actually sent at call time. Verified directly against the shipped fixture: computing
+    `computeRequestHash` over the persisted 3-message `request` gives a different
+    hash than the persisted `requestHash` field, while truncating to the first 2 messages
+    (system+user, the real request) reproduces the persisted hash exactly — proving
+    the `requestHash` was computed correctly (before mutation) but the persisted `request`
+    was corrupted afterward. For a multi-turn case this is worse: every exchange in
+    that run would alias the SAME array, so ALL of that run''s persisted `request.messages`
+    fields would be byte-identical to each other and to the full final conversation,
+    not to their own turn''s actual request. Replay itself still works (matching is
+    by `requestHash`+`ordinal`, computed pre-mutation), so this doesn''t break the
+    mission''s acceptance scenarios directly, but it violates FR-004''s "fully-built
+    request" persistence contract and corrupts the audit trail the cassette format
+    exists to provide — and it ships live in the mission''s own committed discrimination-control
+    fixture. No test in `tests/cassette/{client,client-tools,store,public-api}.test.ts`
+    calls `chat`/`chatWithTools` with a `messages` array that the test (or a stand-in
+    for the real caller) mutates after the call returns — every test either reuses
+    a `const messages` literal untouched, or asserts only `recordSink.length`/`ordinal`/`response`,
+    never the byte content of `request.messages`. A regression here (e.g. record mode
+    capturing an even more corrupted request, or losing the aliasing "by luck" and
+    silently changing persisted content) would pass the entire test suite unchanged.
+
+    '
+  remediation: 'In `src/core/cassette/client.ts`''s record-mode `chat` and `chatWithTools`,
+    deep-copy the request before storing it (e.g. `const request = { messages: messages.map((m)
+    => ({ ...m })), opts: chatOpts }`, or reuse `canonicalJson`''s own serialize/parse
+    round trip) so the persisted `CassetteExchange.request` is frozen at call time
+    and can never be mutated by the caller afterward. Add a regression test in `tests/cassette/client.test.ts`
+    that mimics `executeRun`''s real usage pattern — call `client.chat(messages, opts)`,
+    then push an additional message onto the SAME `messages` array the test passed
+    in, and assert `recordSink[0].request.messages` still has the original length/content,
+    not the post-call mutation. Also add a fixture-integrity assertion (e.g. in `tests/cassette/discrimination-control.test.ts`
+    or a new store-level test) that `computeRequestHash(exchange.request) === exchange.requestHash`
+    for every exchange in every committed `fixtures/cassettes/**/*.json` file, which
+    would have caught this directly against the shipped fixture.
+
+    '
+  lens_group: tests
+- id: PR-TESTS-002
+  lens: Error paths
+  severity: 3
+  title: Record-mode client failure mid-recording is untested; doBehaveRun's suite
+    index still declares the configured run count, not the number of exchanges actually
+    recorded
+  evidence:
+  - artifact: spec.md FR-004 (record the response), FR-014 (replay reads the cassette's
+      declared run count before other resolution), Open Questions "Surplus recorded
+      exchanges" (adjacent, undecided case)
+  - code: 'src/core/cassette/client.ts:530-550 — record-mode `chat`: if `await inner.chat(...)`
+      throws, the function returns without calling `recordSink.push(...)`, so a failed
+      call produces no exchange at all.'
+  - code: src/core/behavioral/runner.ts:584-598 (`runCase`) — each run's `executeRun`
+      call is individually try/caught; a thrown error is recorded as a failed `RunVerdict`
+      and the loop continues, never propagating to the caller.
+  - code: 'src/cli/index.ts:613-620 (`doBehaveRun`) — after `runCase` returns (which
+      never throws), `recordedSuiteCases.push({ id: kase.id, runs: applied.runs })`
+      uses the CONFIGURED run count (`applied.runs`), not `recordSink.length` (the
+      count actually appended).'
+  claim: 'If a client call fails during `--record` (e.g. a transient endpoint error
+    on run N of a multi-run case), `runCase`''s existing per-run error containment
+    swallows it into a failed `RunVerdict` and continues — `doBehaveRun` never sees
+    the failure and unconditionally writes `recordedSuiteCases.push({ id, runs: applied.runs
+    })` using the intended run count, even though `recordSink` (and therefore the
+    written case file) has fewer exchanges than that. On a later `--replay`, the missing
+    run(s) become ordinary `CassetteMissError`/`stale` failures — a reasonably graceful
+    degradation, but nowhere is this interaction specified or tested, so it is undefined
+    whether "declare the configured count" or "declare the actually-recorded count"
+    is the intended contract. No test in `tests/cassette/store.test.ts`, `tests/cassette/client.test.ts`,
+    or `tests/unit/cli.test.ts`''s `--cassette`/`--record` cases exercises a client
+    that fails partway through a case''s runs during recording, so a future change
+    to either side of this seam (decorator error handling, or `doBehaveRun`''s suite-index
+    bookkeeping) could silently alter this behavior without any test noticing.
+
+    '
+  remediation: 'Add a WP04-level test in `tests/unit/cli.test.ts`''s `--cassette`/`--record`
+    block: use a `clientFactory` whose `chat` throws on the Nth call of a multi-run
+    case, run `--record`, then assert (a) the resulting case file has fewer than `applied.runs`
+    exchanges, and (b) the suite index''s declared `runs` count for that case — document
+    explicitly whether it is intended to equal `applied.runs` (today''s behavior)
+    or `recordSink.length`. If the intended contract is "declare only what was actually
+    recorded," change `recordedSuiteCases.push` to use `recordSink.length` instead
+    of `applied.runs`; either way, lock the decision with a test so it cannot silently
+    drift.
+
+    '
+  lens_group: tests

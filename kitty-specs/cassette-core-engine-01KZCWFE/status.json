@@ -1,0 +1,63 @@
+{
+  "event_count": 36,
+  "last_event_id": "01KZEYB1G8RSK3ATANQDVXZSHC",
+  "materialized_at": "2026-08-07T20:23:54.632040+00:00",
+  "mission_number": "",
+  "mission_slug": "cassette-core-engine-01KZCWFE",
+  "mission_type": "software-dev",
+  "summary": {
+    "approved": 6,
+    "blocked": 0,
+    "canceled": 0,
+    "claimed": 0,
+    "done": 0,
+    "for_review": 0,
+    "in_progress": 0,
+    "in_review": 0,
+    "planned": 0
+  },
+  "work_packages": {
+    "WP01": {
+      "actor": "orry-reconstruction",
+      "force_count": 5,
+      "lane": "approved",
+      "last_event_id": "01KZEY9ETZEE6RZNRR9J19DYGS",
+      "last_transition_at": "2026-08-07T20:23:02.751439+00:00"
+    },
+    "WP02": {
+      "actor": "orry-reconstruction",
+      "force_count": 5,
+      "lane": "approved",
+      "last_event_id": "01KZEYAGTRP2FYGMF7GKZ59CDQ",
+      "last_transition_at": "2026-08-07T20:23:37.560521+00:00"
+    },
+    "WP03": {
+      "actor": "orry-reconstruction",
+      "force_count": 5,
+      "lane": "approved",
+      "last_event_id": "01KZEYAN04TTE219AR93KVR4MY",
+      "last_transition_at": "2026-08-07T20:23:41.828851+00:00"
+    },
+    "WP04": {
+      "actor": "orry-reconstruction",
+      "force_count": 5,
+      "lane": "approved",
+      "last_event_id": "01KZEYAS5WWW0GV089KXPP1FPB",
+      "last_transition_at": "2026-08-07T20:23:46.108915+00:00"
+    },
+    "WP05": {
+      "actor": "orry-reconstruction",
+      "force_count": 5,
+      "lane": "approved",
+      "last_event_id": "01KZEYAXBJGQE6Y5ZTCN6TBVA4",
+      "last_transition_at": "2026-08-07T20:23:50.386374+00:00"
+    },
+    "WP06": {
+      "actor": "orry-reconstruction",
+      "force_count": 5,
+      "lane": "approved",
+      "last_event_id": "01KZEYB1G8RSK3ATANQDVXZSHC",
+      "last_transition_at": "2026-08-07T20:23:54.632040+00:00"
+    }
+  }
+}

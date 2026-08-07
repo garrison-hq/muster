@@ -1,0 +1,62 @@
+schema: review-findings/v1
+complete: true
+phase: pr
+lens_group: fresh
+mission: cassette-core-engine-01KZCWFE
+findings:
+  - id: PR-FRESH-001
+    lens: fresh
+    severity: 3
+    title: "PR-TESTS-001 regression test covers chat's aliasing fix but not chatWithTools's identical fix"
+    evidence: |
+      tests/cassette/client.test.ts:142-177 adds one regression test, exercised only
+      through `client.chat(messages, OPTS)`. Compare src/core/cassette/client.ts:136-165
+      (chat) with :166-191 (chatWithTools): the fix commit (ca5d777) changed BOTH
+      call sites identically —
+        chat:          `const request = { messages: messages.map((m) => ({ ...m })), opts: { ...chatOpts } };`  (client.ts:148)
+        chatWithTools: `const request = { messages: messages.map((m) => ({ ...m })), tools: [...tools] };`      (client.ts:174)
+      Before the fix, both were plain aliasing (`{ messages, opts: chatOpts }` /
+      `{ messages, tools }` — see `git show ca5d777 -- src/core/cassette/client.ts`).
+      The chatWithTools code comment at client.ts:172-173 even says "same PR-TESTS-001
+      rationale as `chat` above" — the two paths are acknowledged as the same bug
+      class, but only one got a regression test.
+    claim: >
+      If a future change reverts client.ts:174 back to `{ messages, tools }`
+      (re-aliasing the caller's array in chatWithTools's persisted request), no
+      test in this file would fail — WOULD THIS TEST FAIL IF THE FIX WERE
+      REVERTED? For the chatWithTools half of the fix, no. The only chatWithTools
+      test in the file (client.test.ts:44-61, live mode) doesn't touch record
+      mode or persistence at all. This is a real gap: the exact same
+      severity-4-class bug can silently return in the tools path.
+    remediation: >
+      Add a chatWithTools counterpart to the PR-TESTS-001 test: call
+      `client.chatWithTools(messages, tools)` in record mode, then mutate the
+      same `messages` array (and/or `tools` array) after it resolves, and assert
+      recordSink[0].request.messages/tools match a pre-call snapshot and are not
+      the same array references as the caller's mutated arrays.
+  - id: PR-FRESH-002
+    lens: fresh
+    severity: 2
+    title: "New test proves messages-array freezing but not opts-object freezing, despite exercising the same code path"
+    evidence: |
+      tests/cassette/client.test.ts:163-175 only mutates `messages` (line 168:
+      `messages.push(...)`) after the `chat()` call; `OPTS` (client.test.ts:27,
+      `const OPTS = {} as const`) is never mutated before or after the call in
+      this test or anywhere else in the file. Yet the fix this test claims to
+      regression-guard also changed the opts side: client.ts:148 changed
+      `opts: chatOpts` to `opts: { ...chatOpts }` in the same commit (ca5d777).
+    claim: >
+      WOULD THIS TEST FAIL IF ONLY THE OPTS HALF OF THE FIX WERE REVERTED (i.e.
+      client.ts:148 read `request = { messages: messages.map(...), opts: chatOpts }`)?
+      No — nothing in this test or the file mutates a chatOpts object after
+      passing it to `chat()`, so aliasing on that field is untested. Low
+      real-world urgency today (src/core/behavioral/runner.ts:345-346 builds
+      `chatOpts` once per run and never mutates it after the fact), but the
+      test's own docstring ("freezes the persisted request at call time")
+      implies full-request freezing, which it does not fully demonstrate.
+    remediation: >
+      Either narrow the test's claim to "messages array" specifically, or add
+      an opts-mutation assertion (construct a mutable `{ temperature: 0.5 }`
+      opts object, call chat, mutate `opts.temperature` afterward, and assert
+      the persisted request.opts is unaffected and not the same object
+      reference) to make the coverage match the docstring.

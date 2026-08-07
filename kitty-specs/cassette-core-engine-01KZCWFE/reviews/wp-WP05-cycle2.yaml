@@ -1,0 +1,14 @@
+schema: wp-verdict/v1
+complete: true
+wp: WP05
+cycle: 2
+mission: cassette-core-engine-01KZCWFE
+verdict: approved
+gates_observed:
+  tsc: pass
+  tests: pass
+  coverage: n/a — full WP05 diff (git diff HEAD~5..HEAD --stat) touches zero files
+    under src/**; vitest.config.ts's coverage.include is ["src/**"] only, so this
+    WP has no new src/ surface to move the coverage number on (same reasoning as
+    cycle 1, re-confirmed against the cycle-2 diff).
+feedback: []

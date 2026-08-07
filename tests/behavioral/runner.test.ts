@@ -22,6 +22,7 @@ import type {
   PairedOutcome,
 } from "../../src/core/behavioral/types.js";
 import type { Violation } from "../../src/core/report.js";
+import { makeCassetteClient, type CassetteExchange } from "../../src/core/cassette/index.js";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -609,6 +610,44 @@ describe("personaPrompt rendering", () => {
   });
 });
 
+describe("FR-022 personaPrompt purity (the request-hash keying purity assumption, WP05 T034)", () => {
+  it("personaPrompt and its rendering helpers (personaIdentityLine..personaPrompt) read none of Date, Math.random, or process.env", () => {
+    // The cassette request-hash (FR-005) is computed over the fully-built
+    // request, which embeds personaPrompt's rendered output as the system
+    // message — a hash key that only stays stable across record/replay if
+    // rendering is a pure function of the effective config + options. This
+    // scans personaPrompt's OWN source text (not the whole file — runCase's
+    // Date.now() timing wrapper, elsewhere in this file, legitimately uses
+    // Date and would false-positive a whole-file scan) plus its four
+    // private helper functions, since personaPrompt calls them directly and
+    // a violation hidden in any one of them would break the same purity
+    // assumption just as surely as one in personaPrompt itself.
+    const runnerSource = readFileSync(
+      new URL("../../src/core/behavioral/runner.ts", import.meta.url),
+      "utf8"
+    );
+    const startAnchor = "function personaIdentityLine(";
+    const endAnchor = "function stateOverlay(";
+    const startIndex = runnerSource.indexOf(startAnchor);
+    const endIndex = runnerSource.indexOf(endAnchor);
+    // Guard the guard: both anchors must still exist, in order, or this
+    // test would vacuously scan an empty/wrong slice.
+    expect(startIndex).toBeGreaterThanOrEqual(0);
+    expect(endIndex).toBeGreaterThan(startIndex);
+    const renderingBlock = runnerSource.slice(startIndex, endIndex);
+    expect(renderingBlock).toContain("export function personaPrompt(");
+
+    // Precise, usage-shaped patterns — not bare `"Date"`/`"process.env"`
+    // substring checks, which would false-positive on this very function's
+    // OWN doc comment ("a pure function ... — no Date, no random, no
+    // environment").
+    expect(renderingBlock).not.toMatch(/\bDate\s*\.\s*now\s*\(/);
+    expect(renderingBlock).not.toMatch(/\bnew\s+Date\s*\(/);
+    expect(renderingBlock).not.toMatch(/\bMath\s*\.\s*random\s*\(/);
+    expect(renderingBlock).not.toMatch(/\bprocess\s*\.\s*env\b/);
+  });
+});
+
 // ─── OpenAI-compatible client (T033 request-shape, mocked fetch only) ────────
 
 function okResponse(content: string): Response {
@@ -891,5 +930,95 @@ cases:
     expect(isBehavioralManifestError(result)).toBe(true);
     if (!isBehavioralManifestError(result)) return;
     expect(result.some((v) => v.path === "endpoint.api_key_env")).toBe(true);
+  });
+});
+
+// ─── WP04: FR-013 stale-verdict propagation (cassette replay miss) ──────────
+//
+// `runCase`'s catch block (this file's IC-04 scope) sets `stale: true` when
+// the caught error is a `CassetteMissError` — a real decorator instance is
+// used here (not a hand-rolled error) so the assertion exercises the actual
+// `instanceof CassetteMissError` check, not a stand-in.
+
+describe("FR-013 stale verdict propagation (cassette replay miss)", () => {
+  it("a replay run against a cassette missing an exchange produces RunVerdict.stale and CaseVerdict.stale, and is NOT a generic conformance failure", async () => {
+    const soulCheck = await check(soulRaw("session"));
+    // Empty replaySource: every call is a miss, regardless of request shape.
+    const replayClient = makeCassetteClient(
+      { chat: async () => wordsOf(3) },
+      { mode: "replay", caseId: "verbosity_case", replaySource: [] }
+    );
+
+    const verdict = await runCase(
+      rfc1Adapter,
+      soulCheck,
+      verbosityCase({ runs: 1, pass_threshold: 1 }),
+      replayClient,
+      runnerOpts
+    );
+
+    expect(verdict.passed).toBe(false);
+    expect(verdict.stale).toBe(true);
+    expect(verdict.runs).toHaveLength(1);
+    expect(verdict.runs[0]?.passed).toBe(false);
+    expect(verdict.runs[0]?.stale).toBe(true);
+    // Labeled distinctly as staleness — never merely a substring inside the
+    // free-text `error` field's OWN semantics (FR-013): `stale` is a field,
+    // not a parse of `error`, but the error text is still the cassette
+    // decorator's own miss message, not a generic "conformance failure".
+    expect(verdict.runs[0]?.error).toContain("cassette replay miss");
+    expect(verdict.runs[0]?.error).not.toContain("conformance failure");
+  });
+
+  it("a mixed run — one hit, one miss — keeps the suite going: only the missed run is stale, the case-level stale is true, and passCount reflects the hit", async () => {
+    const soulCheck = await check(soulRaw("session"));
+
+    // Record first (via the decorator itself, so we never hand-compute a
+    // request hash): both of this case's runs send the identical request,
+    // so the ordinal counter (FR-006) records them as ordinals 1 and 2 of
+    // the same request key.
+    const recordSink: CassetteExchange[] = [];
+    const recordingClient = makeCassetteClient(
+      { chat: async () => wordsOf(3) },
+      {
+        mode: "record",
+        caseId: "verbosity_case",
+        recordSink,
+        endpoint: { model: "test-model", baseUrl: "http://localhost:9999/v1" },
+      }
+    );
+    await runCase(
+      rfc1Adapter,
+      soulCheck,
+      verbosityCase({ runs: 2, pass_threshold: 1 }),
+      recordingClient,
+      runnerOpts
+    );
+    expect(recordSink).toHaveLength(2); // both runs recorded (identical request, ordinals 1 and 2)
+
+    // Delete the ordinal-2 exchange — simulating a partially stale cassette.
+    const replaySource = recordSink.filter((exchange) => exchange.ordinal !== 2);
+    const replayClient = makeCassetteClient(
+      { chat: async () => wordsOf(3) },
+      { mode: "replay", caseId: "verbosity_case", replaySource }
+    );
+
+    const verdict = await runCase(
+      rfc1Adapter,
+      soulCheck,
+      verbosityCase({ runs: 2, pass_threshold: 1 }),
+      replayClient,
+      runnerOpts
+    );
+
+    expect(verdict.stale).toBe(true); // case-level: at least one run was stale
+    expect(verdict.runs[0]?.stale).toBeUndefined(); // run 1 hit, not stale
+    expect(verdict.runs[0]?.passed).toBe(true);
+    expect(verdict.runs[1]?.stale).toBe(true); // run 2 missed
+    expect(verdict.runs[1]?.passed).toBe(false);
+    // The suite/case continued past the miss — pass_threshold:1 is satisfied
+    // by run 1 alone, so the case itself still passes despite the stale run.
+    expect(verdict.passed).toBe(true);
+    expect(verdict.passCount).toBe(1);
   });
 });

@@ -1,0 +1,78 @@
+schema: wp-verdict/v1
+complete: true
+wp: WP05
+cycle: 1
+mission: cassette-core-engine-01KZCWFE
+verdict: rejected
+gates_observed:
+  tsc: pass
+  tests: pass
+  coverage: n/a — WP05's diff (git diff HEAD~4..HEAD --stat) touches zero files under
+    src/**; vitest.config.ts's coverage.include is ["src/**"] only, so there is no new
+    src/ surface for this WP to move the coverage number on. Confirmed by inspecting
+    both the diff stat and vitest.config.ts directly rather than expecting a reported
+    percentage.
+feedback:
+  - id: WP05-C1-001
+    severity: 3
+    claim: >-
+      NI-004's own test suite never verifies that the directory WALK (as opposed to
+      the shared helper functions it calls) actually reaches all three scanned
+      directories, so a future silent narrowing of the scan scope — the exact
+      failure mode NI-004 was redesigned across three plan-review rounds to prevent,
+      per plan.md's "NI-004 design" section recounting the allowlist that "rotted
+      mid-review and silently dropped two real .chat( call sites" — would not be
+      caught by this test file. Empirically verified: removing the
+      `...walk(join(repoRoot, "src", "crosslayer"), { exclude: BASE_EXCLUDES }),`
+      line from `ni004ScannedFiles` at tests/unit/invariants.test.ts:337-341 (5 of
+      83 files dropped) leaves all 30 tests in tests/unit/invariants.test.ts green,
+      including the "actually scanned a non-trivial file set (guard the guard)" test
+      at tests/unit/invariants.test.ts:427-433, which only asserts
+      `ni004ScannedFiles.length > 50` — 78 remaining files still clears that bar.
+      Neither of the two must-not-false-positive fixture tests
+      (src/adapters/memory-utilization/index.ts,
+      src/crosslayer/rule-survival.ts, tests/unit/invariants.test.ts:441-458) nor
+      the true-positive/false-positive-immune test on
+      src/crosslayer/manifest-runner.ts (tests/unit/invariants.test.ts:424-434)
+      exercises the scan array at all — all three call
+      `findPromiseAllChatViolations` directly against `readFileSync` content,
+      bypassing `ni004ScannedFiles` entirely. So a scope regression limited to one
+      of the three directories (e.g. an accidental deletion of one `walk()` line
+      during a future refactor of this file) would permanently and silently stop
+      enforcing C-006 for that entire directory, and the test suite would never
+      turn red — which is precisely the class of rot this guard's directory-walk
+      redesign exists to close off. (Mutation performed on a working-tree copy
+      only; reverted immediately after confirming the result — `git status --short
+      tests/unit/invariants.test.ts` and a subsequent green 30/30 run confirm the
+      tree is clean.)
+    remediation: >-
+      Add a regression test that proves the scan reaches each of the three
+      directories independently of the shared helper functions, e.g. assert
+      `ni004ScannedFiles.some(f => rel(f).startsWith("src/adapters/"))`,
+      `.some(f => rel(f).startsWith("src/core/behavioral/"))`, and
+      `.some(f => rel(f).startsWith("src/crosslayer/"))` are all true (three
+      cheap, precise assertions, cannot be satisfied by an accidentally-narrowed
+      walk over just one or two of the directories). Stronger alternative: commit
+      or synthesize a scan-scope fixture with a genuine `Promise.all(...)`
+      wrapping a `.chat(` site under each of the three directories and assert the
+      AGGREGATE scan (`ni004Violations`, not a direct `findPromiseAllChatViolations`
+      call) reports each one — proving the walk pipeline itself, not just the
+      quote-tracking helpers it calls, covers every directory FR-024 requires.
+  - id: WP05-C1-002
+    severity: 1
+    claim: >-
+      fixtures/cassettes/discrimination-control/_suite-index.json's `suiteId`
+      field is an absolute, machine-specific filesystem path (this reviewer's
+      working copy shows `/home/jeroennouws/dev/muster-missions/99/fixtures/
+      cassettes/discrimination-control/manifest.yaml`, baked in at T031
+      authoring time by `toAbsolute(manifestPath)` in src/cli/index.ts:606) that
+      is now committed to a git-tracked fixture. Not a functional defect —
+      src/core/cassette/types.ts:110-111 explicitly documents `suiteId` as
+      "informational provenance only ... never compared for byte-stability," and
+      the discrimination-control tests never read or assert against it — but it
+      is an odd thing to see permanently checked into a shared fixture, since it
+      leaks one contributor's local absolute path into every future clone.
+    remediation: >-
+      Optional cosmetic follow-up (not blocking): re-record the fixture from a
+      neutral/relative path, or note in the fixture's own comments that
+      `suiteId` is inert provenance and the embedded path is not meaningful.

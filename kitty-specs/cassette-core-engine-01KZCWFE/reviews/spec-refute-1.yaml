@@ -1,0 +1,17 @@
+schema: review-refute/v1
+complete: true
+phase: spec
+batch: 1
+verdicts:
+  - id: SPEC-ARCH-001
+    verdict: confirmed
+    reason: Verified all four cited call sites verbatim (cli/index.ts:936-943 error-message substring match, cli/index.ts:1616-1646 buildSopClient/SOP_NOOP_CLIENT env-only check, heartbeat/index.ts:497 env-only check, skills/trigger.ts:83-92 canonical+deprecated-alias precedence) and confirmed FR-018/C-005/SC-006 give the resolver only a one-sentence contract with no input signature, so the "consume without modification" guarantee is genuinely unsupported by the spec text.
+  - id: SPEC-ARCH-002
+    verdict: confirmed
+    reason: Verified RunCliOptions (cli/index.ts:157-159) has only a plain ChatClient factory and a separately-typed TriggerChatClient factory (no ToolChatClient variant), runner.ts:255/384 only ever calls client.chat, skills/trigger.ts:115-122 TriggerChatClient is structurally distinct from core's ToolChatClient, and none of the 14 Acceptance Scenarios (only an Edge Case bullet) exercises chatWithTools, all matching the finding's citations exactly.
+  - id: SPEC-COMPLETE-004
+    verdict: confirmed
+    reason: Confirmed RunVerdict (types.ts:102-108) and CaseVerdict (types.ts:124-137) both carry only an untyped error?/passRate field with no stale/kind indicator, and FR-013/AC-8 text (verified against spec.md) genuinely leaves the "labeled distinctly as staleness" mechanism unspecified between two incompatible readings.
+  - id: SPEC-GOV-003
+    verdict: confirmed
+    reason: Read client.ts:105-111 directly and confirmed the ToolChatClient interface declaration spans lines 105-110 with line 111 being a blank line after the closing brace, matching the finding's off-by-one claim exactly as cited in both spec.md Summary and FR-007.

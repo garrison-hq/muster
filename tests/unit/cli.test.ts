@@ -13,7 +13,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { runCli, type RunCliOptions } from "../../src/cli/index.js";
+import { normalizeDurationsForReplay, runCli, type RunCliOptions } from "../../src/cli/index.js";
 import type {
   CaseVerdict,
   ChatClient,
@@ -71,6 +71,11 @@ function mockFactory(
       chat: typeof reply === "string" ? async () => reply : reply,
     };
   };
+}
+
+/** Fresh, empty temp directory for a `--cassette <dir>` test (WP04). */
+async function mkCassetteDir(): Promise<string> {
+  return mkdtemp(join(tmpdir(), "muster-cassette-"));
 }
 
 // ── temp manifests (built once; absolute soul paths embedded) ───────────────
@@ -133,6 +138,30 @@ await writeFile(
     `    soul: ${JSON.stringify(brokenSoul)}`,
     "    turns:",
     `      - content: "Hello"`,
+    "    axes:",
+    `      - axis: "verbosity"`,
+    `        turns: "all"`,
+    "",
+  ].join("\n"),
+  "utf8"
+);
+
+// Behavioral manifest declaring n=5 runs (WP04: FR-014/015 run-count tests).
+const behaveManifest5Runs = join(tempDir, "behave-5runs.yaml");
+await writeFile(
+  behaveManifest5Runs,
+  [
+    "endpoint:",
+    `  base_url: "http://127.0.0.1:9/v1"`,
+    `  model: "mock-model"`,
+    "defaults:",
+    "  runs: 5",
+    "  pass_threshold: 5",
+    "cases:",
+    `  - id: "verbosity_minimal"`,
+    `    soul: ${JSON.stringify(validSoul)}`,
+    "    turns:",
+    `      - content: "Hello there"`,
     "    axes:",
     `      - axis: "verbosity"`,
     `        turns: "all"`,
@@ -450,13 +479,507 @@ describe("muster behave run (RFC-1 §20/§21 behavioral surface; FR-016..FR-023)
   });
 
   it("CLI contract: endpoint unreachable for the ENTIRE run → exit 2", async () => {
-    const { code } = await run(["behave", "run", behaveManifest], {
+    const { code, stdout } = await run(["behave", "run", behaveManifest, "--json"], {
       clientFactory: mockFactory(async () => {
         throw new Error("chat request to 127.0.0.1:9 failed: connect ECONNREFUSED");
       }),
     });
     expect(code).toBe(2);
+    // WP04-C1-003: a generic (non-CassetteMissError) error must NEVER get
+    // labeled `stale: true` — that label is reserved for FR-013 cassette
+    // replay misses, not ordinary endpoint failures.
+    const verdicts = JSON.parse(stdout) as CaseVerdict[];
+    for (const verdict of verdicts) {
+      expect(verdict.stale).toBeUndefined();
+      for (const runVerdict of verdict.runs) {
+        expect(runVerdict.stale).toBeUndefined();
+      }
+    }
   });
+
+  // ── WP04: --cassette/--record/--replay (FR-013..FR-017, Hazards 1-3) ─────
+
+  it("FR-016 (Scenario 12): --record without --cassette → CLI usage error, exit 2", async () => {
+    const { code, stderr, stdout } = await run(["behave", "run", behaveManifest, "--record"]);
+    expect(code).toBe(2);
+    expect(stdout).toBe("");
+    expect(stderr).toContain("--cassette");
+  });
+
+  it("FR-016 (Scenario 12): --replay without --cassette → CLI usage error, exit 2", async () => {
+    const { code, stderr, stdout } = await run(["behave", "run", behaveManifest, "--replay"]);
+    expect(code).toBe(2);
+    expect(stdout).toBe("");
+    expect(stderr).toContain("--cassette");
+  });
+
+  it("FR-016 (Scenario 13): --record and --replay together → CLI usage error, exit 2", async () => {
+    const cassetteDir = await mkCassetteDir();
+    const { code, stderr } = await run([
+      "behave",
+      "run",
+      behaveManifest,
+      "--cassette",
+      cassetteDir,
+      "--record",
+      "--replay",
+    ]);
+    expect(code).toBe(2);
+    expect(stderr).toContain("mutually exclusive");
+  });
+
+  it("FR-016 edge case: --cassette with neither --record nor --replay → CLI usage error, exit 2", async () => {
+    const cassetteDir = await mkCassetteDir();
+    const { code, stderr } = await run([
+      "behave",
+      "run",
+      behaveManifest,
+      "--cassette",
+      cassetteDir,
+    ]);
+    expect(code).toBe(2);
+    expect(stderr).toContain("--record or --replay");
+  });
+
+  it("NFR-001 (Scenario 2): recording the same suite twice is byte-identical modulo durationMs", async () => {
+    const dirA = await mkCassetteDir();
+    const dirB = await mkCassetteDir();
+    for (const dir of [dirA, dirB]) {
+      const { code } = await run(
+        ["behave", "run", behaveManifest, "--cassette", dir, "--record"],
+        { clientFactory: mockFactory(SHORT_REPLY) }
+      );
+      expect(code).toBe(0);
+    }
+    const stripDurations = async (dir: string): Promise<unknown> => {
+      const raw = await readFile(join(dir, "verbosity_minimal.json"), "utf8");
+      const parsed = JSON.parse(raw) as { exchanges: Array<Record<string, unknown>> };
+      return {
+        ...parsed,
+        exchanges: parsed.exchanges.map(({ durationMs: _durationMs, ...rest }) => rest),
+      };
+    };
+    expect(await stripDurations(dirA)).toEqual(await stripDurations(dirB));
+  });
+
+  it(
+    "FR-017/Hazard 2: --replay wraps --json as {replayed:true, verdicts} and marks the human " +
+      "summary; --record's --json stays the pre-mission bare array",
+    async () => {
+      const cassetteDir = await mkCassetteDir();
+      const recorded = await run(
+        ["behave", "run", behaveManifest, "--cassette", cassetteDir, "--record", "--json"],
+        { clientFactory: mockFactory(SHORT_REPLY) }
+      );
+      expect(recorded.code).toBe(0);
+      // --record --json stays the pre-mission bare array shape (no `replayed`).
+      const recordedParsed = JSON.parse(recorded.stdout) as unknown;
+      expect(Array.isArray(recordedParsed)).toBe(true);
+
+      const replayedJson = await run([
+        "behave",
+        "run",
+        behaveManifest,
+        "--cassette",
+        cassetteDir,
+        "--replay",
+        "--json",
+      ]);
+      expect(replayedJson.code).toBe(0);
+      const wrapped = JSON.parse(replayedJson.stdout) as {
+        replayed: boolean;
+        verdicts: CaseVerdict[];
+      };
+      expect(wrapped.replayed).toBe(true);
+      expect(Array.isArray(wrapped.verdicts)).toBe(true);
+      expect(wrapped.verdicts).toHaveLength(1);
+
+      const replayedHuman = await run([
+        "behave",
+        "run",
+        behaveManifest,
+        "--cassette",
+        cassetteDir,
+        "--replay",
+      ]);
+      expect(replayedHuman.code).toBe(0);
+      expect(replayedHuman.stdout.trimEnd().split("\n").at(-1)).toContain("(replayed: true)");
+    }
+  );
+
+  it(
+    "NFR-003 (Scenario 5): --replay performs zero network I/O, even with the real fetch-backed " +
+      "client (not a mock clientFactory, which would be vacuous — replay must never call " +
+      "inner.chat regardless of decorator correctness)",
+    async () => {
+      const cassetteDir = await mkCassetteDir();
+      const recorded = await run(
+        ["behave", "run", behaveManifest, "--cassette", cassetteDir, "--record"],
+        { clientFactory: mockFactory(SHORT_REPLY) }
+      );
+      expect(recorded.code).toBe(0);
+
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() => {
+        throw new Error("NFR-003 violation: --replay must never call fetch");
+      });
+      try {
+        // No clientFactory override here: the default (makeClient, real
+        // fetch-backed) is exercised so this proves the DECORATOR never
+        // calls inner.chat during replay.
+        const { code } = await run([
+          "behave",
+          "run",
+          behaveManifest,
+          "--cassette",
+          cassetteDir,
+          "--replay",
+        ]);
+        expect(code).toBe(0);
+        expect(fetchSpy).not.toHaveBeenCalled();
+      } finally {
+        vi.restoreAllMocks();
+      }
+    }
+  );
+
+  it(
+    "NFR-002/Hazard 3 (Scenario 6): two --replay invocations emit byte-identical --json despite " +
+      "a forced timing difference between them",
+    async () => {
+      const cassetteDir = await mkCassetteDir();
+      const recorded = await run(
+        ["behave", "run", behaveManifest, "--cassette", cassetteDir, "--record"],
+        { clientFactory: mockFactory(SHORT_REPLY) }
+      );
+      expect(recorded.code).toBe(0);
+
+      // runCase calls Date.now() exactly twice per run (started, ended);
+      // behaveManifest declares 2 runs for its one case → 4 calls per
+      // invocation. Force a large, DIFFERENT elapsed time between the two
+      // invocations: without Hazard 3's normalization, the two --json
+      // payloads would differ (37ms vs. 999ms per run).
+      const dateSpy = vi.spyOn(Date, "now");
+      dateSpy
+        .mockReturnValueOnce(1_000)
+        .mockReturnValueOnce(1_037) // invocation 1, run 1: 37ms
+        .mockReturnValueOnce(2_000)
+        .mockReturnValueOnce(2_037) // invocation 1, run 2: 37ms
+        .mockReturnValueOnce(9_000)
+        .mockReturnValueOnce(9_999) // invocation 2, run 1: 999ms
+        .mockReturnValueOnce(20_000)
+        .mockReturnValueOnce(20_999); // invocation 2, run 2: 999ms
+      try {
+        const first = await run([
+          "behave",
+          "run",
+          behaveManifest,
+          "--cassette",
+          cassetteDir,
+          "--replay",
+          "--json",
+        ]);
+        const second = await run([
+          "behave",
+          "run",
+          behaveManifest,
+          "--cassette",
+          cassetteDir,
+          "--replay",
+          "--json",
+        ]);
+        expect(first.code).toBe(0);
+        expect(second.code).toBe(0);
+        expect(first.stdout).toBe(second.stdout);
+        const parsed = JSON.parse(first.stdout) as { verdicts: CaseVerdict[] };
+        for (const runVerdict of parsed.verdicts[0]?.runs ?? []) {
+          expect(runVerdict.transcript.durationMs).toBe(0);
+        }
+      } finally {
+        dateSpy.mockRestore();
+      }
+    }
+  );
+
+  it(
+    "FR-013/Hazard 1 (Scenario 9): a deleted exchange fails only that run, labeled stale, the " +
+      "suite continues, exit 1 not 2",
+    async () => {
+      const cassetteDir = await mkCassetteDir();
+      const recorded = await run(
+        ["behave", "run", behaveManifest, "--cassette", cassetteDir, "--record"],
+        { clientFactory: mockFactory(SHORT_REPLY) }
+      );
+      expect(recorded.code).toBe(0);
+
+      const caseFilePath = join(cassetteDir, "verbosity_minimal.json");
+      const caseFile = JSON.parse(await readFile(caseFilePath, "utf8")) as {
+        exchanges: Array<{ ordinal: number }>;
+      };
+      expect(caseFile.exchanges).toHaveLength(2);
+      caseFile.exchanges = caseFile.exchanges.filter((exchange) => exchange.ordinal !== 2);
+      await writeFile(caseFilePath, JSON.stringify(caseFile), "utf8");
+
+      const { code, stdout } = await run([
+        "behave",
+        "run",
+        behaveManifest,
+        "--cassette",
+        cassetteDir,
+        "--replay",
+        "--json",
+      ]);
+      expect(code).toBe(1); // not 2 (Hazard 1)
+      const { verdicts } = JSON.parse(stdout) as {
+        replayed: boolean;
+        verdicts: CaseVerdict[];
+      };
+      const [verdict] = verdicts;
+      expect(verdict?.passed).toBe(false);
+      const staleRuns = verdict?.runs.filter((r) => r.stale === true) ?? [];
+      expect(staleRuns).toHaveLength(1);
+      expect(staleRuns[0]?.error).toContain("cassette replay miss");
+      // The suite continued: the OTHER run of the same case still ran and passed.
+      expect(verdict?.runs.some((r) => r.passed === true)).toBe(true);
+    }
+  );
+
+  it(
+    "FR-013/Hazard 1 (independent test): --replay against a cassette dir with zero matching " +
+      "case files exits 1, not 2",
+    async () => {
+      const emptyCassetteDir = await mkCassetteDir();
+      const { code, stdout } = await run([
+        "behave",
+        "run",
+        behaveManifest,
+        "--cassette",
+        emptyCassetteDir,
+        "--replay",
+        "--json",
+      ]);
+      expect(code).toBe(1); // not 2
+      const { verdicts } = JSON.parse(stdout) as {
+        replayed: boolean;
+        verdicts: CaseVerdict[];
+      };
+      expect(verdicts[0]?.stale).toBe(true);
+      expect(verdicts.every((v) => v.passed === false)).toBe(true);
+    }
+  );
+
+  it(
+    "PR-TESTS-002: a client failure mid-recording produces a cassette case file with fewer " +
+      "exchanges than the run count; the suite index's declared `runs` for that case locks " +
+      "today's documented contract — it equals `applied.runs` (the CONFIGURED run count), " +
+      "not `recordSink.length` (the count actually appended) — so a future change to either " +
+      "side of this seam cannot silently drift it",
+    async () => {
+      const cassetteDir = await mkCassetteDir();
+      let calls = 0;
+      const recorded = await run(
+        ["behave", "run", behaveManifest5Runs, "--cassette", cassetteDir, "--record"],
+        {
+          clientFactory: mockFactory(async () => {
+            calls++;
+            // Fail on run 3 of 5: a transient endpoint error partway through
+            // a multi-run case's recording.
+            if (calls === 3) {
+              throw new Error("transient endpoint error on run 3");
+            }
+            return SHORT_REPLY;
+          }),
+        }
+      );
+      // runCase's per-run error containment swallows the failure into a
+      // failed RunVerdict and continues (never propagates) — the case's
+      // pass_threshold (5) is not met, so the run exits 1 (a grading
+      // failure), not 2 (only one run of one case errored, not every run of
+      // every case — the exit-2 heuristic does not fire).
+      expect(recorded.code).toBe(1);
+      expect(calls).toBe(5);
+
+      const caseFilePath = join(cassetteDir, "verbosity_minimal.json");
+      const caseFile = JSON.parse(await readFile(caseFilePath, "utf8")) as {
+        exchanges: Array<{ ordinal: number }>;
+      };
+      // (a) The written case file has fewer than applied.runs (5) exchanges:
+      // the failed run's client call throws before recordSink.push runs, so
+      // that run contributes no exchange at all.
+      expect(caseFile.exchanges).toHaveLength(4);
+
+      const suiteIndexPath = join(cassetteDir, "_suite-index.json");
+      const suiteIndex = JSON.parse(await readFile(suiteIndexPath, "utf8")) as {
+        cases: { id: string; runs: number }[];
+      };
+      const declaredRuns = suiteIndex.cases.find((c) => c.id === "verbosity_minimal")?.runs;
+      // (b) Documented, locked decision: doBehaveRun declares the CONFIGURED
+      // run count (applied.runs = 5), not the count actually recorded
+      // (recordSink.length = 4). On a later --replay, the missing run
+      // becomes an ordinary stale/CassetteMissError failure (Hazard 1) —
+      // graceful degradation, not a crash.
+      expect(declaredRuns).toBe(5);
+      expect(declaredRuns).not.toBe(caseFile.exchanges.length);
+    }
+  );
+
+  it("FR-014 (Scenario 10): replay with no --runs uses the cassette's recorded n=5", async () => {
+    const cassetteDir = await mkCassetteDir();
+    const recorded = await run(
+      ["behave", "run", behaveManifest5Runs, "--cassette", cassetteDir, "--record"],
+      { clientFactory: mockFactory(SHORT_REPLY) }
+    );
+    expect(recorded.code).toBe(0);
+
+    const { code, stdout } = await run([
+      "behave",
+      "run",
+      behaveManifest5Runs,
+      "--cassette",
+      cassetteDir,
+      "--replay",
+      "--json",
+    ]);
+    expect(code).toBe(0);
+    const { verdicts } = JSON.parse(stdout) as { replayed: boolean; verdicts: CaseVerdict[] };
+    expect(verdicts[0]?.runs).toHaveLength(5);
+  });
+
+  it(
+    "FR-015 (Scenario 11): --runs 3 vs. a cassette recorded with n=5 fails before any case " +
+      "executes, naming both counts",
+    async () => {
+      const cassetteDir = await mkCassetteDir();
+      const recorded = await run(
+        ["behave", "run", behaveManifest5Runs, "--cassette", cassetteDir, "--record"],
+        { clientFactory: mockFactory(SHORT_REPLY) }
+      );
+      expect(recorded.code).toBe(0);
+
+      let chatCalls = 0;
+      const countingFactory = (): ChatClient => ({
+        chat: async () => {
+          chatCalls++;
+          return SHORT_REPLY;
+        },
+      });
+      const { code, stdout, stderr } = await run(
+        [
+          "behave",
+          "run",
+          behaveManifest5Runs,
+          "--cassette",
+          cassetteDir,
+          "--replay",
+          "--runs",
+          "3",
+        ],
+        { clientFactory: countingFactory }
+      );
+      expect(code).toBe(2);
+      expect(stdout).toBe(""); // nothing executed
+      expect(stderr).toContain("3");
+      expect(stderr).toContain("5");
+      expect(chatCalls).toBe(0); // no case executed before the failure
+    }
+  );
+
+  it(
+    "WP04-C1-001/FR-014/015: --replay --runs N where N equals the cassette's recorded count " +
+      "is ACCEPTED (exit 0, executes N runs, no conflict error) — the no-conflict arm of the " +
+      "src/cli/index.ts:522 preflight check",
+    async () => {
+      const cassetteDir = await mkCassetteDir();
+      const recorded = await run(
+        ["behave", "run", behaveManifest5Runs, "--cassette", cassetteDir, "--record"],
+        { clientFactory: mockFactory(SHORT_REPLY) }
+      );
+      expect(recorded.code).toBe(0);
+
+      let chatCalls = 0;
+      const countingFactory = (): ChatClient => ({
+        chat: async () => {
+          chatCalls++;
+          return SHORT_REPLY;
+        },
+      });
+      const { code, stdout, stderr } = await run(
+        [
+          "behave",
+          "run",
+          behaveManifest5Runs,
+          "--cassette",
+          cassetteDir,
+          "--replay",
+          "--runs",
+          "5",
+          "--json",
+        ],
+        { clientFactory: countingFactory }
+      );
+      expect(code).toBe(0);
+      expect(stderr).not.toContain("conflicts with the cassette's recorded run count");
+      const { verdicts } = JSON.parse(stdout) as { replayed: boolean; verdicts: CaseVerdict[] };
+      expect(verdicts[0]?.runs).toHaveLength(5);
+      // Replay never touches a live endpoint (NFR-003): the cassette client
+      // absorbs every call, so the underlying chat client is never invoked
+      // even though --runs matched and the case executed.
+      expect(chatCalls).toBe(0);
+    }
+  );
+});
+
+describe("WP04-C1-002: normalizeDurationsForReplay copies, never aliases (Hazard 3)", () => {
+  /** Minimal-but-real Transcript/RunVerdict/CaseVerdict fixture builder. */
+  function makeVerdict(durationMs: number): CaseVerdict {
+    return {
+      id: "case-a",
+      passed: true,
+      passCount: 1,
+      runs: [
+        {
+          run: 0,
+          passed: true,
+          axes: [],
+          transcript: {
+            entries: [],
+            model: "mock-model",
+            baseUrl: "http://127.0.0.1:9/v1",
+            temperature: "default",
+            durationMs,
+          },
+        },
+      ],
+    };
+  }
+
+  it(
+    "returns a copy whose transcript objects are NOT the same references as the originals, " +
+      "and leaves the original's durationMs untouched — a shallow write-through-aliasing " +
+      "implementation (mutating run.transcript.durationMs in place on the original objects) " +
+      "fails this test even though it would still emit byte-identical --json output",
+    () => {
+      const original = [makeVerdict(999)];
+      const originalTranscript = original[0]?.runs[0]?.transcript;
+
+      const normalized = normalizeDurationsForReplay(original);
+
+      // The copy is zeroed, as before.
+      expect(normalized[0]?.runs[0]?.transcript.durationMs).toBe(0);
+
+      // The ORIGINAL must be completely untouched: still the real, nonzero,
+      // measured duration — not a shared reference the copy wrote through.
+      expect(original[0]?.runs[0]?.transcript.durationMs).toBe(999);
+      expect(originalTranscript?.durationMs).toBe(999);
+
+      // Object identity: every level below the copied array must be a
+      // distinct object, not an alias of the original's.
+      expect(normalized).not.toBe(original);
+      expect(normalized[0]).not.toBe(original[0]);
+      expect(normalized[0]?.runs).not.toBe(original[0]?.runs);
+      expect(normalized[0]?.runs[0]).not.toBe(original[0]?.runs[0]);
+      expect(normalized[0]?.runs[0]?.transcript).not.toBe(original[0]?.runs[0]?.transcript);
+    }
+  );
 });
 
 describe("--restrict-refs reference hardening (WP01: FR-001..FR-003; RFC-1 §7.2)", () => {

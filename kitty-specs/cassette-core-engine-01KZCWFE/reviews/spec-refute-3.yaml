@@ -1,0 +1,17 @@
+schema: review-refute/v1
+complete: true
+phase: spec
+batch: 3
+verdicts:
+  - id: SPEC-COMPLETE-002
+    verdict: confirmed
+    reason: Verified in code that src/adapters/tools/selection.ts (FetchFn type at line 141, runSelectionCase resolving httpFetch at 528-530) imports only TOOLSFile from ./lint.js and is called from src/adapters/tools/index.ts with zero ChatClient/ToolChatClient involvement, directly contradicting spec.md's Summary claim that every chat-based command (which explicitly lists "tools" in Non-Goals) goes through the ChatClient/ToolChatClient seam.
+  - id: SPEC-COMPLETE-006
+    verdict: confirmed
+    reason: tests/unit/invariants.test.ts's doc comment and describe blocks enumerate exactly NI-001/NI-002/NI-003 with no Promise.all/concurrent-model-call scan, while grep confirms C-006's sequential-execution invariant is only asserted in prose comments across the codebase (e.g. crosslayer/rule-survival.ts, memory-utilization/index.ts) with no automated regression guard analogous to NI-002/NI-003.
+  - id: SPEC-COMPLETE-007
+    verdict: confirmed
+    reason: Confirmed durationMs appears only in NFR-001/AC-2 (byte-stability) and FR-001/#90 (SOP transcript) contexts, and grep of spec.md shows it is never listed in FR-004's provenance enumeration or the Key Entities "Exchange" schema, leaving "opt-in" undefined exactly as claimed.
+  - id: SPEC-GOV-002
+    verdict: confirmed
+    reason: Verified against src/cli/index.ts that crosslayer/sop/heartbeat/skills/tools each gate behavioral probes on process.env["MUSTER_ENDPOINT"] while memory (doMemoryRun, lines ~2015-2033) uses only an explicit --behavioral flag with a hardcoded localhost default and no MUSTER_ENDPOINT check, confirming five (not four or six) commands are actually gate-bearing, and #103/M20 is elsewhere defined in spec.md as test-fixture migration, not a CLI command, matching the finding's inconsistency claim.

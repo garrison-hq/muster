@@ -1,0 +1,57 @@
+schema: wp-verdict/v1
+complete: true
+wp: WP06
+cycle: 1
+mission: cassette-core-engine-01KZCWFE
+verdict: approved
+gates_observed:
+  tsc: pass
+  tests: pass
+  coverage: >
+    pass — independently verified via coverage/lcov.info (not the v8 text
+    summary table, see WP06-C1-001 advisory). Wholly-new files: all 7 report
+    100% line+branch coverage (execution-source.ts 12/12 lines 14/14
+    branches; cassette/client.ts 59/59 lines 22/22 branches; store.ts 19/19;
+    hash.ts, errors.ts, index.ts, types.ts all fully hit). Large
+    partially-touched files: cross-referenced every uncovered line/branch
+    from lcov.info against this mission's actual diff hunks (git diff
+    0d1d833..HEAD, the pre-WP01 base) for cli/index.ts,
+    src/adapters/openclaw-sop/runner.ts, src/core/behavioral/{client,
+    runner}.ts. Zero mission-authored lines are uncovered in any of the four
+    files — every uncovered line/branch that falls near a diff hunk (e.g.
+    client.ts:66, cli/index.ts:1825/1869/1800-1801, runner.ts:566) was
+    verified via `git blame` to predate the mission (commit db80a42,
+    2026-08-02, before mission base 0d1d833). behavioral/types.ts confirmed
+    zero executable statements (`grep -nE '^(export )?(function|const|class|
+    enum)'` → no matches).
+feedback:
+  - id: WP06-C1-001
+    severity: 1
+    claim: >
+      `pnpm test:coverage`'s v8 text-summary table (the artifact
+      tasks.md/WP06 instructs reviewers to read: "inspect the v8 text/lcov
+      summary ... assert each reports >=80% ... directly from the summary")
+      silently omits every file under src/core/cassette/ and
+      src/core/execution-source.ts entirely — not 0%, just absent rows.
+      Reproduced independently: `pnpm test:coverage 2>&1 | grep -i
+      "cassette\|execution-source"` returns nothing, while
+      coverage/lcov.info's SF: records for the same run contain full,
+      correct data for all 7 files (all at 100%). vitest.config.ts has no
+      `coverage.all: true`, and something in the v8-provider's
+      istanbul-report tree-building appears to drop these particular files
+      from the printed table even though they were instrumented and
+      recorded in lcov.info. Root cause not fully diagnosed (not required
+      for this review — the underlying data is correct and I verified the
+      actual percentages directly from lcov.info instead).
+    remediation: >
+      Not a correctness defect in this WP's deliverables — the real
+      coverage is 100% for every new file, confirmed independently. But the
+      WP06 task text's literal instruction ("assert...directly from the
+      summary") is not achievable as written for these files with the
+      current vitest.config.ts, which could cause a future implementer to
+      either wrongly conclude the files are untested (if they don't know to
+      check lcov.info) or skip verification because "nothing to assert
+      against". Consider adding `coverage.all: true` to vitest.config.ts (or
+      a doc note pointing at coverage/lcov.info as the fallback source of
+      truth) in a future WP or fast-follow — advisory only, does not block
+      WP06.

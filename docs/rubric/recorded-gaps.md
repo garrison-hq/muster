@@ -84,7 +84,7 @@ should be deleted; see the Edge Cases in `spec.md`).
 
 - **id**: RG-007
 - **title**: `behave`/`a2a` and `skills`/`sop` disagree on what a dead endpoint means for the exit code
-- **evidence**: endpoint-fatal exit 2 in `doBehaveRun` (`return 2` (`src/cli/index.ts:479-489`)) and `doA2aBehavioralRun` (`return 2` (`src/cli/index.ts:1157-1162`)) vs. no such special case, exit 1 on any failure in `doSkillsRun` (`return ok ? 0 : 1` (`src/cli/index.ts:1580-1584`)) and `doSopRun` (`report.passed ? 0 : 1` (`src/cli/index.ts:1684-1686`)); garrison-hq/muster#78, reproduced live against `skills run` (`skills: FAIL — 1/3 cases passed, 2 failed`, `$?` = 1).
+- **evidence**: endpoint-fatal exit 2 in `doBehaveRun` (`return 2` (`src/cli/index.ts:634-653`)) and `doA2aBehavioralRun` (`return 2` (`src/cli/index.ts:1321-1325`)) vs. no such special case, exit 1 on any failure in `doSkillsRun` (`return ok ? 0 : 1` (`src/cli/index.ts:1744-1748`)) and `doSopRun` (`report.passed ? 0 : 1` (`src/cli/index.ts:1871-1873`)); garrison-hq/muster#78, reproduced live against `skills run` (`skills: FAIL — 1/3 cases passed, 2 failed`, `$?` = 1).
 - **what-was-tried**: none — discovered during this mission's own verification pass; not previously reconciled.
 - **why-left**: **this is not "two valid per-adapter designs" left as an intentional divergence.** `contracts/cli.md`'s own uniform exit-code rule (`execution error` (`kitty-specs/cts1-conformance-harness-01KTS86B/contracts/cli.md:8`)) specifies that an endpoint unreachable for the entire run is an execution fault, exit 2. `behave` and `a2a` implement that contract; `skills` and `sop` do not — they exit 1 for the same condition, indistinguishable from an ordinary graded failure. That makes this an **open product question, not a closed design decision**: either the contract should be amended to bless a documented per-adapter divergence, or `skills`/`sop` should be fixed to match the contract they already claim to implement (garrison-hq/muster#78). Reconciling either way is a behavior change to four adapters, out of this docs-only mission's `write_scope` — recorded here, not resolved here.
 - **closes-when**: a muster FR either (a) amends `contracts/cli.md` to explicitly document a per-adapter exception for `skills`/`sop`, or (b) migrates `skills`/`sop` to exit 2 on total-endpoint-failure, matching `behave`/`a2a` and the contract's current uniform wording. Either resolution closes this entry; leaving the contract and the code disagreeing does not.
@@ -114,7 +114,7 @@ should be deleted; see the Edge Cases in `spec.md`).
 
 - **id**: RG-010
 - **title**: Skills static cases never compare `expectations.violations`
-- **evidence**: `c.expectations.ok` (`src/cli/index.ts:1323`) — a static skills case's `passed` field is derived solely from `ok === c.expectations.ok`; any `expectations.violations` a manifest author writes is never compared against the actual lint findings.
+- **evidence**: `c.expectations.ok` (`src/cli/index.ts:1487`) — a static skills case's `passed` field is derived solely from `ok === c.expectations.ok`; any `expectations.violations` a manifest author writes is never compared against the actual lint findings.
 - **what-was-tried**: none — the static runner's `ok`-only comparison predates this mission; no comparison logic for `expectations.violations` has been attempted despite fixtures already declaring violation shapes.
 - **why-left**: adding a violations-shape comparison is a behavioral change to the static skills runner, out of this docs-only mission's scope.
 - **closes-when**: `runStaticSkillCase` additionally compares `c.expectations.violations` (when present) against the actual `allViolations` and fails the case on a mismatch.
@@ -124,7 +124,7 @@ should be deleted; see the Edge Cases in `spec.md`).
 
 - **id**: RG-011
 - **title**: `MUSTER_BASE_URL` deprecation is skills-only
-- **evidence**: `usedDeprecatedAlias` (`src/cli/index.ts:1376-1380`) — `resolveSkillsBehavioralEndpoint` is the only call site that emits the `MUSTER_BASE_URL is deprecated` warning; every other adapter that reads `MUSTER_BASE_URL` does so silently, with no equivalent warning.
+- **evidence**: `usedDeprecatedAlias` (`src/cli/index.ts:1539-1543`) — `resolveSkillsBehavioralEndpoint` is the only call site that emits the `MUSTER_BASE_URL is deprecated` warning; every other adapter that reads `MUSTER_BASE_URL` does so silently, with no equivalent warning.
 - **what-was-tried**: none — the warning was added only at the one call site (`resolveSkillsBehavioralEndpoint`) when the alias was introduced; no attempt has been made to thread it through the other adapters' endpoint-resolution paths.
 - **why-left**: adding the same warning to every other adapter reading the deprecated alias is a behavioral change, out of this docs-only mission's scope.
 - **closes-when**: the deprecation warning is emitted from one shared helper every adapter's endpoint-resolution path calls, not duplicated (or omitted) per adapter.

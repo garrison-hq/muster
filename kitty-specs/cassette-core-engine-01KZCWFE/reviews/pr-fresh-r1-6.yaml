@@ -1,0 +1,33 @@
+schema: review-findings/v1
+complete: true
+phase: pr
+lens_group: fresh
+mission: cassette-core-engine-01KZCWFE
+findings:
+  - id: PR-FRESH-001
+    lens: fresh
+    severity: 3
+    title: "Fixture-integrity guard checks case-FILE count, not exchange count — a future all-empty-exchanges fixture state would still pass vacuously"
+    evidence:
+      - "tests/cassette/store.test.ts:320-321 — the only vacuity guard is `expect(caseFiles.length).toBeGreaterThan(0)`, computed from the count of JSON files that match `isCassetteCaseFile` (i.e. have an `exchanges` array of ANY length, including zero)."
+      - "tests/cassette/store.test.ts:323-330 — the actual assertion (`computeRequestHash(...).toBe(exchange.requestHash)`) lives inside a nested `for (const exchange of parsed.exchanges)` loop with no per-file or aggregate check that at least one exchange was iterated."
+      - "Currently the guard happens to hold in substance too: fixtures/cassettes/discrimination-control/rigged-case.json is the only committed case file and has exactly 1 exchange, so today's run does exercise the real assertion (verified by running `npx vitest run tests/cassette/store.test.ts`, which shows the fixture-integrity test passing with a real hash comparison, not skipped)."
+    claim: >
+      If every currently-committed case file's `exchanges` array were ever empty at the same time
+      (e.g. a future fixture is added purely to exercise suite-index or schema-version behavior and
+      is given `exchanges: []`, or the sole existing case file's exchanges list is trimmed to zero
+      during unrelated fixture cleanup), `caseFiles.length` would still be greater than 0 (the file
+      itself exists and structurally matches `isCassetteCaseFile`), so the guard at line 321 passes,
+      but the nested loop at lines 323-330 would iterate zero times and assert nothing. The test
+      would go green having performed zero hash comparisons — exactly the "vacuity by empty set"
+      failure mode this whole describe block exists to prevent, just one level down (empty exchange
+      set within a non-empty file set, rather than an empty file set). This is a latent gap in the
+      guard's completeness, not a currently-manifesting vacuous pass: as of this diff the one
+      committed fixture has one real exchange and the assertion genuinely runs and genuinely compares
+      a real hash.
+    remediation: >
+      Guard on total exchange count, not just case-file count — e.g. after the `caseFiles.length`
+      check (or replacing it), add
+      `const totalExchanges = caseFiles.reduce((n, cf) => n + cf.parsed.exchanges.length, 0); expect(totalExchanges).toBeGreaterThan(0);`
+      so the test fails loudly if the discovered case files collectively contain zero exchanges to
+      check, not just if zero case files were discovered.

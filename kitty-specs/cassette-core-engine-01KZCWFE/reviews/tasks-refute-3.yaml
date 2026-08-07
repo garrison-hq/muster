@@ -1,0 +1,8 @@
+schema: review-refute/v1
+complete: true
+phase: tasks
+batch: 3
+verdicts:
+  - id: TASKS-DECOMP-003
+    verdict: confirmed
+    reason: T038's line-94 wording is verbatim as quoted and is the sole NFR-005 touchpoint (T004/T007/T019/T027/T035 confirmed to check only pnpm test/tsc --noEmit, and WP06's own Independent test line at 200-201 omits coverage entirely), package.json:77 and vitest.config.ts:11-15 confirm the unused test:coverage script and matching lcov/text v8 config exactly as cited, and "confirm ... is positioned to clear" is genuinely softer/non-falsifiable compared to the concrete, measurable done-conditions used elsewhere in the same document (e.g. T030's 2 MiB threshold, T028's algorithmic spec).

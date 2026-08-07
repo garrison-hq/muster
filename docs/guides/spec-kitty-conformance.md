@@ -3,11 +3,16 @@
 **Status**: an operator how-to, not a rubric. Everything in sections 1–3
 documents muster's own CLI **as it exists today** (verified directly against
 `garrison-hq/muster` commit `16f0d34c3126fab5df2ee0b6e1e304a4d9bcb8e3` — every
-`src/cli/index.ts` citation below was re-checked against that commit; the file
-is byte-identical between `16f0d34c3` and this guide's own commit, so the
-cited line numbers are stable). Section 4 is a clearly labeled forward-looking
-appendix for suites that do not exist in this repo yet — treat every command
-in sections 1–3 as runnable now; treat nothing in section 4 as runnable.
+`src/cli/index.ts` citation below was re-checked against that commit).
+`src/cli/index.ts` is **not** byte-identical to `16f0d34c3` anymore: the
+cassette-core-engine mission (`--cassette`/`--record`/`--replay`) added
+~150 lines ahead of `doBehaveRun`, so §3's `doBehaveRun` citation was
+re-verified and updated against this guide's own commit rather than assumed
+stable — do not assume unlisted citations elsewhere in this guide have been
+re-checked against the same drift. Section 4 is a clearly labeled
+forward-looking appendix for suites that do not exist in this repo yet —
+treat every command in sections 1–3 as runnable now; treat nothing in
+section 4 as runnable.
 
 ## 1. Running every real, currently-shipped CLI suite
 
@@ -144,11 +149,11 @@ it" column below before assuming a variable applies to a suite it doesn't.
 | Variable | Purpose | Who reads it |
 |---|---|---|
 | `MUSTER_ENDPOINT` | Canonical OpenAI-compatible base URL | `skills`, `sop`, `crosslayer`, `tools`, `heartbeat` (all read it directly from `process.env`); `memory-utilization run` (not one of this guide's 11 suites, see §4) |
-| `MUSTER_BASE_URL` | **Deprecated alias** for `MUSTER_ENDPOINT`, honored only when `MUSTER_ENDPOINT` is unset | **`skills` only** — resolved by the shared `resolveEndpointBaseUrl` helper (`src/adapters/skills/trigger.ts:91-101`), called from `resolveSkillsBehavioralEndpoint` (`src/cli/index.ts:1367-1390`). When `MUSTER_BASE_URL` is the variable that actually supplies the value, `skills run` prints a one-line stderr deprecation notice (`src/cli/index.ts:1377-1380`, observed verbatim above in the deprecated-alias test run); when both are set, `MUSTER_ENDPOINT` wins **silently**, no warning. `sop`, `crosslayer`, `tools`, `heartbeat`, and `behave` do **not** honor `MUSTER_BASE_URL` at all — confirmed by direct source read, not inferred |
+| `MUSTER_BASE_URL` | **Deprecated alias** for `MUSTER_ENDPOINT`, honored only when `MUSTER_ENDPOINT` is unset | **`skills` only** — resolved by the shared `resolveEndpointBaseUrl` helper (`src/adapters/skills/trigger.ts:91-101`), called from `resolveSkillsBehavioralEndpoint` (`src/cli/index.ts:1531-1554`). When `MUSTER_BASE_URL` is the variable that actually supplies the value, `skills run` prints a one-line stderr deprecation notice (`src/cli/index.ts:1541-1544`, observed verbatim above in the deprecated-alias test run); when both are set, `MUSTER_ENDPOINT` wins **silently**, no warning. `sop`, `crosslayer`, `tools`, `heartbeat`, and `behave` do **not** honor `MUSTER_BASE_URL` at all — confirmed by direct source read, not inferred |
 | `MUSTER_MODEL` | Model name override | Same set as `MUSTER_ENDPOINT` readers, default `gpt-4o-mini` unless noted |
 | `MUSTER_API_KEY` (fallback `OPENAI_API_KEY`) | Bearer credential, read at call time only, never logged | All behavioral/live paths across every adapter, including `behave` (flag-based endpoint, env-based key only) |
 | `--base-url` / `--model` (flags, `behave run` and `memory run` only) | Per-invocation override, takes precedence over the manifest/env default | `behave run` overrides the **manifest's own** `endpoint.base_url`/`endpoint.model` (`examples/behave/manifest.yaml:16-17` ships `http://localhost:11434/v1` / `qwen2.5:7b-instruct` as its own default) — `behave` never reads `MUSTER_ENDPOINT` itself, only `--base-url`/`--model` or the manifest. `memory run --behavioral` reads only `--base-url`/`--model` (default `http://localhost:11434/v1` / `llama3.2`) — it does **not** read `MUSTER_ENDPOINT` either |
-| `MUSTER_A2A_ENDPOINT` / `MUSTER_A2A_TOKEN` | **A2A's own, separate namespace** — base URL and optional bearer token for A2A's three live conformance probes (skill-behavior, auth-negative, signed-card-live) | `a2a run` **only**, when the manifest's `kind` is `"behavioral"` (`src/adapters/a2a/behavioral-manifest.ts:142-143`). `a2a run` never reads `MUSTER_ENDPOINT`/`MUSTER_MODEL`/`MUSTER_API_KEY` — this is a genuinely different variable pair from every other adapter, not a naming inconsistency to route around |
+| `MUSTER_A2A_ENDPOINT` / `MUSTER_A2A_TOKEN` | **A2A's own, separate namespace** — base URL and optional bearer token for A2A's three live conformance probes (skill-behavior, auth-negative, signed-card-live); env-var names default from `DEFAULT_ENDPOINT_ENV`/`DEFAULT_TOKEN_ENV` (`src/adapters/a2a/behavioral-manifest.ts:142-143`) | `a2a run` **only**, when the manifest's `kind` is `"behavioral"` (gated by the `kind !== "behavioral"` validation at `src/adapters/a2a/behavioral-manifest.ts:1097-1104`). `a2a run` never reads `MUSTER_ENDPOINT`/`MUSTER_MODEL`/`MUSTER_API_KEY` — this is a genuinely different variable pair from every other adapter, not a naming inconsistency to route around |
 
 ## 3. Per-adapter exit-code contract
 
@@ -161,15 +166,19 @@ is what your automation should branch on.
 |---|---|---|
 | All cases pass (or all skipped, no endpoint configured) | **0** | **0** |
 | At least one case fails, endpoint reachable | **1** | **1** |
-| **Endpoint unreachable for every run of every case** | **1** — counted as an ordinary set of failed cases, no special case (`doSkillsRun`, `src/cli/index.ts:1584`, `return ok ? 0 : 1;`; `doSopRun`, `:1685`, `return report.passed ? 0 : 1;`) | **2** — treated as an execution fault, not a grading failure (`doBehaveRun`, `:479-489`; `doA2aBehavioralRun`, `:1157-1161`, both with a comment citing `contracts/cli.md`'s exit-code contract) |
+| **Endpoint unreachable for every run of every case** | **1** — counted as an ordinary set of failed cases, no special case (`doSkillsRun`, `src/cli/index.ts:1748`, `return ok ? 0 : 1;`; `doSopRun`, `:1873`, `return report.passed ? 0 : 1;`) | **2** — treated as an execution fault, not a grading failure (`doBehaveRun`, `:634-653`; `doA2aBehavioralRun`, `:1321-1325`, both with a comment citing `contracts/cli.md`'s exit-code contract) |
 | Manifest cannot be read or fails structural validation | **2**, universally | **2**, universally |
-| Unexpected internal exception | **2**, universally (`runCli`'s top-level catch, `src/cli/index.ts:2328-2342`, maps every `ExecutionError` and every uncaught error to exit 2) | **2**, universally |
+| Unexpected internal exception | **2**, universally (`runCli`'s top-level catch, `src/cli/index.ts:2530-2544`, maps every `ExecutionError` and every uncaught error to exit 2) | **2**, universally |
+| **`behave run --cassette ... --replay`: every run of every case is a cassette miss/stale entry (no endpoint contacted)** | n/a — `--replay` is `behave`-only | **1**, never **2** — a documented carve-out, not the row above. Replay never touches a live endpoint at all (NFR-003), so `doBehaveRun`'s exit-2 heuristic is gated off entirely for it (`opts.replay !== true`, `src/cli/index.ts:644`, inside the same `:634-653` block) and an all-stale replay falls through to the normal pass/fail path (FR-013: "never 0, never a skip code" — and, for this one mode, never exit 2 either) |
 
 `contracts/cli.md` itself describes the endpoint-unreachable-for-an-entire-run
 case as a **uniform** exit-2 execution error ("`2` — execution error
 (unreadable file, bad manifest, endpoint unreachable for an entire run)").
-`behave` and `a2a` implement that written contract exactly; `skills` and
-`sop` do not — their exit-1 behavior on total endpoint failure is a real
+`behave` and `a2a` implement that written contract exactly for live runs; the
+`--replay` carve-out in the table above is a deliberate, documented exception
+(no endpoint is ever contacted in replay mode, so the "endpoint unreachable"
+clause does not apply), not a divergence. `skills` and `sop` do not implement
+the written contract — their exit-1 behavior on total endpoint failure is a real
 divergence *from the written contract*, not two independently valid designs
 that happen to differ. This guide documents that divergence honestly rather
 than harmonizing it away or restating the contract as if it were uniformly

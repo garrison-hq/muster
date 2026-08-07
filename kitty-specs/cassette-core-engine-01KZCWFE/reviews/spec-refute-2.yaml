@@ -1,0 +1,17 @@
+schema: review-refute/v1
+complete: true
+phase: spec
+batch: 2
+verdicts:
+  - id: SPEC-COMPLETE-001
+    verdict: confirmed
+    reason: FR-005 (spec.md:211) is the only place "blind"/"arm-order" appear in the spec, no Acceptance Scenario (119-178) or Edge Case (180-199) exercises a pre- vs post-transform hash distinction, and blindArmOrder (rubric.ts:234) confirms such a transform genuinely exists in the codebase and is applied before a ChatClient.chat call (judge.ts:131-138), so the MUST requirement is verifiably uncovered.
+  - id: SPEC-COMPLETE-003
+    verdict: confirmed
+    reason: cli/index.ts:2039-2068 registers `memory-utilization run` as a distinct ChatClient-based command (index.ts:38 imports ChatClient, index.ts:181 calls ctx.client.chat) separate from `memory run` (cli/index.ts:2015-2036), and it is named in neither C-006's "seven behavioral runners" (spec.md:252) nor the Non-Goals' six-command enumeration (spec.md:53-55), both confirmed by direct line inspection.
+  - id: SPEC-COMPLETE-005
+    verdict: confirmed
+    reason: client.ts:57 defines `hostnameOf` with no `export` keyword and the file's export list (EmptyResponseError, ToolChatClient, makeClientWithTools, makeClient) omits it exactly as claimed, while C-003 (spec.md:249) sets a "no parallel implementation, mandate reuse" precedent for canonicalJson that C-004 (spec.md:250) does not parallel for hostnameOf, leaving a genuine reuse/export gap.
+  - id: SPEC-GOV-001
+    verdict: confirmed
+    reason: signature.ts:22 imports only createPublicKey and verify from node:crypto (no createHash anywhere in the file), a full src/ grep shows createHash used only in projection.ts:32/133, and spec.md's Dependencies & Assumptions bullet citing signature.ts as a second createHash precedent is verifiably false.
