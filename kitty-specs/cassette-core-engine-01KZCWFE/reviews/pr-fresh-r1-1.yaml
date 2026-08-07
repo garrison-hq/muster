@@ -1,0 +1,103 @@
+schema: review-findings/v1
+complete: true
+phase: pr
+lens_group: fresh
+mission: cassette-core-engine-01KZCWFE
+findings:
+  - id: PR-FRESH-001
+    lens: fresh
+    severity: 4
+    title: >-
+      Revision fixed only one of four stale citations inside the exact table
+      row it rewrote, leaving three now-wrong line numbers in place
+    evidence: >-
+      docs/guides/spec-kitty-conformance.md, the "Endpoint unreachable for
+      every run of every case" table row (§3) — the whole markdown row line
+      was rewritten by this diff to bump doBehaveRun's citation from
+      `:479-489` to `:634-653` (that part is correct: verified against
+      src/cli/index.ts:634-653). The same rewritten line still carries three
+      other citations that drifted by the identical mission-caused line
+      shift and were not corrected: (1) `doSkillsRun, src/cli/index.ts:1584`
+      — the actual `return ok ? 0 : 1;` is now at src/cli/index.ts:1748;
+      (2) `doSopRun, :1685` — the actual `return report.passed ? 0 : 1;` is
+      now at src/cli/index.ts:1873; (3) `doA2aBehavioralRun, :1157-1161` —
+      the actual exit-2 check (`if (result.allErrored) { ... return 2; }`)
+      is now at src/cli/index.ts:1321-1325 (lines 1157-1161 currently fall
+      inside an unrelated function, doCrossLayerRun, per
+      src/cli/index.ts:1145-1161). Confirmed via git history that all four
+      numbers (`:479-489`, `:1584`, `:1685`, `:1157-1161`) were accurate
+      pre-mission (commit 999b88b) and drifted together when the
+      cassette-core-engine mission inserted code ahead of doBehaveRun — the
+      same drift the diff's own new Status-paragraph text names as the
+      reason doBehaveRun's citation needed refreshing.
+    claim: >-
+      The revision's stated purpose was to correct citation drift caused by
+      the cassette-core-engine mission's ~150-line insertion ahead of
+      doBehaveRun. It rewrote the entire table row containing four code
+      citations but re-verified/fixed only one (doBehaveRun), leaving the
+      other three — doSkillsRun, doSopRun, and doA2aBehavioralRun — silently
+      wrong in the same edited line. This is a doc fix that, in the course
+      of touching a line, leaves adjacent wrong line numbers uncorrected
+      rather than introducing a brand-new wrong number, but the net effect
+      is the same: a reader following doA2aBehavioralRun's citation to
+      verify the "2, treated as an execution fault" claim lands inside
+      doCrossLayerRun instead, an entirely unrelated function. The guide's
+      own Status banner claims §3 was "re-checked" against the current
+      commit; this row demonstrates that re-check was partial, not
+      row-complete, even though the row line itself was rewritten in full.
+    remediation: >-
+      While touching this row, re-verify and correct all four citations
+      against current src/cli/index.ts: doSkillsRun's `return ok ? 0 : 1;`
+      → :1748; doSopRun's `return report.passed ? 0 : 1;` → :1873;
+      doA2aBehavioralRun's `result.allErrored` exit-2 block → :1321-1325.
+      Alternatively, if a full re-check of every citation in the row is out
+      of scope for this change, say so explicitly in the row itself (not
+      just in the general Status-banner disclaimer) so a reader doesn't
+      assume the citations right next to a freshly-verified one share that
+      verification.
+  - id: PR-FRESH-002
+    lens: fresh
+    severity: 3
+    title: >-
+      New replay-carve-out row's Situation label reuses "endpoint
+      unreachable" for a condition its own row text says never touches an
+      endpoint, and is inconsistent with the unchanged "implement that
+      written contract exactly" claim below the table
+    evidence: >-
+      docs/guides/spec-kitty-conformance.md §3, the newly added row's
+      leftmost cell reads "`behave run --cassette ... --replay`: endpoint
+      unreachable for every run of every case", but the same row's
+      right-column body reads "Replay never touches a live endpoint at all
+      (NFR-003)". Directly below the table (unchanged by this diff), the
+      guide states "`behave` and `a2a` implement that written contract
+      exactly" (contracts/cli.md's uniform exit-2-on-endpoint-unreachable
+      rule), with no carve-out mentioned. Code confirms the row's own
+      explanation, not its label: in replay mode the gate at
+      src/cli/index.ts:644 (`opts.replay !== true`) is unconditional on
+      cause, and a replay miss is a `CassetteMissError` thrown by
+      src/core/cassette/client.ts:208/223 on a cassette-lookup miss, never a
+      network/endpoint call.
+    claim: >-
+      Reusing the literal phrase "endpoint unreachable for every run of
+      every case" to label a scenario the row itself says involves no
+      endpoint at all is self-contradictory on a literal reading, and it
+      leaves the unchanged post-table sentence ("behave... implement[s] that
+      written contract exactly") looking like it overlooks this row's
+      carve-out. A reader skimming just the Situation column (as the table
+      is designed to be skimmed — "$? is what your automation should branch
+      on") could reasonably conclude behave sometimes fails to map a
+      genuine endpoint-unreachable condition to exit 2, which is not what is
+      actually happening (the carve-out is scoped to cassette staleness, a
+      different failure cause that happens to share the same
+      all-runs-errored code path).
+    remediation: >-
+      Reword the new row's Situation-column label to name the actual
+      condition instead of reusing the endpoint-unreachable phrase — e.g.
+      "`behave run --cassette ... --replay`: every run of every case is a
+      cassette miss/stale entry (no endpoint contacted)". Optionally add a
+      short clause to the unchanged post-table sentence acknowledging the
+      one documented carve-out (e.g. "...implement that written contract
+      exactly for live runs; the `--replay` carve-out above is a
+      deliberate, documented exception, not a divergence") so the two
+      unqualified claims ("implements exactly" / "endpoint unreachable")
+      don't read as being in tension.

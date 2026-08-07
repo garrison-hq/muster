@@ -1,0 +1,18 @@
+# review-refute/v1 — canonical format for refuter-batch verdicts.
+schema: review-refute/v1
+complete: true             # flip to true ONLY at the very end, after the yaml self-check passes
+phase: pr
+batch: 1
+verdicts:                   # one entry for EVERY finding in your batch — no omissions
+  - id: PR-CONTRACT-001
+    verdict: confirmed
+    reason: Verified via git diff and git show that origin/main's doBehaveRun exit-2 return was at line 487 (inside the doc's cited :479-489), this PR inserts ~156 lines ahead of it shifting it to line 651 while adding a genuine opts.replay!==true carve-out, and docs/guides/spec-kitty-conformance.md (untouched by this diff, confirmed via empty git diff) still cites the stale :479-489 range and never mentions replay/cassette at all, while the sibling docs/rubric/recorded-gaps.md RG-007 entry in the same PR was correctly re-pointed to :634-653.
+  - id: PR-CONTRACT-002
+    verdict: confirmed
+    reason: Confirmed in src/core/behavioral/runner.ts (buildFailedRunVerdict/describeRunError, lines ~485-520, and case assembly ~628-640) that stale is only set true on CassetteMissError while a genuine grader failure also yields passed:false/exit 1, and tests/cassette/discrimination-control.test.ts's first test (lines 81-90) asserts only passed===false and code===1, never verdicts[0].stale, exactly as claimed.
+  - id: PR-TESTS-001
+    verdict: confirmed
+    reason: Reimplemented computeRequestHash/canonicalJson in Node and ran it against the shipped fixtures/cassettes/discrimination-control/rigged-case.json — hashing the full persisted 3-message request gives d681270e... (does NOT match the persisted requestHash 88b2147c...), while hashing only the first 2 messages reproduces 88b2147c... exactly, and src/core/cassette/client.ts's record-mode chat (lines ~137-158) stores request:{messages,...} by reference while src/core/behavioral/runner.ts's executeRun (lines 384-386) mutates that same messages array immediately after client.chat resolves, with no test in tests/cassette/*.test.ts asserting on request.messages byte content post-call.
+  - id: PR-TESTS-002
+    verdict: confirmed
+    reason: Confirmed src/core/cassette/client.ts's record-mode chat returns/throws before reaching recordSink.push if inner.chat rejects (no exchange recorded), src/core/behavioral/runner.ts's runCase (lines ~588-604) catches each run's error individually and continues without propagating, src/cli/index.ts:619 pushes recordedSuiteCases using applied.runs (configured count) not recordSink.length, and no test in tests/unit/cli.test.ts's --record block uses a failure-injecting clientFactory to exercise this path.

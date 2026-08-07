@@ -1,0 +1,47 @@
+schema: review-findings/v1
+complete: true
+phase: pr
+lens_group: fresh
+mission: cassette-core-engine-01KZCWFE
+findings:
+  - id: PR-FRESH-001
+    lens: fresh
+    severity: 2
+    title: >-
+      New `stale` discrimination relies on a hand-duplicated local type with
+      an unchecked JSON.parse cast, not a compile-time link to CaseVerdict
+    evidence:
+      - code: "tests/cassette/discrimination-control.test.ts:54-58 (local `interface ReplayVerdict { id: string; passed: boolean; stale?: boolean; }`)"
+      - code: "tests/cassette/discrimination-control.test.ts:77 (`JSON.parse(stdout) as { replayed: boolean; verdicts: ReplayVerdict[] }` — an unchecked type assertion, not a runtime-validated parse)"
+      - code: "tests/cassette/discrimination-control.test.ts:94 (`expect(verdicts[0]?.stale).toBeUndefined();`)"
+      - code: "src/core/behavioral/types.ts:132,151 (production `CaseVerdict.stale?: boolean` is the actual source of truth this assertion is meant to track)"
+    claim: >-
+      Verified this specific concern does NOT make the new assertion
+      currently vacuous: `src/core/behavioral/runner.ts:493-521,640` shows
+      `stale` is real, additive, and only set true when `executeRun` throws a
+      `CassetteMissError` — a genuinely distinct code path from the
+      grader-fails-but-replay-succeeds path this fixture exercises (confirmed
+      empirically: `vitest run tests/cassette/discrimination-control.test.ts`
+      passes, 2/2, no type errors). However, the guarantee this assertion
+      buys is only as strong as `ReplayVerdict` staying byte-for-byte in sync
+      with `CaseVerdict` — it is a hand-copied shape read through an
+      unchecked `as` cast over `JSON.parse`, not `Pick<CaseVerdict, ...>` or
+      an import. If the production field were ever renamed (e.g. `stale` ->
+      `isStale`) or the JSON shape changed, `verdicts[0]?.stale` would
+      silently become `undefined` and this "self-evidently about a real
+      grading failure" assertion (per the new PR-CONTRACT-002 comment at
+      :88-93) would keep passing while providing zero discrimination — with
+      no compiler signal, since `tsc`/vitest typecheck only validates
+      `ReplayVerdict`'s internal consistency, not its correspondence to
+      `CaseVerdict`. This is a pattern the file already carried for `id` and
+      `passed` before this diff (not a new problem class), but the revision
+      extends that same fragile pattern to the field that is now the crux of
+      the control's core anti-vacuity claim, raising the stakes on the
+      existing gap.
+    remediation: >-
+      Low-cost hardening: derive `ReplayVerdict` from the production type
+      instead of hand-duplicating it, e.g. `type ReplayVerdict = Pick<CaseVerdict, "id" | "passed" | "stale">`
+      (import `CaseVerdict` from `../../src/core/behavioral/types.js`), so a
+      future rename of `CaseVerdict.stale` breaks the test file at compile
+      time instead of silently degrading this assertion to a no-op. Optional
+      given severity; not required to land this revision.

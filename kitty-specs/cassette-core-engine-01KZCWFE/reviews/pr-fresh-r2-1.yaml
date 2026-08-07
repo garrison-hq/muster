@@ -1,0 +1,47 @@
+schema: review-findings/v1
+complete: true
+phase: pr
+lens_group: fresh
+mission: cassette-core-engine-01KZCWFE
+findings:
+  - id: PR-FRESH-001
+    lens: fresh
+    severity: 3
+    title: "A2A env-var row cites lines that define env-var name constants, not the 'kind must be behavioral' gate the sentence attributes to them"
+    evidence: |
+      docs/guides/spec-kitty-conformance.md:156 reads: "`a2a run` **only**,
+      when the manifest's `kind` is `"behavioral"`
+      (`src/adapters/a2a/behavioral-manifest.ts:142-143`)." Lines 142-143 of
+      that file are:
+        142: const DEFAULT_ENDPOINT_ENV = "MUSTER_A2A_ENDPOINT";
+        143: const DEFAULT_TOKEN_ENV = "MUSTER_A2A_TOKEN";
+      These two lines only define the default env-var name strings; they say
+      nothing about gating on manifest `kind`. The actual `kind ===
+      "behavioral"` check the sentence describes lives at
+      src/adapters/a2a/behavioral-manifest.ts:1096
+      (`if (parsed["kind"] !== "behavioral") { ... '"kind" must be
+      "behavioral" to select the behavioral path (FR-004)' ... }`), 950+
+      lines away from the cited location.
+    claim: >-
+      Every other citation in this guide is placed immediately after the
+      specific claim it supports and does contain that claim when read (verified
+      individually: src/adapters/skills/trigger.ts:91-101;
+      src/cli/index.ts:1531-1554, :1541-1544, :1748, :1873, :634-653, :644,
+      :1321-1325, :2530-2544; examples/behave/manifest.yaml:16-17;
+      kitty-specs/cts1-conformance-harness-01KTS86B/contracts/cli.md:8;
+      README.md:73-76; site/src/content/docs/reference/cli.md:25 — all
+      confirmed to match). This one citation breaks that pattern: a reader
+      who follows it to verify "a2a run only reads MUSTER_A2A_ENDPOINT/TOKEN
+      when kind is behavioral" lands on two unrelated constant declarations,
+      not the kind-gating logic. The underlying substantive claim (a2a's
+      behavioral-manifest parser is the only place these vars are consulted,
+      and that parser only runs for kind:"behavioral" manifests) is true, but
+      the pinpoint citation does not verify it, which is exactly the defect
+      class this guide's own preamble (lines 3-6) claims to have eliminated
+      by re-checking every citation against source.
+    remediation: >-
+      Either cite src/adapters/a2a/behavioral-manifest.ts:1096-1102 (the
+      actual `kind !== "behavioral"` validation) alongside or instead of
+      142-143, or reword the sentence so the 142-143 citation is clearly
+      scoped to supporting only the env-var-name claim rather than the
+      kind-gating claim it currently sits next to.

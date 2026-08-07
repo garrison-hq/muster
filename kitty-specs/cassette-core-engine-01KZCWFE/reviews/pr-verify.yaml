@@ -1,0 +1,14 @@
+# review-verify/v1
+schema: review-verify/v1
+complete: true
+phase: pr
+results:
+  - id: PR-FRESH-R2-001
+    status: resolved
+    reason: docs/guides/spec-kitty-conformance.md now cites behavioral-manifest.ts:1097-1104 for the kind-gating claim, whose text is exactly the "kind" !== "behavioral" validation, and rescopes :142-143 to the DEFAULT_ENDPOINT_ENV/DEFAULT_TOKEN_ENV env-var-name claim it actually supports; both line ranges verified against the current file contents.
+  - id: PR-FRESH-R2-002
+    status: resolved
+    reason: fakeToolChatClient() was extracted and both call sites refactored to use it; empirically reverting the tools/messages copy in src/core/cassette/client.ts's chatWithTools (restored afterward, git status --porcelain -uno confirmed clean) still fails the PR-FRESH-004 test, so no assertion strength was lost.
+  - id: PR-FRESH-R2-003
+    status: resolved
+    reason: the comment-only fix (scope confirmed via git show --stat 029b2ac touching only 3 files, no tsconfig.json/vitest.config.ts/package.json/.github changes) now says the rename "would fail to satisfy keyof CaseVerdict under a tests-inclusive TypeScript project" and explicitly notes tsconfig.json excludes tests/ so no command in today's pipeline type-checks this file, accurately reflecting both the sound-but-unenforced Pick<> type (unchanged) and the real enforcement gap without overclaiming in either direction; both tests in the file still pass.

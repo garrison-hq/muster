@@ -1,0 +1,37 @@
+schema: review-findings/v1
+complete: true
+phase: pr
+lens_group: fresh
+mission: cassette-core-engine-01KZCWFE
+findings:
+  - id: PR-FRESH-001
+    lens: fresh
+    severity: 1
+    title: >-
+      New chatWithTools regression test duplicates the inline ToolChatClient fake
+      instead of extracting a shared helper
+    evidence: >-
+      tests/cassette/client.test.ts:216-225 (new PR-FRESH-004 test) defines an inline
+      "const inner: ToolChatClient & { toolCalls: unknown[][] } = { toolCalls: [],
+      async chat(...) {...}, async chatWithTools(...) {...} }" object literal that is
+      structurally identical (same field names, same chat stub, same toolCalls.push
+      pattern) to the pre-existing inline fake at tests/cassette/client.test.ts:46-55
+      (the live-mode "passes chatWithTools through unchanged" test), differing only in
+      the chatWithTools return-value expression. The file already has a fakeChatClient()
+      helper (tests/cassette/client.test.ts:16-25) that factors out the analogous
+      chat-only fake for every other test.
+    claim: >-
+      A fakeToolChatClient() helper mirroring fakeChatClient() (parameterized on the
+      chatWithTools return value) would have let the new PR-FRESH-004 test reuse
+      existing infrastructure instead of re-typing the same object shape a second
+      time. This is a pure DRY/maintenance nit. It does not weaken the regression
+      test's ability to catch a revert: reverting either the messages copy or the
+      tools copy in src/core/cassette/client.ts's chatWithTools independently fails
+      this test (verified by temporarily reverting each fix in turn and running the
+      test, then restoring). Does not need to block the PR.
+    remediation: >-
+      Optional cleanup: extract a fakeToolChatClient(chatWithToolsImpl?) helper next
+      to fakeChatClient() (tests/cassette/client.test.ts:16-25) and have both the
+      live-mode "passes chatWithTools through unchanged" test (line 44) and the new
+      PR-FRESH-004 test (line 210) construct their fake through it.
+    source_artifact: tests/cassette/client.test.ts
