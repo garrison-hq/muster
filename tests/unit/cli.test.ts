@@ -73,6 +73,11 @@ function mockFactory(
   };
 }
 
+/** Fresh, empty temp directory for a `--cassette <dir>` test (WP04). */
+async function mkCassetteDir(): Promise<string> {
+  return mkdtemp(join(tmpdir(), "muster-cassette-"));
+}
+
 // ── temp manifests (built once; absolute soul paths embedded) ───────────────
 
 const tempDir = await mkdtemp(join(tmpdir(), "muster-cli-test-"));
@@ -133,6 +138,30 @@ await writeFile(
     `    soul: ${JSON.stringify(brokenSoul)}`,
     "    turns:",
     `      - content: "Hello"`,
+    "    axes:",
+    `      - axis: "verbosity"`,
+    `        turns: "all"`,
+    "",
+  ].join("\n"),
+  "utf8"
+);
+
+// Behavioral manifest declaring n=5 runs (WP04: FR-014/015 run-count tests).
+const behaveManifest5Runs = join(tempDir, "behave-5runs.yaml");
+await writeFile(
+  behaveManifest5Runs,
+  [
+    "endpoint:",
+    `  base_url: "http://127.0.0.1:9/v1"`,
+    `  model: "mock-model"`,
+    "defaults:",
+    "  runs: 5",
+    "  pass_threshold: 5",
+    "cases:",
+    `  - id: "verbosity_minimal"`,
+    `    soul: ${JSON.stringify(validSoul)}`,
+    "    turns:",
+    `      - content: "Hello there"`,
     "    axes:",
     `      - axis: "verbosity"`,
     `        turns: "all"`,
@@ -457,6 +486,337 @@ describe("muster behave run (RFC-1 §20/§21 behavioral surface; FR-016..FR-023)
     });
     expect(code).toBe(2);
   });
+
+  // ── WP04: --cassette/--record/--replay (FR-013..FR-017, Hazards 1-3) ─────
+
+  it("FR-016 (Scenario 12): --record without --cassette → CLI usage error, exit 2", async () => {
+    const { code, stderr, stdout } = await run(["behave", "run", behaveManifest, "--record"]);
+    expect(code).toBe(2);
+    expect(stdout).toBe("");
+    expect(stderr).toContain("--cassette");
+  });
+
+  it("FR-016 (Scenario 12): --replay without --cassette → CLI usage error, exit 2", async () => {
+    const { code, stderr, stdout } = await run(["behave", "run", behaveManifest, "--replay"]);
+    expect(code).toBe(2);
+    expect(stdout).toBe("");
+    expect(stderr).toContain("--cassette");
+  });
+
+  it("FR-016 (Scenario 13): --record and --replay together → CLI usage error, exit 2", async () => {
+    const cassetteDir = await mkCassetteDir();
+    const { code, stderr } = await run([
+      "behave",
+      "run",
+      behaveManifest,
+      "--cassette",
+      cassetteDir,
+      "--record",
+      "--replay",
+    ]);
+    expect(code).toBe(2);
+    expect(stderr).toContain("mutually exclusive");
+  });
+
+  it("FR-016 edge case: --cassette with neither --record nor --replay → CLI usage error, exit 2", async () => {
+    const cassetteDir = await mkCassetteDir();
+    const { code, stderr } = await run([
+      "behave",
+      "run",
+      behaveManifest,
+      "--cassette",
+      cassetteDir,
+    ]);
+    expect(code).toBe(2);
+    expect(stderr).toContain("--record or --replay");
+  });
+
+  it("NFR-001 (Scenario 2): recording the same suite twice is byte-identical modulo durationMs", async () => {
+    const dirA = await mkCassetteDir();
+    const dirB = await mkCassetteDir();
+    for (const dir of [dirA, dirB]) {
+      const { code } = await run(
+        ["behave", "run", behaveManifest, "--cassette", dir, "--record"],
+        { clientFactory: mockFactory(SHORT_REPLY) }
+      );
+      expect(code).toBe(0);
+    }
+    const stripDurations = async (dir: string): Promise<unknown> => {
+      const raw = await readFile(join(dir, "verbosity_minimal.json"), "utf8");
+      const parsed = JSON.parse(raw) as { exchanges: Array<Record<string, unknown>> };
+      return {
+        ...parsed,
+        exchanges: parsed.exchanges.map(({ durationMs: _durationMs, ...rest }) => rest),
+      };
+    };
+    expect(await stripDurations(dirA)).toEqual(await stripDurations(dirB));
+  });
+
+  it(
+    "FR-017/Hazard 2: --replay wraps --json as {replayed:true, verdicts} and marks the human " +
+      "summary; --record's --json stays the pre-mission bare array",
+    async () => {
+      const cassetteDir = await mkCassetteDir();
+      const recorded = await run(
+        ["behave", "run", behaveManifest, "--cassette", cassetteDir, "--record", "--json"],
+        { clientFactory: mockFactory(SHORT_REPLY) }
+      );
+      expect(recorded.code).toBe(0);
+      // --record --json stays the pre-mission bare array shape (no `replayed`).
+      const recordedParsed = JSON.parse(recorded.stdout) as unknown;
+      expect(Array.isArray(recordedParsed)).toBe(true);
+
+      const replayedJson = await run([
+        "behave",
+        "run",
+        behaveManifest,
+        "--cassette",
+        cassetteDir,
+        "--replay",
+        "--json",
+      ]);
+      expect(replayedJson.code).toBe(0);
+      const wrapped = JSON.parse(replayedJson.stdout) as {
+        replayed: boolean;
+        verdicts: CaseVerdict[];
+      };
+      expect(wrapped.replayed).toBe(true);
+      expect(Array.isArray(wrapped.verdicts)).toBe(true);
+      expect(wrapped.verdicts).toHaveLength(1);
+
+      const replayedHuman = await run([
+        "behave",
+        "run",
+        behaveManifest,
+        "--cassette",
+        cassetteDir,
+        "--replay",
+      ]);
+      expect(replayedHuman.code).toBe(0);
+      expect(replayedHuman.stdout.trimEnd().split("\n").at(-1)).toContain("(replayed: true)");
+    }
+  );
+
+  it(
+    "NFR-003 (Scenario 5): --replay performs zero network I/O, even with the real fetch-backed " +
+      "client (not a mock clientFactory, which would be vacuous — replay must never call " +
+      "inner.chat regardless of decorator correctness)",
+    async () => {
+      const cassetteDir = await mkCassetteDir();
+      const recorded = await run(
+        ["behave", "run", behaveManifest, "--cassette", cassetteDir, "--record"],
+        { clientFactory: mockFactory(SHORT_REPLY) }
+      );
+      expect(recorded.code).toBe(0);
+
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() => {
+        throw new Error("NFR-003 violation: --replay must never call fetch");
+      });
+      try {
+        // No clientFactory override here: the default (makeClient, real
+        // fetch-backed) is exercised so this proves the DECORATOR never
+        // calls inner.chat during replay.
+        const { code } = await run([
+          "behave",
+          "run",
+          behaveManifest,
+          "--cassette",
+          cassetteDir,
+          "--replay",
+        ]);
+        expect(code).toBe(0);
+        expect(fetchSpy).not.toHaveBeenCalled();
+      } finally {
+        vi.restoreAllMocks();
+      }
+    }
+  );
+
+  it(
+    "NFR-002/Hazard 3 (Scenario 6): two --replay invocations emit byte-identical --json despite " +
+      "a forced timing difference between them",
+    async () => {
+      const cassetteDir = await mkCassetteDir();
+      const recorded = await run(
+        ["behave", "run", behaveManifest, "--cassette", cassetteDir, "--record"],
+        { clientFactory: mockFactory(SHORT_REPLY) }
+      );
+      expect(recorded.code).toBe(0);
+
+      // runCase calls Date.now() exactly twice per run (started, ended);
+      // behaveManifest declares 2 runs for its one case → 4 calls per
+      // invocation. Force a large, DIFFERENT elapsed time between the two
+      // invocations: without Hazard 3's normalization, the two --json
+      // payloads would differ (37ms vs. 999ms per run).
+      const dateSpy = vi.spyOn(Date, "now");
+      dateSpy
+        .mockReturnValueOnce(1_000)
+        .mockReturnValueOnce(1_037) // invocation 1, run 1: 37ms
+        .mockReturnValueOnce(2_000)
+        .mockReturnValueOnce(2_037) // invocation 1, run 2: 37ms
+        .mockReturnValueOnce(9_000)
+        .mockReturnValueOnce(9_999) // invocation 2, run 1: 999ms
+        .mockReturnValueOnce(20_000)
+        .mockReturnValueOnce(20_999); // invocation 2, run 2: 999ms
+      try {
+        const first = await run([
+          "behave",
+          "run",
+          behaveManifest,
+          "--cassette",
+          cassetteDir,
+          "--replay",
+          "--json",
+        ]);
+        const second = await run([
+          "behave",
+          "run",
+          behaveManifest,
+          "--cassette",
+          cassetteDir,
+          "--replay",
+          "--json",
+        ]);
+        expect(first.code).toBe(0);
+        expect(second.code).toBe(0);
+        expect(first.stdout).toBe(second.stdout);
+        const parsed = JSON.parse(first.stdout) as { verdicts: CaseVerdict[] };
+        for (const runVerdict of parsed.verdicts[0]?.runs ?? []) {
+          expect(runVerdict.transcript.durationMs).toBe(0);
+        }
+      } finally {
+        dateSpy.mockRestore();
+      }
+    }
+  );
+
+  it(
+    "FR-013/Hazard 1 (Scenario 9): a deleted exchange fails only that run, labeled stale, the " +
+      "suite continues, exit 1 not 2",
+    async () => {
+      const cassetteDir = await mkCassetteDir();
+      const recorded = await run(
+        ["behave", "run", behaveManifest, "--cassette", cassetteDir, "--record"],
+        { clientFactory: mockFactory(SHORT_REPLY) }
+      );
+      expect(recorded.code).toBe(0);
+
+      const caseFilePath = join(cassetteDir, "verbosity_minimal.json");
+      const caseFile = JSON.parse(await readFile(caseFilePath, "utf8")) as {
+        exchanges: Array<{ ordinal: number }>;
+      };
+      expect(caseFile.exchanges).toHaveLength(2);
+      caseFile.exchanges = caseFile.exchanges.filter((exchange) => exchange.ordinal !== 2);
+      await writeFile(caseFilePath, JSON.stringify(caseFile), "utf8");
+
+      const { code, stdout } = await run([
+        "behave",
+        "run",
+        behaveManifest,
+        "--cassette",
+        cassetteDir,
+        "--replay",
+        "--json",
+      ]);
+      expect(code).toBe(1); // not 2 (Hazard 1)
+      const { verdicts } = JSON.parse(stdout) as {
+        replayed: boolean;
+        verdicts: CaseVerdict[];
+      };
+      const [verdict] = verdicts;
+      expect(verdict?.passed).toBe(false);
+      const staleRuns = verdict?.runs.filter((r) => r.stale === true) ?? [];
+      expect(staleRuns).toHaveLength(1);
+      expect(staleRuns[0]?.error).toContain("cassette replay miss");
+      // The suite continued: the OTHER run of the same case still ran and passed.
+      expect(verdict?.runs.some((r) => r.passed === true)).toBe(true);
+    }
+  );
+
+  it(
+    "FR-013/Hazard 1 (independent test): --replay against a cassette dir with zero matching " +
+      "case files exits 1, not 2",
+    async () => {
+      const emptyCassetteDir = await mkCassetteDir();
+      const { code, stdout } = await run([
+        "behave",
+        "run",
+        behaveManifest,
+        "--cassette",
+        emptyCassetteDir,
+        "--replay",
+        "--json",
+      ]);
+      expect(code).toBe(1); // not 2
+      const { verdicts } = JSON.parse(stdout) as {
+        replayed: boolean;
+        verdicts: CaseVerdict[];
+      };
+      expect(verdicts[0]?.stale).toBe(true);
+      expect(verdicts.every((v) => v.passed === false)).toBe(true);
+    }
+  );
+
+  it("FR-014 (Scenario 10): replay with no --runs uses the cassette's recorded n=5", async () => {
+    const cassetteDir = await mkCassetteDir();
+    const recorded = await run(
+      ["behave", "run", behaveManifest5Runs, "--cassette", cassetteDir, "--record"],
+      { clientFactory: mockFactory(SHORT_REPLY) }
+    );
+    expect(recorded.code).toBe(0);
+
+    const { code, stdout } = await run([
+      "behave",
+      "run",
+      behaveManifest5Runs,
+      "--cassette",
+      cassetteDir,
+      "--replay",
+      "--json",
+    ]);
+    expect(code).toBe(0);
+    const { verdicts } = JSON.parse(stdout) as { replayed: boolean; verdicts: CaseVerdict[] };
+    expect(verdicts[0]?.runs).toHaveLength(5);
+  });
+
+  it(
+    "FR-015 (Scenario 11): --runs 3 vs. a cassette recorded with n=5 fails before any case " +
+      "executes, naming both counts",
+    async () => {
+      const cassetteDir = await mkCassetteDir();
+      const recorded = await run(
+        ["behave", "run", behaveManifest5Runs, "--cassette", cassetteDir, "--record"],
+        { clientFactory: mockFactory(SHORT_REPLY) }
+      );
+      expect(recorded.code).toBe(0);
+
+      let chatCalls = 0;
+      const countingFactory = (): ChatClient => ({
+        chat: async () => {
+          chatCalls++;
+          return SHORT_REPLY;
+        },
+      });
+      const { code, stdout, stderr } = await run(
+        [
+          "behave",
+          "run",
+          behaveManifest5Runs,
+          "--cassette",
+          cassetteDir,
+          "--replay",
+          "--runs",
+          "3",
+        ],
+        { clientFactory: countingFactory }
+      );
+      expect(code).toBe(2);
+      expect(stdout).toBe(""); // nothing executed
+      expect(stderr).toContain("3");
+      expect(stderr).toContain("5");
+      expect(chatCalls).toBe(0); // no case executed before the failure
+    }
+  );
 });
 
 describe("--restrict-refs reference hardening (WP01: FR-001..FR-003; RFC-1 §7.2)", () => {
