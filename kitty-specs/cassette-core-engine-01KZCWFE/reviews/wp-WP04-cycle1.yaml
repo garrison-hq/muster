@@ -1,0 +1,115 @@
+schema: wp-verdict/v1
+complete: true
+wp: WP04
+cycle: 1
+mission: cassette-core-engine-01KZCWFE
+verdict: rejected
+gates_observed:
+  tsc: pass                    # `npx tsc --noEmit` on HEAD: exit 0, no output.
+  tests: pass                  # `pnpm test` on HEAD: 194 files / 3894 passed / 3 skipped / 0 failed — matches implementer's claim exactly.
+  coverage: "100% stmt/line in the new src/cli/index.ts:466-654 region (0 missed DA/statementMap entries, verified via coverage/lcov.info AND coverage/coverage-final.json from a full `npx vitest run --coverage` run) but 4 branch arms uncovered in that same region — all inside NEW WP04 preflight logic (lines 522, 539, 540, 546: the FR-014/015 non-conflicting --runs path), not the 'pre-existing untouched static-gate code' the implementer attributed the miss to. See WP04-C1-001. Overall repo: 93.41% stmt / 84.38% branch."
+feedback:
+  - id: WP04-C1-001
+    severity: 2
+    claim: >
+      The implementer's coverage claim ("61/62 DA-hit ... the one miss
+      attributed to pre-existing untouched static-gate code") does not hold
+      up under independent measurement, and the attribution is wrong. I ran
+      `npx vitest run --coverage --coverage.reporter=json` and inspected
+      both `coverage/lcov.info` and `coverage/coverage-final.json` for
+      `src/cli/index.ts` lines 466-654 (the claimed WP04 region). Statement
+      coverage is actually 100% there (0 missed `DA`/`statementMap`
+      entries) — better than the claimed 61/62 — but branch coverage has 4
+      uncovered arms, ALL inside this WP's own new FR-014/015 preflight
+      code, not the static soul-conformance gate:
+      `src/cli/index.ts:522` — `if (recorded !== undefined && recorded.runs
+      !== opts.runs)`: the false/"no conflict, don't throw" arm is never
+      taken by any test.
+      `src/cli/index.ts:539-540` — the `opts.replay === true &&
+      recordedRuns !== undefined` sub-expression has an uncovered arm.
+      `src/cli/index.ts:546` — the `resolvedRuns === undefined ? kase :
+      {...}` ternary has an uncovered arm.
+      I confirmed by grep that `tests/unit/cli.test.ts` has exactly one
+      test combining `--replay` with an explicit `--runs` value
+      (`cli.test.ts:807-810`, the FR-015 conflict test: `--runs 3` vs. a
+      cassette recorded with n=5), which always throws on the very first
+      case. No test exercises the accept path — an explicit `--runs N`
+      under `--replay` that agrees with the cassette's recorded count for
+      that case, which per FR-014/015 should succeed (not throw) and
+      proceed to execute N runs. That acceptance-scenario branch is
+      entirely untested, and it lives in code this WP wrote, not
+      pre-existing static-gate code as claimed. This is exactly the kind of
+      unverified coverage attribution the task brief warned cost WP01 a
+      cycle.
+    remediation: >
+      Add a test asserting `behave run --cassette <dir> --replay --runs N`
+      where N equals the cassette's recorded run count for the case
+      succeeds (exit 0, executes N runs, no "conflicts with the cassette's
+      recorded run count" error) — exercising the false/no-conflict arm of
+      `src/cli/index.ts:522` and the corresponding arms at 539-540/546.
+      Re-run coverage and confirm all 4 arms in the 466-654 region are hit,
+      or re-attribute any genuinely remaining miss with actual line
+      evidence rather than a bare "pre-existing" label.
+  - id: WP04-C1-002
+    severity: 3
+    claim: >
+      Independent mutation (required by review scope, distinct from the
+      implementer's own two mutations — gate removal on exit-2, and a
+      normalization no-op): I changed `normalizeDurationsForReplay`
+      (`src/cli/index.ts:456-464`) from its real per-level deep copy to a
+      shallow top-level-only copy that writes through into the SAME shared
+      run/transcript object references as the original `verdicts`:
+      `const copy = [...verdicts]; for (const verdict of copy) { for
+      (const run of verdict.runs) { run.transcript.durationMs = 0; } }
+      return copy;` — this is precisely the aliasing defect Hazard 3 in
+      plan.md calls out by name ("a shallow copy would alias ... that exact
+      defect was itself a plan-review finding"). I ran `npx vitest run
+      tests/unit/cli.test.ts tests/behavioral/runner.test.ts` against this
+      mutation: all 184 tests still passed, including the
+      Hazard-3/NFR-002 test at `cli.test.ts:635-692` ("two --replay
+      invocations emit byte-identical --json despite a forced timing
+      difference") — the ONE test in the suite specifically designed to
+      prove Hazard 3's fix. It passes either way because it only inspects
+      the JSON output, which is correct under both the real deep copy and
+      my aliasing mutation (the mutation still zeroes durationMs in the
+      output; it just also corrupts the original objects as a side effect
+      that nothing downstream reads). No test currently distinguishes
+      "copies without mutating" from "produces the same JSON while
+      mutating the originals." The SHIPPED code is in fact a correct deep
+      copy — verified by reading `src/cli/index.ts:457-464`, which spreads
+      a new object at every one of the three required levels — so nothing
+      is broken today. But given this WP exists specifically to fix a
+      severity-5 finding about this exact determinism contract, shipping
+      with zero test coverage against regressing into the named aliasing
+      defect is a real, non-cosmetic gap: a future refactor of
+      `normalizeDurationsForReplay` that reintroduces aliasing would pass
+      the full suite. Mutation reverted (`cp` from backup); confirmed clean
+      via `git diff HEAD~4..HEAD -- src/cli/index.ts` (unchanged) and `npx
+      tsc --noEmit` (clean).
+    remediation: >
+      Add a test that captures object identity/value across the
+      normalization boundary — e.g. call `doBehaveRun`'s replay path (or
+      export `normalizeDurationsForReplay` for direct unit testing) with a
+      client that lets the test hold a reference to the pre-normalization
+      `RunVerdict`/`Transcript`, and assert the original's
+      `transcript.durationMs` is unchanged (still the real, nonzero,
+      measured value) and/or `original.runs[0].transcript !==
+      normalized.runs[0].transcript` after the replay-only copy is built —
+      so a regression to shallow/write-through copying fails a test
+      directly, not just a code-reading review.
+  - id: WP04-C1-003
+    severity: 1
+    claim: >
+      No test explicitly asserts that a generic (non-`CassetteMissError`)
+      error during a run does NOT get `stale: true` set — the pre-existing
+      "endpoint unreachable for the ENTIRE run" test
+      (`cli.test.ts:481-490`) produces errored runs via a plain `Error` but
+      never inspects `stale` on the resulting verdicts. The `instanceof
+      CassetteMissError` guard at `src/core/behavioral/runner.ts:570` is
+      correct by inspection and narrow enough that this is low risk, not
+      blocking.
+    remediation: >
+      Add an assertion to the existing "endpoint unreachable" test (or a
+      new one) that `stale` is `undefined` on the resulting `RunVerdict`s,
+      positively confirming the negative case FR-013's `stale` label is
+      never misapplied to a generic conformance/endpoint failure.
