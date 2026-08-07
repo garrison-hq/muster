@@ -8,28 +8,16 @@ kitty/mission-cassette-core-engine-01KZCWFE`, `target_branch: main`. This
 worktree's HEAD is the coordination branch; the eventual merge target is
 `main` (via `spec-kitty merge`, a later pipeline step — not performed here).
 
-**Tooling note (transparency, not a state edit)**: `spec-kitty plan --mission
-cassette-core-engine-01KZCWFE --json` (and the equivalent `spec-kitty agent
-mission setup-plan`) fails with `SPEC_FILE_MISSING` in this environment,
-from both this worktree and the primary checkout (`/home/jeroennouws/dev/
-muster-missions/99`, on `main`). Root cause, traced into the installed
-`spec-kitty-cli` package (`specify_cli/cli/commands/agent/
-mission_feature_resolution.py::_planning_read_dir`): SPEC/PLAN artifacts are
-a "PRIMARY-partition kind" that this tool version resolves to the primary
-checkout's on-disk tree **for every topology**, never the coordination
-worktree — but `spec.md` (and this mission's `meta.json`) were committed only
-to the coordination branch (visible solely in this worktree; the primary
-checkout on `main` has no `kitty-specs/cassette-core-engine-01KZCWFE/` at
-all). No CLI command in this install closes that gap without touching git
-state outside this worktree's mandate, so per this task's ground rules
-("never hand-edit spec-kitty state; report BLOCKED with the exact error
-rather than editing" — construed narrowly as *state*, not the content
-artifact this step exists to produce) this `plan.md` was authored directly
-and is committed via the sanctioned `spec-kitty safe-commit ... --to-branch`
-command named in this task's own instructions, not via the `plan` scaffold.
-Every architectural claim below was verified against the actual source tree
-at commit `db80a42` (primary checkout) / `c62ebc1` (this branch) rather than
-taken from the spec's citations at face value.
+**Tooling note**: `spec-kitty plan --json` failed with `SPEC_FILE_MISSING` in
+this environment (root cause: `specify_cli`'s PRIMARY-partition resolution
+reads SPEC/PLAN artifacts from the primary checkout's tree for every
+topology, never this coordination worktree, where `spec.md`/`meta.json`
+actually live) — `plan.md` was hand-authored and committed via `spec-kitty
+safe-commit` instead of the `plan` scaffold. Per the charter's Exception
+Policy, the full incident (root cause, affected paths, both checkouts
+compared) is recorded as a one-line justification in the mission work log,
+not here. Every architectural claim below was verified against the actual
+source tree at commit `db80a42`.
 
 ## Summary
 
@@ -78,8 +66,15 @@ at every phase boundary (FR-023).
 shape).
 **Project Type**: single project (the muster package).
 **Performance Goals**: byte-stable, deterministic recording/replay
-(NFR-001/002); zero network I/O during replay (NFR-003, verified by test,
-not merely asserted); invariant guard suite (NI-001..004 + size lint) stays
+(NFR-001/002 — NFR-002's literal "byte-identical `--json`" requires
+normalizing `Transcript.durationMs` to a fixed sentinel for replay output
+only, since that field is required, wall-clock-measured, and has no
+"modulo durationMs" carve-out unlike NFR-001; see Hazard 3); zero network
+I/O during replay (NFR-003, verified by `vi.spyOn(globalThis, "fetch")`
+asserting zero calls — mirroring the existing precedent at
+`cli.test.ts:727` — not merely a mock `clientFactory`, which would be
+vacuous; see Test Strategy row 5); invariant guard suite (NI-001..004 +
+size lint) stays
 inside its existing 2000 ms combined budget (NFR-007) — new scan work is
 appended into the existing single-timer block in `tests/unit/
 invariants.test.ts`, not a second timer.
@@ -125,13 +120,25 @@ module design below.*
 - **Resolver ships, is not wired (C-005)** — PASS: `resolveExecutionSource`
   (`src/core/execution-source.ts`) is exported with its own test suite
   (`tests/unit/execution-source.test.ts`) reproducing the FR-018 precedence
-  table as literal test cases per branch. **This mission makes zero edits**
-  to `heartbeat/index.ts:497`, `cli/index.ts:1616-1646` (`buildSopClient`/
-  `SOP_NOOP_CLIENT`), `cli/index.ts:1778` (`doToolsRun`'s endpoint check),
-  `cli/index.ts:936-943` (crosslayer's manifest-endpoint-block fallback), or
-  `skills/trigger.ts:83-101` (`resolveEndpointBaseUrl`) — confirmed against
-  spec.md's own Non-Goals ("Any change to the five gate-bearing commands'
-  own `MUSTER_ENDPOINT` skip-gate behavior" is out of scope).
+  table as literal test cases per branch. **This mission makes zero edits to
+  the skip-gate *decision logic*** at `heartbeat/index.ts:497`,
+  `cli/index.ts:1778` (`doToolsRun`'s endpoint check), `cli/index.ts:936-943`
+  (crosslayer's manifest-endpoint-block fallback), or `skills/
+  trigger.ts:83-101` (`resolveEndpointBaseUrl`) — confirmed against spec.md's
+  own Non-Goals ("Any change to the five gate-bearing commands' own
+  `MUSTER_ENDPOINT` skip-gate behavior" is out of scope). **Caveat, so this
+  bullet does not contradict IC-01 below**: `cli/index.ts:1616-1646`
+  (`buildSopClient`/`SOP_NOOP_CLIENT`) IS edited by this mission — by IC-01
+  (FR-001, the #90 fix), which is a different concern from C-005/the
+  resolver and lands first specifically because it must land before the
+  resolver exists. That edit threads `{model, baseUrl}` through so SOP
+  transcripts stop lying about their provenance; it changes what gets
+  *stamped* once a probe runs, not the `MUSTER_ENDPOINT`-driven skip-gate
+  *decision* of whether a probe runs at all — `buildSopClient`'s branch
+  structure is unchanged. Note this mission's own claim here is *stronger*
+  than spec.md's actual C-005 text, which forbids only further `src/core/`
+  modification at the five wave-2 call sites and says nothing about
+  `src/cli/index.ts`.
 - **Sequential-only execution (C-006)** — PASS: this mission adds no
   concurrent model-call path anywhere; NI-004 (FR-024, IC-05 below) makes
   the invariant a regression-tested guarantee instead of a point-in-time
@@ -224,12 +231,16 @@ src/cli/
                                       #  (c) behave run command definition (~L1978-2011):
                                       #      + --cassette <dir>, --record, --replay options
                                       #  (d) doBehaveRun (~L414-490): flag validation
-                                      #      (FR-016), replay run-count preflight (FR-014/015),
+                                      #      (FR-016), replay run-count preflight (FR-014/015,
+                                      #      via readCassetteSuiteIndex only — see IC-04 Risks),
                                       #      per-case decorator construction wrapping
                                       #      `client` (FR-007/008/009/010), replayed:true
-                                      #      output-envelope branch (FR-017), and the exit-2
-                                      #      "endpoint fatal" heuristic (~L483-488) gated OFF
-                                      #      in replay mode (see Hazard 1 below)
+                                      #      output-envelope branch (FR-017) whose replay-only
+                                      #      copy also normalizes every
+                                      #      transcript.durationMs to 0 before JSON.stringify
+                                      #      (Hazard 3, NFR-002), and the exit-2 "endpoint
+                                      #      fatal" heuristic (~L483-488) gated OFF in replay
+                                      #      mode (see Hazard 1 below)
                                       #  doToolsRun (L1765-1799) is UNCHANGED (C-005 scope
                                       #  note above)
 
@@ -247,28 +258,47 @@ tests/cassette/                    # NEW test directory (mirrors the flat per-co
                                       # convention: tests/behavioral/, tests/skills/, etc.)
 ├── hash.test.ts                     # FR-005: post-transform hashing, blindArmOrder collision
 ├── store.test.ts                    # FR-003/004/006: file format, ordinal reset/increment,
-│                                     # redaction (FR-020's dedicated assertion lives here too)
+│                                     # redaction (FR-020's dedicated assertion lives here too);
+│                                     # + design decision #2 (non-empty target directory on
+│                                     # --record): pre-populate the directory with an unrelated
+│                                     # file plus a stale case file from a different suite,
+│                                     # record the current suite, assert the unrelated file is
+│                                     # untouched and only the current suite's files changed
 ├── client.test.ts                   # FR-007..011: record/replay/live mode contracts
 ├── client-tools.test.ts             # Decorator-coverage acceptance scenario: chatWithTools
 │                                     # round-trip via a raw ToolChatClient (FR-011/FR-016
 │                                     # scenario — no CLI surface, integration-level per spec)
-└── discrimination-control.test.ts   # FR-019: replaying the rigged fixture fails; the
-                                      # control's own "graders stubbed ⇒ this test itself
-                                      # fails" proof
+├── discrimination-control.test.ts   # FR-019: replaying the rigged fixture fails; the
+│                                     # control's own "graders stubbed ⇒ this test itself
+│                                     # fails" proof
+└── public-api.test.ts               # SC-006: same-mission smoke test importing
+                                      # makeCassetteClient (IC-02) and resolveExecutionSource
+                                      # (IC-03) from a path outside src/core/, the way a
+                                      # wave-2 adapter would — owned by IC-06 (see below)
 
 tests/unit/
 ├── execution-source.test.ts        # NEW — FR-018 precedence table, one case per branch
-├── invariants.test.ts              # MODIFIED — + NI-004 (Promise.all-around-chat scan,
-│                                     # FR-024/C-006) + fixtures/cassettes size lint
-│                                     # (FR-021/D7), both folded into the existing combined
-│                                     # timer (NFR-007)
+├── invariants.test.ts              # MODIFIED — + NI-004 (comment-stripped, paren-balanced
+│                                     # Promise.all-wraps-chat scan over the 8 explicitly
+│                                     # enumerated files — see "NI-004 design" above —
+│                                     # FR-024/C-006, with memory-utilization/index.ts and
+│                                     # crosslayer/rule-survival.ts as explicit
+│                                     # must-not-false-positive fixtures) + fixtures/cassettes
+│                                     # size lint (FR-021/D7), both folded into the existing
+│                                     # combined timer (NFR-007)
 └── cli.test.ts                     # MODIFIED — new cases inside the existing
                                       # `describe("muster behave run ...")` block (line 377
                                       # today): --cassette/--record/--replay flag validation
                                       # (FR-016), record→replay round-trip byte-stability
-                                      # (NFR-001/002), replayed:true shape (FR-017), zero
-                                      # network I/O during replay (NFR-003), stale-miss exit
-                                      # code (FR-013, Hazard 1), --runs conflict (FR-015)
+                                      # (NFR-001/002, incl. Hazard 3's durationMs-normalization
+                                      # assertion), replayed:true shape (FR-017), zero network
+                                      # I/O during replay (NFR-003, via `vi.spyOn(globalThis,
+                                      # "fetch")` mirroring the BUG-B precedent at
+                                      # cli.test.ts:727 — NOT the plain mock `clientFactory`
+                                      # alone, which would be vacuous since replay must never
+                                      # call `inner.chat` regardless of decorator correctness),
+                                      # stale-miss exit code (FR-013, Hazard 1), --runs
+                                      # conflict (FR-015)
 
 tests/behavioral/
 └── runner.test.ts                  # MODIFIED — + personaPrompt purity guard (FR-022: reads
@@ -276,11 +306,12 @@ tests/behavioral/
                                       # propagation assertion (FR-013)
 
 tests/adapters/openclaw-sop/
-└── runner.test.ts                  # MODIFIED — FR-001/AC-15: real endpoint identity +
-                                      # measured durationMs assertions; existing tests carry
-                                      # no "mock" literal assertions today (verified — no
-                                      # rewrite of pre-existing expectations needed, only
-                                      # additions)
+└── runner.test.ts                  # MODIFIED — FR-001/Scenario 15: real endpoint identity +
+                                      # measured durationMs (mock client delayed ≥5ms,
+                                      # asserted durationMs >= 5 — see IC-01 Risks) assertions;
+                                      # existing tests carry no "mock" literal assertions today
+                                      # (verified — no rewrite of pre-existing expectations
+                                      # needed, only additions)
 ```
 
 **Structure Decision**: single project. The cassette module is a new
@@ -415,8 +446,9 @@ replay run where **every** case is entirely stale (e.g. the whole cassette
 directory was deleted) would satisfy `allRuns.every(run => run.error !==
 undefined)` and incorrectly exit **2** ("execution error") — but FR-013
 requires "the suite MUST still exit with its normal non-zero failure
-code," and AC-9 requires "the process exits with the normal failure exit
-code — not 0, not a skip code," which this plan reads as exit **1**
+code," and Acceptance Scenario 9 requires "the process exits with the
+normal failure exit code — not 0, not a skip code," which this plan reads
+as exit **1**
 (conformance failure), matching every other all-cases-failed replay run,
 not exit 2 (which this codebase reserves for "the live endpoint itself is
 unreachable" — a condition that cannot occur during replay at all,
@@ -449,6 +481,112 @@ replay invocations only (SC-002's "every replay output is marked" read in
 spirit for the human-readable path too, not just the `--json` payload
 FR-017 names literally).
 
+## Hazard 3 — `Transcript.durationMs` breaks NFR-002's byte-identical replay `--json` guarantee unless normalized
+
+`Transcript.durationMs` (`src/core/behavioral/types.ts:88`) is a
+**required** `number` field — a different field entirely from the cassette
+module's own **opt-in** `CassetteExchange.durationMs` (`FR-004`, correctly
+excluded from NFR-001's byte-stability comparison). `runCase`
+(`src/core/behavioral/runner.ts:547` `started = Date.now()`, `:572`
+`durationMs: Date.now() - started`) stamps it unconditionally around
+`executeRun`'s turn loop, with **zero cassette-mode awareness** — this runs
+identically whether `client` is live, cassette-record, or cassette-replay
+decorated, because the decorator sits *underneath* `client.chat()` and
+`runCase`'s timing wrapper never sees which mode is active. `doBehaveRun`
+then embeds this field verbatim in the `--json` verdicts array
+(`src/cli/index.ts:476`, `JSON.stringify(verdicts, null, 2)`). Two
+consecutive `--replay` invocations of the same suite will measure slightly
+different in-process wall-clock durations (file I/O + JS scheduling
+jitter), so NFR-002's literal "byte-identical verdict `--json`" claim —
+unlike NFR-001, which carries an explicit "modulo the opt-in `durationMs`
+field" carve-out — cannot hold without an explicit fix; the spec's own
+asymmetry between NFR-001 and NFR-002 is deliberate (NFR-002 has no modulo
+clause) and is authoritative, so the fix belongs here, not as a spec
+amendment.
+
+**Resolution**: `doBehaveRun`'s output-emission step, **only when
+`opts.replay === true`**, builds a shallow structural copy of `verdicts`
+with every `RunVerdict.transcript.durationMs` normalized to a fixed
+sentinel (`0`) before it reaches `JSON.stringify`/`formatBehaveHuman` — the
+copy is built immediately before output, not a mutation of the `Transcript`
+objects `runCase` returns (the exit-code branch above the emission line
+reads only `run.error`, never `durationMs`, so this ordering is safe). This
+keeps `Transcript.durationMs: number`'s type contract intact, requires zero
+changes to `runner.ts`/`runCase` beyond the already-planned `stale`-flag
+catch-block edit (IC-04's Affected surfaces are unchanged), and is
+localized entirely to IC-04's `doBehaveRun` — the same function Hazard 1
+and Hazard 2 already modify, in the same replay-only branch Hazard 2
+introduces for the `{ replayed: true, verdicts }` wrapper. Live and
+`--record` runs are unaffected: their `durationMs` values stay real,
+matching FR-001's real-timing requirement and NFR-006's "non-cassette
+output unchanged" guarantee.
+
+**Test**: a dedicated assertion (`tests/unit/cli.test.ts`, extending
+scenario 6) must make normalization observable, not merely assumed: run
+`--replay` twice with a deliberately introduced timing difference between
+the two invocations (e.g. the mock client used by the second invocation
+resolves after an artificial `setTimeout` delay the first invocation's
+mock does not have, so the two runs' *real* elapsed wall-clock time
+provably differs) and assert the two `--json` payloads are still
+byte-identical. A test that never introduces timing variance between the
+two runs would pass whether or not normalization were implemented, so it
+would not actually prove NFR-002.
+
+## NI-004 design — detecting a `Promise.all` wrapping a `.chat`/`.chatWithTools` call site
+
+FR-024 requires a **nesting/enclosure** check ("a `Promise.all` call
+wrapping a `.chat(`/`.chatWithTools(` call site"), not a same-file or
+nearby-line co-occurrence check. NI-002/NI-003 (`tests/unit/
+invariants.test.ts:107-152`) are both flat substring/co-occurrence checks —
+mirroring that *style* for NI-004 (as spec.md's "analogous to the existing
+NI-002/NI-003 pattern" phrasing could be read to suggest) would
+false-positive **today** on two real, correct files: `src/adapters/
+memory-utilization/index.ts:7,288` and `src/crosslayer/
+rule-survival.ts:309` each contain the literal comment substring
+"Promise.all" (explicitly documenting its *absence*, for rate-kindness to
+local endpoints) within the same file as, and in `rule-survival.ts`'s case
+13 lines from, a real `.chat(` call site at `:181`/`:322` respectively. A
+same-file or small-proximity-window implementation breaks the invariant
+suite — and therefore the merge gate — on day one.
+
+**Algorithm** (text-scanning, matching the codebase's existing NI-002/
+NI-003 style — no AST parser/new dependency introduced):
+
+1. **Strip comments before scanning.** Remove `//...` line comments and
+   `/* ... */` block comments from each candidate file's text (a small,
+   single-purpose stripper, not a full tokenizer). This alone already
+   clears both cited false positives today, since their only "Promise.all"
+   occurrences are inside comments.
+2. In the comment-stripped text, scan for `PROMISE_ALL_CALL = "Promise" +
+   "." + "all" + "("` (built by concatenation, mirroring NI-003's
+   `FETCH_CALL` self-exemption convention, so this test file's own source
+   describing the guard never self-trips it).
+3. For every match, balance-track parens from that opening `(` to find its
+   matching closing `)` (a simple depth counter over the substring;
+   Promise.all call sites in this codebase are plain `Promise.all([...])`/
+   `Promise.all(arr.map(...))` shapes, so string/template-literal-embedded
+   parens are not a concern in practice).
+4. Report a violation only if a `.chat(` or `.chatWithTools(` token
+   substring falls **inside** that matched span (between the opening paren
+   and its balanced closing paren) — same-file or nearby co-occurrence
+   *outside* that span is not a violation. This matches FR-024's "wrapping"
+   language exactly (enclosure, not proximity) instead of over-triggering.
+
+**Scan scope, enumerated explicitly** (not left as undefined "runner
+files" prose — confirmed live via `grep -rn "\.chat(\|\.chatWithTools("
+src/adapters src/core/behavioral src/crosslayer`, matching spec.md's
+Dependencies & Assumptions "all eight behavioral runners" set):
+`src/core/behavioral/runner.ts`, `src/adapters/skills/trigger.ts`,
+`src/adapters/heartbeat/index.ts`, `src/adapters/memory/privacy.ts`,
+`src/adapters/memory/recall.ts`, `src/adapters/memory-utilization/
+index.ts`, `src/adapters/openclaw-sop/runner.ts`, `src/crosslayer/
+rule-survival.ts`.
+
+**Must-not-false-positive fixtures**: `src/adapters/memory-utilization/
+index.ts` and `src/crosslayer/rule-survival.ts` are explicit assertions in
+NI-004's own test coverage — NI-004 must report zero violations for both,
+verified directly (not merely inferred from the guard suite staying green).
+
 ## Implementation Concern Map
 
 > Concerns, not work packages. `/spec-kitty.tasks` maps these to WPs.
@@ -473,7 +611,19 @@ FR-017 names literally).
   widening; no behavior change to the skip-gate decision itself (only to
   what gets stamped once a probe *does* run). Existing SOP runner tests
   assert no "mock" literal today (verified live), so no pre-existing
-  assertion needs rewriting — only new assertions are added (AC-15).
+  assertion needs rewriting — only new assertions are added (Scenario 15).
+  **Regression-proof risk**: every existing mock `ChatClient` factory in
+  `tests/adapters/openclaw-sop/runner.test.ts` (`makeMockClient`,
+  `makeConstantClient`, `makeRunVaryingJudgeClient`, `makeErrorClient`)
+  resolves synchronously with no delay — a Scenario-15 regression test that
+  merely asserts `durationMs` is a number/is defined would legitimately
+  compute `0` on a fast machine and be indistinguishable from the removed
+  `durationMs: 0` literal, silently passing even if FR-001's fix regressed.
+  The Scenario-15 test's mock client MUST introduce a deliberate async delay
+  (e.g. `await new Promise((r) => setTimeout(r, 5))` before resolving) and
+  assert `durationMs >= 5`, not merely that the field exists or is a
+  number, so the test actually fails if the hardcoded `0` literal
+  reappeared.
 
 ### IC-02 — Core cassette module: types, hashing, store, decorator
 
@@ -523,17 +673,28 @@ FR-017 names literally).
   block), `tests/unit/cli.test.ts` (existing `"muster behave run"` block).
 - **Sequencing/depends-on**: IC-02 (needs `makeCassetteClient`,
   `CassetteMissError`, the store's read/write functions).
-- **Risks**: Hazard 1 and Hazard 2 above are exactly the class of subtle
-  interaction bug this concern must get right; both are pre-designed
-  above specifically so implementation does not have to rediscover them.
-  The FR-014/015 preflight ("fails before any case executes") requires
-  reading every case's cassette file up front, before the main per-case
-  loop starts — a second, cheap pass over `loaded.cases`.
+- **Risks**: Hazard 1, Hazard 2, and Hazard 3 above are exactly the class of
+  subtle interaction bug this concern must get right; all three are
+  pre-designed above specifically so implementation does not have to
+  rediscover them. The FR-014/015 preflight ("fails before any case
+  executes") reads **only the single suite index file**, via
+  `readCassetteSuiteIndex` (design decision #1 above; the file already
+  lists every case's authoritative `runs` count in one read) — it never
+  opens individual per-case cassette files during the preflight. A case
+  missing from the suite index's `cases[]` list, or a case whose per-case
+  file is absent, is **not** a preflight/FR-015 failure: that remains a
+  per-case D2/FR-013 stale-miss, handled later during that case's own turn
+  in the main loop (via `readCassetteCase`), so FR-015's whole-suite-abort
+  failure mode and D2/FR-013's per-case stale-label failure mode stay
+  structurally separate and are never conflated by a naive per-case-file
+  preflight read.
 
 ### IC-05 — Invariant guards + discrimination-control fixture
 
-- **Purpose**: NI-004 (FR-024/C-006 — scans runner files for `Promise.all`
-  wrapping a `.chat(`/`.chatWithTools(` call site), the `fixtures/
+- **Purpose**: NI-004 (FR-024/C-006 — a comment-stripped, paren-balanced
+  scan over the eight explicitly enumerated files for a `Promise.all` call
+  wrapping a `.chat(`/`.chatWithTools(` call site; see "NI-004 design"
+  above for the algorithm and scan scope), the `fixtures/
   cassettes/` size lint (FR-021/D7), the discrimination-control cassette
   and its load-bearing test (FR-019), the credential-redaction test
   (FR-020), the `personaPrompt` purity guard (FR-022).
@@ -552,11 +713,16 @@ FR-017 names literally).
   assertion (a pure `readCassetteCase` + grader call could satisfy FR-019
   without IC-04, but exercising it through `behave run --replay` is the
   stronger, more representative test and is preferred here).
-- **Risks**: NI-004's `Promise.all` scan needs a token that does not
-  trigger on itself (mirroring NI-003's `FETCH_CALL = "fetch" + "("`
-  self-exemption trick at `invariants.test.ts:128`) — the scan pattern
-  must be built the same way (string concatenation) so this test file's
-  own source describing the guard does not self-trip it.
+- **Risks**: see "NI-004 design" above — a naive same-file/co-occurrence
+  substring scan (NI-002/NI-003's own style) would false-positive today on
+  `src/adapters/memory-utilization/index.ts` and `src/crosslayer/
+  rule-survival.ts`, both of which document their own `Promise.all`
+  *absence* in comments near a real `.chat(` call site. The comment-strip +
+  paren-balanced-enclosure algorithm specified above avoids this, and its
+  own `PROMISE_ALL_CALL` token is built by string concatenation (mirroring
+  NI-003's `FETCH_CALL` self-exemption trick at `invariants.test.ts:128`)
+  so this test file's own source describing the guard does not self-trip
+  it.
 
 ### IC-06 — Documentation + final gate verification
 
@@ -566,10 +732,15 @@ FR-017 names literally).
   confirmation that `pnpm test`, `tsc --noEmit`, and the SonarCloud
   ≥80%-new-code gate are all green with every prior concern's changes
   included (FR-023).
-- **Relevant requirements**: FR-012, FR-023.
-- **Affected surfaces**: `docs/guides/cassette-format.md` (new).
-- **Sequencing/depends-on**: IC-02 (documents that module's actual
-  shape), otherwise last — a natural mission-closing concern.
+- **Relevant requirements**: FR-012, FR-023, SC-006.
+- **Affected surfaces**: `docs/guides/cassette-format.md` (new),
+  `tests/cassette/public-api.test.ts` (new — SC-006's cross-boundary import
+  smoke test: imports `makeCassetteClient`/`resolveExecutionSource` from a
+  path outside `src/core/`, proving wave-2 can genuinely consume these
+  exports, not just that unit tests inside `src/core/` pass).
+- **Sequencing/depends-on**: IC-02 and IC-03 (documents/exercises both
+  modules' actual exported shape), otherwise last — a natural
+  mission-closing concern.
 - **Risks**: none material.
 
 ## FR / NFR / Constraint coverage
@@ -593,7 +764,10 @@ above, each tied to the concern(s) that implement it.
 
 ## Test Strategy
 
-Per acceptance scenario (spec.md "Acceptance Scenarios", numbered 1-16):
+Per acceptance scenario (spec.md "Acceptance Scenarios", numbered 1-16).
+*Convention*: this plan refers to spec.md's numbered Acceptance Scenarios
+as "Scenario N" throughout (spec.md itself uses bare numbers, no "AC-"
+prefix — that shorthand does not appear in the reference artifact).
 
 | # | Scenario | Test location |
 |---|---|---|
@@ -601,8 +775,8 @@ Per acceptance scenario (spec.md "Acceptance Scenarios", numbered 1-16):
 | 2 | Same suite recorded twice → byte-identical modulo `durationMs` | `tests/unit/cli.test.ts` (behave run --record twice, diff) |
 | 3 | Credential-shaped fake token never persisted | `tests/cassette/store.test.ts` (FR-020) |
 | 4 | Post-transform (`blindArmOrder`) hash collision, pre-transform would not collide | `tests/cassette/hash.test.ts` |
-| 5 | Replay with no endpoint/API key env set → completes, zero network I/O | `tests/unit/cli.test.ts` (NFR-002/003) |
-| 6 | Same replay run twice → byte-identical `--json` | `tests/unit/cli.test.ts` |
+| 5 | Replay with no endpoint/API key env set → completes, zero network I/O | `tests/unit/cli.test.ts` (NFR-002/003; `vi.spyOn(globalThis, "fetch")` asserted `not.toHaveBeenCalled()`, mirroring `cli.test.ts:727` — a mock `clientFactory` alone is not sufficient, see Technical Context) |
+| 6 | Same replay run twice → byte-identical `--json` | `tests/unit/cli.test.ts` (Hazard 3: run with a deliberate timing difference between the two invocations and assert the payloads are still byte-identical, proving `durationMs` normalization, not merely fast/uniform timing) |
 | 7 | k-of-n identical-key case → n distinct responses, recorded order, each once | `tests/cassette/store.test.ts` + `client.test.ts` |
 | 8 | `replayed: true` present only on replay output; other paths unchanged | `tests/unit/cli.test.ts` (Hazard 2) |
 | 9 | Deleted exchange → stale-labeled failure, suite continues, non-zero non-skip exit | `tests/unit/cli.test.ts` (Hazard 1) |
@@ -611,28 +785,46 @@ Per acceptance scenario (spec.md "Acceptance Scenarios", numbered 1-16):
 | 12 | `--record`/`--replay` without `--cassette` → CLI usage error | `tests/unit/cli.test.ts` |
 | 13 | `--record` and `--replay` together → CLI usage error | `tests/unit/cli.test.ts` |
 | 14 | Rigged cassette fails; graders stubbed ⇒ control test itself fails | `tests/cassette/discrimination-control.test.ts` |
-| 15 | SOP transcript reflects real endpoint + measured duration, no "mock" literal | `tests/adapters/openclaw-sop/runner.test.ts` |
+| 15 | SOP transcript reflects real endpoint + measured duration, no "mock" literal | `tests/adapters/openclaw-sop/runner.test.ts` (mock client delayed ≥5ms, asserts `durationMs >= 5` — see IC-01 Risks) |
 | 16 | `chatWithTools` record→replay round-trip, zero network, own request-hash keying | `tests/cassette/client-tools.test.ts` |
 
 Success criteria SC-001..007 are each covered by the union of the scenario
 tests above (SC-001↔1/5, SC-002↔8, SC-003↔9, SC-004↔3, SC-005↔15,
-SC-006↔ IC-02/IC-03's public-export tests + a same-mission smoke test that
-imports `makeCassetteClient`/`resolveExecutionSource` from a path outside
-`src/core/` the way an adapter would, SC-007↔ the full existing suite
-staying green, checked at IC-06).
+SC-006↔ IC-02/IC-03's public-export tests + `tests/cassette/
+public-api.test.ts` (owned by IC-06, see Project Structure) — a
+same-mission smoke test that imports `makeCassetteClient`/
+`resolveExecutionSource` from a path outside `src/core/` the way an
+adapter would, SC-007↔ the full existing suite staying green, checked at
+IC-06).
+
+**Plan-authored behavior coverage**: not every tested branch traces back to
+a numbered spec.md Acceptance Scenario — design decision #2 above
+(non-empty target directory on `--record`: overwrite only the files this
+run touches, never delete untouched files) is a plan-invented,
+safety-relevant behavior with no corresponding spec.md scenario. It is
+covered by a dedicated `tests/cassette/store.test.ts` case (see Project
+Structure) rather than a Test Strategy table row, precisely so it is not
+lost at `/spec-kitty.tasks` time despite falling outside the 16-scenario
+table above.
 
 **Coverage**: every new file listed in Project Structure gets direct unit
 coverage; `≥80%` new-code coverage (NFR-005) is realistic given the module
 is small, pure-function-heavy (hashing, store read/write, resolver), and
 every branch in `resolveExecutionSource` and the decorator's three modes
-is independently exercised by the table above. No branch is planned that
-lacks a corresponding test.
+is independently exercised by the table above (plus the plan-authored
+behavior coverage immediately above). No branch is planned that lacks a
+corresponding test.
 
 **Determinism/byte-stability verification**: NFR-001 (`store.test.ts`,
 scenario 2) and NFR-002 (`cli.test.ts`, scenario 6) are both round-trip
 tests that record/replay twice and diff the resulting bytes — not
 single-run smoke tests — matching how NFR-001/002 are phrased as
-comparisons, not single-observation assertions.
+comparisons, not single-observation assertions. NFR-002 additionally
+requires the scenario-6 test to force a real timing difference between the
+two replay invocations (Hazard 3) — otherwise a byte-identical result could
+mean either "durationMs is correctly normalized" or "both runs just
+happened to take the same measured time," and only the former is what
+NFR-002 actually claims.
 
 **Gates stated explicitly**: `tsc --noEmit` and `pnpm test` (full Vitest
 suite, including every fixture suite) both run at the close of every
