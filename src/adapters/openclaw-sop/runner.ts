@@ -70,10 +70,41 @@ export const RUBRIC_VERSION = "1.0.0";
 export interface SuiteRunOptions {
   /** ChatClient to use for behavioral probe execution. */
   client: ChatClient;
+  /**
+   * Model identity of `client`'s configured endpoint (FR-001). Stamped
+   * verbatim onto every `Transcript.model` this suite run produces —
+   * callers own the sentinel used when no real endpoint is configured
+   * (e.g. `"unconfigured"`), the runner does not invent one.
+   */
+  model: string;
+  /**
+   * Base URL of `client`'s configured endpoint (FR-001). The runner
+   * extracts and stamps the **hostname only** (via a local `hostnameOf`,
+   * never the full URL) onto every `Transcript.baseUrl` this suite run
+   * produces, per C-004's credential-hygiene convention.
+   */
+  baseUrl: string;
   /** Number of runs per probe (k); overrides the manifest entry's k when provided. */
   k?: number;
   /** Root directory for vendored corpora (defaults to <cwd>/vendored/openclaw-sop). */
   vendoredRoot?: string;
+}
+
+/**
+ * Hostname for transcript provenance — never the full URL (no path/query/
+ * credential leakage), matching `hostnameOf` in
+ * `src/core/behavioral/client.ts:57` (FR-001/C-004). That function is
+ * module-private and out of this work package's owned-files scope (WP03
+ * exports it for the cassette module to reuse); this is a small, local
+ * mirror of the same extraction logic rather than a parallel redaction
+ * scheme.
+ */
+function hostnameOf(baseUrl: string): string {
+  try {
+    return new URL(baseUrl).host;
+  } catch {
+    return baseUrl.replace(/^[a-z+]+:\/\//i, "").split(/[/?#]/, 1)[0] ?? baseUrl;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -147,12 +178,17 @@ export function aggregateKofN(
  * @param runNumber - 1-based run index.
  * @param scenario - The probe scenario with systemPrompt and turns.
  * @param client - ChatClient for behavioral execution.
+ * @param model - Real model identity of `client`'s endpoint (FR-001).
+ * @param baseUrlHost - Real endpoint hostname (already redacted via
+ *   `hostnameOf`, never the full URL) of `client`'s endpoint (FR-001).
  * @returns SOPRunVerdict with transcript and empty grades (grading is caller's responsibility).
  */
 async function runProbeOnce(
   runNumber: number,
   scenario: InlineScenario,
-  client: ChatClient
+  client: ChatClient,
+  model: string,
+  baseUrlHost: string
 ): Promise<{ transcript: Transcript; toolCallTrace: ToolCall[]; turns: SOPTurn[]; error?: string }> {
   const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
     { role: "system", content: scenario.systemPrompt },
@@ -163,6 +199,9 @@ async function runProbeOnce(
 
   let error: string | undefined;
 
+  // FR-001: durationMs is measured wall-clock time around the client-call
+  // loop below — never a hardcoded literal.
+  const startedAt = Date.now();
   try {
     for (const turn of scenario.turns) {
       if (turn.role === "user") {
@@ -185,13 +224,14 @@ async function runProbeOnce(
   } catch (err) {
     error = err instanceof Error ? err.message : String(err);
   }
+  const durationMs = Date.now() - startedAt;
 
   const transcript: Transcript = {
     entries: transcriptEntries,
-    model: "mock",
-    baseUrl: "mock://test",
+    model,
+    baseUrl: baseUrlHost,
     temperature: "default",
-    durationMs: 0,
+    durationMs,
   };
 
   // Tool call trace is not populated by the behavioral runner in this adapter
@@ -260,6 +300,8 @@ async function runComplianceProbeEntry(
   entry: SOPRuleManifestEntry,
   probe: ComplianceProbe,
   client: ChatClient,
+  model: string,
+  baseUrlHost: string,
   kOverride?: number
 ): Promise<SOPRunVerdict[]> {
   const k = kOverride ?? entry.k;
@@ -267,12 +309,17 @@ async function runComplianceProbeEntry(
   const runVerdicts: SOPRunVerdict[] = [];
 
   for (let run = 1; run <= k; run++) {
+    // FR-001: measured from before the probe call, so even the catch-block
+    // fallback transcript below carries a real elapsed duration, not 0.
+    const runStartedAt = Date.now();
     // Error containment: each run is individually try/caught (FR-012)
     try {
       const { transcript, toolCallTrace, turns, error: runError } = await runProbeOnce(
         run,
         scenario,
-        client
+        client,
+        model,
+        baseUrlHost
       );
 
       if (runError !== undefined) {
@@ -348,10 +395,10 @@ async function runComplianceProbeEntry(
         grades: [],
         transcript: {
           entries: [],
-          model: "mock",
-          baseUrl: "mock://test",
+          model,
+          baseUrl: baseUrlHost,
           temperature: "default",
-          durationMs: 0,
+          durationMs: Date.now() - runStartedAt,
         },
         error: errorMsg,
       });
@@ -374,6 +421,8 @@ async function runAdversarialProbeEntry(
   entry: SOPRuleManifestEntry,
   probe: AdversarialProbe,
   client: ChatClient,
+  model: string,
+  baseUrlHost: string,
   kOverride?: number
 ): Promise<SOPRunVerdict[]> {
   const k = kOverride ?? entry.k;
@@ -381,11 +430,15 @@ async function runAdversarialProbeEntry(
   const runVerdicts: SOPRunVerdict[] = [];
 
   for (let run = 1; run <= k; run++) {
+    // FR-001: measured from before the probe call (see runComplianceProbeEntry).
+    const runStartedAt = Date.now();
     try {
       const { transcript, toolCallTrace, turns, error: runError } = await runProbeOnce(
         run,
         scenario,
-        client
+        client,
+        model,
+        baseUrlHost
       );
 
       if (runError !== undefined) {
@@ -421,10 +474,10 @@ async function runAdversarialProbeEntry(
         grades: [],
         transcript: {
           entries: [],
-          model: "mock",
-          baseUrl: "mock://test",
+          model,
+          baseUrl: baseUrlHost,
           temperature: "default",
-          durationMs: 0,
+          durationMs: Date.now() - runStartedAt,
         },
         error: errorMsg,
       });
@@ -565,6 +618,8 @@ async function dispatchProbeVerdicts(
   complianceProbes: Map<string, ComplianceProbe>,
   adversarialProbes: Map<string, AdversarialProbe>,
   client: ChatClient,
+  model: string,
+  baseUrlHost: string,
   kOverride?: number
 ): Promise<SOPCaseVerdict[]> {
   const verdicts: SOPCaseVerdict[] = [];
@@ -575,7 +630,14 @@ async function dispatchProbeVerdicts(
       const adversarialProbe = adversarialProbes.get(probeId);
 
       if (complianceProbe !== undefined) {
-        const runVerdicts = await runComplianceProbeEntry(entry, complianceProbe, client, kOverride);
+        const runVerdicts = await runComplianceProbeEntry(
+          entry,
+          complianceProbe,
+          client,
+          model,
+          baseUrlHost,
+          kOverride
+        );
         const passThreshold = entry.passThreshold ?? Math.ceil(entry.k / 2);
         const caseResult =
           entry.aggregation === "pass-k"
@@ -584,7 +646,14 @@ async function dispatchProbeVerdicts(
         verdicts.push({ probeId, ruleId: entry.ruleId, ...caseResult });
       } else if (adversarialProbe !== undefined) {
         // Adversarial probes always use pass^k (FR-007, charter)
-        const runVerdicts = await runAdversarialProbeEntry(entry, adversarialProbe, client, kOverride);
+        const runVerdicts = await runAdversarialProbeEntry(
+          entry,
+          adversarialProbe,
+          client,
+          model,
+          baseUrlHost,
+          kOverride
+        );
         const caseResult = aggregatePassK(runVerdicts);
         verdicts.push({
           probeId,
@@ -618,14 +687,17 @@ async function dispatchProbeVerdicts(
  * lint errors or probe failures.
  *
  * @param manifestPath - Absolute or relative path to the YAML manifest file.
- * @param options - SuiteRunOptions: client, optional k override, optional vendoredRoot.
+ * @param options - SuiteRunOptions: client, model, baseUrl, optional k override, optional vendoredRoot.
  * @returns Promise<SOPSuiteReport>.
  */
 export async function runManifestSuite(
   manifestPath: string,
   options: SuiteRunOptions
 ): Promise<SOPSuiteReport> {
-  const { client, k: kOverride } = options;
+  const { client, model, baseUrl, k: kOverride } = options;
+  // FR-001/C-004: redact to hostname once, up front — every Transcript this
+  // suite run produces is stamped from this value, never the full URL.
+  const baseUrlHost = hostnameOf(baseUrl);
 
   // Step 1a: Load and validate manifest
   const loadResult = await loadManifestPhase(manifestPath);
@@ -647,6 +719,8 @@ export async function runManifestSuite(
     complianceProbes,
     adversarialProbes,
     client,
+    model,
+    baseUrlHost,
     kOverride
   );
 
