@@ -24,6 +24,28 @@ function fakeChatClient(): ChatClient & { calls: ChatMessage[][] } {
   };
 }
 
+/** A fake ToolChatClient whose `chatWithTools` records each `tools` array it
+ *  was invoked with (so tests can assert pass-through/copy behavior) and
+ *  returns a caller-supplied result per call, defaulting to an incrementing
+ *  `response-N` marker so call order is observable without extra setup. */
+function fakeToolChatClient(
+  chatWithToolsResult?: (toolCalls: unknown[][]) => unknown
+): ToolChatClient & { toolCalls: unknown[][] } {
+  const toolCalls: unknown[][] = [];
+  return {
+    toolCalls,
+    async chat(messages: ChatMessage[]): Promise<string> {
+      return `chat-${messages.length}`;
+    },
+    async chatWithTools(_messages: ChatMessage[], tools: unknown[]): Promise<unknown> {
+      toolCalls.push(tools);
+      return chatWithToolsResult
+        ? chatWithToolsResult(toolCalls)
+        : { toolResult: `response-${toolCalls.length}` };
+    },
+  };
+}
+
 const OPTS = {} as const;
 
 describe("makeCassetteClient — live mode (FR-010)", () => {
@@ -42,16 +64,7 @@ describe("makeCassetteClient — live mode (FR-010)", () => {
   });
 
   it("passes chatWithTools through unchanged when the inner client is a ToolChatClient (FR-007)", async () => {
-    const inner: ToolChatClient & { toolCalls: unknown[][] } = {
-      toolCalls: [],
-      async chat(messages: ChatMessage[]): Promise<string> {
-        return `chat-${messages.length}`;
-      },
-      async chatWithTools(messages: ChatMessage[], tools: unknown[]): Promise<unknown> {
-        inner.toolCalls.push(tools);
-        return { toolResult: "unchanged" };
-      },
-    };
+    const inner = fakeToolChatClient(() => ({ toolResult: "unchanged" }));
     const client = makeCassetteClient(inner, { mode: "live" });
     const messages: ChatMessage[] = [{ role: "user", content: "hi" }];
     const tools = [{ type: "function", function: { name: "lookup" } }];
@@ -213,16 +226,7 @@ describe("makeCassetteClient — record mode (FR-008)", () => {
       "corrupt the already-recorded exchange (ca5d777 fixed the `chat` and `chatWithTools` " +
       "call sites identically; only `chat` had a regression test until now)",
     async () => {
-      const inner: ToolChatClient & { toolCalls: unknown[][] } = {
-        toolCalls: [],
-        async chat(messages: ChatMessage[]): Promise<string> {
-          return `chat-${messages.length}`;
-        },
-        async chatWithTools(_messages: ChatMessage[], tools: unknown[]): Promise<unknown> {
-          inner.toolCalls.push(tools);
-          return { toolResult: `response-${inner.toolCalls.length}` };
-        },
-      };
+      const inner = fakeToolChatClient();
       const recordSink: CassetteExchange[] = [];
       const client = makeCassetteClient(inner, {
         mode: "record",

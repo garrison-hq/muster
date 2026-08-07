@@ -52,10 +52,13 @@ function neverCalledClientFactory(_endpoint: EndpointConfig): ChatClient {
 }
 
 // PR-FRESH-006: derived from the production `CaseVerdict` type (not
-// hand-duplicated) so a future rename of any of these fields — especially
-// `stale`, the field this file's core anti-vacuity assertion reads — breaks
-// this file at compile time instead of silently degrading the assertion
-// below to a no-op.
+// hand-duplicated), so a future rename of any of these fields — especially
+// `stale`, the field this file's core anti-vacuity assertion reads — would
+// fail to satisfy `keyof CaseVerdict` under a tests-inclusive TypeScript
+// project. Note this repo's current tsconfig.json excludes tests/, so no
+// command in today's pipeline (`pnpm typecheck`, `vitest run`) actually
+// type-checks this file; the Pick<> is still the correct shape to keep, but
+// it is not, today, a compile-time guarantee enforced by CI.
 type ReplayVerdict = Pick<CaseVerdict, "id" | "passed" | "stale">;
 
 async function replayDiscriminationControl(
