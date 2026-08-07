@@ -1,0 +1,25 @@
+schema: review-findings/v1
+complete: true
+phase: post-merge
+lens_group: mission-review
+mission: cassette-core-engine-01KZCWFE
+findings:
+  - id: POST-MERGE-001
+    lens: drift
+    severity: 1
+    title: Untracked issue-matrix.md in mission dir is a stale template, not part of the merge
+    evidence:
+      - artifact: "kitty-specs/cassette-core-engine-01KZCWFE/issue-matrix.md"
+      - code: "git status --short (untracked, not present in af23d149)"
+    claim: >
+      The workspace has an untracked kitty-specs/cassette-core-engine-01KZCWFE/issue-matrix.md
+      with all rows still reading "unknown"/"<fill at WP-implementation time>" for issues
+      #104, #90, #100, #101, #102, #103, #92. This file is not part of the af23d149 merge
+      commit (git show --stat confirms it is absent from the squashed PR), so it has no
+      bearing on what shipped. Noting it only so it is not mistaken for a real gap by a
+      future reader of this directory — the actual absorbed issue (#90) is fully closed in
+      code (FR-001, verified) and the blocked issues (#100-#103) are explicitly wave-2
+      scope per spec.md Non-Goals/Dependencies, not this mission's to resolve.
+    remediation: >
+      Delete or regenerate the stray local issue-matrix.md so it does not accumulate in the
+      workspace; no code or spec change needed.
