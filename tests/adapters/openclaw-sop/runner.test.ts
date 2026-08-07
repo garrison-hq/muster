@@ -1167,14 +1167,14 @@ describe("muster#88: judge passThreshold applies to k runs, not to one run's ord
 // ---------------------------------------------------------------------------
 
 /**
- * A ChatClient that introduces a deliberate ≥5ms async delay before
- * resolving. Every mock client factory elsewhere in this file (
- * `makeMockClient`, `makeConstantClient`, `makeRunVaryingJudgeClient`,
- * `makeErrorClient`) resolves synchronously with no delay — a test built on
- * one of those would compute `durationMs === 0` on a fast machine and would
- * NOT distinguish real measured timing from the old hardcoded `durationMs: 0`
- * literal (plan.md IC-01 Risks). This factory exists so Scenario 15's
- * regression test actually fails if that literal is reintroduced.
+ * A ChatClient that introduces a deliberate async delay before resolving.
+ * Every mock client factory elsewhere in this file (`makeMockClient`,
+ * `makeConstantClient`, `makeRunVaryingJudgeClient`, `makeErrorClient`)
+ * resolves synchronously with no delay — a test built on one of those would
+ * compute `durationMs === 0` on a fast machine and would NOT distinguish
+ * real measured timing from the old hardcoded `durationMs: 0` literal
+ * (plan.md IC-01 Risks). This factory exists so Scenario 15's regression
+ * test actually fails if that literal is reintroduced.
  */
 function makeDelayedClient(response: string, delayMs: number): ChatClient {
   return {
@@ -1250,10 +1250,15 @@ ${probesSection}
 describe("FR-001/Scenario 15: real transcript provenance (closes #90)", () => {
   it("runProbeOnce's Transcript carries real model, hostname-only baseUrl, and measured durationMs — never the mock/mock://test/0 literals", async () => {
     const manifestPath = join(fixturesDir, "rule-manifest-runner-sc001.yaml");
-    // 5ms deliberate delay (see makeDelayedClient doc comment): a synchronous
-    // mock would make this assertion pass even with the old durationMs: 0
-    // literal, silently masking a regression.
-    const client = makeDelayedClient("The weather today is sunny and pleasant.", 5);
+    // 50ms deliberate delay (see makeDelayedClient doc comment): a
+    // synchronous mock would make this assertion pass even with the old
+    // durationMs: 0 literal, silently masking a regression. The assertion
+    // below checks >= 20ms rather than the full 50ms — a wide margin below
+    // the nominal delay so timer-granularity/scheduler jitter can never
+    // close the gap (was previously asserting >= 5 against a 5ms delay with
+    // zero margin, which flaked under CI load), while 20ms remains far
+    // above 0 so a regression to the hardcoded literal still fails loudly.
+    const client = makeDelayedClient("The weather today is sunny and pleasant.", 50);
 
     const report = await runManifestSuite(manifestPath, {
       client,
@@ -1275,9 +1280,9 @@ describe("FR-001/Scenario 15: real transcript provenance (closes #90)", () => {
     expect(transcript.baseUrl).not.toContain("fake-token-abc123");
     expect(transcript.baseUrl).not.toContain("/v1");
 
-    // Real measured duration — the delayed client guarantees this is >= 5,
-    // never the hardcoded 0.
-    expect(transcript.durationMs).toBeGreaterThanOrEqual(5);
+    // Real measured duration — the delayed client's 50ms sleep guarantees
+    // this is comfortably >= 20, never the hardcoded 0.
+    expect(transcript.durationMs).toBeGreaterThanOrEqual(20);
   });
 
   it("hostnameOf falls back to a scheme-stripped prefix for a baseUrl that new URL() cannot parse", async () => {
