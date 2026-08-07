@@ -1,0 +1,14 @@
+endpoint:
+  base_url: "http://fixture.invalid/v1"
+  model: "test-model"
+defaults:
+  runs: 1
+  pass_threshold: 1
+cases:
+  - id: "rigged-case"
+    soul: "../../../cts/fixtures/minimal/valid/Soul.md"
+    turns:
+      - content: "Hello there"
+    axes:
+      - axis: "verbosity"
+        turns: "all"
