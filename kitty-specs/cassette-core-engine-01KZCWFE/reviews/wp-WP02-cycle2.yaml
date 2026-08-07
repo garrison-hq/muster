@@ -5,7 +5,7 @@ cycle: 2
 mission: cassette-core-engine-01KZCWFE
 verdict: approved
 gates_observed:
-  tsc: pass                   # `npx tsc --noEmit` on HEAD (e93d23d): exit 0, no output
+  tsc: pass                   # `npx tsc --noEmit` on HEAD (7da526f (folded from e93d23d during history compression)): exit 0, no output
   tests: pass                  # `pnpm test`: 186 files / 3798 passed / 3 skipped — identical to cycle 1
   coverage: 100                 # `pnpm test:coverage`; coverage/lcov.info SF:src/core/execution-source.ts —
                                  # LF:12/LH:12, FNF:1/FNH:1, BRF:14/BRH:14 (100% stmts/funcs/branches/lines),

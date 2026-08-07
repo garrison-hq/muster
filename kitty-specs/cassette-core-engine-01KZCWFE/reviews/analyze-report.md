@@ -5,7 +5,7 @@ command: /spec-kitty.analyze
 mission_slug: cassette-core-engine-01KZCWFE
 mission_id: 01KZCWFEZC1TS3N5250Q5G0XPM
 generated_at: 2026-08-07T10:18:07+00:00
-analyzer_agent: claude (Sonnet 5, ANALYZE seat, final re-analysis after fix round 43b4b48)
+analyzer_agent: claude (Sonnet 5, ANALYZE seat, final re-analysis after fix round e36b2b0)
 input_artifacts:
   spec.md:
     path: kitty-specs/cassette-core-engine-01KZCWFE/spec.md
@@ -40,7 +40,7 @@ findings: []
 # Cross-Artifact Analysis Report — cassette-core-engine-01KZCWFE (final re-analysis)
 
 **Mission**: `cassette-core-engine-01KZCWFE` (`01KZCWFEZC1TS3N5250Q5G0XPM`)
-**Run**: final re-analysis after fix round `43b4b48` (fixed `ANALYZE-003`, the last open finding from the prior cross-artifact analysis pass)
+**Run**: final re-analysis after fix round `e36b2b0` (fixed `ANALYZE-003`, the last open finding from the prior cross-artifact analysis pass)
 **Artifacts reviewed**: `spec.md` (416 lines), `plan.md` (997 lines), `tasks.md` (263 lines), `.kittify/charter/charter.md` (62 lines)
 **Codebase verified against**: `/home/jeroennouws/dev/muster-missions/99` at commit `db80a42` (`fix(openclaw-sop): stop applying the k-run passThreshold to a single run's judge vote (#89)`); `src/` and `tests/` confirmed byte-identical to the worktree checkout.
 
@@ -75,11 +75,11 @@ Prior finding: `tasks.md` T025 cited `tests/unit/cli.test.ts:725` (the enclosing
 - Line 725: `it("BUG-B: MUSTER_ENDPOINT env var enables behavioral run without manifest endpoint block", async () => {`
 - Line 727: `vi.spyOn(globalThis, "fetch").mockImplementation(() => {`
 
-**Verified against current artifact text**: `tasks.md` T025 now reads "...zero network I/O via `vi.spyOn(globalThis, \"fetch\")` mirroring the `cli.test.ts:727` precedent (NFR-003, Scenario 5)..." — the citation now points at line 727, the actual `vi.spyOn` call, matching `plan.md`'s Technical Context and Test Strategy row 5 (both also cite `:727`). Fix commit `43b4b48` is a one-line, single-character-range change (725→727) with no other diff. **Resolved**, and no new drift was introduced by the fix — every other citation in `tasks.md` T025's same sentence (the scenario number, the NFR reference, "BUG-B" framing via `plan.md`) is unaffected and still accurate.
+**Verified against current artifact text**: `tasks.md` T025 now reads "...zero network I/O via `vi.spyOn(globalThis, \"fetch\")` mirroring the `cli.test.ts:727` precedent (NFR-003, Scenario 5)..." — the citation now points at line 727, the actual `vi.spyOn` call, matching `plan.md`'s Technical Context and Test Strategy row 5 (both also cite `:727`). Fix commit `e36b2b0` is a one-line, single-character-range change (725→727) with no other diff. **Resolved**, and no new drift was introduced by the fix — every other citation in `tasks.md` T025's same sentence (the scenario number, the NFR reference, "BUG-B" framing via `plan.md`) is unaffected and still accurate.
 
 ## Fix-introduced issues — hunt result
 
-Searched the full diff of `43b4b48` (one line, `tasks.md` only) and every other `cli.test.ts` line-number citation across `plan.md`/`tasks.md` (both artifacts' only numbered `cli.test.ts` citations are `:377`, the `"muster behave run"` describe block, and `:727`, the `vi.spyOn` precedent — both re-verified exact). No drift introduced. **Clean.**
+Searched the full diff of `e36b2b0` (one line, `tasks.md` only) and every other `cli.test.ts` line-number citation across `plan.md`/`tasks.md` (both artifacts' only numbered `cli.test.ts` citations are `:377`, the `"muster behave run"` describe block, and `:727`, the `vi.spyOn` precedent — both re-verified exact). No drift introduced. **Clean.**
 
 ## Three cross-cutting mechanisms — re-derived and re-checked
 
@@ -111,7 +111,7 @@ Searched the full diff of `43b4b48` (one line, `tasks.md` only) and every other 
 
 **Coverage gaps** — None found. Every FR/NFR/C traces to a WP; every acceptance scenario traces to a test location and WP; the one plan-authored behavior with no `spec.md` scenario (non-empty-target-directory semantics, design decision #2) is explicitly flagged in both `plan.md` and `tasks.md` and given its own dedicated test (`store.test.ts`, WP03).
 
-**Inconsistency** — None found. `ANALYZE-001`, `ANALYZE-002`, `ANALYZE-003` are all genuinely resolved (re-verified against source above); no new inconsistency was introduced by any of the three fix commits (`653dced`, `43b4b48`) or discovered independently in this pass.
+**Inconsistency** — None found. `ANALYZE-001`, `ANALYZE-002`, `ANALYZE-003` are all genuinely resolved (re-verified against source above); no new inconsistency was introduced by any of the three fix commits (`1086754`, `e36b2b0`) or discovered independently in this pass.
 
 ## Source verification summary
 

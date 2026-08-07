@@ -15,13 +15,13 @@ gates_observed:
     hash.ts, errors.ts, index.ts, types.ts all fully hit). Large
     partially-touched files: cross-referenced every uncovered line/branch
     from lcov.info against this mission's actual diff hunks (git diff
-    afea034..HEAD, the pre-WP01 base) for cli/index.ts,
+    0d1d833..HEAD, the pre-WP01 base) for cli/index.ts,
     src/adapters/openclaw-sop/runner.ts, src/core/behavioral/{client,
     runner}.ts. Zero mission-authored lines are uncovered in any of the four
     files — every uncovered line/branch that falls near a diff hunk (e.g.
     client.ts:66, cli/index.ts:1825/1869/1800-1801, runner.ts:566) was
     verified via `git blame` to predate the mission (commit db80a42,
-    2026-08-02, before mission base afea034). behavioral/types.ts confirmed
+    2026-08-02, before mission base 0d1d833). behavioral/types.ts confirmed
     zero executable statements (`grep -nE '^(export )?(function|const|class|
     enum)'` → no matches).
 feedback:

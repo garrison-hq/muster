@@ -2,7 +2,7 @@ schema: analysis-findings/v1
 complete: true
 mission: cassette-core-engine-01KZCWFE
 mission_id: 01KZCWFEZC1TS3N5250Q5G0XPM
-run: final-re-analysis-after-fix-43b4b48
+run: final-re-analysis-after-fix-e36b2b0
 verdict: ready
 findings: []
 analyze_001_resolved: true
@@ -27,7 +27,7 @@ analyze_003_verification: >-
   tests/unit/cli.test.ts re-verified at commit db80a42: line 725 is the
   enclosing it("BUG-B: ...") block description; line 727 is the exact
   vi.spyOn(globalThis, "fetch") call. tasks.md T025 now cites cli.test.ts:727
-  (fixed by 43b4b48, a one-line change), matching plan.md's Technical
+  (fixed by e36b2b0, a one-line change), matching plan.md's Technical
   Context and Test Strategy row 5, both of which already cited :727
   correctly. Both artifacts now cite the same, correct line.
 fix_introduced_issues: none

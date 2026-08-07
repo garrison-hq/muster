@@ -5,7 +5,7 @@ cycle: 1
 mission: cassette-core-engine-01KZCWFE
 verdict: rejected
 gates_observed:
-  tsc: pass                  # `npx tsc --noEmit` on HEAD (2f7d324): exit 0, no output
+  tsc: pass                  # `npx tsc --noEmit` on HEAD (7da526f): exit 0, no output
   tests: pass                 # `pnpm test` on HEAD: 186 files / 3798 passed / 3 skipped / 0 failed — matches implementer's claim exactly
   coverage: 100                # src/core/execution-source.ts verified via `coverage-summary.json`: 12/12 stmts, 14/14 branches, 1/1 funcs, 12/12 lines. lcov FNDA:14 matches the file's 14 `it(` blocks 1:1 (each test calls the function exactly once) — genuine execution, not a WP01-style unreachable-line misattribution.
 feedback:

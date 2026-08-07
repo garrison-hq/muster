@@ -5,7 +5,7 @@ cycle: 2
 mission: cassette-core-engine-01KZCWFE
 verdict: approved
 gates_observed:
-  tsc: pass                 # `npx tsc --noEmit` on HEAD (8761872): exit 0, no output — verified directly by me
+  tsc: pass                 # `npx tsc --noEmit` on HEAD (12ddb36): exit 0, no output — verified directly by me
   tests: pass                # `pnpm test` (vitest run) on HEAD: 184 files / 3770 passed / 3 skipped / 0 failed — matches implementer's claim exactly; repeated the full run 6 additional times (7 total), all green
   coverage: pass              # NOT taken from lcov (per cycle-1 lesson). Reachability of buildSopClient's "endpoint configured" branch established empirically by reproducing proof (a) myself: applied the exact field-swap (`model: baseUrl, baseUrl: model`) at src/cli/index.ts:1644 in the working tree, ran `npx vitest run tests/sop/cli.test.ts`, and got exactly 1 failure — the new WP01-C1-001 regression test ("expected 'https://injected-endpoint.example.com/v1' to be 'injected-model-x1'"), 15/16 other tests in the file unaffected. Reverted the edit; `git diff --stat` empty afterward, confirming clean restoration. This directly falsifies the cycle-1 finding that no test could catch such a swap.
 feedback:

@@ -5,7 +5,7 @@ cycle: 1
 mission: cassette-core-engine-01KZCWFE
 verdict: rejected
 gates_observed:
-  tsc: pass                 # `npx tsc --noEmit` on HEAD (cc92185): exit 0, no output
+  tsc: pass                 # `npx tsc --noEmit` on HEAD (b6a8d73): exit 0, no output
   tests: pass                # `npx vitest run` on HEAD: 184 files / 3768 passed / 3 skipped / 0 failed — matches implementer's claim exactly
   coverage: fail              # runner.ts (T001) new code fully exercised, verified by direct lcov DA/BRDA inspection; cli/index.ts (T002) "endpoint configured" branch has zero behavioral test coverage — see WP01-C1-001
 feedback:

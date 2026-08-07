@@ -5,7 +5,7 @@ cycle: 2
 mission: cassette-core-engine-01KZCWFE
 verdict: approved
 gates_observed:
-  tsc: pass                   # `npx tsc --noEmit` at HEAD (4dd285e): exit 0, no output
+  tsc: pass                   # `npx tsc --noEmit` at HEAD (3f336cd): exit 0, no output
   tests: pass                 # `pnpm test` at HEAD: 194 files / 3866 passed / 3 skipped / 0 failed — matches cycle 1's numbers exactly
   coverage: pass               # not recomputed this cycle (delta is doc-comment-only, cannot change coverage); cycle 1's 100% recomputation from lcov.info stands unchallenged per scope boundary
 feedback: []
