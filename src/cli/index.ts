@@ -1610,7 +1610,7 @@ function formatSkillsResultHuman(result: SkillsRunResult): string {
  * `Transcript` provenance reflects the actual endpoint, not a literal.
  */
 interface SopClientBundle {
-  client: import("../core/behavioral/types.js").ChatClient;
+  client: ChatClient;
   model: string;
   baseUrl: string;
 }
@@ -1618,12 +1618,17 @@ interface SopClientBundle {
 /**
  * Build a minimal ChatClient from env vars for SOP behavioral probes.
  *
- * When MUSTER_ENDPOINT is present, creates an OpenAI-compatible client.
+ * When MUSTER_ENDPOINT is present, creates an OpenAI-compatible client via
+ * the injected `clientFactory` (defaults to the real fetch client, mirroring
+ * doBehaveRun/doMemoryUtilizationRun's seam — tests inject a stub so the
+ * "endpoint configured" path is exercised without live network I/O).
  * Returns undefined when the env var is absent (callers skip behavioral).
  *
  * NFR-005: API key read from process.env at call time; never stored.
  */
-function buildSopClient(): SopClientBundle | undefined {
+function buildSopClient(
+  clientFactory: (endpoint: EndpointConfig) => ChatClient
+): SopClientBundle | undefined {
   const baseUrl = process.env["MUSTER_ENDPOINT"];
   if (baseUrl === undefined || baseUrl === "") {
     return undefined;
@@ -1631,12 +1636,12 @@ function buildSopClient(): SopClientBundle | undefined {
   const model = process.env["MUSTER_MODEL"] ?? "gpt-4o-mini";
   const apiKeyEnv: "MUSTER_API_KEY" | "OPENAI_API_KEY" =
     (process.env["MUSTER_API_KEY"] ?? "") === "" ? "OPENAI_API_KEY" : "MUSTER_API_KEY";
-  const endpoint: import("../core/behavioral/types.js").EndpointConfig = {
+  const endpoint: EndpointConfig = {
     baseUrl,
     model,
     apiKeyEnv,
   };
-  return { client: makeClient(endpoint), model, baseUrl };
+  return { client: clientFactory(endpoint), model, baseUrl };
 }
 
 /**
@@ -1651,7 +1656,7 @@ function buildSopClient(): SopClientBundle | undefined {
  * For manifests with no inline probes (static-only), this client is
  * never called at all.
  */
-const SOP_NOOP_CLIENT: import("../core/behavioral/types.js").ChatClient = {
+const SOP_NOOP_CLIENT: ChatClient = {
   async chat(): Promise<string> {
     throw new Error(
       "muster sop: MUSTER_ENDPOINT not set — behavioral probes skipped (no-op client)"
@@ -1676,7 +1681,8 @@ const SOP_NOOP_CLIENT: import("../core/behavioral/types.js").ChatClient = {
 async function doSopRun(
   manifestPath: string,
   opts: GlobalOpts,
-  io: Io
+  io: Io,
+  clientFactory: (endpoint: EndpointConfig) => ChatClient
 ): Promise<number> {
   const absManifestPath = toAbsolute(manifestPath);
   // Pre-check: verify the manifest is readable before invoking runManifestSuite.
@@ -1687,7 +1693,7 @@ async function doSopRun(
   // ONLY when no endpoint is configured (SOP_NOOP_CLIENT path below) — never
   // unconditionally. When an endpoint IS configured, its real model/baseUrl
   // are threaded through so Transcript provenance reflects it.
-  const sopClient = buildSopClient();
+  const sopClient = buildSopClient(clientFactory);
   const client = sopClient?.client ?? SOP_NOOP_CLIENT;
   const model = sopClient?.model ?? "unconfigured";
   const baseUrl = sopClient?.baseUrl ?? "unconfigured://no-endpoint";
@@ -2245,7 +2251,7 @@ function buildProgram(
         "The adapter name is 'openclaw-sop'; the CLI command is 'sop' (short form)."
     )
     .action(async (manifest: string, _local, cmd: Command) => {
-      setExit(await doSopRun(manifest, cmd.optsWithGlobals(), io));
+      setExit(await doSopRun(manifest, cmd.optsWithGlobals(), io, clientFactory));
     });
 
   // ─── muster tools ─────────────────────────────────────────────────────────
