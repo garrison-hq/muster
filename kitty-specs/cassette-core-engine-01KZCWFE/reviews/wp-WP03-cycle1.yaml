@@ -1,0 +1,56 @@
+schema: wp-verdict/v1
+complete: true
+wp: WP03
+cycle: 1
+mission: cassette-core-engine-01KZCWFE
+verdict: rejected
+gates_observed:
+  tsc: pass                   # `npx tsc --noEmit` on HEAD: exit 0, no output
+  tests: pass                 # `pnpm test` on HEAD: 194 files / 3866 passed / 3 skipped / 0 failed — matches implementer's claim exactly
+  coverage: 100                # src/core/cassette/*.ts verified via coverage/lcov.info (v8 provider, `npx vitest run --coverage`): client.ts 59/59 lines 22/22 branches 12/12 funcs; store.ts 19/19 lines 0/0 branches 5/5 funcs; hash.ts 1/1 lines 0/0 branches 1/1 funcs; errors.ts 6/6 lines 0/0 branches 1/1 funcs; types.ts 1/1 lines 0/0 branches 0/0 funcs; index.ts 0/0/0/0 (pure re-export barrel, no runtime statements). Sums to exactly the claimed 86/86 lines, 22/22 branches, 19/19 functions. Spot-checked DA: records for hash.ts (DA:31,47 — the one executable `return` statement, hit 47 times across the suite) and types.ts (DA:19,2 — the one executable `SCHEMA_VERSION` const, the rest of the file is type-only) — both plausible, not misattributed unreachable lines (unlike WP01 cycle 1's rejected claim). Note: vitest's default text-tree reporter silently drops the `core/cassette` directory row entirely (present in neither `--coverage tests/cassette` nor full `--coverage` text output) while the underlying lcov.info data is complete and correct — a reporter display quirk, not a data problem; verified independently via lcov, not the text summary the implementer likely quoted from.
+feedback:
+  - id: WP03-C1-001
+    severity: 2
+    claim: >
+      FR-012 (this WP's own requirement_refs list, WP03-cassette-core-module.md
+      line 16) mandates that "the cassette format documentation MUST
+      explicitly name the ChatClient.chat() information-loss limitation
+      (only choices[0].message.content survives that seam — finish_reason,
+      usage, additional choices, and the server-echoed model are discarded
+      before it reaches cassette code) and state that cassette provenance
+      records the requested model, never the served one, and MUST state the
+      resulting chat/chatWithTools fidelity asymmetry" (spec.md FR-012 row).
+      The only doc-comment addressing this anywhere in
+      src/core/cassette/*.ts is types.ts:28-30, a single parenthetical on
+      the `model` field: "(FR-012: `ChatClient.chat()` discards the
+      server-echoed model before it reaches cassette code)". That covers
+      only the "requested vs. served model" half of FR-012's three MUSTs.
+      It never names finish_reason, usage, or additional choices as
+      discarded, and it never states the "chat/chatWithTools fidelity
+      asymmetry" FR-012 explicitly requires — namely that a `chat` exchange
+      records only the single lossy `response: string`
+      (`CassetteExchange`'s `kind: "chat"` branch, types.ts:69-70) while a
+      `chatWithTools` exchange records the full raw `response: unknown`
+      payload (types.ts:78-79), so replaying a `chatWithTools` case
+      preserves strictly more of the original server response than
+      replaying a `chat` case does. No README, module-level doc block, or
+      other file in the diff states this asymmetry anywhere; grepping
+      src/core/cassette/ for "usage", "finish_reason", or "asymmetry"
+      returns no hits. This is a documentation-only gap (no runtime
+      behavior is wrong — the asymmetry itself is real and by design,
+      matching FR-011's "not re-serialized into chat's shape"), but FR-012
+      is phrased as an unambiguous MUST and is explicitly in this WP's
+      scope, not deferred to a later WP.
+    remediation: >
+      Extend the doc comment on `CassetteExchange` (types.ts:49-60, where
+      the `kind` discriminator and its rationale already live) or add a
+      dedicated paragraph to the module-level comment at the top of
+      types.ts to: (1) name the specific fields ChatClient.chat() discards
+      before cassette code ever sees them — finish_reason, usage, additional
+      choices, and the server-echoed model — leaving only
+      choices[0].message.content; and (2) explicitly state the resulting
+      fidelity asymmetry — chat exchanges retain only the extracted string,
+      chatWithTools exchanges retain the full raw response payload — so a
+      future reader of the cassette format (e.g. a wave-2 consumer deciding
+      whether replay is safe for their use case) does not have to infer it
+      from the type shapes alone.

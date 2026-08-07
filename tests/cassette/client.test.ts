@@ -7,6 +7,7 @@ import { CassetteMissError } from "../../src/core/cassette/errors.js";
 import { computeRequestHash } from "../../src/core/cassette/hash.js";
 import type { CassetteExchange } from "../../src/core/cassette/types.js";
 import type { ChatClient, ChatMessage } from "../../src/core/behavioral/types.js";
+import type { ToolChatClient } from "../../src/core/behavioral/client.js";
 
 /** A fake ChatClient whose `chat` returns a distinct response per call
  *  (call-counter-based), and records how many times it was actually
@@ -38,6 +39,25 @@ describe("makeCassetteClient — live mode (FR-010)", () => {
     const inner = fakeChatClient();
     const client = makeCassetteClient(inner, { mode: "live" });
     expect((client as Partial<{ chatWithTools: unknown }>).chatWithTools).toBeUndefined();
+  });
+
+  it("passes chatWithTools through unchanged when the inner client is a ToolChatClient (FR-007)", async () => {
+    const inner: ToolChatClient & { toolCalls: unknown[][] } = {
+      toolCalls: [],
+      async chat(messages: ChatMessage[]): Promise<string> {
+        return `chat-${messages.length}`;
+      },
+      async chatWithTools(messages: ChatMessage[], tools: unknown[]): Promise<unknown> {
+        inner.toolCalls.push(tools);
+        return { toolResult: "unchanged" };
+      },
+    };
+    const client = makeCassetteClient(inner, { mode: "live" });
+    const messages: ChatMessage[] = [{ role: "user", content: "hi" }];
+    const tools = [{ type: "function", function: { name: "lookup" } }];
+    const result = await client.chatWithTools(messages, tools);
+    expect(result).toEqual({ toolResult: "unchanged" });
+    expect(inner.toolCalls).toEqual([tools]);
   });
 });
 
