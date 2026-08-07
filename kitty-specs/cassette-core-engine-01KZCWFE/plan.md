@@ -8,17 +8,6 @@ kitty/mission-cassette-core-engine-01KZCWFE`, `target_branch: main`. This
 worktree's HEAD is the coordination branch; the eventual merge target is
 `main` (via `spec-kitty merge`, a later pipeline step — not performed here).
 
-**Tooling note**: `spec-kitty plan --json` failed with `SPEC_FILE_MISSING` in
-this environment (root cause: `specify_cli`'s PRIMARY-partition resolution
-reads SPEC/PLAN artifacts from the primary checkout's tree for every
-topology, never this coordination worktree, where `spec.md`/`meta.json`
-actually live) — `plan.md` was hand-authored and committed via `spec-kitty
-safe-commit` instead of the `plan` scaffold. Per the charter's Exception
-Policy, the full incident (root cause, affected paths, both checkouts
-compared) is recorded as a one-line justification in the mission work log,
-not here. Every architectural claim below was verified against the actual
-source tree at commit `db80a42`.
-
 ## Summary
 
 Ship a new spec-agnostic core module, `src/core/cassette/`, that gives
@@ -278,9 +267,10 @@ tests/cassette/                    # NEW test directory (mirrors the flat per-co
 
 tests/unit/
 ├── execution-source.test.ts        # NEW — FR-018 precedence table, one case per branch
-├── invariants.test.ts              # MODIFIED — + NI-004 (comment-stripped, paren-balanced
-│                                     # Promise.all-wraps-chat scan over the 8 explicitly
-│                                     # enumerated files — see "NI-004 design" above —
+├── invariants.test.ts              # MODIFIED — + NI-004 (quote-aware-comment-stripped,
+│                                     # paren-balanced Promise.all-wraps-chat scan, directory-
+│                                     # walked over src/adapters+src/core/behavioral+
+│                                     # src/crosslayer — see "NI-004 design" above —
 │                                     # FR-024/C-006, with memory-utilization/index.ts and
 │                                     # crosslayer/rule-survival.ts as explicit
 │                                     # must-not-false-positive fixtures) + fixtures/cassettes
@@ -505,12 +495,28 @@ clause) and is authoritative, so the fix belongs here, not as a spec
 amendment.
 
 **Resolution**: `doBehaveRun`'s output-emission step, **only when
-`opts.replay === true`**, builds a shallow structural copy of `verdicts`
-with every `RunVerdict.transcript.durationMs` normalized to a fixed
-sentinel (`0`) before it reaches `JSON.stringify`/`formatBehaveHuman` — the
-copy is built immediately before output, not a mutation of the `Transcript`
-objects `runCase` returns (the exit-code branch above the emission line
-reads only `run.error`, never `durationMs`, so this ordering is safe). This
+`opts.replay === true`**, builds a copy of `verdicts` **three levels deep**
+— `CaseVerdict[]` → each `CaseVerdict.runs: RunVerdict[]` → each
+`RunVerdict.transcript: Transcript` (`src/core/behavioral/types.ts:82-88,
+102-106, 124-128`) — normalizing every `RunVerdict.transcript.durationMs` to
+a fixed sentinel (`0`) before the copy reaches `JSON.stringify`/
+`formatBehaveHuman`: `verdicts.map((v) => ({ ...v, runs: v.runs.map((r) =>
+({ ...r, transcript: { ...r.transcript, durationMs: 0 } })) }))`. A single
+top-level array spread (`[...verdicts]`) is **not** sufficient here —
+`durationMs` sits three objects below the array element, and a
+one-level-shallow copy would still alias each `RunVerdict`'s (and its
+`Transcript`'s) object reference, so writing through the "copy" would mutate
+the original `Transcript` objects `runCase` returns, defeating the "leave
+`Transcript` unmutated" goal this resolution exists to satisfy. Only the
+array itself, each `CaseVerdict`, each `RunVerdict`, and each `Transcript`
+need their own new object/array — `TranscriptEntry` items inside
+`transcript.entries` are never written through and can stay shared
+references. The copy is built immediately before output, not a mutation of
+the `Transcript` objects `runCase` returns; the exit-code branch (`allRuns
+.every((run) => run.error !== undefined)`, `src/cli/index.ts:482-489`) sits
+**below** the emission line (`io.outLine(...)`, `:475-477`), not above it,
+and reads only `run.error`, never `durationMs`, so it observes the
+original, unmutated `verdicts` and this ordering is safe regardless. This
 keeps `Transcript.durationMs: number`'s type contract intact, requires zero
 changes to `runner.ts`/`runCase` beyond the already-planned `stale`-flag
 catch-block edit (IC-04's Affected surfaces are unchanged), and is
@@ -552,11 +558,46 @@ suite — and therefore the merge gate — on day one.
 **Algorithm** (text-scanning, matching the codebase's existing NI-002/
 NI-003 style — no AST parser/new dependency introduced):
 
-1. **Strip comments before scanning.** Remove `//...` line comments and
-   `/* ... */` block comments from each candidate file's text (a small,
-   single-purpose stripper, not a full tokenizer). This alone already
-   clears both cited false positives today, since their only "Promise.all"
-   occurrences are inside comments.
+1. **Strip comments before scanning, quote-aware.** Remove `//...` line
+   comments and `/* ... */` block comments from each candidate file's text,
+   but only when the `//`/`/*` sequence occurs outside a string or template
+   literal — track a single-pass in-string state (none / `"` / `'` / `` ` ``)
+   toggled by unescaped quote characters (a `\` inside a string escapes the
+   next character rather than closing the string), and only treat `//`/`/*`
+   as a comment start while that state is "none". This is still a small,
+   single-purpose stripper, not a full tokenizer — it needs quote/escape
+   tracking but not template-literal `${...}` interpolation-aware parsing:
+   treating an entire backtick span (open backtick to matching close
+   backtick, `${...}` included) as opaque — no comment-stripping inside
+   it — is sufficient and safe, since no template literal in the scan scope
+   embeds a `//`/`/*` sequence *inside* a `${...}` expression itself
+   (grep-verified). Plain `://` text does appear inside a backtick string's
+   literal segment today (`src/adapters/spec-kitty-profile/
+   schema.ts:47`'s `` `https://github.com/.../${schemaSha}/...` ``) —
+   that is handled correctly by the same open-to-matching-close backtick
+   tracking used for `"`/`'`, no interpolation-specific logic required.
+   Quote-awareness is required, not
+   defensive-only: scan-scope files already contain code lines where a `//`
+   sits *inside* a string literal next to real code —
+   `src/adapters/openclaw-sop/runner.ts:192,352,425` (`baseUrl:
+   "mock://test",`) and `src/adapters/memory/recall.ts:24` (an
+   `https://...` citation URL) — and a non-quote-aware stripper would read
+   from that in-string `//` to end-of-line as a comment, deleting whatever
+   real code follows it on the line. That is a false-negative risk exactly
+   symmetric to the false-positive risk steps 2-4 guard against: a
+   `Promise.all(...)`/`.chat(`/`.chatWithTools(` token sharing a line with
+   such a string literal would be silently erased before the scan ever sees
+   it, and NI-004 would report zero violations even for a real one. No
+   scan-scope line combines a `://` string literal with a `Promise.all(`/
+   `.chat(`/`.chatWithTools(` token today (grep-verified), so this is a
+   design-time correction, not a fix for a currently-failing case — but the
+   guard exists precisely to hold under future changes, not just today's
+   tree, so relying on that absence would reintroduce the same
+   "unverified-today, wrong-tomorrow" failure mode this round is fixing
+   elsewhere. Quote-aware stripping also still clears the two known comment
+   false positives (memory-utilization/index.ts, rule-survival.ts below),
+   since their "Promise.all" occurrences are inside `//`/`/* */` comments
+   outside any string.
 2. In the comment-stripped text, scan for `PROMISE_ALL_CALL = "Promise" +
    "." + "all" + "("` (built by concatenation, mirroring NI-003's
    `FETCH_CALL` self-exemption convention, so this test file's own source
@@ -572,20 +613,71 @@ NI-003 style — no AST parser/new dependency introduced):
    *outside* that span is not a violation. This matches FR-024's "wrapping"
    language exactly (enclosure, not proximity) instead of over-triggering.
 
-**Scan scope, enumerated explicitly** (not left as undefined "runner
-files" prose — confirmed live via `grep -rn "\.chat(\|\.chatWithTools("
-src/adapters src/core/behavioral src/crosslayer`, matching spec.md's
-Dependencies & Assumptions "all eight behavioral runners" set):
-`src/core/behavioral/runner.ts`, `src/adapters/skills/trigger.ts`,
+**Scan scope: derived by directory walk, not a hand-maintained file list.**
+An earlier version of this plan enumerated eight specific files as the scan
+scope and asserted the list was "confirmed live via grep." Re-running that
+exact command (`grep -rln '\.chat(\|\.chatWithTools(' src/adapters
+src/core/behavioral src/crosslayer`) against the tree at `db80a42` returns
+**ten** files, not eight: the eight already listed, plus
+`src/adapters/memory-utilization/judge.ts:137` and
+`src/adapters/openclaw-sop/judge.ts:118` — both real `.chat(` call sites the
+prior enumeration silently dropped. (Full ten, alphabetical:
 `src/adapters/heartbeat/index.ts`, `src/adapters/memory/privacy.ts`,
-`src/adapters/memory/recall.ts`, `src/adapters/memory-utilization/
-index.ts`, `src/adapters/openclaw-sop/runner.ts`, `src/crosslayer/
-rule-survival.ts`.
+`src/adapters/memory/recall.ts`, `src/adapters/memory-utilization/index.ts`,
+`src/adapters/memory-utilization/judge.ts`,
+`src/adapters/openclaw-sop/judge.ts`, `src/adapters/openclaw-sop/runner.ts`,
+`src/adapters/skills/trigger.ts`, `src/core/behavioral/runner.ts`,
+`src/crosslayer/rule-survival.ts`.)
+
+A hand-maintained file list is the wrong shape for this guard regardless of
+whether it happens to be complete today: every time a new runner or judge
+module adds a `.chat(`/`.chatWithTools(` call site — and NI-004's entire
+purpose is to keep enforcing C-006's sequential-only invariant as the
+codebase grows — the list has to be remembered and updated by hand, or the
+guard silently stops covering that file. That is precisely the failure that
+just happened: two real call sites dropped from an enumeration one review
+round after it was written. A scope defined by **derivation** — walk a
+directory tree and scan whatever is there — cannot rot this way, because
+nothing needs to be kept in sync with it. NI-004 therefore scans every
+`.ts` file under the three directories that can contain runner/judge code
+— `src/adapters/`, `src/core/behavioral/`, `src/crosslayer/` — using the
+same `walk()` helper NI-002 already uses in this file (`walk(dir, {
+exclude: BASE_EXCLUDES })`, recursive, symlinks never followed), filtered
+to `.ts` files exactly as NI-002/NI-003 already do
+(`.filter((f) => f.endsWith(".ts"))`). No test-file exclusion is needed:
+zero `*.test.ts`/`*.spec.ts` files exist under `src/` today (grep-verified).
+This makes the scope self-maintaining in both directions: a file with no
+`.chat(`/`.chatWithTools(` call site simply never matches step 2's
+`PROMISE_ALL_CALL` span search and costs one cheap substring scan; a new
+file that *does* add such a call site is automatically in-scope the moment
+it lands under one of these three directories, with no companion edit to
+this test ever required again. The three directories match spec.md's "all
+eight behavioral runners" assumption's own locations — `behave` under
+`src/core/behavioral/`; the other seven named runners (`memory`,
+`memory-utilization`, `crosslayer`, `heartbeat`, `skills`, `sop`, `tools`)
+and their judge/helper modules under `src/adapters/*`; `crosslayer` under
+`src/crosslayer/` — so walking `src/adapters/` wholesale also covers
+`src/adapters/tools/`, `src/adapters/a2a/`, `src/adapters/rfc1/`, and
+`src/adapters/spec-kitty-profile/`, none of which contain a `.chat(`/
+`.chatWithTools(` call site today (grep-verified) but each of which is
+automatically in-scope if one of them ever gains one — `tools` in
+particular, since FR-018's "drop-in fifth consumer" framing already
+anticipates it growing behavioral judging later. Total walked files: 83
+`.ts` files, ~25,000 lines (`find`/`wc`-verified at `db80a42`) — well
+inside NFR-007's combined budget and the same order of magnitude NI-003
+already walks today (all of `src/` + `tests/`).
 
 **Must-not-false-positive fixtures**: `src/adapters/memory-utilization/
 index.ts` and `src/crosslayer/rule-survival.ts` are explicit assertions in
 NI-004's own test coverage — NI-004 must report zero violations for both,
 verified directly (not merely inferred from the guard suite staying green).
+A third fixture covers the quote-aware stripper specifically: a scan-scope
+file containing a `://`-bearing string literal (e.g.
+`src/adapters/openclaw-sop/runner.ts`'s `"mock://test"` literals) followed
+on a later line by a real, uncommented `Promise.all(...)`/`.chat(` pairing
+must still be reported as a violation — proving the stripper does not
+swallow real code after an in-string `//`. This fixture is synthetic test
+fixture, not a change to any production file.
 
 ## Implementation Concern Map
 
@@ -691,8 +783,9 @@ verified directly (not merely inferred from the guard suite staying green).
 
 ### IC-05 — Invariant guards + discrimination-control fixture
 
-- **Purpose**: NI-004 (FR-024/C-006 — a comment-stripped, paren-balanced
-  scan over the eight explicitly enumerated files for a `Promise.all` call
+- **Purpose**: NI-004 (FR-024/C-006 — a quote-aware-comment-stripped,
+  paren-balanced scan, directory-walked over `src/adapters/`,
+  `src/core/behavioral/`, and `src/crosslayer/`, for a `Promise.all` call
   wrapping a `.chat(`/`.chatWithTools(` call site; see "NI-004 design"
   above for the algorithm and scan scope), the `fixtures/
   cassettes/` size lint (FR-021/D7), the discrimination-control cassette
@@ -717,12 +810,17 @@ verified directly (not merely inferred from the guard suite staying green).
   substring scan (NI-002/NI-003's own style) would false-positive today on
   `src/adapters/memory-utilization/index.ts` and `src/crosslayer/
   rule-survival.ts`, both of which document their own `Promise.all`
-  *absence* in comments near a real `.chat(` call site. The comment-strip +
-  paren-balanced-enclosure algorithm specified above avoids this, and its
-  own `PROMISE_ALL_CALL` token is built by string concatenation (mirroring
-  NI-003's `FETCH_CALL` self-exemption trick at `invariants.test.ts:128`)
-  so this test file's own source describing the guard does not self-trip
-  it.
+  *absence* in comments near a real `.chat(` call site; a comment stripper
+  that is not string-literal-aware would go too far the other way, creating
+  a symmetric false-negative risk by deleting real code that follows a
+  `://`-bearing string literal (`"mock://test"`, citation URLs) misread as
+  a line comment. The quote-aware comment-strip + paren-balanced-enclosure
+  algorithm specified above avoids both, and its own `PROMISE_ALL_CALL`
+  token is built by string concatenation (mirroring NI-003's `FETCH_CALL`
+  self-exemption trick at `invariants.test.ts:128`) so this test file's own
+  source describing the guard does not self-trip it. A hand-maintained scan
+  scope carries its own rot risk independent of the algorithm — see "NI-004
+  design"'s scope discussion for why the scope is directory-derived instead.
 
 ### IC-06 — Documentation + final gate verification
 
