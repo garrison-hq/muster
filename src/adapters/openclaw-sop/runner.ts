@@ -54,6 +54,7 @@ import {
 import type { ToolCall, SOPTurn } from "./graders.js";
 import { gradeJudgeCompliance } from "./judge.js";
 import type { Transcript, ChatClient } from "../../core/behavioral/types.js";
+import { hostnameOf } from "../../core/behavioral/client.js";
 
 // ---------------------------------------------------------------------------
 // RUBRIC_VERSION — must match docs/rubric/sop-rule-taxonomy.md front matter
@@ -79,35 +80,16 @@ export interface SuiteRunOptions {
   model: string;
   /**
    * Base URL of `client`'s configured endpoint (FR-001). The runner
-   * extracts and stamps the **hostname only** (via a local `hostnameOf`,
-   * never the full URL) onto every `Transcript.baseUrl` this suite run
-   * produces, per C-004's credential-hygiene convention.
+   * extracts and stamps the **hostname only** (via the shared `hostnameOf`
+   * from `core/behavioral/client.js`, never the full URL) onto every
+   * `Transcript.baseUrl` this suite run produces, per C-004's
+   * credential-hygiene convention.
    */
   baseUrl: string;
   /** Number of runs per probe (k); overrides the manifest entry's k when provided. */
   k?: number;
   /** Root directory for vendored corpora (defaults to <cwd>/vendored/openclaw-sop). */
   vendoredRoot?: string;
-}
-
-/**
- * Hostname for transcript provenance — never the full URL (no path/query/
- * credential leakage), matching `hostnameOf` in
- * `src/core/behavioral/client.ts:57` (FR-001/C-004). That function is
- * module-private and out of this work package's owned-files scope (WP03
- * exports it for the cassette module to reuse); this is a small, local
- * mirror of the same extraction logic rather than a parallel redaction
- * scheme.
- *
- * TODO(WP03): once `hostnameOf` is exported from `src/core/behavioral/client.ts`,
- * delete this local copy and import that export instead.
- */
-function hostnameOf(baseUrl: string): string {
-  try {
-    return new URL(baseUrl).host;
-  } catch {
-    return baseUrl.replace(/^[a-z+]+:\/\//i, "").split(/[/?#]/, 1)[0] ?? baseUrl;
-  }
 }
 
 // ---------------------------------------------------------------------------
