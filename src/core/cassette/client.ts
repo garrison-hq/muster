@@ -138,7 +138,14 @@ export function makeCassetteClient(
         messages: ChatMessage[],
         chatOpts: { temperature?: number }
       ): Promise<string> {
-        const request = { messages, opts: chatOpts };
+        // Deep-copy at call time (PR-TESTS-001): the caller's `messages`
+        // array is mutable and, per `executeRun`
+        // (`src/core/behavioral/runner.ts`), gets a reply pushed onto it
+        // immediately after this call returns — i.e. AFTER the reference
+        // would otherwise have been stored here. Freezing a copy now (not a
+        // reference) is what makes the persisted `CassetteExchange.request`
+        // match what was actually sent, not the array's later mutated state.
+        const request = { messages: messages.map((m) => ({ ...m })), opts: { ...chatOpts } };
         const started = Date.now();
         const response = await inner.chat(messages, chatOpts);
         const durationMs = Date.now() - started;
@@ -162,7 +169,9 @@ export function makeCassetteClient(
         messages: ChatMessage[],
         tools: unknown[]
       ): Promise<unknown> => {
-        const request = { messages, tools };
+        // Deep-copy at call time — same PR-TESTS-001 rationale as `chat`
+        // above: freeze a copy, never alias the caller's mutable array.
+        const request = { messages: messages.map((m) => ({ ...m })), tools: [...tools] };
         const started = Date.now();
         const response = await toolInner.chatWithTools(messages, tools);
         const durationMs = Date.now() - started;

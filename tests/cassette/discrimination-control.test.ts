@@ -54,6 +54,7 @@ function neverCalledClientFactory(_endpoint: EndpointConfig): ChatClient {
 interface ReplayVerdict {
   id: string;
   passed: boolean;
+  stale?: boolean;
 }
 
 async function replayDiscriminationControl(
@@ -84,6 +85,13 @@ describe("FR-019 / Scenario 14 — discrimination-control cassette", () => {
     expect(verdicts).toHaveLength(1);
     expect(verdicts[0]?.id).toBe("rigged-case");
     expect(verdicts[0]?.passed).toBe(false);
+    // PR-CONTRACT-002: rule out a cassette-miss (stale) explanation directly
+    // — `passed: false` + exit 1 alone would also be produced by a stale
+    // replay miss (requestHash/ordinal drift), not just a genuine grader
+    // failure. Asserting `stale` is undefined makes this test self-evidently
+    // about a real grading failure, not implicitly reliant on the second
+    // (grader-stubbed) test below to rule the miss case out.
+    expect(verdicts[0]?.stale).toBeUndefined();
     // Normal non-zero failure exit code (D2/FR-013 discipline extended here
     // to a genuine conformance failure, not staleness): never 0.
     expect(code).toBe(1);

@@ -3,11 +3,16 @@
 **Status**: an operator how-to, not a rubric. Everything in sections 1–3
 documents muster's own CLI **as it exists today** (verified directly against
 `garrison-hq/muster` commit `16f0d34c3126fab5df2ee0b6e1e304a4d9bcb8e3` — every
-`src/cli/index.ts` citation below was re-checked against that commit; the file
-is byte-identical between `16f0d34c3` and this guide's own commit, so the
-cited line numbers are stable). Section 4 is a clearly labeled forward-looking
-appendix for suites that do not exist in this repo yet — treat every command
-in sections 1–3 as runnable now; treat nothing in section 4 as runnable.
+`src/cli/index.ts` citation below was re-checked against that commit).
+`src/cli/index.ts` is **not** byte-identical to `16f0d34c3` anymore: the
+cassette-core-engine mission (`--cassette`/`--record`/`--replay`) added
+~150 lines ahead of `doBehaveRun`, so §3's `doBehaveRun` citation was
+re-verified and updated against this guide's own commit rather than assumed
+stable — do not assume unlisted citations elsewhere in this guide have been
+re-checked against the same drift. Section 4 is a clearly labeled
+forward-looking appendix for suites that do not exist in this repo yet —
+treat every command in sections 1–3 as runnable now; treat nothing in
+section 4 as runnable.
 
 ## 1. Running every real, currently-shipped CLI suite
 
@@ -161,9 +166,10 @@ is what your automation should branch on.
 |---|---|---|
 | All cases pass (or all skipped, no endpoint configured) | **0** | **0** |
 | At least one case fails, endpoint reachable | **1** | **1** |
-| **Endpoint unreachable for every run of every case** | **1** — counted as an ordinary set of failed cases, no special case (`doSkillsRun`, `src/cli/index.ts:1584`, `return ok ? 0 : 1;`; `doSopRun`, `:1685`, `return report.passed ? 0 : 1;`) | **2** — treated as an execution fault, not a grading failure (`doBehaveRun`, `:479-489`; `doA2aBehavioralRun`, `:1157-1161`, both with a comment citing `contracts/cli.md`'s exit-code contract) |
+| **Endpoint unreachable for every run of every case** | **1** — counted as an ordinary set of failed cases, no special case (`doSkillsRun`, `src/cli/index.ts:1584`, `return ok ? 0 : 1;`; `doSopRun`, `:1685`, `return report.passed ? 0 : 1;`) | **2** — treated as an execution fault, not a grading failure (`doBehaveRun`, `:634-653`; `doA2aBehavioralRun`, `:1157-1161`, both with a comment citing `contracts/cli.md`'s exit-code contract) |
 | Manifest cannot be read or fails structural validation | **2**, universally | **2**, universally |
 | Unexpected internal exception | **2**, universally (`runCli`'s top-level catch, `src/cli/index.ts:2328-2342`, maps every `ExecutionError` and every uncaught error to exit 2) | **2**, universally |
+| **`behave run --cassette ... --replay`: endpoint unreachable for every run of every case** | n/a — `--replay` is `behave`-only | **1**, never **2** — a documented carve-out, not the row above. Replay never touches a live endpoint at all (NFR-003), so `doBehaveRun`'s exit-2 heuristic is gated off entirely for it (`opts.replay !== true`, `src/cli/index.ts:644`, inside the same `:634-653` block) and an all-stale replay falls through to the normal pass/fail path (FR-013: "never 0, never a skip code" — and, for this one mode, never exit 2 either) |
 
 `contracts/cli.md` itself describes the endpoint-unreachable-for-an-entire-run
 case as a **uniform** exit-2 execution error ("`2` — execution error

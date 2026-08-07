@@ -5,6 +5,7 @@
 import { mkdtemp, rm, readdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   writeCassetteCase,
@@ -15,6 +16,7 @@ import {
 import { SCHEMA_VERSION, type CassetteCaseFile, type CassetteExchange, type CassetteSuiteIndex } from "../../src/core/cassette/types.js";
 import { canonicalJson } from "../../src/core/canonical-json.js";
 import { makeCassetteClient } from "../../src/core/cassette/client.js";
+import { computeRequestHash } from "../../src/core/cassette/hash.js";
 
 let tmpDirs: string[] = [];
 
@@ -270,4 +272,63 @@ describe("FR-020 credential-shaped endpoint base URL is never persisted (Scenari
     const exchange = parsed.exchanges[0] as Extract<CassetteExchange, { kind: "chat" }>;
     expect(exchange.provenance.hostname).toBe("api.example.com");
   });
+});
+
+/** Recursively collect every `.json` file under `dir`. */
+async function collectJsonFiles(dir: string): Promise<string[]> {
+  const entries = await readdir(dir, { withFileTypes: true });
+  const files: string[] = [];
+  for (const entry of entries) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await collectJsonFiles(full)));
+    } else if (entry.isFile() && entry.name.endsWith(".json")) {
+      files.push(full);
+    }
+  }
+  return files;
+}
+
+/** Case files carry `exchanges`; the suite index (`_suite-index.json`) does
+ *  not — this test only cares about the former. */
+function isCassetteCaseFile(value: unknown): value is CassetteCaseFile {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    Array.isArray((value as { exchanges?: unknown }).exchanges)
+  );
+}
+
+describe("fixture integrity: committed fixtures/cassettes/**/*.json (PR-TESTS-001)", () => {
+  it(
+    "computeRequestHash(exchange.request) === exchange.requestHash for every exchange in " +
+      "every committed cassette case file — catches request-content corruption (e.g. the " +
+      "caller's `messages` array being aliased and mutated after record-mode `chat()` " +
+      "returns) directly against what ships on disk",
+    async () => {
+      const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
+      const cassetteRoot = join(repoRoot, "fixtures", "cassettes");
+      const jsonFiles = await collectJsonFiles(cassetteRoot);
+      const caseFiles: { path: string; parsed: CassetteCaseFile }[] = [];
+      for (const path of jsonFiles) {
+        const parsed = JSON.parse(await readFile(path, "utf8")) as unknown;
+        if (isCassetteCaseFile(parsed)) {
+          caseFiles.push({ path, parsed });
+        }
+      }
+
+      // Guard against a silently-empty glob (a vacuously-passing test).
+      expect(caseFiles.length).toBeGreaterThan(0);
+
+      for (const { path, parsed } of caseFiles) {
+        for (const exchange of parsed.exchanges) {
+          expect(
+            computeRequestHash(exchange.request),
+            `${path}: exchange (kind=${exchange.kind}, ordinal=${exchange.ordinal}) — ` +
+              "persisted request.messages does not hash to the persisted requestHash"
+          ).toBe(exchange.requestHash);
+        }
+      }
+    }
+  );
 });

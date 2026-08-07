@@ -767,6 +767,61 @@ describe("muster behave run (RFC-1 §20/§21 behavioral surface; FR-016..FR-023)
     }
   );
 
+  it(
+    "PR-TESTS-002: a client failure mid-recording produces a cassette case file with fewer " +
+      "exchanges than the run count; the suite index's declared `runs` for that case locks " +
+      "today's documented contract — it equals `applied.runs` (the CONFIGURED run count), " +
+      "not `recordSink.length` (the count actually appended) — so a future change to either " +
+      "side of this seam cannot silently drift it",
+    async () => {
+      const cassetteDir = await mkCassetteDir();
+      let calls = 0;
+      const recorded = await run(
+        ["behave", "run", behaveManifest5Runs, "--cassette", cassetteDir, "--record"],
+        {
+          clientFactory: mockFactory(async () => {
+            calls++;
+            // Fail on run 3 of 5: a transient endpoint error partway through
+            // a multi-run case's recording.
+            if (calls === 3) {
+              throw new Error("transient endpoint error on run 3");
+            }
+            return SHORT_REPLY;
+          }),
+        }
+      );
+      // runCase's per-run error containment swallows the failure into a
+      // failed RunVerdict and continues (never propagates) — the case's
+      // pass_threshold (5) is not met, so the run exits 1 (a grading
+      // failure), not 2 (only one run of one case errored, not every run of
+      // every case — the exit-2 heuristic does not fire).
+      expect(recorded.code).toBe(1);
+      expect(calls).toBe(5);
+
+      const caseFilePath = join(cassetteDir, "verbosity_minimal.json");
+      const caseFile = JSON.parse(await readFile(caseFilePath, "utf8")) as {
+        exchanges: Array<{ ordinal: number }>;
+      };
+      // (a) The written case file has fewer than applied.runs (5) exchanges:
+      // the failed run's client call throws before recordSink.push runs, so
+      // that run contributes no exchange at all.
+      expect(caseFile.exchanges).toHaveLength(4);
+
+      const suiteIndexPath = join(cassetteDir, "_suite-index.json");
+      const suiteIndex = JSON.parse(await readFile(suiteIndexPath, "utf8")) as {
+        cases: { id: string; runs: number }[];
+      };
+      const declaredRuns = suiteIndex.cases.find((c) => c.id === "verbosity_minimal")?.runs;
+      // (b) Documented, locked decision: doBehaveRun declares the CONFIGURED
+      // run count (applied.runs = 5), not the count actually recorded
+      // (recordSink.length = 4). On a later --replay, the missing run
+      // becomes an ordinary stale/CassetteMissError failure (Hazard 1) —
+      // graceful degradation, not a crash.
+      expect(declaredRuns).toBe(5);
+      expect(declaredRuns).not.toBe(caseFile.exchanges.length);
+    }
+  );
+
   it("FR-014 (Scenario 10): replay with no --runs uses the cassette's recorded n=5", async () => {
     const cassetteDir = await mkCassetteDir();
     const recorded = await run(

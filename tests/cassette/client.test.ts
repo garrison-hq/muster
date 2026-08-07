@@ -139,6 +139,43 @@ describe("makeCassetteClient — record mode (FR-008)", () => {
     expect(recordSink.map((e) => e.response)).toEqual(["response-1", "response-2", "response-3"]);
   });
 
+  it(
+    "PR-TESTS-001: freezes the persisted request at call time — mutating the caller's " +
+      "`messages` array AFTER `chat()` returns (exactly what `executeRun`, " +
+      "src/core/behavioral/runner.ts, does by pushing the assistant's reply onto the same " +
+      "array) must not corrupt the already-recorded exchange",
+    async () => {
+      const inner = fakeChatClient();
+      const recordSink: CassetteExchange[] = [];
+      const client = makeCassetteClient(inner, {
+        mode: "record",
+        caseId: "case-1",
+        recordSink,
+        endpoint: { model: "test-model", baseUrl: "https://api.example.com/v1" },
+      });
+      const messages: ChatMessage[] = [
+        { role: "system", content: "system prompt" },
+        { role: "user", content: "hi" },
+      ];
+      const originalLength = messages.length;
+      const originalSnapshot = messages.map((m) => ({ ...m }));
+
+      const result = await client.chat(messages, OPTS);
+      expect(result).toBe("response-1");
+
+      // Mimic executeRun's real usage pattern: push the reply onto the SAME
+      // array the caller passed in, immediately after the call returns.
+      messages.push({ role: "assistant", content: result });
+
+      expect(recordSink).toHaveLength(1);
+      const persisted = recordSink[0]?.request.messages;
+      expect(persisted).toHaveLength(originalLength);
+      expect(persisted).toEqual(originalSnapshot);
+      // The persisted request is a copy, not the same array reference.
+      expect(persisted).not.toBe(messages);
+    }
+  );
+
   it("a new decorator instance (new case) starts the ordinal counter over at 1 (resets per case file)", async () => {
     const innerA = fakeChatClient();
     const sinkA: CassetteExchange[] = [];
