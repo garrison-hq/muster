@@ -41,6 +41,7 @@ import {
   loadBehavioralManifest,
 } from "../core/behavioral/manifest.js";
 import { runCase, type RunnerOptions } from "../core/behavioral/runner.js";
+import type { BehavioralCase } from "../core/behavioral/types.js";
 import { makeClient } from "../core/behavioral/client.js";
 import {
   makeCassetteClient,
@@ -463,14 +464,9 @@ export function normalizeDurationsForReplay(verdicts: readonly CaseVerdict[]): C
   }));
 }
 
-async function doBehaveRun(
-  manifestPath: string,
-  opts: BehaveOpts,
-  io: Io,
-  clientFactory: (endpoint: EndpointConfig) => ChatClient
-): Promise<number> {
-  // FR-016: --cassette/--record/--replay flag discipline, checked before the
-  // manifest is even loaded so it never depends on manifest validity.
+// FR-016: --cassette/--record/--replay flag discipline, checked before the
+// manifest is even loaded so it never depends on manifest validity.
+function validateCassetteFlags(opts: BehaveOpts): void {
   if (opts.record === true && opts.replay === true) {
     throw new ExecutionError("behave run: --record and --replay are mutually exclusive");
   }
@@ -480,6 +476,102 @@ async function doBehaveRun(
   if (opts.cassette !== undefined && opts.record !== true && opts.replay !== true) {
     throw new ExecutionError("behave run: --cassette requires --record or --replay");
   }
+}
+
+// FR-014/015: resolve the replay run count from the cassette suite index
+// before other resolution; a missing index/case defers to the per-case
+// FR-013 stale path (Hazard 1). Conflicting --runs fails first, naming
+// both counts (FR-015).
+function resolveReplaySuiteIndex(
+  opts: BehaveOpts,
+  cases: readonly BehavioralCase[]
+): CassetteSuiteIndex | undefined {
+  if (opts.replay !== true || opts.cassette === undefined) return undefined;
+  const suiteIndex = readCassetteSuiteIndex(opts.cassette);
+  if (opts.runs === undefined || suiteIndex === undefined) return suiteIndex;
+  for (const kase of cases) {
+    const recorded = suiteIndex.cases.find((c) => c.id === kase.id);
+    if (recorded !== undefined && recorded.runs !== opts.runs) {
+      throw new ExecutionError(
+        `behave run --replay: --runs ${opts.runs} conflicts with the cassette's recorded run count ${recorded.runs} for case "${kase.id}"`
+      );
+    }
+  }
+  return suiteIndex;
+}
+
+// Static gate first: never grade against a non-conforming persona.
+function assertCaseSoulConforms(
+  kase: BehavioralCase,
+  check: CheckResult,
+  opts: BehaveOpts,
+  io: Io
+): void {
+  if (check.report.ok && check.effective !== null) return;
+  io.errLine(`case "${kase.id}": soul "${kase.soul}" is not conforming — static report:`);
+  io.errLine(opts.json === true ? JSON.stringify(check.report, null, 2) : formatReportHuman(check.report));
+  throw new ExecutionError(`behavioral run aborted: non-conforming soul for case "${kase.id}"`);
+}
+
+// --runs overrides the manifest-resolved n; k clamps so k ≤ n holds. In
+// replay mode, the recorded per-case count wins over --runs (FR-014).
+function resolveCaseRunConfig(
+  kase: BehavioralCase,
+  opts: BehaveOpts,
+  suiteIndex: CassetteSuiteIndex | undefined
+): BehavioralCase {
+  const recordedRuns = suiteIndex?.cases.find((c) => c.id === kase.id)?.runs;
+  const resolvedRuns =
+    opts.replay === true && recordedRuns !== undefined ? recordedRuns : opts.runs;
+  if (resolvedRuns === undefined) return kase;
+  return {
+    ...kase,
+    runs: resolvedRuns,
+    pass_threshold: Math.min(kase.pass_threshold, resolvedRuns),
+  };
+}
+
+// Per-case cassette decoration (FR-007..010): constructed fresh per case.
+function buildCaseClient(
+  client: ChatClient,
+  opts: BehaveOpts,
+  caseId: string,
+  endpoint: EndpointConfig
+): { caseClient: ChatClient; recordSink: CassetteExchange[] | undefined } {
+  if (opts.cassette !== undefined && opts.record === true) {
+    const recordSink: CassetteExchange[] = [];
+    const caseClient = makeCassetteClient(client, { mode: "record", caseId, recordSink, endpoint });
+    return { caseClient, recordSink };
+  }
+  if (opts.cassette !== undefined && opts.replay === true) {
+    const replaySource = readCassetteCase(opts.cassette, caseId)?.exchanges ?? [];
+    const caseClient = makeCassetteClient(client, { mode: "replay", caseId, replaySource });
+    return { caseClient, recordSink: undefined };
+  }
+  return { caseClient: client, recordSink: undefined };
+}
+
+// Hazard 2 (FR-017): only --replay wraps the array as { replayed, verdicts
+// }; every other invocation keeps emitting the bare array (NFR-006).
+function emitBehaveOutput(io: Io, opts: BehaveOpts, verdicts: CaseVerdict[]): void {
+  if (opts.replay === true) {
+    // Hazard 3 (NFR-002): normalize durationMs to 0 in a COPY — originals are untouched.
+    const normalized = normalizeDurationsForReplay(verdicts);
+    io.outLine(opts.json === true
+      ? JSON.stringify({ replayed: true, verdicts: normalized }, null, 2)
+      : withReplayedMarker(formatBehaveHuman(normalized)));
+    return;
+  }
+  io.outLine(opts.json === true ? JSON.stringify(verdicts, null, 2) : formatBehaveHuman(verdicts));
+}
+
+async function doBehaveRun(
+  manifestPath: string,
+  opts: BehaveOpts,
+  io: Io,
+  clientFactory: (endpoint: EndpointConfig) => ChatClient
+): Promise<number> {
+  validateCassetteFlags(opts);
 
   const loaded = await loadBehavioralManifest(toAbsolute(manifestPath));
   if (isBehavioralManifestError(loaded)) {
@@ -501,34 +593,7 @@ async function doBehaveRun(
   };
   const client = clientFactory(endpoint);
 
-  // FR-014/015: in replay mode, the run count is resolved by reading the
-  // cassette suite index BEFORE any other run-count/k resolution — reading
-  // ONLY the suite index file, never opening per-case files here (a case
-  // missing from the index, or whose own file is absent, is NOT a preflight
-  // failure — it is a per-case D2/FR-013 stale-miss handled later in the
-  // main loop below). A conflicting explicit --runs fails before any case
-  // executes, naming both the requested and the recorded counts (FR-015). A
-  // missing/absent suite index (e.g. the whole cassette directory was
-  // deleted) is likewise NOT a preflight failure here — every case simply
-  // has no recorded count to resolve against, and each case's own replay
-  // lookup below reports the resulting miss as a per-case stale failure
-  // (Hazard 1: this is deliberately NOT an ExecutionError/exit 2).
-  let suiteIndex: CassetteSuiteIndex | undefined;
-  if (opts.replay === true && opts.cassette !== undefined) {
-    suiteIndex = readCassetteSuiteIndex(opts.cassette);
-    if (opts.runs !== undefined && suiteIndex !== undefined) {
-      for (const kase of loaded.cases) {
-        const recorded = suiteIndex.cases.find((c) => c.id === kase.id);
-        if (recorded !== undefined && recorded.runs !== opts.runs) {
-          throw new ExecutionError(
-            `behave run --replay: --runs ${opts.runs} conflicts with the cassette's ` +
-              `recorded run count ${recorded.runs} for case "${kase.id}"`
-          );
-        }
-      }
-    }
-  }
-
+  const suiteIndex = resolveReplaySuiteIndex(opts, loaded.cases);
   const recordedSuiteCases: { id: string; runs: number }[] = [];
   const verdicts: CaseVerdict[] = [];
   for (const kase of loaded.cases) {
@@ -540,54 +605,9 @@ async function doBehaveRun(
       ...(kase.state !== undefined && { state: kase.state }),
       ...restrictRefsOpt(opts.restrictRefs),
     });
-    if (!check.report.ok || check.effective === null) {
-      io.errLine(`case "${kase.id}": soul "${kase.soul}" is not conforming — static report:`);
-      io.errLine(
-        opts.json === true
-          ? JSON.stringify(check.report, null, 2)
-          : formatReportHuman(check.report)
-      );
-      throw new ExecutionError(
-        `behavioral run aborted: non-conforming soul for case "${kase.id}"`
-      );
-    }
-
-    // --runs overrides the manifest-resolved n; k clamps so k ≤ n holds. In
-    // replay mode, the recorded per-case count (from the suite index) wins
-    // over --runs/manifest resolution when present (FR-014).
-    const recordedRuns = suiteIndex?.cases.find((c) => c.id === kase.id)?.runs;
-    const resolvedRuns =
-      opts.replay === true && recordedRuns !== undefined ? recordedRuns : opts.runs;
-    const applied =
-      resolvedRuns === undefined
-        ? kase
-        : {
-            ...kase,
-            runs: resolvedRuns,
-            pass_threshold: Math.min(kase.pass_threshold, resolvedRuns),
-          };
-
-    // Per-case cassette decoration (FR-007..010): constructed fresh per
-    // case — matching D1's one-file-per-case shape — never per-suite.
-    let caseClient: ChatClient = client;
-    let recordSink: CassetteExchange[] | undefined;
-    if (opts.cassette !== undefined && opts.record === true) {
-      recordSink = [];
-      caseClient = makeCassetteClient(client, {
-        mode: "record",
-        caseId: kase.id,
-        recordSink,
-        endpoint,
-      });
-    } else if (opts.cassette !== undefined && opts.replay === true) {
-      const caseFile = readCassetteCase(opts.cassette, kase.id);
-      caseClient = makeCassetteClient(client, {
-        mode: "replay",
-        caseId: kase.id,
-        replaySource: caseFile?.exchanges ?? [],
-      });
-    }
-
+    assertCaseSoulConforms(kase, check, opts, io);
+    const applied = resolveCaseRunConfig(kase, opts, suiteIndex);
+    const { caseClient, recordSink } = buildCaseClient(client, opts, kase.id, endpoint);
     verdicts.push(await runCase(rfc1Adapter, check, applied, caseClient, runnerOpts));
 
     if (recordSink !== undefined && opts.cassette !== undefined) {
@@ -609,27 +629,7 @@ async function doBehaveRun(
     });
   }
 
-  // The verdicts are the artifact — emit them before deciding the exit code.
-  // Hazard 2 (FR-017): --json shape is deliberately asymmetric — only
-  // --replay wraps the array as { replayed: true, verdicts }; every other
-  // invocation (no cassette, --record) keeps emitting the bare array
-  // unchanged, so non-replay --json output stays byte-identical to its
-  // pre-mission shape (NFR-006). The human formatter gets an analogous
-  // marker appended on replay only.
-  if (opts.replay === true) {
-    // Hazard 3 (NFR-002): normalize durationMs to 0 in a COPY — the
-    // originals `runCase` returned are untouched (read again just below).
-    const normalized = normalizeDurationsForReplay(verdicts);
-    io.outLine(
-      opts.json === true
-        ? JSON.stringify({ replayed: true, verdicts: normalized }, null, 2)
-        : withReplayedMarker(formatBehaveHuman(normalized))
-    );
-  } else {
-    io.outLine(
-      opts.json === true ? JSON.stringify(verdicts, null, 2) : formatBehaveHuman(verdicts)
-    );
-  }
+  emitBehaveOutput(io, opts, verdicts);
 
   // Exit discipline: mid-suite endpoint errors fail cases and exit 1; an
   // endpoint unreachable for the ENTIRE run (every run of every case errored)
