@@ -13,7 +13,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { runCli, type RunCliOptions } from "../../src/cli/index.js";
+import { normalizeDurationsForReplay, runCli, type RunCliOptions } from "../../src/cli/index.js";
 import type {
   CaseVerdict,
   ChatClient,
@@ -479,12 +479,22 @@ describe("muster behave run (RFC-1 §20/§21 behavioral surface; FR-016..FR-023)
   });
 
   it("CLI contract: endpoint unreachable for the ENTIRE run → exit 2", async () => {
-    const { code } = await run(["behave", "run", behaveManifest], {
+    const { code, stdout } = await run(["behave", "run", behaveManifest, "--json"], {
       clientFactory: mockFactory(async () => {
         throw new Error("chat request to 127.0.0.1:9 failed: connect ECONNREFUSED");
       }),
     });
     expect(code).toBe(2);
+    // WP04-C1-003: a generic (non-CassetteMissError) error must NEVER get
+    // labeled `stale: true` — that label is reserved for FR-013 cassette
+    // replay misses, not ordinary endpoint failures.
+    const verdicts = JSON.parse(stdout) as CaseVerdict[];
+    for (const verdict of verdicts) {
+      expect(verdict.stale).toBeUndefined();
+      for (const runVerdict of verdict.runs) {
+        expect(runVerdict.stale).toBeUndefined();
+      }
+    }
   });
 
   // ── WP04: --cassette/--record/--replay (FR-013..FR-017, Hazards 1-3) ─────
@@ -815,6 +825,104 @@ describe("muster behave run (RFC-1 §20/§21 behavioral surface; FR-016..FR-023)
       expect(stderr).toContain("3");
       expect(stderr).toContain("5");
       expect(chatCalls).toBe(0); // no case executed before the failure
+    }
+  );
+
+  it(
+    "WP04-C1-001/FR-014/015: --replay --runs N where N equals the cassette's recorded count " +
+      "is ACCEPTED (exit 0, executes N runs, no conflict error) — the no-conflict arm of the " +
+      "src/cli/index.ts:522 preflight check",
+    async () => {
+      const cassetteDir = await mkCassetteDir();
+      const recorded = await run(
+        ["behave", "run", behaveManifest5Runs, "--cassette", cassetteDir, "--record"],
+        { clientFactory: mockFactory(SHORT_REPLY) }
+      );
+      expect(recorded.code).toBe(0);
+
+      let chatCalls = 0;
+      const countingFactory = (): ChatClient => ({
+        chat: async () => {
+          chatCalls++;
+          return SHORT_REPLY;
+        },
+      });
+      const { code, stdout, stderr } = await run(
+        [
+          "behave",
+          "run",
+          behaveManifest5Runs,
+          "--cassette",
+          cassetteDir,
+          "--replay",
+          "--runs",
+          "5",
+          "--json",
+        ],
+        { clientFactory: countingFactory }
+      );
+      expect(code).toBe(0);
+      expect(stderr).not.toContain("conflicts with the cassette's recorded run count");
+      const { verdicts } = JSON.parse(stdout) as { replayed: boolean; verdicts: CaseVerdict[] };
+      expect(verdicts[0]?.runs).toHaveLength(5);
+      // Replay never touches a live endpoint (NFR-003): the cassette client
+      // absorbs every call, so the underlying chat client is never invoked
+      // even though --runs matched and the case executed.
+      expect(chatCalls).toBe(0);
+    }
+  );
+});
+
+describe("WP04-C1-002: normalizeDurationsForReplay copies, never aliases (Hazard 3)", () => {
+  /** Minimal-but-real Transcript/RunVerdict/CaseVerdict fixture builder. */
+  function makeVerdict(durationMs: number): CaseVerdict {
+    return {
+      id: "case-a",
+      passed: true,
+      passCount: 1,
+      runs: [
+        {
+          run: 0,
+          passed: true,
+          axes: [],
+          transcript: {
+            entries: [],
+            model: "mock-model",
+            baseUrl: "http://127.0.0.1:9/v1",
+            temperature: "default",
+            durationMs,
+          },
+        },
+      ],
+    };
+  }
+
+  it(
+    "returns a copy whose transcript objects are NOT the same references as the originals, " +
+      "and leaves the original's durationMs untouched — a shallow write-through-aliasing " +
+      "implementation (mutating run.transcript.durationMs in place on the original objects) " +
+      "fails this test even though it would still emit byte-identical --json output",
+    () => {
+      const original = [makeVerdict(999)];
+      const originalTranscript = original[0]?.runs[0]?.transcript;
+
+      const normalized = normalizeDurationsForReplay(original);
+
+      // The copy is zeroed, as before.
+      expect(normalized[0]?.runs[0]?.transcript.durationMs).toBe(0);
+
+      // The ORIGINAL must be completely untouched: still the real, nonzero,
+      // measured duration — not a shared reference the copy wrote through.
+      expect(original[0]?.runs[0]?.transcript.durationMs).toBe(999);
+      expect(originalTranscript?.durationMs).toBe(999);
+
+      // Object identity: every level below the copied array must be a
+      // distinct object, not an alias of the original's.
+      expect(normalized).not.toBe(original);
+      expect(normalized[0]).not.toBe(original[0]);
+      expect(normalized[0]?.runs).not.toBe(original[0]?.runs);
+      expect(normalized[0]?.runs[0]).not.toBe(original[0]?.runs[0]);
+      expect(normalized[0]?.runs[0]?.transcript).not.toBe(original[0]?.runs[0]?.transcript);
     }
   );
 });

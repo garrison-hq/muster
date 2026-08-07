@@ -453,7 +453,7 @@ function withReplayedMarker(human: string): string {
  * `verdicts` — so every level is copied explicitly. Gated strictly on the
  * replay-only call site below (never on non-replay output, NFR-006).
  */
-function normalizeDurationsForReplay(verdicts: readonly CaseVerdict[]): CaseVerdict[] {
+export function normalizeDurationsForReplay(verdicts: readonly CaseVerdict[]): CaseVerdict[] {
   return verdicts.map((verdict) => ({
     ...verdict,
     runs: verdict.runs.map((run) => ({

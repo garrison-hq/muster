@@ -1,0 +1,22 @@
+schema: wp-verdict/v1
+complete: true
+wp: WP04
+cycle: 2
+mission: cassette-core-engine-01KZCWFE
+verdict: approved
+gates_observed:
+  tsc: pass                    # `npx tsc --noEmit` on HEAD: exit 0, no output.
+  tests: pass                  # `pnpm test` on HEAD: 194 files / 3898 passed / 3 skipped / 0 failed — matches implementer's claim exactly, +4 tests over cycle 1.
+  coverage: >-
+    WP04-owned FR-014/015 branches now fully covered. Ran
+    `npx vitest run --coverage --coverage.reporter=json tests/unit/cli.test.ts
+    tests/behavioral/` and inspected coverage/coverage-final.json's branchMap/b
+    for src/cli/index.ts lines 515-570: line 522 (the --runs/recorded-count
+    conflict `if`) is [1,1]/[2,2] — both arms hit, closing WP04-C1-001's
+    original gap. Lines 560/563 (recordedRuns/resolvedRuns ternaries, WP04's
+    own FR-014 resolution logic) are [8,15]/[24,9] and [14,9] — both arms hit.
+    The two remaining uncovered arms in this region (539/540, [24,0]) are
+    git-blame-confirmed db80a42 (2026-08-02, pre-mission) code — the static
+    soul-conformance gate's optional-spread — not WP04's, consistent with the
+    implementer's pushback (see WP04-C2 ruling below).
+feedback: []
