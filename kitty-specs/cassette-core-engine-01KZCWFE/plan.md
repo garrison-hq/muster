@@ -110,8 +110,11 @@ module design below.*
   (`src/core/execution-source.ts`) is exported with its own test suite
   (`tests/unit/execution-source.test.ts`) reproducing the FR-018 precedence
   table as literal test cases per branch. **This mission makes zero edits to
-  the skip-gate *decision logic*** at `heartbeat/index.ts:497`,
-  `cli/index.ts:1778` (`doToolsRun`'s endpoint check), `cli/index.ts:936-943`
+  the skip-gate *decision logic*** at `heartbeat/index.ts:497`, `doToolsRun`'s
+  endpoint check in `cli/index.ts` (function defined at line 1953, the
+  `endpointUrl` check itself at line 1966 as of this refresh; cite by symbol
+  `doToolsRun` alongside the line, not the bare line alone — this citation
+  has already drifted 1778 → 1802 → 1966), `cli/index.ts:936-943`
   (crosslayer's manifest-endpoint-block fallback), or `skills/
   trigger.ts:83-101` (`resolveEndpointBaseUrl`) — confirmed against spec.md's
   own Non-Goals ("Any change to the five gate-bearing commands' own
@@ -230,8 +233,9 @@ src/cli/
                                       #      (Hazard 3, NFR-002), and the exit-2 "endpoint
                                       #      fatal" heuristic (~L483-488) gated OFF in replay
                                       #      mode (see Hazard 1 below)
-                                      #  doToolsRun (L1765-1799) is UNCHANGED (C-005 scope
-                                      #  note above)
+                                      #  doToolsRun (L1953-1987 as of this refresh; cite by
+                                      #  symbol, this range has already drifted twice) is
+                                      #  UNCHANGED (C-005 scope note above)
 
 docs/guides/
 └── cassette-format.md              # NEW (FR-012) — the chat()/chatWithTools() fidelity

@@ -1,0 +1,50 @@
+schema: review-findings/v1
+complete: true
+phase: integration
+lens_group: integration
+mission: cassette-core-engine-01KZCWFE
+findings:
+  - id: INT-001
+    lens: architect
+    severity: 4
+    title: "TODO(WP03) left unresolved — a second hostnameOf implementation still ships even though its own stated precondition (the export) has landed"
+    evidence:
+      - artifact: "spec.md § C-004 (line 293): \"matching the client's existing error-hygiene convention (hostnameOf in client.ts, which this mission exports from that module so the cassette module reuses it directly — no parallel hostname-extraction/redaction implementation is added, mirroring C-003's reuse mandate for canonicalJson)\""
+      - artifact: "reviews/wp-WP01-cycle1.yaml:57-63 — per-WP review explicitly deferred this: \"No action required now. When WP03 lands T012 (exporting hostnameOf...)\" — the condition that review named has now happened."
+      - code: "src/adapters/openclaw-sop/runner.ts:102-110 — local `function hostnameOf(baseUrl: string): string { try { return new URL(baseUrl).host; } catch { return baseUrl.replace(/^[a-z+]+:\\/\\//i, \"\").split(/[/?#]/, 1)[0] ?? baseUrl; } }`, still carrying `TODO(WP03): once hostnameOf is exported ... delete this local copy and import that export instead.`"
+      - code: "src/core/behavioral/client.ts:61-68 — `export function hostnameOf(baseUrl: string): string { ... }`, byte-identical control flow to the runner.ts copy (only comments differ) — confirmed by direct read, not assumed."
+      - code: "src/core/cassette/client.ts:29,133 — the cassette module already does the correct thing: `import { hostnameOf, ... } from \"../behavioral/client.js\"` then `hostname: hostnameOf(endpoint.baseUrl)` — proving the import path adapters→core (the allowed C-001 direction) works and is exactly what runner.ts's own TODO says to do."
+    claim: >
+      WP01's runner.ts:105 `hostnameOf` mirror was added with an explicit TODO
+      to delete itself once WP03 exported the canonical version from client.ts.
+      WP03 has since done exactly that (client.ts:61, `export function
+      hostnameOf`), and the cassette module (client.ts:29) already imports and
+      reuses it, proving nothing about C-001 (core cannot import adapters; this
+      is the reverse, allowed direction: an adapter importing from core) blocks
+      the fix. Verified byte-for-byte, the two functions currently compute
+      identically (same `new URL(baseUrl).host` happy path, identical fallback
+      regex/split logic) — so there is no live credential-redaction divergence
+      today. But the mission still ships two independent implementations of a
+      security-sensitive redaction rule (C-004's subject matter) with no shared
+      test, no compile-time link, and a stale citation
+      (runner.ts:95 still says "client.ts:57"; the export is now at line 61,
+      and runner.ts:97's premise "module-private and out of this work
+      package's owned-files scope" is no longer true). A future edit to
+      client.ts's hostnameOf (e.g. tightening the fallback for a new URL
+      shape) will silently NOT propagate to runner.ts's copy, and nothing in
+      the test suite would catch the divergence — this is exactly the
+      "parallel, potentially-diverging redaction implementation" hazard
+      C-003/C-004's reuse mandate exists to close. Per-WP review deliberately
+      punted this exact decision to integration review; the correct call here
+      is to close it, not defer again.
+    remediation: >
+      Delete the local `hostnameOf` (runner.ts:105-111) and its now-stale
+      doc comment (runner.ts:93-103), and instead `import { hostnameOf } from
+      "../../core/behavioral/client.js"` at the top of runner.ts (alongside
+      the existing `import type { Transcript, ChatClient } from
+      "../../core/behavioral/types.js"`), matching the exact pattern
+      `src/core/cassette/client.ts:29` already uses. This is a same-behavior,
+      adapter-imports-core change (the allowed C-001 direction), requires no
+      test rewrite (runner.test.ts's existing hostnameOf-fallback assertions
+      keep passing unchanged since behavior is identical), and eliminates the
+      duplicate redaction implementation entirely.
