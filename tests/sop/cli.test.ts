@@ -20,6 +20,7 @@ import { resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { runCli, type RunCliOptions } from "../../src/cli/index.js";
+import type { ChatClient } from "../../src/core/behavioral/types.js";
 
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 // A manifest whose SOP file passes static lint and has no inline probes
@@ -27,6 +28,12 @@ const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 const sopValidManifest = resolvePath(
   repoRoot,
   "tests/adapters/openclaw-sop/fixtures/rule-manifest-valid.yaml"
+);
+// A manifest with exactly one inline probe (single rule, single compliance
+// probe, k=1) — used by the "endpoint configured" provenance test below.
+const sopProbeManifest = resolvePath(
+  repoRoot,
+  "tests/adapters/openclaw-sop/fixtures/rule-manifest-runner-sc001.yaml"
 );
 
 /** In-process invocation capturing stdout/stderr bytes exactly. */
@@ -145,6 +152,80 @@ describe("muster sop run (CLI wiring, FR-003, FR-011)", () => {
     const { code, stdout } = await run(["sop", "run", "--help"]);
     expect(code).toBe(0);
     expect(stdout).toContain("MUSTER_ENDPOINT");
+  });
+
+  it("FR-001/WP01-C1-001: endpoint configured — injected clientFactory's real model/baseUrl reach transcript provenance (not the mock literal)", async () => {
+    // Regression test for cycle-1 finding WP01-C1-001: buildSopClient's
+    // "endpoint configured" branch (src/cli/index.ts buildSopClient/doSopRun)
+    // was previously unreachable by any test — MUSTER_ENDPOINT was always
+    // deleted before invoking `sop run`, and doSopRun had no clientFactory
+    // seam, so the real makeClient(endpoint) call could only be exercised
+    // with live network I/O. This test sets MUSTER_ENDPOINT/MUSTER_MODEL and
+    // injects a stub ChatClient via runCli's clientFactory seam (mirroring
+    // doBehaveRun/doMemoryUtilizationRun), then asserts the JSON output's
+    // transcript carries the injected identity end-to-end — closing the gap
+    // the mock-literal bug (#90) lived in.
+    const savedEndpoint = process.env["MUSTER_ENDPOINT"];
+    const savedModel = process.env["MUSTER_MODEL"];
+    process.env["MUSTER_ENDPOINT"] = "https://injected-endpoint.example.com/v1";
+    process.env["MUSTER_MODEL"] = "injected-model-x1";
+    let factoryCalled = false;
+    const stubClient: ChatClient = {
+      async chat(): Promise<string> {
+        // Response contains none of the manifest's forbidden strings, so the
+        // single probe (rule-manifest-runner-sc001.yaml) passes.
+        return "The weather today is calm and clear.";
+      },
+    };
+    try {
+      const { code, stdout, stderr } = await run(
+        ["sop", "run", sopProbeManifest, "--json"],
+        {
+          clientFactory: (endpoint) => {
+            factoryCalled = true;
+            // The endpoint passed to the factory must be the real configured
+            // one — not a stray sentinel. A field-swap bug (e.g. `model:
+            // baseUrl, baseUrl: model` in buildSopClient's returned bundle)
+            // would not corrupt this argument, but WOULD corrupt what ends
+            // up in the transcript assertions below.
+            expect(endpoint.baseUrl).toBe("https://injected-endpoint.example.com/v1");
+            expect(endpoint.model).toBe("injected-model-x1");
+            return stubClient;
+          },
+        }
+      );
+      expect(stderr).toBe("");
+      expect(code).toBe(0);
+      expect(factoryCalled).toBe(true);
+
+      const parsed = JSON.parse(stdout) as {
+        verdicts: Array<{ runs: Array<{ transcript: { model: string; baseUrl: string } }> }>;
+      };
+      expect(parsed.verdicts.length).toBeGreaterThanOrEqual(1);
+      expect(parsed.verdicts[0]?.runs.length).toBeGreaterThanOrEqual(1);
+      const transcript = parsed.verdicts[0]?.runs[0]?.transcript;
+      // The exact swap the reviewer flagged as undetectable
+      // (`return { client: makeClient(endpoint), model: baseUrl, baseUrl:
+      // model }`) would make these two assertions fail against each other:
+      // model would come back as the URL, baseUrl as the model string.
+      expect(transcript?.model).toBe("injected-model-x1");
+      expect(transcript?.baseUrl).toBe("injected-endpoint.example.com");
+      expect(transcript?.model).not.toBe("mock");
+      expect(transcript?.baseUrl).not.toBe("mock://test");
+      expect(transcript?.model).not.toBe("unconfigured");
+      expect(transcript?.baseUrl).not.toBe("unconfigured://no-endpoint");
+    } finally {
+      if (savedEndpoint !== undefined) {
+        process.env["MUSTER_ENDPOINT"] = savedEndpoint;
+      } else {
+        delete process.env["MUSTER_ENDPOINT"];
+      }
+      if (savedModel !== undefined) {
+        process.env["MUSTER_MODEL"] = savedModel;
+      } else {
+        delete process.env["MUSTER_MODEL"];
+      }
+    }
   });
 
   it("NFR-001 byte-stability: two static-only runs produce identical JSON output", async () => {
